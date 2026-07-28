@@ -1,26 +1,241 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ---------------------------------------------------------------------------
+   organic — design tokens (CLAUDE.md §9, N9)
+   Every colour, font, radius and shadow used in the app comes from here.
+   Export templates are exempt (they follow ats-rules, not the brand).
+--------------------------------------------------------------------------- */
+
+@theme {
+  /* ground + text */
+  --color-bg: #f5ead8;
+  --color-bg-raised: #fbf5ea;
+  --color-bg-sunken: #eddfc8;
+  --color-text: #201e1d;
+  --color-text-muted: #6b625a;
+  --color-line: #e0cfb2;
+
+  /* accent — terracotta */
+  --color-accent-100: #fbeade;
+  --color-accent-200: #f4d2bb;
+  --color-accent-300: #e9b492;
+  --color-accent-400: #d99465;
+  --color-accent-500: #c67139;
+  --color-accent-600: #ab5c2b;
+  --color-accent-700: #8b4820;
+  --color-accent-800: #6b3719;
+  --color-accent-900: #4a2611;
+  --color-accent: var(--color-accent-500);
+
+  /* second accent — sage */
+  --color-sage-100: #eef1e6;
+  --color-sage-200: #dae1c8;
+  --color-sage-300: #c2cda6;
+  --color-sage-400: #a2b382;
+  --color-sage-500: #7a8a5e;
+  --color-sage-600: #66744e;
+  --color-sage-700: #515d3e;
+  --color-sage-800: #3d462f;
+  --color-sage-900: #29301f;
+  --color-accent-2: var(--color-sage-500);
+
+  /* state — kept inside the warm family on purpose */
+  --color-warn-100: #fbf0d5;
+  --color-warn-500: #b8892a;
+  --color-warn-700: #7d5c17;
+  --color-danger-100: #f8ded9;
+  --color-danger-500: #b4462f;
+  --color-danger-700: #7d2f1f;
+
+  /* type */
+  --font-heading: var(--font-caprasimo), Georgia, serif;
+  --font-body: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+
+  /* radius */
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 28px;
+  --radius-pill: 999px;
+
+  /* elevation */
+  --shadow-sm: 0 1px 2px rgb(32 30 29 / 0.06), 0 2px 6px rgb(32 30 29 / 0.05);
+  --shadow-md: 0 2px 6px rgb(32 30 29 / 0.07), 0 10px 24px rgb(32 30 29 / 0.08);
+  --shadow-lg: 0 4px 12px rgb(32 30 29 / 0.08), 0 24px 48px rgb(32 30 29 / 0.12);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* ---------------------------------------------------------------------------
+   base
+--------------------------------------------------------------------------- */
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
 }
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  line-height: 1.12;
+}
+
+h1 { font-size: 2.75rem; }
+h2 { font-size: 1.9rem; }
+h3 { font-size: 1.3rem; }
+
+/* accent on the ground is only 3:1 — body copy in accent uses the 700 step */
+.text-accent-body { color: var(--color-accent-700); }
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+::selection { background: var(--color-accent-200); }
+
+/* ---------------------------------------------------------------------------
+   DS classes — use these rather than inventing parallels (CLAUDE.md §9)
+--------------------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--radius-pill);
+  padding: 0.7rem 1.35rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+.btn:active { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary { background: var(--color-accent-500); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--color-accent-600); }
+
+.btn-secondary {
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  border-color: var(--color-line);
+}
+.btn-secondary:hover:not(:disabled) { background: var(--color-bg-sunken); }
+
+.btn-ghost { background: transparent; color: var(--color-accent-700); }
+.btn-ghost:hover:not(:disabled) { background: var(--color-accent-100); }
+
+.btn-sm { padding: 0.45rem 0.9rem; font-size: 0.85rem; }
+
+.card {
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+}
+.card-flat { box-shadow: none; }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: var(--radius-pill);
+  padding: 0.25rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--color-bg-sunken);
+  color: var(--color-text);
+  border: 1px solid var(--color-line);
+  white-space: nowrap;
+}
+.tag-accent { background: var(--color-accent-100); color: var(--color-accent-800); border-color: var(--color-accent-200); }
+.tag-sage { background: var(--color-sage-100); color: var(--color-sage-800); border-color: var(--color-sage-200); }
+.tag-warn { background: var(--color-warn-100); color: var(--color-warn-700); border-color: #e8d5a4; }
+.tag-muted { background: transparent; color: var(--color-text-muted); }
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem 1.75rem;
+  background: var(--color-bg-raised);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+.field > label { font-size: 0.85rem; font-weight: 600; color: var(--color-text-muted); }
+
+.input {
+  width: 100%;
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+  padding: 0.65rem 1.1rem;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+textarea.input { border-radius: var(--radius-md); resize: vertical; }
+.input::placeholder { color: var(--color-text-muted); }
+
+.seg {
+  display: inline-flex;
+  padding: 0.25rem;
+  gap: 0.25rem;
+  background: var(--color-bg-sunken);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-line);
+}
+.seg > button {
+  border-radius: var(--radius-pill);
+  padding: 0.45rem 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.seg > button[aria-selected="true"] {
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  box-shadow: var(--shadow-sm);
+}
+
+.table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.table th {
+  text-align: left;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+}
+.table td { padding: 0.85rem 1rem; border-top: 1px solid var(--color-line); }
+
+.dialog {
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 1.75rem;
+}
+
+/* F2: errors render inline in accent-800 on accent-100, never a toast */
+.error-region {
+  background: var(--color-accent-100);
+  color: var(--color-accent-800);
+  border: 1px solid var(--color-accent-200);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1.15rem;
+}
+
+/* Lucide ships at stroke-width 2.75 across the app */
+.lucide { stroke-width: 2.75; }

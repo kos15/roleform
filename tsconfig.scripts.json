@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "paths": {
+      "@/*": ["./*"],
+      "server-only": ["./scripts/server-only-stub.ts"]
+    }
+  },
+  "include": ["scripts/**/*.ts", "lib/**/*.ts", "lib/**/*.tsx"]
+}

@@ -1,36 +1,115 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Roleform
 
-## Getting Started
+One résumé in, six tailored out — plus the questions this posting suggests and the gaps it
+exposes. **Nothing is invented**: bullets are reordered, reworded and re-weighted, and every
+generated bullet carries a foreign key to the user's own words.
 
-First, run the development server:
+`CLAUDE.md` is the operating contract, `specs.md` the architecture, `plan.md` the milestone
+order. Read those before changing behaviour. This file is the runbook.
+
+---
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+cp .env.example .env.local     # fill in Clerk, Supabase, Anthropic
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Supabase (one project per environment — never point preview at production data)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm db:generate               # regenerate from lib/db/schema.ts; never hand-edit SQL
+pnpm db:migrate                # apply migrations
+pnpm db:policies               # apply lib/db/policies.sql — RLS lives in the repo
+pnpm seed:catalog              # templates + skills + link-checked course catalog
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create both storage buckets as **private**: `resumes`, `exports`. `db:policies` writes their
+path-prefix policies; the buckets themselves are created in the dashboard once.
 
-## Learn More
+### Clerk ↔ Supabase
 
-To learn more about Next.js, take a look at the following resources:
+Use the **native third-party integration**, not the deprecated JWT-template path:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Clerk dashboard → **Integrations → Supabase** → connect, copy the Clerk domain.
+2. Supabase dashboard → **Authentication → Third-party auth** → add that Clerk domain.
+3. Confirm the session token carries `"role": "authenticated"`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`auth.uid()` is not used anywhere — it returns a UUID and Clerk subjects are strings. Every
+policy reads `public.clerk_user_id()` instead.
 
-## Deploy on Vercel
+Webhook: point Clerk at `POST /api/webhooks/clerk` (events `user.created`, `user.updated`,
+`user.deleted`) and set `CLERK_WEBHOOK_SIGNING_SECRET`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Verification
+
+Light by design (CLAUDE.md §11): no continuous suite, no CI gating. One manual checklist per
+milestone, at the gate. These are the commands behind it.
+
+| Command | What it is | When |
+|---|---|---|
+| `pnpm check:constraints` | ★ Constraint smoke test — one bad insert per guard (N1, N2, RLS) | M1 gate, once |
+| `pnpm check:fabrication` | ★ Fabrication eval — 30 bullets vs postings demanding absent skills | M4 gate |
+| `pnpm check:roundtrip` | ★ DOCX round-trip — render, re-import, compare (bar: 95%) | M6 gate |
+| `pnpm check:coverage` | Score fixtures, by hand, written down. Pure — no DB, no keys | anytime |
+| `pnpm render:samples` | Renders all six templates to `.samples/`. Open them | anytime |
+| `pnpm check:links` | Catalog link check, refreshes `verified_at` | quarterly |
+
+The three ★ checks are the ones that survive the light-testing policy, because each catches a
+failure that would otherwise be expensive and silent.
+
+`check:fabrication` needs `EVAL_ANALYSIS_ID` set to a real analysis you own — it writes
+`ai_runs` rows like any other call. Its automated verdict catches mechanical fabrication;
+**read all 30 outputs by hand**, because no regex sees "led" where the source said
+"contributed to".
+
+### Current state of the checks
+
+```
+pnpm check:coverage    PASS   all fixtures, including the hand-computed 61.11
+pnpm check:roundtrip   PASS   100% field recovery on all six templates
+pnpm render:samples    PASS   PDFs render in 34–123 ms, full text layer, ATS High/High/Medium/Medium/Low/Low
+pnpm build             PASS   clean; service-role client absent from every client chunk
+pnpm check:constraints —      needs a live database
+pnpm check:fabrication —      needs API keys and a real analysis id
+```
+
+---
+
+## Architecture in one screen
+
+```
+lib/domain/      PURE. coverage · scoring · ordering · diff · fabrication guard
+                 Imports nothing from db, ai, supabase or next.
+lib/ai/          generateObject + Zod only. schemas/ IS the contract; prompts/ are docs.
+lib/catalog/     skills canon + alias table · curated courses · deterministic matcher
+lib/render/      ats-rules (the badge) · pdf/ · docx/ · zip · shared render model
+lib/db/          schema.ts is the truth · policies.sql · queries/ (all scoped by subject)
+lib/pipeline/    the five stages, with per-tab degradation
+app/actions/     Server Actions · app/api/ streaming + webhooks only
+```
+
+**Four layers stand between the model and a fabricated claim**, in order of how hard they are
+to talk around:
+
+1. a narrow Zod schema (N6)
+2. id verification against the input set, with one corrective retry
+3. `lib/domain/fabrication.ts` — pure, then verbatim fallback
+4. `tailored_bullets.source_bullet_id` `NOT NULL` `ON DELETE RESTRICT` (N1)
+
+Only the fourth cannot be argued with. That is why it exists.
+
+---
+
+## What is deliberately not here
+
+- **No job queue.** Inline + streaming until "Download all" exceeds the function budget or p95
+  analysis passes 45s. `exportAll` logs its elapsed time so the trigger is measurable, not felt.
+- **No vector DB.** The corpus is one user's résumé; there is no retrieval problem.
+- **No LLM in coverage, scoring, ATS rating or course matching.** All four are deterministic
+  and reproducible from identical inputs. The score is the number a user makes a decision on.
+- **No "ATS score".** The match number is requirement coverage. The word "ATS" appears only on
+  a template badge, computed from structural rules.

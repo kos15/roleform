@@ -1,0 +1,115 @@
+import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
+import { ExternalLink } from "lucide-react";
+import { getCatalog, getGaps } from "@/lib/db/queries/analysis";
+import { matchCourses } from "@/lib/catalog/match";
+import { Card, EmptyState, Tag } from "@/components/ui";
+
+/**
+ * F8 — Tab 3: Learning.
+ *
+ * Gaps are ordered by how often the posting mentions them — the honest proxy
+ * for what the employer cares about, and it comes free from JD analysis.
+ *
+ * Courses come from the curated catalog by deterministic matching (N8). A gap
+ * with no vetted course shows an honest empty state; we never invent a link.
+ */
+export default async function LearningTab({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ skills?: string }>;
+}) {
+  const { id } = await params;
+  const { skills: skillFilter } = await searchParams;
+  const { userId } = await auth();
+  if (!userId) redirect("/");
+
+  const [gaps, catalog] = await Promise.all([getGaps(userId, id), getCatalog()]);
+
+  if (gaps.length === 0) {
+    return (
+      <EmptyState title="Nothing here to close">
+        Your profile evidences everything this posting asks for. We&rsquo;d rather show you an
+        empty tab than pad it.
+      </EmptyState>
+    );
+  }
+
+  // Deep-link target from the preview's "See courses for these" (F6).
+  const wanted = skillFilter ? new Set(skillFilter.split(",").map((s) => s.trim())) : null;
+  const shown = wanted ? gaps.filter((g) => wanted.has(g.skillName)) : gaps;
+
+  return (
+    <section>
+      <div className="mb-5">
+        <h2>
+          {shown.length} requirement{shown.length === 1 ? "" : "s"} your résumé can&rsquo;t yet
+          evidence
+        </h2>
+        <p className="mt-1 text-[var(--color-text-muted)]">
+          Ordered by how often the posting mentions them.
+          {wanted ? " Filtered to the skills you came here for." : ""}
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        {shown.map((gap) => {
+          const courses = matchCourses(
+            { skillName: gap.skillName, userLevel: gap.userLevel, requiredLevel: gap.requiredLevel },
+            catalog,
+          );
+
+          return (
+            <Card key={gap.id}>
+              <div className="mb-3 flex flex-wrap items-center gap-3">
+                <h3>{gap.skillName}</h3>
+                <Tag tone="accent">Mentioned {gap.mentionCount}×</Tag>
+                <Tag tone="muted">You: {gap.userLevel}</Tag>
+                <Tag tone="muted">Required: {gap.requiredLevel}</Tag>
+              </div>
+
+              <p className="mb-4 text-[var(--color-text-muted)]">{gap.note}</p>
+
+              {courses.length === 0 ? (
+                <p className="text-sm text-accent-body">
+                  We don&rsquo;t have a vetted course for this yet. We&rsquo;d rather say so than
+                  send you to a link we haven&rsquo;t checked.
+                </p>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {courses.map((course) => (
+                    <a
+                      key={course.id}
+                      href={course.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg-sunken)] p-4"
+                    >
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-pill)] bg-[var(--color-accent-200)] text-xs font-bold text-[var(--color-accent-800)]">
+                          {course.mark}
+                        </span>
+                        <span className="text-sm font-semibold">{course.provider}</span>
+                      </div>
+                      <p className="mb-2 font-semibold">{course.title}</p>
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <Tag tone={course.isFree ? "sage" : "muted"}>{course.priceLabel}</Tag>
+                        <Tag tone="muted">{course.lengthLabel}</Tag>
+                        <Tag tone="muted">{course.level}</Tag>
+                      </div>
+                      <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-accent-body">
+                        View course <ExternalLink className="lucide h-3.5 w-3.5" />
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </Card>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
