@@ -70,14 +70,14 @@ end $$;
 
 -- --------------------------------------------------------------- storage RLS
 -- Path prefix must match the requesting subject (specs §6.3):
---   resumes/{clerk_user_id}/...
+--   resume/{clerk_user_id}/...
 --   exports/{clerk_user_id}/{analysis_id}/...
 
 do $$
 declare
   b text;
 begin
-  foreach b in array array['resumes', 'exports'] loop
+  foreach b in array array['resume', 'exports'] loop
     execute format('drop policy if exists "own objects %s" on storage.objects', b);
     execute format(
       'create policy "own objects %s" on storage.objects for all to authenticated

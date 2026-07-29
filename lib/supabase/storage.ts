@@ -3,7 +3,7 @@ import { supabaseAdmin } from "./admin";
 
 /**
  * Bucket helpers. Layout (specs §6.3):
- *   resumes/{clerk_user_id}/{document_id}.{ext}
+ *   resume/{clerk_user_id}/{document_id}.{ext}
  *   exports/{clerk_user_id}/{analysis_id}/{draft_id}-{template}.{pdf|docx}
  *   exports/{clerk_user_id}/{analysis_id}/all.zip
  *
@@ -11,7 +11,7 @@ import { supabaseAdmin } from "./admin";
  * (policies.sql) enforces the path prefix independently of these helpers.
  */
 
-export const BUCKET_RESUMES = "resumes";
+export const BUCKET_RESUMES = "resume";
 export const BUCKET_EXPORTS = "exports";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 10;

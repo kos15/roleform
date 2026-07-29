@@ -23,7 +23,6 @@
     "check:links": "pnpm script scripts/link-check.ts"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^4.0.21",
     "@ai-sdk/openai": "^4.0.20",
     "@clerk/nextjs": "^7.6.1",
     "@prisma/adapter-pg": "^7.9.1",

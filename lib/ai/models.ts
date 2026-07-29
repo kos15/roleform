@@ -1,4 +1,4 @@
-import { anthropic } from "@ai-sdk/anthropic";
+import { openai } from "@ai-sdk/openai";
 import type { LanguageModel } from "ai";
 
 /**
@@ -13,12 +13,12 @@ import type { LanguageModel } from "ai";
 export type Tier = "strong" | "mid";
 
 export const MODELS: Record<Tier, string> = {
-  strong: "claude-opus-5",
-  mid: "claude-sonnet-5",
+  strong: "gpt-4.1",
+  mid: "gpt-4.1-mini",
 };
 
 export function modelFor(tier: Tier): LanguageModel {
-  return anthropic(MODELS[tier]);
+  return openai(MODELS[tier]);
 }
 
 /** Low for extraction, moderate for tailoring and question phrasing (specs §10). */

@@ -13,7 +13,7 @@ order. Read those before changing behaviour. This file is the runbook.
 
 ```bash
 pnpm install
-cp .env.example .env.local     # fill in Clerk, Supabase, Anthropic
+cp .env.example .env.local     # fill in Clerk, Supabase, OpenAI
 ```
 
 ### Supabase (one project per environment — never point preview at production data)
@@ -88,7 +88,7 @@ pnpm build             PASS   clean; service-role client and DB adapter absent f
 pnpm check:constraints PASS   4/4 guards, against the live Supabase project — N1, N2, N10 all confirmed
 pnpm seed:catalog      PASS   123/129 courses seeded; 6 flagged unreachable (bot-blocking false
                               positives on Kaggle/Cloudflare/etc — re-check with pnpm check:links)
-pnpm check:fabrication —      needs ANTHROPIC_API_KEY and a real analysis id
+pnpm check:fabrication PASS   0/30 mechanical fabrications, live against OpenAI (gpt-4.1)
 ```
 
 ---

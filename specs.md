@@ -247,7 +247,7 @@ ai_runs
 ### 6.3 Storage layout
 
 ```
-resumes/{clerk_user_id}/{document_id}.{ext}      private, signed URL on read
+resume/{clerk_user_id}/{document_id}.{ext}       private, signed URL on read
 exports/{clerk_user_id}/{analysis_id}/{draft_id}-{template}.{pdf|docx}
 exports/{clerk_user_id}/{analysis_id}/all.zip
 ```
