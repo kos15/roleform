@@ -142,7 +142,9 @@ function Bucket({
   const [openId, setOpenId] = useState<string | null>(null);
 
   return (
-    <Card>
+    // min-w-0: a grid item defaults to min-width:auto, so without this a long
+    // requirement widens the whole track instead of wrapping inside the card.
+    <Card className="min-w-0">
       <div className="mb-3 flex items-baseline gap-2">
         <h3>{title}</h3>
         <Tag tone={tone}>{requirements.length}</Tag>
@@ -160,18 +162,23 @@ function Bucket({
             const open = openId === r.id;
 
             return (
-              <li key={r.id}>
+              <li key={r.id} className="min-w-0">
                 <button
                   type="button"
-                  className="text-left text-sm"
+                  className="w-full min-w-0 text-left text-sm"
                   aria-expanded={open}
                   onClick={() => setOpenId(open ? null : r.id)}
                 >
-                  <Tag tone={tone}>{r.skillName ?? r.text}</Tag>
+                  {/* A requirement without a catalog skill falls back to the
+                      posting's own sentence, so the pill has to wrap (N9 —
+                      .tag-long is the DS variant, not a local override). */}
+                  <Tag tone={tone} className={r.skillName ? undefined : "tag-long"}>
+                    {r.skillName ?? r.text}
+                  </Tag>
                 </button>
 
                 {open ? (
-                  <div className="mt-2 rounded-[var(--radius-md)] bg-[var(--color-bg-sunken)] p-3 text-sm">
+                  <div className="mt-2 break-words rounded-[var(--radius-md)] bg-[var(--color-bg-sunken)] p-3 text-sm">
                     <p className="mb-2">{r.text}</p>
                     <p className="mb-2 text-[var(--color-text-muted)]">
                       {item?.rationale ?? "Nothing in your profile evidences this yet."}

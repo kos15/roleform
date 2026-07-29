@@ -9,6 +9,8 @@ import { orderSkills, rankBullets } from "@/lib/domain/ordering";
 import { summariseChanges } from "@/lib/domain/diff";
 import { canonicalSkill, skillsIn } from "@/lib/catalog/skills";
 import { TEMPLATES, ratingFor } from "@/lib/render/templates";
+import { buildRenderModel, type RenderModel } from "@/lib/render/model";
+import { renderFitted } from "@/lib/render/pdf";
 import { getBullets, toDomainBullets } from "@/lib/db/queries/profile";
 import { getProfileById } from "@/lib/db/queries/analysis";
 import { progressFor, type StageEmitter } from "./stages";
@@ -327,21 +329,36 @@ async function writeDrafts(args: {
   const changes = buildChangeList(args.tailored);
   const missing = args.absent.map((r) => r.skillName ?? r.text).slice(0, 8);
 
+  const resumeJson = {
+    ...args.resume,
+    basics: { ...args.resume.basics, summary: args.professionalSummary || args.resume.basics.summary },
+    x_roleform: args.resume.x_roleform,
+    x_orderedSkills: orderedSkills,
+  };
+
+  // The same model the exporter builds, so the page count stored here is the
+  // page count the user downloads.
+  const model = buildRenderModel({
+    resume: resumeJson,
+    tailored: args.tailored.map((t) => ({
+      sourceBulletId: t.sourceBulletId,
+      rewrittenText: t.rewrittenText,
+      transform: t.transform,
+    })),
+    orderedSkills,
+    summary: resumeJson.basics.summary,
+  });
+
   for (const template of TEMPLATES) {
     const draft = await db.resumeDraft.create({
       data: {
         clerkUserId: args.clerkUserId,
         analysisId: args.analysisId,
         templateId: template.id,
-        resumeJson: {
-          ...args.resume,
-          basics: { ...args.resume.basics, summary: args.professionalSummary || args.resume.basics.summary },
-          x_roleform: args.resume.x_roleform,
-          x_orderedSkills: orderedSkills,
-        } as object,
+        resumeJson: resumeJson as object,
         // N5: computed from structural rules, never hand-assigned.
         atsRating: ratingFor(template.id),
-        pageCount: estimatePages(args.tailored.length),
+        pageCount: await measurePages(model, template.id, args.tailored.length),
         changes: [args.summaryLine, ...changes].filter(Boolean).slice(0, 8),
         missing,
       },
@@ -378,8 +395,29 @@ function buildChangeList(tailored: TailoredResult[]): string[] {
   return out;
 }
 
-function estimatePages(bulletCount: number): number {
-  return bulletCount > 22 ? 2 : 1;
+/**
+ * The résumés card shows a page count, so it is measured, not guessed.
+ *
+ * A guess from bullet count was wrong in the direction that costs the user
+ * trust — it promised one page for a document that exported as two. The
+ * renderer already lays out to fit (lib/render/pdf), so asking it is the only
+ * answer that can't disagree with the download. Layout is per-template, hence
+ * the call per template rather than one shared number.
+ *
+ * A render failure here must not fail an otherwise complete analysis; the old
+ * heuristic stands in, and the stage is logged.
+ */
+async function measurePages(
+  model: RenderModel,
+  templateId: string,
+  bulletCount: number,
+): Promise<number> {
+  try {
+    return (await renderFitted(model, templateId)).pageCount;
+  } catch (e) {
+    logStageFailure(`pagecount:${templateId}`, e);
+    return bulletCount > 22 ? 2 : 1;
+  }
 }
 
 async function writeQuestions(args: {

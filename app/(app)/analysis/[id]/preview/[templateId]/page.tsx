@@ -80,7 +80,7 @@ export default async function PreviewPage({
         />
       </div>
 
-      <aside className="space-y-5">
+      <aside className="min-w-0 space-y-5">
         <Card>
           <h3 className="mb-1">{template.name}</h3>
           <p className="mb-3 text-sm text-[var(--color-text-muted)]">{template.blurb}</p>
@@ -121,7 +121,11 @@ export default async function PreviewPage({
             </p>
             <div className="mb-4 flex flex-wrap gap-2">
               {draft.missing.map((m) => (
-                <Tag key={m} tone="accent">
+                // `missing` is skillName ?? the requirement's own text, so an
+                // entry is either a short skill or a whole sentence. Only the
+                // latter needs to wrap; forcing every pill full-width would
+                // lose the scannable row.
+                <Tag key={m} tone="accent" className={m.length > 28 ? "tag-long" : undefined}>
                   {m}
                 </Tag>
               ))}

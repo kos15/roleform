@@ -156,6 +156,22 @@ h3 { font-size: 1.3rem; }
   border: 1px solid var(--color-line);
   white-space: nowrap;
 }
+/* A tag carrying a sentence rather than a label.
+   A requirement only has a short skill name when it maps to the catalog; when
+   it doesn't, the pill holds the posting's own wording, which can run to a
+   couple of hundred characters. `nowrap` would push that straight out of its
+   card, so this variant wraps and squares off — a three-line lozenge at pill
+   radius reads as a mistake. */
+.tag-long {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+  max-width: 100%;
+  border-radius: var(--radius-md);
+  line-height: 1.4;
+}
+
 .tag-accent { background: var(--color-accent-100); color: var(--color-accent-800); border-color: var(--color-accent-200); }
 .tag-sage { background: var(--color-sage-100); color: var(--color-sage-800); border-color: var(--color-sage-200); }
 .tag-warn { background: var(--color-warn-100); color: var(--color-warn-700); border-color: #e8d5a4; }
