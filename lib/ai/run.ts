@@ -2,7 +2,6 @@ import "server-only";
 import { generateObject, NoObjectGeneratedError } from "ai";
 import type { z } from "zod";
 import { db } from "@/lib/db";
-import { aiRuns } from "@/lib/db/schema";
 import { modelFor, MODELS, type Tier } from "./models";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
@@ -121,16 +120,16 @@ async function recordRun<S extends z.ZodType>(
     retryCount: number;
   },
 ): Promise<string> {
-  const [row] = await db
-    .insert(aiRuns)
-    .values({
+  const row = await db.aiRun.create({
+    data: {
       clerkUserId: opts.clerkUserId,
       analysisId: opts.analysisId ?? null,
       purpose: opts.purpose,
       model: MODELS[opts.tier],
       promptVersion: opts.promptVersion,
       ...metrics,
-    })
-    .returning({ id: aiRuns.id });
+    },
+    select: { id: true },
+  });
   return row.id;
 }

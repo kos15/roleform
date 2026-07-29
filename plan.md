@@ -54,7 +54,7 @@ print-to-PDF flow — worse UX, but it ships. Decide at the gate, not later.
 | M1.3 | Clerk auth | Sign up, sign in, refresh, stay logged in; protected route redirects |
 | M1.4 | **Clerk ↔ Supabase native third-party integration** | Clerk domain registered in Supabase; session token carries `"role": "authenticated"`; an authenticated Supabase query succeeds and an anonymous one is denied |
 | M1.5 | `public.clerk_user_id()` SQL helper | Returns the `sub` claim. **`auth.uid()` is not used anywhere** — it returns a UUID and Clerk subjects are strings |
-| M1.6 | Drizzle schema from specs §6.2 + `db/policies.sql` | Migration applied. RLS enabled on every table carrying `clerk_user_id`. Policies live in the repo, applied by migration — never clicked into the dashboard |
+| M1.6 | Prisma schema from specs §6.2 + `db/policies.sql` | Migration applied. RLS enabled on every table carrying `clerk_user_id`. Policies live in the repo, applied by migration — never clicked into the dashboard |
 | M1.7 | Storage buckets `resumes` / `exports`, both private | Path-prefix policies mirror table policies |
 | M1.8 | `lib/supabase/{client,admin,storage}.ts` | `admin.ts` is server-only; confirm it does not appear in any client bundle |
 | M1.9 | **★ Constraint smoke test** (one of the three surviving checks) | Attempt and confirm rejection of: an insert into `tailored_bullets` with null `source_bullet_id`; a non-gap `interview_questions` row with empty evidence; a cross-user `select` under RLS. Five minutes, once, never repeated |
@@ -211,7 +211,7 @@ architecture.
 - **roadmap.sh/backend** — API design, auth, caching sections.
 - **roadmap.sh/postgresql-dba** — first third only: schema design, indexes, constraints. Constraints matter more than usual here — N1, N2 and RLS are doing the work tests would otherwise do.
 - **roadmap.sh/api-design** — full pass; most reusable skill on this list.
-- **Drizzle docs** — short and good, no video needed. Skip the ORM comparison rabbit hole.
+- **Prisma docs** — short and good, no video needed. Skip the ORM comparison rabbit hole.
 
 ### Before M4/M5 — Applied AI engineering
 

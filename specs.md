@@ -66,7 +66,7 @@ relevant, and the Learning tab tells them what to do about the rest.
 |---|---|---|
 | Hosting | Vercel | Next.js 15 App Router; per-branch preview deploys |
 | Auth | Clerk | Native Supabase third-party integration |
-| Database | Supabase Postgres | Accessed via Drizzle; RLS on every user table |
+| Database | Supabase Postgres | Accessed via Prisma (`@prisma/adapter-pg`); RLS on every user table |
 | File storage | Supabase Storage | Buckets `resumes` (private) and `exports` (private, signed URLs) |
 | DNS / domain | AWS Route 53 · `koustubh.org` | App at `roleform.koustubh.org` (CNAME → Vercel) |
 | CDN | Vercel edge (app) · CloudFront (`files.koustubh.org` → `exports` bucket) | See below |
@@ -141,7 +141,7 @@ and theme ecosystem. Extensions are namespaced so the document stays valid and p
 
 Portability out of the product is a feature, not a leak.
 
-### 6.2 Relational schema (Drizzle / Supabase Postgres)
+### 6.2 Relational schema (Prisma / Supabase Postgres)
 
 The JSON document is the *portable* form; the tables are the *operational* form — because N1/N2 need
 real foreign keys, and JSONB cannot enforce them.

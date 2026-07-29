@@ -11,7 +11,7 @@
  *   3. a cross-user SELECT under RLS                            → N10
  *
  * Guards 1 and 2 run against the database connection. Guard 3 MUST run through
- * an anon Supabase client, because the Drizzle connection uses database
+ * an anon Supabase client, because the Prisma connection uses database
  * credentials and bypasses RLS by design — testing RLS through it would prove
  * nothing.
  *
@@ -24,8 +24,10 @@ import { createClient } from "@supabase/supabase-js";
 type Check = { name: string; rule: string; passed: boolean; detail: string };
 
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set");
+  // DIRECT_URL: these run explicit sql.begin() transactions per statement,
+  // which needs a real session rather than the pgbouncer transaction pooler.
+  const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
+  if (!url) throw new Error("DIRECT_URL (or DATABASE_URL) is not set");
   const sql = postgres(url, { max: 1 });
   const results: Check[] = [];
 
@@ -122,17 +124,17 @@ async function expectRejection(
  */
 async function rlsCheck(): Promise<Check> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !anonKey) {
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!supabaseUrl || !publishableKey) {
     return {
       name: "anonymous select under RLS",
       rule: "N10",
       passed: false,
-      detail: "NEXT_PUBLIC_SUPABASE_URL / ANON_KEY not set — cannot verify RLS",
+      detail: "NEXT_PUBLIC_SUPABASE_URL / PUBLISHABLE_KEY not set — cannot verify RLS",
     };
   }
 
-  const anon = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
+  const anon = createClient(supabaseUrl, publishableKey, { auth: { persistSession: false } });
   const { data, error } = await anon.from("analyses").select("id").limit(1);
 
   if (error) {

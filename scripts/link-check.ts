@@ -11,22 +11,13 @@
  *   pnpm check:links
  */
 import "./env";
-import postgres from "postgres";
-import { drizzle } from "drizzle-orm/postgres-js";
-import { eq } from "drizzle-orm";
-import * as schema from "../lib/db/schema";
+import { db } from "../lib/db";
 
 const STALE_DAYS = 120;
 
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set");
-
-  const client = postgres(url, { max: 4 });
-  const db = drizzle(client, { schema });
-
-  const rows = await db.select().from(schema.courses);
-  const today = new Date().toISOString().slice(0, 10);
+  const rows = await db.course.findMany();
+  const today = new Date();
   const dead: typeof rows = [];
   const stale: typeof rows = [];
 
@@ -35,7 +26,7 @@ async function main() {
   for (const course of rows) {
     const alive = await urlResolves(course.url);
     const ageDays = Math.floor(
-      (Date.now() - new Date(course.verifiedAt).getTime()) / 86_400_000,
+      (Date.now() - course.verifiedAt.getTime()) / 86_400_000,
     );
 
     if (!alive) {
@@ -44,7 +35,7 @@ async function main() {
       continue;
     }
 
-    await db.update(schema.courses).set({ verifiedAt: today }).where(eq(schema.courses.id, course.id));
+    await db.course.update({ where: { id: course.id }, data: { verifiedAt: today } });
     if (ageDays > STALE_DAYS) {
       stale.push(course);
       console.log(`STALE  ${course.title} (last verified ${ageDays} days ago, now refreshed)`);
@@ -61,7 +52,7 @@ async function main() {
     for (const course of dead) console.error(`  delete from courses where url = '${course.url}';`);
   }
 
-  await client.end();
+  await db.$disconnect();
   process.exit(dead.length === 0 ? 0 : 1);
 }
 

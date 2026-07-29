@@ -1,0 +1,507 @@
+// Prisma schema — specs.md §6.2.
+//
+// With no test suite (CLAUDE.md §11) these constraints ARE the safety net.
+// Prefer NOT NULL / enum / FK over anything a caller has to remember.
+//
+// Two constraints carry the product's promise:
+//   N1 — TailoredBullet.sourceBulletId required, onDelete: Restrict
+//   N2 — InterviewQuestion CHECK (type = 'gap' OR evidence is non-empty)
+//        Prisma has no native CHECK attribute; both CHECK constraints are
+//        added by hand to the generated migration SQL — see
+//        prisma/migrations/*_init/migration.sql and CLAUDE.md §13.
+//
+// Model and column names are @@map / @map'd to match the snake_case table and
+// column names lib/db/policies.sql already references, so RLS policies never
+// need to change when the ORM does.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+// Prisma 7 removed connection URLs from schema.prisma entirely (P1012 if set
+// here). The CLI (migrate/introspect) reads DIRECT_URL from prisma.config.ts;
+// the app runtime connects via the @prisma/adapter-pg driver adapter in
+// lib/db/index.ts, pointed at the pooled DATABASE_URL.
+datasource db {
+  provider = "postgresql"
+}
+
+/* ------------------------------------------------------------------ enums */
+
+enum ExtractionStatus {
+  pending
+  ok
+  no_text_layer
+  encrypted
+  failed
+
+  @@map("extraction_status")
+}
+
+enum AnalysisStatus {
+  parsing
+  ready
+  failed
+
+  @@map("analysis_status")
+}
+
+enum JdSource {
+  paste
+  upload
+
+  @@map("jd_source")
+}
+
+enum BulletScope {
+  work
+  project
+  volunteer
+  education
+
+  @@map("bullet_scope")
+}
+
+enum RequirementKind {
+  hard_skill
+  soft_skill
+  experience
+  education
+  certification
+  responsibility
+
+  @@map("requirement_kind")
+}
+
+enum Necessity {
+  required
+  preferred
+  implied
+
+  @@map("necessity")
+}
+
+enum CoverageStatus {
+  evidenced
+  partial
+  absent
+
+  @@map("coverage_status")
+}
+
+enum TemplateKind {
+  classic
+  sidebar
+  creative
+
+  @@map("template_kind")
+}
+
+enum AtsRating {
+  High
+  Medium
+  Low
+
+  @@map("ats_rating")
+}
+
+enum TransformKind {
+  verbatim
+  rephrase
+  requantify
+  omit
+
+  @@map("transform_kind")
+}
+
+enum QuestionType {
+  behavioral
+  technical
+  situational
+  gap
+  culture
+
+  @@map("question_type")
+}
+
+enum UserLevel {
+  none
+  exposure
+  working
+  strong
+
+  @@map("user_level")
+}
+
+enum RequiredLevel {
+  exposure
+  working
+  strong
+  expert
+
+  @@map("required_level")
+}
+
+enum CourseLevel {
+  beginner
+  intermediate
+  advanced
+
+  @@map("course_level")
+}
+
+enum ExportFormat {
+  pdf
+  docx
+  zip
+
+  @@map("export_format")
+}
+
+enum PlanTier {
+  free
+  pro
+
+  @@map("plan")
+}
+
+/* ------------------------------------------------------------------ users */
+
+/// clerkUserId is TEXT, not uuid — Clerk subjects are strings (§5.3).
+model User {
+  clerkUserId    String    @id @map("clerk_user_id")
+  emailHash      String    @map("email_hash") // N7: never the address itself
+  plan           PlanTier  @default(free)
+  quotaRemaining Int       @default(10) @map("quota_remaining")
+  quotaResetsAt  DateTime? @map("quota_resets_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("users")
+}
+
+/* -------------------------------------------------------- source documents */
+
+model SourceDocument {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId      String           @map("clerk_user_id")
+  storagePath      String           @map("storage_path")
+  bucket           String
+  mime             String
+  filename         String
+  sizeBytes        Int              @map("size_bytes")
+  extractionStatus ExtractionStatus @default(pending) @map("extraction_status")
+  extractedText    String?          @map("extracted_text")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  masterProfiles MasterProfile[]
+
+  @@index([clerkUserId], map: "source_documents_user_idx")
+  @@map("source_documents")
+}
+
+/* --------------------------------------------------------- master profiles */
+
+model MasterProfile {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId      String   @map("clerk_user_id")
+  resumeJson       Json     @map("resume_json")
+  schemaVersion    Int      @default(1) @map("schema_version")
+  sourceDocumentId String?  @map("source_document_id") @db.Uuid
+  yearsExperience  Decimal  @default("0") @map("years_experience") @db.Decimal(4, 1)
+  skillCount       Int      @default(0) @map("skill_count")
+  updatedAt        DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  sourceDocument    SourceDocument?    @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+  experienceBullets ExperienceBullet[]
+  analyses          Analysis[]
+
+  @@index([clerkUserId], map: "master_profiles_user_idx")
+  @@map("master_profiles")
+}
+
+/* ------------------------------------------------------- experience bullets */
+
+/// The evidence table. Written only by user action / reviewed import (N3).
+model ExperienceBullet {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId   String      @map("clerk_user_id")
+  profileId     String      @map("profile_id") @db.Uuid
+  scope         BulletScope
+  scopeRef      String      @map("scope_ref") // 'work.1' — points into resume_json
+  ordinal       Int
+  text          String // verbatim, as the user wrote it
+  skillIds      String[]    @default([]) @map("skill_ids") @db.Uuid
+  metrics       Json        @default("[]")
+  recencyMonths Int?        @map("recency_months")
+
+  profile         MasterProfile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  tailoredBullets TailoredBullet[]
+
+  @@index([profileId], map: "experience_bullets_profile_idx")
+  @@index([clerkUserId], map: "experience_bullets_user_idx")
+  @@map("experience_bullets")
+}
+
+/* --------------------------------------------------------------- analyses */
+
+model Analysis {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId    String         @map("clerk_user_id")
+  profileId      String         @map("profile_id") @db.Uuid
+  jdSource       JdSource       @map("jd_source")
+  jdFilename     String?        @map("jd_filename")
+  rawText        String         @map("raw_text")
+  contentHash    String         @map("content_hash")
+  company        String?
+  title          String?
+  location       String?
+  seniority      String?
+  employmentType String?        @map("employment_type")
+  score          Decimal?       @db.Decimal(5, 2)
+  scoreVerdict   String?        @map("score_verdict")
+  scoreNote      String?        @map("score_note")
+  status         AnalysisStatus @default(parsing)
+  stageState     Json           @default("{}") @map("stage_state")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
+  profile            MasterProfile       @relation(fields: [profileId], references: [id], onDelete: Restrict)
+  jdRequirements     JdRequirement[]
+  coverageItems      CoverageItem[]
+  resumeDrafts       ResumeDraft[]
+  interviewQuestions InterviewQuestion[]
+  skillGaps          SkillGap[]
+  exports            Export[]
+
+  // F2: identical JD text reuses the prior analysis — no second charge.
+  @@unique([clerkUserId, contentHash], map: "analyses_user_content_hash")
+  @@index([clerkUserId, createdAt], map: "analyses_user_created_idx")
+  @@map("analyses")
+}
+
+/* -------------------------------------------------------- jd requirements */
+
+model JdRequirement {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId   String          @map("clerk_user_id")
+  analysisId    String          @map("analysis_id") @db.Uuid
+  kind          RequirementKind
+  text          String
+  necessity     Necessity
+  mentionCount  Int             @default(1) @map("mention_count") // drives Learning order
+  skillId       String?         @map("skill_id") @db.Uuid
+  evidenceQuote String          @map("evidence_quote") // the JD span this came from
+
+  analysis           Analysis            @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  skill              Skill?              @relation(fields: [skillId], references: [id], onDelete: SetNull)
+  coverageItems      CoverageItem[]
+  tailoredBullets    TailoredBullet[]
+  interviewQuestions InterviewQuestion[]
+
+  @@index([analysisId], map: "jd_requirements_analysis_idx")
+  @@map("jd_requirements")
+}
+
+/* --------------------------------------------------------- coverage items */
+
+model CoverageItem {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId       String         @map("clerk_user_id")
+  analysisId        String         @map("analysis_id") @db.Uuid
+  requirementId     String         @map("requirement_id") @db.Uuid
+  status            CoverageStatus
+  evidenceBulletIds String[]       @default([]) @map("evidence_bullet_ids") @db.Uuid
+  rationale         String
+
+  analysis    Analysis      @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  requirement JdRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@index([analysisId], map: "coverage_items_analysis_idx")
+  @@map("coverage_items")
+  // CHECK (status <> 'evidenced' OR array_length(evidence_bullet_ids,1) > 0)
+  // added by hand in the migration SQL — see the header comment.
+}
+
+/* --------------------------------------------------------------- templates */
+
+/// Seeded reference data. Public read, no RLS.
+model Template {
+  id              String       @id
+  name            String
+  kind            TemplateKind
+  blurb           String
+  accent          String
+  structuralFlags Json         @map("structural_flags")
+
+  resumeDrafts ResumeDraft[]
+
+  @@map("templates")
+}
+
+/* ----------------------------------------------------------- resume drafts */
+
+model ResumeDraft {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String    @map("clerk_user_id")
+  analysisId  String    @map("analysis_id") @db.Uuid
+  templateId  String    @map("template_id")
+  resumeJson  Json      @map("resume_json")
+  atsRating   AtsRating @map("ats_rating") // computed (N5), never hand-assigned
+  pageCount   Int       @default(1) @map("page_count")
+  changes     String[]  @default([])
+  missing     String[]  @default([])
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  analysis        Analysis         @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  template        Template         @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  tailoredBullets TailoredBullet[]
+  exports         Export[]
+
+  @@unique([analysisId, templateId], map: "resume_drafts_analysis_template")
+  @@index([analysisId], map: "resume_drafts_analysis_idx")
+  @@map("resume_drafts")
+}
+
+/* --------------------------------------------------- tailored bullets (N1) */
+
+model TailoredBullet {
+  id                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId          String        @map("clerk_user_id")
+  draftId              String        @map("draft_id") @db.Uuid
+  // ★ FABRICATION GUARD #1 — a bullet without provenance cannot exist.
+  sourceBulletId       String        @map("source_bullet_id") @db.Uuid
+  originalText         String        @map("original_text") // snapshot: profile edits never rewrite history
+  rewrittenText        String        @map("rewritten_text")
+  transform            TransformKind
+  targetsRequirementId String?       @map("targets_requirement_id") @db.Uuid
+  aiRunId              String?       @map("ai_run_id") @db.Uuid
+  ordinal              Int           @default(0)
+
+  draft              ResumeDraft      @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  sourceBullet       ExperienceBullet @relation(fields: [sourceBulletId], references: [id], onDelete: Restrict)
+  targetsRequirement JdRequirement?   @relation(fields: [targetsRequirementId], references: [id], onDelete: SetNull)
+  aiRun              AiRun?           @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+
+  @@index([draftId], map: "tailored_bullets_draft_idx")
+  @@map("tailored_bullets")
+}
+
+/* ----------------------------------------------- interview questions (N2) */
+
+model InterviewQuestion {
+  id                  String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId         String       @map("clerk_user_id")
+  analysisId          String       @map("analysis_id") @db.Uuid
+  ordinal             Int
+  type                QuestionType
+  text                String
+  likely              Boolean      @default(false)
+  whyTheyAsk          String       @map("why_they_ask")
+  frame               String[]
+  evidenceBulletIds   String[]     @default([]) @map("evidence_bullet_ids") @db.Uuid
+  sourceRequirementId String?      @map("source_requirement_id") @db.Uuid
+
+  analysis          Analysis       @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  sourceRequirement JdRequirement? @relation(fields: [sourceRequirementId], references: [id], onDelete: SetNull)
+
+  @@index([analysisId], map: "interview_questions_analysis_idx")
+  @@map("interview_questions")
+  // ★ FABRICATION GUARD #2 — CHECK (type = 'gap' OR array_length(evidence_bullet_ids,1) > 0)
+  // added by hand in the migration SQL — see the header comment.
+}
+
+/* ------------------------------------------------------------------ skills */
+
+/// Canonical vocabulary. Public read.
+model Skill {
+  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name     String   @unique
+  category String
+  aliases  String[] @default([])
+
+  jdRequirements JdRequirement[]
+  skillGaps      SkillGap[]
+
+  @@index([name], map: "skills_name_idx")
+  @@map("skills")
+}
+
+/* -------------------------------------------------------------- skill gaps */
+
+model SkillGap {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId   String        @map("clerk_user_id")
+  analysisId    String        @map("analysis_id") @db.Uuid
+  skillId       String        @map("skill_id") @db.Uuid
+  userLevel     UserLevel     @map("user_level")
+  requiredLevel RequiredLevel @map("required_level")
+  mentionCount  Int           @default(1) @map("mention_count")
+  note          String
+
+  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  skill    Skill    @relation(fields: [skillId], references: [id], onDelete: Restrict)
+
+  @@index([analysisId], map: "skill_gaps_analysis_idx")
+  @@map("skill_gaps")
+}
+
+/* ----------------------------------------------------------------- courses */
+
+/// CURATED catalog (N8). Public read. Never model-generated.
+model Course {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider      String
+  title         String
+  url           String      @unique
+  priceLabel    String      @map("price_label")
+  lengthLabel   String      @map("length_label")
+  level         CourseLevel
+  mark          String
+  skillIds      String[]    @default([]) @map("skill_ids") @db.Uuid
+  isFree        Boolean     @map("is_free")
+  lengthMinutes Int         @map("length_minutes")
+  verifiedAt    DateTime    @map("verified_at") @db.Date
+
+  @@map("courses")
+}
+
+/* ----------------------------------------------------------------- exports */
+
+model Export {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String       @map("clerk_user_id")
+  analysisId  String       @map("analysis_id") @db.Uuid
+  draftId     String?      @map("draft_id") @db.Uuid
+  format      ExportFormat
+  storagePath String       @map("storage_path")
+  bytes       Int
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  analysis Analysis     @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  draft    ResumeDraft? @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@index([clerkUserId], map: "exports_user_idx")
+  @@map("exports")
+}
+
+/* ----------------------------------------------------------------- ai runs */
+
+model AiRun {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId   String   @map("clerk_user_id")
+  analysisId    String?  @map("analysis_id") @db.Uuid
+  purpose       String
+  model         String
+  promptVersion String   @map("prompt_version")
+  inputTokens   Int      @default(0) @map("input_tokens")
+  outputTokens  Int      @default(0) @map("output_tokens")
+  latencyMs     Int      @default(0) @map("latency_ms")
+  schemaValid   Boolean  @map("schema_valid")
+  retryCount    Int      @default(0) @map("retry_count")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  tailoredBullets TailoredBullet[]
+
+  @@index([clerkUserId, createdAt], map: "ai_runs_user_created_idx")
+  @@map("ai_runs")
+}

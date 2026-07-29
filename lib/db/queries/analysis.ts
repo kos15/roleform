@@ -1,91 +1,51 @@
 import "server-only";
-import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import {
-  analyses,
-  coverageItems,
-  courses,
-  experienceBullets,
-  interviewQuestions,
-  jdRequirements,
-  masterProfiles,
-  resumeDrafts,
-  skillGaps,
-  skills,
-  tailoredBullets,
-} from "@/lib/db/schema";
 import type { DomainCoverageItem, DomainRequirement } from "@/lib/domain/types";
 import type { MatchableCourse } from "@/lib/catalog/match";
 
 /** Every query scopes by clerkUserId. See queries/profile.ts for why. */
 
 export async function listAnalyses(clerkUserId: string, limit = 50) {
-  return db
-    .select({
-      id: analyses.id,
-      company: analyses.company,
-      title: analyses.title,
-      score: analyses.score,
-      status: analyses.status,
-      createdAt: analyses.createdAt,
-    })
-    .from(analyses)
-    .where(eq(analyses.clerkUserId, clerkUserId))
-    .orderBy(desc(analyses.createdAt))
-    .limit(limit);
+  return db.analysis.findMany({
+    where: { clerkUserId },
+    select: { id: true, company: true, title: true, score: true, status: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
 }
 
 export async function findByContentHash(clerkUserId: string, contentHash: string) {
-  const [row] = await db
-    .select()
-    .from(analyses)
-    .where(and(eq(analyses.clerkUserId, clerkUserId), eq(analyses.contentHash, contentHash)));
-  return row ?? null;
+  return db.analysis.findFirst({ where: { clerkUserId, contentHash } });
 }
 
 export async function getAnalysis(clerkUserId: string, analysisId: string) {
-  const [row] = await db
-    .select()
-    .from(analyses)
-    .where(and(eq(analyses.clerkUserId, clerkUserId), eq(analyses.id, analysisId)));
-  return row ?? null;
+  return db.analysis.findFirst({ where: { clerkUserId, id: analysisId } });
 }
 
 export async function getRequirements(
   clerkUserId: string,
   analysisId: string,
 ): Promise<DomainRequirement[]> {
-  const rows = await db
-    .select({
-      id: jdRequirements.id,
-      kind: jdRequirements.kind,
-      text: jdRequirements.text,
-      necessity: jdRequirements.necessity,
-      mentionCount: jdRequirements.mentionCount,
-      evidenceQuote: jdRequirements.evidenceQuote,
-      skillName: skills.name,
-    })
-    .from(jdRequirements)
-    .leftJoin(skills, eq(skills.id, jdRequirements.skillId))
-    .where(
-      and(
-        eq(jdRequirements.clerkUserId, clerkUserId),
-        eq(jdRequirements.analysisId, analysisId),
-      ),
-    );
-  return rows.map((r) => ({ ...r, skillName: r.skillName ?? null }));
+  const rows = await db.jdRequirement.findMany({
+    where: { clerkUserId, analysisId },
+    include: { skill: { select: { name: true } } },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    kind: r.kind,
+    text: r.text,
+    necessity: r.necessity,
+    mentionCount: r.mentionCount,
+    evidenceQuote: r.evidenceQuote,
+    skillName: r.skill?.name ?? null,
+  }));
 }
 
 export async function getCoverage(
   clerkUserId: string,
   analysisId: string,
 ): Promise<DomainCoverageItem[]> {
-  const rows = await db
-    .select()
-    .from(coverageItems)
-    .where(
-      and(eq(coverageItems.clerkUserId, clerkUserId), eq(coverageItems.analysisId, analysisId)),
-    );
+  const rows = await db.coverageItem.findMany({ where: { clerkUserId, analysisId } });
   return rows.map((r) => ({
     requirementId: r.requirementId,
     status: r.status,
@@ -99,82 +59,64 @@ export async function getBulletTexts(
   ids: string[],
 ): Promise<Map<string, string>> {
   if (ids.length === 0) return new Map();
-  const rows = await db
-    .select({ id: experienceBullets.id, text: experienceBullets.text })
-    .from(experienceBullets)
-    .where(
-      and(eq(experienceBullets.clerkUserId, clerkUserId), inArray(experienceBullets.id, ids)),
-    );
+  const rows = await db.experienceBullet.findMany({
+    where: { clerkUserId, id: { in: ids } },
+    select: { id: true, text: true },
+  });
   return new Map(rows.map((r) => [r.id, r.text]));
 }
 
 export async function getDrafts(clerkUserId: string, analysisId: string) {
-  return db
-    .select()
-    .from(resumeDrafts)
-    .where(and(eq(resumeDrafts.clerkUserId, clerkUserId), eq(resumeDrafts.analysisId, analysisId)));
+  return db.resumeDraft.findMany({ where: { clerkUserId, analysisId } });
 }
 
 export async function getDraft(clerkUserId: string, draftId: string) {
-  const [row] = await db
-    .select()
-    .from(resumeDrafts)
-    .where(and(eq(resumeDrafts.clerkUserId, clerkUserId), eq(resumeDrafts.id, draftId)));
-  return row ?? null;
+  return db.resumeDraft.findFirst({ where: { clerkUserId, id: draftId } });
 }
 
 export async function getTailoredBullets(clerkUserId: string, draftId: string) {
-  return db
-    .select()
-    .from(tailoredBullets)
-    .where(and(eq(tailoredBullets.clerkUserId, clerkUserId), eq(tailoredBullets.draftId, draftId)))
-    .orderBy(tailoredBullets.ordinal);
+  return db.tailoredBullet.findMany({
+    where: { clerkUserId, draftId },
+    orderBy: { ordinal: "asc" },
+  });
 }
 
 export async function getQuestions(clerkUserId: string, analysisId: string) {
-  return db
-    .select()
-    .from(interviewQuestions)
-    .where(
-      and(
-        eq(interviewQuestions.clerkUserId, clerkUserId),
-        eq(interviewQuestions.analysisId, analysisId),
-      ),
-    )
-    .orderBy(interviewQuestions.ordinal);
+  return db.interviewQuestion.findMany({
+    where: { clerkUserId, analysisId },
+    orderBy: { ordinal: "asc" },
+  });
 }
 
 export async function getGaps(clerkUserId: string, analysisId: string) {
-  return db
-    .select({
-      id: skillGaps.id,
-      skillId: skillGaps.skillId,
-      skillName: skills.name,
-      userLevel: skillGaps.userLevel,
-      requiredLevel: skillGaps.requiredLevel,
-      mentionCount: skillGaps.mentionCount,
-      note: skillGaps.note,
-    })
-    .from(skillGaps)
-    .innerJoin(skills, eq(skills.id, skillGaps.skillId))
-    .where(and(eq(skillGaps.clerkUserId, clerkUserId), eq(skillGaps.analysisId, analysisId)))
+  const rows = await db.skillGap.findMany({
+    where: { clerkUserId, analysisId },
+    include: { skill: { select: { name: true } } },
     // F8: ordered by how often the posting mentions them — the honest proxy for
     // what the employer cares about, and it comes free from JD analysis.
-    .orderBy(desc(skillGaps.mentionCount));
+    orderBy: { mentionCount: "desc" },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    skillId: r.skillId,
+    skillName: r.skill.name,
+    userLevel: r.userLevel,
+    requiredLevel: r.requiredLevel,
+    mentionCount: r.mentionCount,
+    note: r.note,
+  }));
 }
 
 export async function getProfileById(clerkUserId: string, profileId: string) {
-  const [row] = await db
-    .select()
-    .from(masterProfiles)
-    .where(and(eq(masterProfiles.clerkUserId, clerkUserId), eq(masterProfiles.id, profileId)));
-  return row ?? null;
+  return db.masterProfile.findFirst({ where: { clerkUserId, id: profileId } });
 }
 
 /** The curated catalog, shaped for the pure matcher. */
 export async function getCatalog(): Promise<MatchableCourse[]> {
-  const rows = await db.select().from(courses);
-  const skillRows = await db.select({ id: skills.id, name: skills.name }).from(skills);
+  const [rows, skillRows] = await Promise.all([
+    db.course.findMany(),
+    db.skill.findMany({ select: { id: true, name: true } }),
+  ]);
   const nameById = new Map(skillRows.map((s) => [s.id, s.name]));
   return rows.map((c) => ({
     id: c.id,

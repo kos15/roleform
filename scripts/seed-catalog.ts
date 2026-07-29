@@ -11,10 +11,7 @@
  * --skip-link-check only for local work against a network you don't trust.
  */
 import "./env";
-import postgres from "postgres";
-import { drizzle } from "drizzle-orm/postgres-js";
-import { eq } from "drizzle-orm";
-import * as schema from "../lib/db/schema";
+import { db } from "../lib/db";
 import { SKILLS } from "../lib/catalog/skills";
 import { COURSES } from "../lib/catalog/courses";
 import { TEMPLATES } from "../lib/render/templates";
@@ -23,53 +20,43 @@ import { rateAts } from "../lib/render/ats-rules";
 const skipLinkCheck = process.argv.includes("--skip-link-check");
 
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set");
-
-  const client = postgres(url, { max: 4 });
-  const db = drizzle(client, { schema });
-
   /* ------------------------------------------------------------- templates */
   for (const template of TEMPLATES) {
-    await db
-      .insert(schema.templates)
-      .values({
+    await db.template.upsert({
+      where: { id: template.id },
+      create: {
         id: template.id,
         name: template.name,
         kind: template.kind,
         blurb: template.blurb,
         accent: template.accent,
-        structuralFlags: template.structuralFlags,
-      })
-      .onConflictDoUpdate({
-        target: schema.templates.id,
-        set: {
-          name: template.name,
-          kind: template.kind,
-          blurb: template.blurb,
-          accent: template.accent,
-          structuralFlags: template.structuralFlags,
-        },
-      });
+        structuralFlags: template.structuralFlags as unknown as object,
+      },
+      update: {
+        name: template.name,
+        kind: template.kind,
+        blurb: template.blurb,
+        accent: template.accent,
+        structuralFlags: template.structuralFlags as unknown as object,
+      },
+    });
     console.log(`template ${template.id} → ATS ${rateAts(template.structuralFlags)}`);
   }
 
   /* ---------------------------------------------------------------- skills */
   for (const skill of SKILLS) {
-    await db
-      .insert(schema.skills)
-      .values({ name: skill.name, category: skill.category, aliases: skill.aliases })
-      .onConflictDoUpdate({
-        target: schema.skills.name,
-        set: { category: skill.category, aliases: skill.aliases },
-      });
+    await db.skill.upsert({
+      where: { name: skill.name },
+      create: { name: skill.name, category: skill.category, aliases: skill.aliases },
+      update: { category: skill.category, aliases: skill.aliases },
+    });
   }
-  const skillRows = await db.select().from(schema.skills);
+  const skillRows = await db.skill.findMany();
   const skillIdByName = new Map(skillRows.map((s) => [s.name, s.id]));
   console.log(`skills: ${skillRows.length}`);
 
   /* --------------------------------------------------------------- courses */
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date();
   let seeded = 0;
   const dead: string[] = [];
   const unknownSkills = new Set<string>();
@@ -90,9 +77,9 @@ async function main() {
       }
     }
 
-    await db
-      .insert(schema.courses)
-      .values({
+    await db.course.upsert({
+      where: { url: course.url },
+      create: {
         provider: course.provider,
         title: course.title,
         url: course.url,
@@ -104,22 +91,20 @@ async function main() {
         isFree: course.isFree,
         skillIds: skillIds as string[],
         verifiedAt: today,
-      })
-      .onConflictDoUpdate({
-        target: schema.courses.url,
-        set: {
-          provider: course.provider,
-          title: course.title,
-          priceLabel: course.priceLabel,
-          lengthLabel: course.lengthLabel,
-          lengthMinutes: course.lengthMinutes,
-          level: course.level,
-          mark: course.mark,
-          isFree: course.isFree,
-          skillIds: skillIds as string[],
-          verifiedAt: today,
-        },
-      });
+      },
+      update: {
+        provider: course.provider,
+        title: course.title,
+        priceLabel: course.priceLabel,
+        lengthLabel: course.lengthLabel,
+        lengthMinutes: course.lengthMinutes,
+        level: course.level,
+        mark: course.mark,
+        isFree: course.isFree,
+        skillIds: skillIds as string[],
+        verifiedAt: today,
+      },
+    });
     seeded++;
   }
 
@@ -151,7 +136,7 @@ async function main() {
     console.log(`no course yet for: ${uncovered.map((s) => s.name).join(", ")}`);
   }
 
-  await client.end();
+  await db.$disconnect();
   if (dead.length > 0 || unknownSkills.size > 0) process.exit(1);
 }
 

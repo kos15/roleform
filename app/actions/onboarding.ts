@@ -1,9 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { sourceDocuments } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { extractText, MAX_UPLOAD_BYTES } from "@/lib/extract/text";
@@ -62,16 +60,18 @@ export async function uploadResume(
         ? ("encrypted" as const)
         : ("failed" as const);
 
-  await db.insert(sourceDocuments).values({
-    id: documentId,
-    clerkUserId: user.value,
-    storagePath: path,
-    bucket: BUCKET_RESUMES,
-    mime: extracted.ok ? extracted.value.mime : "application/octet-stream",
-    filename: file.name,
-    sizeBytes: buffer.byteLength,
-    extractionStatus: status,
-    extractedText: extracted.ok ? extracted.value.text : null,
+  await db.sourceDocument.create({
+    data: {
+      id: documentId,
+      clerkUserId: user.value,
+      storagePath: path,
+      bucket: BUCKET_RESUMES,
+      mime: extracted.ok ? extracted.value.mime : "application/octet-stream",
+      filename: file.name,
+      sizeBytes: buffer.byteLength,
+      extractionStatus: status,
+      extractedText: extracted.ok ? extracted.value.text : null,
+    },
   });
 
   if (!extracted.ok) return err(extracted.error);
@@ -84,12 +84,9 @@ export async function extractProfile(
   const user = await requireUser();
   if (!user.ok) return user;
 
-  const [document] = await db
-    .select()
-    .from(sourceDocuments)
-    .where(
-      and(eq(sourceDocuments.id, documentId), eq(sourceDocuments.clerkUserId, user.value)),
-    );
+  const document = await db.sourceDocument.findFirst({
+    where: { id: documentId, clerkUserId: user.value },
+  });
 
   if (!document) return err(appError("not_found", "We couldn't find that upload."));
   if (!document.extractedText) {
@@ -145,9 +142,7 @@ export async function updateProfile(draft: unknown): Promise<Result<{ profileId:
   const parsed = ResumeJsonSchema.safeParse(draft);
   if (!parsed.success) return err(appError("invalid_input", "That change didn't validate."));
 
-  const existing = await db.query.masterProfiles.findFirst({
-    where: (p, { eq: equals }) => equals(p.clerkUserId, user.value),
-  });
+  const existing = await db.masterProfile.findFirst({ where: { clerkUserId: user.value } });
   if (!existing) return err(appError("not_found", "No profile yet."));
 
   const result = await commitProfileDb({

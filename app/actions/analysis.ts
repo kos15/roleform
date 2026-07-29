@@ -3,7 +3,6 @@
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { analyses } from "@/lib/db/schema";
 import { consumeAnalysisQuota, refundAnalysisQuota, requireUser } from "@/lib/auth";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { extractText, MAX_UPLOAD_BYTES } from "@/lib/extract/text";
@@ -73,9 +72,8 @@ export async function createAnalysis(input: {
   if (!quota.ok) return quota;
 
   try {
-    const [row] = await db
-      .insert(analyses)
-      .values({
+    const row = await db.analysis.create({
+      data: {
         clerkUserId: user.value,
         profileId: profile.id,
         jdSource: input.source,
@@ -83,8 +81,9 @@ export async function createAnalysis(input: {
         rawText,
         contentHash,
         status: "parsing",
-      })
-      .returning({ id: analyses.id });
+      },
+      select: { id: true },
+    });
 
     revalidatePath("/history");
     return ok({ analysisId: row.id, reused: false });

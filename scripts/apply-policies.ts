@@ -11,8 +11,11 @@ import { join } from "node:path";
 import postgres from "postgres";
 
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL is not set");
+  // DIRECT_URL, not DATABASE_URL: this runs DDL (DO blocks, ALTER TABLE) that
+  // needs a real session — the same reason Prisma migrate uses it, and the
+  // pgbouncer transaction-mode pooler behind DATABASE_URL cannot provide one.
+  const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
+  if (!url) throw new Error("DIRECT_URL (or DATABASE_URL) is not set");
 
   const sql = postgres(url, { max: 1 });
   const statements = readFileSync(join(process.cwd(), "lib/db/policies.sql"), "utf8");

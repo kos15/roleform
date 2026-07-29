@@ -1,15 +1,13 @@
 import "server-only";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { eq, sql } from "drizzle-orm";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 /**
  * Session subject for a Server Action.
  *
  * Every action calls this and scopes its queries by the result. RLS is the
- * second lock (CLAUDE.md §7) — this is the first one, and the Drizzle
+ * second lock (CLAUDE.md §7) — this is the first one, and the Prisma
  * connection bypasses RLS, so skipping it is a data leak, not a style issue.
  */
 export async function requireUser(): Promise<Result<string>> {
@@ -23,10 +21,10 @@ export async function requireUser(): Promise<Result<string>> {
  * fully readable. We never lock a user out of their own data (specs §13).
  */
 export async function consumeAnalysisQuota(clerkUserId: string): Promise<Result<number>> {
-  const [row] = await db
-    .select({ quotaRemaining: users.quotaRemaining })
-    .from(users)
-    .where(eq(users.clerkUserId, clerkUserId));
+  const row = await db.user.findUnique({
+    where: { clerkUserId },
+    select: { quotaRemaining: true },
+  });
 
   if (!row) return err(appError("not_found", "We couldn't find your account."));
   if (row.quotaRemaining <= 0) {
@@ -38,18 +36,18 @@ export async function consumeAnalysisQuota(clerkUserId: string): Promise<Result<
     );
   }
 
-  const [updated] = await db
-    .update(users)
-    .set({ quotaRemaining: sql`${users.quotaRemaining} - 1` })
-    .where(eq(users.clerkUserId, clerkUserId))
-    .returning({ quotaRemaining: users.quotaRemaining });
+  const updated = await db.user.update({
+    where: { clerkUserId },
+    data: { quotaRemaining: { decrement: 1 } },
+    select: { quotaRemaining: true },
+  });
 
   return ok(updated.quotaRemaining);
 }
 
 export async function refundAnalysisQuota(clerkUserId: string): Promise<void> {
-  await db
-    .update(users)
-    .set({ quotaRemaining: sql`${users.quotaRemaining} + 1` })
-    .where(eq(users.clerkUserId, clerkUserId));
+  await db.user.update({
+    where: { clerkUserId },
+    data: { quotaRemaining: { increment: 1 } },
+  });
 }

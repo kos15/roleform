@@ -1,9 +1,7 @@
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { Webhook } from "svix";
-import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
 import { deleteEverythingFor } from "./delete";
 
 /**
@@ -47,13 +45,14 @@ export async function POST(request: Request) {
   if (event.type === "user.created") {
     const emails = event.data.email_addresses as Array<{ email_address: string }> | undefined;
     const email = emails?.[0]?.email_address ?? "";
-    await db
-      .insert(users)
-      .values({
+    await db.user.upsert({
+      where: { clerkUserId },
+      create: {
         clerkUserId,
         emailHash: createHash("sha256").update(email.toLowerCase()).digest("hex"),
-      })
-      .onConflictDoNothing();
+      },
+      update: {},
+    });
   }
 
   if (event.type === "user.deleted") {
@@ -64,10 +63,10 @@ export async function POST(request: Request) {
     const emails = event.data.email_addresses as Array<{ email_address: string }> | undefined;
     const email = emails?.[0]?.email_address;
     if (email) {
-      await db
-        .update(users)
-        .set({ emailHash: createHash("sha256").update(email.toLowerCase()).digest("hex") })
-        .where(eq(users.clerkUserId, clerkUserId));
+      await db.user.update({
+        where: { clerkUserId },
+        data: { emailHash: createHash("sha256").update(email.toLowerCase()).digest("hex") },
+      });
     }
   }
 

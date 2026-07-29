@@ -41,7 +41,7 @@ export default async function PreviewPage({
   }
 
   const tailored = await getTailoredBullets(userId, draft.id);
-  const resume = draft.resumeJson as StoredResume & { x_orderedSkills?: string[] };
+  const resume = draft.resumeJson as unknown as StoredResume & { x_orderedSkills?: string[] };
 
   const model = buildRenderModel({
     resume,

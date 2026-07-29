@@ -1,7 +1,6 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { exports as exportsTable } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import {
@@ -39,13 +38,15 @@ export async function exportDraft(
   const path = exportPath(user.value, built.value.analysisId, built.value.filename);
   const { bytes } = await uploadObject(BUCKET_EXPORTS, path, built.value.body, MIME[format]);
 
-  await db.insert(exportsTable).values({
-    clerkUserId: user.value,
-    analysisId: built.value.analysisId,
-    draftId,
-    format,
-    storagePath: path,
-    bytes,
+  await db.export.create({
+    data: {
+      clerkUserId: user.value,
+      analysisId: built.value.analysisId,
+      draftId,
+      format,
+      storagePath: path,
+      bytes,
+    },
   });
 
   return ok({ signedUrl: await signedUrl(BUCKET_EXPORTS, path), filename: built.value.filename });
@@ -84,13 +85,15 @@ export async function exportAll(
   const path = exportPath(user.value, analysisId, "all.zip");
   const { bytes } = await uploadObject(BUCKET_EXPORTS, path, zip, "application/zip");
 
-  await db.insert(exportsTable).values({
-    clerkUserId: user.value,
-    analysisId,
-    draftId: null,
-    format: "zip",
-    storagePath: path,
-    bytes,
+  await db.export.create({
+    data: {
+      clerkUserId: user.value,
+      analysisId,
+      draftId: null,
+      format: "zip",
+      storagePath: path,
+      bytes,
+    },
   });
 
   const elapsedMs = Date.now() - startedAt;
@@ -124,7 +127,7 @@ async function buildOne(
   if (!template) return err(appError("not_found", "Unknown template."));
 
   const tailored = await getTailoredBullets(clerkUserId, draftId);
-  const resume = draft.resumeJson as StoredResume & { x_orderedSkills?: string[] };
+  const resume = draft.resumeJson as unknown as StoredResume & { x_orderedSkills?: string[] };
 
   const model = buildRenderModel({
     resume,

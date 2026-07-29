@@ -1,7 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { experienceBullets, masterProfiles, sourceDocuments } from "@/lib/db/schema";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 import type { DomainBullet } from "@/lib/domain/types";
 import { skillsIn } from "@/lib/catalog/skills";
@@ -13,42 +11,27 @@ import { skillsIn } from "@/lib/catalog/skills";
  */
 
 export async function getProfile(clerkUserId: string) {
-  const [profile] = await db
-    .select()
-    .from(masterProfiles)
-    .where(eq(masterProfiles.clerkUserId, clerkUserId))
-    .orderBy(desc(masterProfiles.updatedAt))
-    .limit(1);
-  return profile ?? null;
+  return db.masterProfile.findFirst({
+    where: { clerkUserId },
+    orderBy: { updatedAt: "desc" },
+  });
 }
 
 export async function getProfileWithDocument(clerkUserId: string) {
   const profile = await getProfile(clerkUserId);
   if (!profile) return null;
   if (!profile.sourceDocumentId) return { profile, document: null };
-  const [document] = await db
-    .select()
-    .from(sourceDocuments)
-    .where(
-      and(
-        eq(sourceDocuments.id, profile.sourceDocumentId),
-        eq(sourceDocuments.clerkUserId, clerkUserId),
-      ),
-    );
+  const document = await db.sourceDocument.findFirst({
+    where: { id: profile.sourceDocumentId, clerkUserId },
+  });
   return { profile, document: document ?? null };
 }
 
 export async function getBullets(clerkUserId: string, profileId: string) {
-  return db
-    .select()
-    .from(experienceBullets)
-    .where(
-      and(
-        eq(experienceBullets.clerkUserId, clerkUserId),
-        eq(experienceBullets.profileId, profileId),
-      ),
-    )
-    .orderBy(asc(experienceBullets.ordinal));
+  return db.experienceBullet.findMany({
+    where: { clerkUserId, profileId },
+    orderBy: { ordinal: "asc" },
+  });
 }
 
 export function toDomainBullets(
@@ -86,23 +69,32 @@ export async function commitProfile(args: {
   const resume = structuredClone(args.resume);
   const yearsExperience = estimateYears(resume);
 
-  return db.transaction(async (tx) => {
+  return db.$transaction(async (tx) => {
     // Replacing a résumé supersedes the previous profile. Past analyses keep
     // their snapshotted original_text, so nothing already generated changes.
-    await tx.delete(masterProfiles).where(eq(masterProfiles.clerkUserId, args.clerkUserId));
+    await tx.masterProfile.deleteMany({ where: { clerkUserId: args.clerkUserId } });
 
-    const [profile] = await tx
-      .insert(masterProfiles)
-      .values({
+    const profile = await tx.masterProfile.create({
+      data: {
         clerkUserId: args.clerkUserId,
-        resumeJson: resume,
+        resumeJson: resume as object,
         sourceDocumentId: args.sourceDocumentId,
         yearsExperience: String(yearsExperience),
         skillCount: resume.skills.length,
-      })
-      .returning({ id: masterProfiles.id });
+      },
+      select: { id: true },
+    });
 
-    const rows: Array<typeof experienceBullets.$inferInsert> = [];
+    const rows: Array<{
+      id: string;
+      clerkUserId: string;
+      profileId: string;
+      scope: "work" | "project" | "volunteer" | "education";
+      scopeRef: string;
+      ordinal: number;
+      text: string;
+      recencyMonths: number | null;
+    }> = [];
     const bulletIds: Record<string, string> = {};
     let ordinal = 0;
 
@@ -149,7 +141,7 @@ export async function commitProfile(args: {
       ),
     );
 
-    if (rows.length > 0) await tx.insert(experienceBullets).values(rows);
+    if (rows.length > 0) await tx.experienceBullet.createMany({ data: rows });
 
     resume.x_roleform = {
       schemaVersion: 1,
@@ -159,10 +151,10 @@ export async function commitProfile(args: {
     resume.$schema =
       "https://raw.githubusercontent.com/jsonresume/resume-schema/master/schema.json";
 
-    await tx
-      .update(masterProfiles)
-      .set({ resumeJson: resume })
-      .where(eq(masterProfiles.id, profile.id));
+    await tx.masterProfile.update({
+      where: { id: profile.id },
+      data: { resumeJson: resume as object },
+    });
 
     return { profileId: profile.id, bulletCount: rows.length, yearsExperience };
   });

@@ -109,7 +109,7 @@ Creative templates will honestly read `Low`. That is correct. Do not tune the ru
 |---|---|---|
 | Hosting | **Vercel** | Next.js 15 App Router. Preview deploys per branch. |
 | Auth | **Clerk** | Native Supabase third-party integration (§7). |
-| Database | **Supabase Postgres** | Accessed through Drizzle. RLS on every user table. |
+| Database | **Supabase Postgres** | Accessed through Prisma, via `@prisma/adapter-pg`. RLS on every user table. |
 | File storage | **Supabase Storage** | Buckets: `resumes` (private), `exports` (private, signed URLs). |
 | DNS / domain | **AWS Route 53**, domain `koustubh.org` | App at `roleform.koustubh.org`, `CNAME` → Vercel. |
 | CDN | **Vercel's own edge** for the app · **CloudFront** in front of the `exports` bucket | See below. |
@@ -164,7 +164,7 @@ Rules:
 |---|---|---|---|
 | Framework | Next.js 15 App Router, TS strict | Server Actions remove most API boilerplate | High |
 | UI | Tailwind + shadcn/ui, restyled to `organic` tokens | DS bundle is authoritative | Low |
-| ORM | Drizzle over Supabase Postgres | Typed schema; migrations in-repo, not dashboard-clicked | Medium |
+| ORM | Prisma over Supabase Postgres | Typed schema; migrations in-repo, not dashboard-clicked; swapping the underlying database later is a datasource/adapter change, not a query rewrite | Medium |
 | LLM | Vercel AI SDK, `generateObject` + Zod | Provider-agnostic; swap by changing one import | Low — the point |
 | PDF | `@react-pdf/renderer` | Chromium ~100 MB vs Vercel's 50 MB function limit; renders <500ms vs 2–5s | Medium |
 | DOCX | `docx` (npm) | Real named paragraph styles | Medium |
@@ -224,8 +224,11 @@ lib/
     admin.ts                 service-role client — SERVER ONLY, never imported by a component
     storage.ts               bucket helpers + signed URLs
   db/
-    schema.ts · policies.sql · queries/
+    index.ts · policies.sql · queries/
+  generated/prisma/          Prisma client output — generated, gitignored, never hand-edited
 components/
+prisma/
+  schema.prisma              the truth · migrations/
 ```
 
 **Rule:** `lib/domain/` imports nothing from `db`, `ai`, `supabase`, or `next`. If it needs I/O it
@@ -274,7 +277,7 @@ That's the standard.
 
 - Server Actions by default; route handlers only for webhooks and streaming.
 - Zod at every boundary. Types inferred from schemas, never written alongside them.
-- Drizzle schema is the truth; regenerate migrations, never hand-edit. RLS policies live in `db/policies.sql`, in the repo, applied by migration — never clicked into the Supabase dashboard.
+- `prisma/schema.prisma` is the truth; migrations are generated (`prisma migrate dev`), never hand-authored — except the two CHECK constraints (N1/N2 have no Prisma schema equivalent), which are added by hand to the migration SQL once and never touched again. RLS policies live in `lib/db/policies.sql`, in the repo, applied by script (`pnpm db:policies`) — never clicked into the Supabase dashboard.
 - Fixed vocabulary — do not introduce synonyms: `MasterProfile`, `ExperienceBullet`, `Analysis`, `ResumeDraft`, `TailoredBullet`, `InterviewQuestion`, `SkillGap`, `Course`.
 - Typed `Result<T, AppError>` in domain and AI layers. Exceptions only for genuinely exceptional states.
 

@@ -26,7 +26,7 @@ export default async function ProfilePage() {
   }
 
   const bullets = await getBullets(userId, loaded.profile.id);
-  const resume = loaded.profile.resumeJson as StoredResume;
+  const resume = loaded.profile.resumeJson as unknown as StoredResume;
 
   return (
     <div className="max-w-3xl space-y-6">

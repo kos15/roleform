@@ -18,12 +18,24 @@ cp .env.example .env.local     # fill in Clerk, Supabase, Anthropic
 
 ### Supabase (one project per environment — never point preview at production data)
 
+Two connection strings, both required (`.env.example` documents both): `DATABASE_URL` is the
+pooled pgbouncer connection (port 6543) the app runs on; `DIRECT_URL` is a real session
+connection (port 5432) that migrations and the two admin scripts need — a transaction-mode
+pooler can't provide one.
+
 ```bash
-pnpm db:generate               # regenerate from lib/db/schema.ts; never hand-edit SQL
-pnpm db:migrate                # apply migrations
-pnpm db:policies               # apply lib/db/policies.sql — RLS lives in the repo
-pnpm seed:catalog              # templates + skills + link-checked course catalog
+pnpm db:generate                # regenerate the Prisma client after any schema.prisma change
+pnpm db:migrate:dev --name x    # author a new migration locally (prompts, applies immediately)
+pnpm db:migrate                 # apply committed migrations — CI/prod, non-interactive
+pnpm db:policies                # apply lib/db/policies.sql — RLS lives in the repo
+pnpm seed:catalog               # templates + skills + link-checked course catalog
 ```
+
+`prisma/schema.prisma` is the truth; migrations are generated, never hand-authored — except the
+two CHECK constraints (N1/N2), which Prisma has no schema syntax for and which are added by
+hand, once, to `prisma/migrations/*_init/migration.sql`. Table and column names are
+`@@map`/`@map`'d to match `lib/db/policies.sql` exactly, so the RLS file never has to change
+when the ORM does.
 
 Create both storage buckets as **private**: `resumes`, `exports`. `db:policies` writes their
 path-prefix policies; the buckets themselves are created in the dashboard once.
@@ -72,9 +84,11 @@ failure that would otherwise be expensive and silent.
 pnpm check:coverage    PASS   all fixtures, including the hand-computed 61.11
 pnpm check:roundtrip   PASS   100% field recovery on all six templates
 pnpm render:samples    PASS   PDFs render in 34–123 ms, full text layer, ATS High/High/Medium/Medium/Low/Low
-pnpm build             PASS   clean; service-role client absent from every client chunk
-pnpm check:constraints —      needs a live database
-pnpm check:fabrication —      needs API keys and a real analysis id
+pnpm build             PASS   clean; service-role client and DB adapter absent from every client chunk
+pnpm check:constraints PASS   4/4 guards, against the live Supabase project — N1, N2, N10 all confirmed
+pnpm seed:catalog      PASS   123/129 courses seeded; 6 flagged unreachable (bot-blocking false
+                              positives on Kaggle/Cloudflare/etc — re-check with pnpm check:links)
+pnpm check:fabrication —      needs ANTHROPIC_API_KEY and a real analysis id
 ```
 
 ---
@@ -87,7 +101,8 @@ lib/domain/      PURE. coverage · scoring · ordering · diff · fabrication gu
 lib/ai/          generateObject + Zod only. schemas/ IS the contract; prompts/ are docs.
 lib/catalog/     skills canon + alias table · curated courses · deterministic matcher
 lib/render/      ats-rules (the badge) · pdf/ · docx/ · zip · shared render model
-lib/db/          schema.ts is the truth · policies.sql · queries/ (all scoped by subject)
+lib/db/          index.ts (Prisma client) · policies.sql · queries/ (all scoped by subject)
+prisma/          schema.prisma is the truth · migrations/ (in-repo, generated)
 lib/pipeline/    the five stages, with per-tab degradation
 app/actions/     Server Actions · app/api/ streaming + webhooks only
 ```

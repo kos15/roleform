@@ -1,16 +1,5 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import {
-  analyses,
-  coverageItems,
-  interviewQuestions,
-  jdRequirements,
-  resumeDrafts,
-  skillGaps,
-  skills,
-  tailoredBullets,
-} from "@/lib/db/schema";
 import { analyzeJd } from "@/lib/ai/analyze-jd";
 import { tailorBullet, tailorSummary, type TailoredResult } from "@/lib/ai/tailor";
 import { generateQuestions } from "@/lib/ai/interview";
@@ -48,16 +37,13 @@ export async function runAnalysis(args: {
 }): Promise<void> {
   const { clerkUserId, analysisId, emit } = args;
 
-  const [analysis] = await db
-    .select()
-    .from(analyses)
-    .where(and(eq(analyses.clerkUserId, clerkUserId), eq(analyses.id, analysisId)));
+  const analysis = await db.analysis.findFirst({ where: { clerkUserId, id: analysisId } });
   if (!analysis) throw new Error("analysis not found");
 
   const profile = await getProfileById(clerkUserId, analysis.profileId);
   if (!profile) throw new Error("profile not found");
 
-  const resume = profile.resumeJson as StoredResume;
+  const resume = profile.resumeJson as unknown as StoredResume;
   const bulletRows = await getBullets(clerkUserId, profile.id);
   const bullets = toDomainBullets(bulletRows);
 
@@ -103,21 +89,18 @@ export async function runAnalysis(args: {
 
   const skillIdByName = await resolveSkillIds(parsed.map((r) => r.skillName));
 
-  const requirementRows = await db
-    .insert(jdRequirements)
-    .values(
-      parsed.map((r) => ({
-        clerkUserId,
-        analysisId,
-        kind: r.kind,
-        text: r.text,
-        necessity: r.necessity,
-        mentionCount: r.mentionCount,
-        evidenceQuote: r.evidenceQuote,
-        skillId: skillIdByName.get(canonicalSkill(r.skillName) ?? "") ?? null,
-      })),
-    )
-    .returning();
+  const requirementRows = await db.jdRequirement.createManyAndReturn({
+    data: parsed.map((r) => ({
+      clerkUserId,
+      analysisId,
+      kind: r.kind,
+      text: r.text,
+      necessity: r.necessity,
+      mentionCount: r.mentionCount,
+      evidenceQuote: r.evidenceQuote,
+      skillId: skillIdByName.get(canonicalSkill(r.skillName) ?? "") ?? null,
+    })),
+  });
 
   const requirements: DomainRequirement[] = requirementRows.map((row, i) => ({
     id: row.id,
@@ -129,17 +112,17 @@ export async function runAnalysis(args: {
     skillName: canonicalSkill(parsed[i].skillName),
   }));
 
-  await db
-    .update(analyses)
-    .set({
+  await db.analysis.update({
+    where: { id: analysisId },
+    data: {
       company: meta.company || null,
       title: meta.title || null,
       location: meta.location || null,
       seniority: meta.seniority,
       employmentType: meta.employmentType,
       stageState: { usedRegions: jd.value.analysis.usedRegions, truncated: jd.value.truncated },
-    })
-    .where(eq(analyses.id, analysisId));
+    },
+  });
 
   emit({ stage: "reading", state: "done", progressPct: progressFor("reading", "done") });
 
@@ -151,8 +134,8 @@ export async function runAnalysis(args: {
   const coverage = computeCoverage(requirements, bullets, profileSkillNames);
   const scored = scoreAnalysis(requirements, coverage);
 
-  await db.insert(coverageItems).values(
-    coverage.map((c) => ({
+  await db.coverageItem.createMany({
+    data: coverage.map((c) => ({
       clerkUserId,
       analysisId,
       requirementId: c.requirementId,
@@ -160,16 +143,16 @@ export async function runAnalysis(args: {
       evidenceBulletIds: c.evidenceBulletIds,
       rationale: c.rationale,
     })),
-  );
+  });
 
-  await db
-    .update(analyses)
-    .set({
+  await db.analysis.update({
+    where: { id: analysisId },
+    data: {
       score: scored.score.toFixed(2),
       scoreVerdict: scored.verdict,
       scoreNote: scored.note,
-    })
-    .where(eq(analyses.id, analysisId));
+    },
+  });
 
   emit({ stage: "matching", state: "done", progressPct: progressFor("matching", "done") });
 
@@ -276,7 +259,7 @@ export async function runAnalysis(args: {
     logStageFailure("learning", e);
   }
 
-  await db.update(analyses).set({ status: "ready" }).where(eq(analyses.id, analysisId));
+  await db.analysis.update({ where: { id: analysisId }, data: { status: "ready" } });
 
   emit({
     stage: "preparing",
@@ -301,10 +284,10 @@ function weight(r: DomainRequirement): number {
 
 async function fail(analysisId: string, message: string) {
   // specs §13: keep the completed stages, mark the run failed. Resume, not restart.
-  await db
-    .update(analyses)
-    .set({ status: "failed", scoreNote: message })
-    .where(eq(analyses.id, analysisId));
+  await db.analysis.update({
+    where: { id: analysisId },
+    data: { status: "failed", scoreNote: message },
+  });
 }
 
 /** N7: log the stage and the error shape, never the document. */
@@ -315,8 +298,11 @@ function logStageFailure(stage: string, e: unknown) {
 async function resolveSkillIds(names: string[]): Promise<Map<string, string>> {
   const canonical = [...new Set(names.map((n) => canonicalSkill(n)).filter((n): n is string => Boolean(n)))];
   if (canonical.length === 0) return new Map();
-  const rows = await db.select({ id: skills.id, name: skills.name }).from(skills);
-  return new Map(rows.filter((r) => canonical.includes(r.name)).map((r) => [r.name, r.id]));
+  const rows = await db.skill.findMany({
+    where: { name: { in: canonical } },
+    select: { id: true, name: true },
+  });
+  return new Map(rows.map((r) => [r.name, r.id]));
 }
 
 /**
@@ -342,9 +328,8 @@ async function writeDrafts(args: {
   const missing = args.absent.map((r) => r.skillName ?? r.text).slice(0, 8);
 
   for (const template of TEMPLATES) {
-    const [draft] = await db
-      .insert(resumeDrafts)
-      .values({
+    const draft = await db.resumeDraft.create({
+      data: {
         clerkUserId: args.clerkUserId,
         analysisId: args.analysisId,
         templateId: template.id,
@@ -353,14 +338,15 @@ async function writeDrafts(args: {
           basics: { ...args.resume.basics, summary: args.professionalSummary || args.resume.basics.summary },
           x_roleform: args.resume.x_roleform,
           x_orderedSkills: orderedSkills,
-        },
+        } as object,
         // N5: computed from structural rules, never hand-assigned.
         atsRating: ratingFor(template.id),
         pageCount: estimatePages(args.tailored.length),
         changes: [args.summaryLine, ...changes].filter(Boolean).slice(0, 8),
         missing,
-      })
-      .returning({ id: resumeDrafts.id });
+      },
+      select: { id: true },
+    });
 
     const rows = args.tailored.map((t, i) => ({
       clerkUserId: args.clerkUserId,
@@ -374,7 +360,7 @@ async function writeDrafts(args: {
       aiRunId: t.aiRunId || null,
       ordinal: i,
     }));
-    if (rows.length > 0) await db.insert(tailoredBullets).values(rows);
+    if (rows.length > 0) await db.tailoredBullet.createMany({ data: rows });
   }
 }
 
@@ -428,7 +414,7 @@ async function writeQuestions(args: {
     evidenceBulletIds: q.evidenceBulletIds,
     sourceRequirementId: byText.get(q.sourceRequirementText) ?? null,
   }));
-  if (rows.length > 0) await db.insert(interviewQuestions).values(rows);
+  if (rows.length > 0) await db.interviewQuestion.createMany({ data: rows });
 }
 
 async function writeGaps(args: {
@@ -488,7 +474,7 @@ async function writeGaps(args: {
     };
   });
 
-  await db.insert(skillGaps).values(rows);
+  await db.skillGap.createMany({ data: rows });
 }
 
 /** Fallback when the gap-notes call fails — the tab still works without prose. */
