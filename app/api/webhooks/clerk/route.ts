@@ -1,7 +1,7 @@
-import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { Webhook } from "svix";
 import { db } from "@/lib/db";
+import { hashEmail } from "@/lib/auth";
 import { deleteEverythingFor } from "./delete";
 
 /**
@@ -47,10 +47,7 @@ export async function POST(request: Request) {
     const email = emails?.[0]?.email_address ?? "";
     await db.user.upsert({
       where: { clerkUserId },
-      create: {
-        clerkUserId,
-        emailHash: createHash("sha256").update(email.toLowerCase()).digest("hex"),
-      },
+      create: { clerkUserId, emailHash: hashEmail(email) },
       update: {},
     });
   }
@@ -63,9 +60,12 @@ export async function POST(request: Request) {
     const emails = event.data.email_addresses as Array<{ email_address: string }> | undefined;
     const email = emails?.[0]?.email_address;
     if (email) {
-      await db.user.update({
+      // updateMany, not update: Clerk does not guarantee event order, and a
+      // `user.updated` arriving before `user.created` must not 500 into an
+      // endless retry loop. Zero rows matched is a fine outcome here.
+      await db.user.updateMany({
         where: { clerkUserId },
-        data: { emailHash: createHash("sha256").update(email.toLowerCase()).digest("hex") },
+        data: { emailHash: hashEmail(email) },
       });
     }
   }
