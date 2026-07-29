@@ -7,6 +7,14 @@
  *
  * Dates are ISO YYYY-MM (or YYYY). Ambiguous dates surface as a review prompt —
  * the schema will not accept a guessed month (F1 acceptance).
+ *
+ * EVERY property here is required. This is not stylistic: OpenAI's strict
+ * structured-output mode rejects a schema whose `required` array omits any key
+ * in `properties`, and `.default()` in Zod emits exactly that — an optional
+ * property. Absence is therefore expressed in the value, never by omitting the
+ * key: `""` for an unknown string, `[]` for an empty list, `null` for an
+ * unreadable date. Constrained decoding then guarantees a well-formed object
+ * rather than us repairing one after the fact.
  */
 import { z } from "zod";
 
@@ -15,28 +23,31 @@ const isoDate = z
   .regex(/^\d{4}(-\d{2})?$/, "date must be YYYY or YYYY-MM")
   .describe("ISO date, YYYY-MM or YYYY. Never invent a month you cannot read.");
 
+/** Absent-but-required text. Empty string means "not stated in the document". */
+const optionalText = z.string().describe('Empty string if the document does not state it.');
+
 export const BasicsSchema = z.object({
   name: z.string().min(1),
-  label: z.string().default(""),
-  email: z.string().default(""),
-  phone: z.string().default(""),
-  url: z.string().default(""),
-  summary: z.string().default(""),
-  location: z
-    .object({ city: z.string().default(""), region: z.string().default(""), countryCode: z.string().default("") })
-    .default({ city: "", region: "", countryCode: "" }),
-  profiles: z
-    .array(z.object({ network: z.string(), username: z.string(), url: z.string() }))
-    .default([]),
+  label: optionalText,
+  email: optionalText,
+  phone: optionalText,
+  url: optionalText,
+  summary: optionalText,
+  location: z.object({
+    city: optionalText,
+    region: optionalText,
+    countryCode: optionalText,
+  }),
+  profiles: z.array(z.object({ network: z.string(), username: z.string(), url: z.string() })),
 });
 
 export const WorkSchema = z.object({
   name: z.string().min(1).describe("employer"),
   position: z.string().min(1),
-  location: z.string().default(""),
+  location: optionalText,
   startDate: isoDate,
   endDate: isoDate.nullable().describe("null means current"),
-  summary: z.string().default(""),
+  summary: optionalText,
   highlights: z
     .array(z.string().min(1))
     .describe("One achievement per entry, verbatim from the document. Never merge two bullets."),
@@ -44,55 +55,55 @@ export const WorkSchema = z.object({
 
 export const EducationSchema = z.object({
   institution: z.string().min(1),
-  area: z.string().default(""),
-  studyType: z.string().default(""),
+  area: optionalText,
+  studyType: optionalText,
   startDate: isoDate.nullable(),
   endDate: isoDate.nullable(),
-  score: z.string().default(""),
-  courses: z.array(z.string()).default([]),
+  score: optionalText,
+  courses: z.array(z.string()),
 });
 
 export const ProjectSchema = z.object({
   name: z.string().min(1),
-  description: z.string().default(""),
-  url: z.string().default(""),
+  description: optionalText,
+  url: optionalText,
   startDate: isoDate.nullable(),
   endDate: isoDate.nullable(),
-  highlights: z.array(z.string().min(1)).default([]),
+  highlights: z.array(z.string().min(1)),
 });
 
 export const SkillSchema = z.object({
   name: z.string().min(1),
-  level: z.string().default(""),
-  keywords: z.array(z.string()).default([]),
+  level: optionalText,
+  keywords: z.array(z.string()),
 });
 
 export const CertificateSchema = z.object({
   name: z.string().min(1),
-  issuer: z.string().default(""),
+  issuer: optionalText,
   date: isoDate.nullable(),
-  url: z.string().default(""),
+  url: optionalText,
 });
 
 export const VolunteerSchema = z.object({
   organization: z.string().min(1),
-  position: z.string().default(""),
+  position: optionalText,
   startDate: isoDate.nullable(),
   endDate: isoDate.nullable(),
-  summary: z.string().default(""),
-  highlights: z.array(z.string().min(1)).default([]),
+  summary: optionalText,
+  highlights: z.array(z.string().min(1)),
 });
 
 export const ResumeJsonSchema = z.object({
   basics: BasicsSchema,
-  work: z.array(WorkSchema).default([]),
-  education: z.array(EducationSchema).default([]),
-  skills: z.array(SkillSchema).default([]),
-  projects: z.array(ProjectSchema).default([]),
-  certificates: z.array(CertificateSchema).default([]),
-  volunteer: z.array(VolunteerSchema).default([]),
-  awards: z.array(z.object({ title: z.string(), awarder: z.string().default(""), date: isoDate.nullable() })).default([]),
-  languages: z.array(z.object({ language: z.string(), fluency: z.string().default("") })).default([]),
+  work: z.array(WorkSchema),
+  education: z.array(EducationSchema),
+  skills: z.array(SkillSchema),
+  projects: z.array(ProjectSchema),
+  certificates: z.array(CertificateSchema),
+  volunteer: z.array(VolunteerSchema),
+  awards: z.array(z.object({ title: z.string(), awarder: optionalText, date: isoDate.nullable() })),
+  languages: z.array(z.object({ language: z.string(), fluency: optionalText })),
 });
 
 export type ResumeJson = z.infer<typeof ResumeJsonSchema>;

@@ -1,5 +1,5 @@
 import "server-only";
-import { generateObject, NoObjectGeneratedError } from "ai";
+import { APICallError, generateObject, NoObjectGeneratedError } from "ai";
 import type { z } from "zod";
 import { db } from "@/lib/db";
 import { modelFor, MODELS, type Tier } from "./models";
@@ -81,6 +81,28 @@ export async function runStructured<S extends z.ZodType>(
 
       return ok({ value: object, aiRunId, retryCount });
     } catch (e) {
+      // A rejected request is our bug, not the model's: a malformed schema, a
+      // bad key, an unknown model. Rewording the prompt cannot fix it, so burn
+      // no retries — fail once, loudly, carrying the provider's own reason.
+      if (APICallError.isInstance(e) && !e.isRetryable) {
+        await recordRun(opts, {
+          inputTokens: 0,
+          outputTokens: 0,
+          latencyMs: Date.now() - startedAt,
+          schemaValid: false,
+          retryCount,
+        });
+        return err(
+          appError(
+            "model_failed",
+            "The model provider rejected this request.",
+            // Provider messages describe our schema and parameters, never the
+            // document — safe to carry, still truncated (N7).
+            e.message.slice(0, 200),
+          ),
+        );
+      }
+
       // NoObjectGeneratedError means the model could not satisfy the schema.
       lastFailure = NoObjectGeneratedError.isInstance(e)
         ? "the previous response did not satisfy the required schema"
