@@ -127,10 +127,11 @@ Prompt-level fixes to a structural problem are how this class of bug returns.
 
 | # | Task | Done-state |
 |---|---|---|
-| M5.1 | `generateQuestions` → 10 questions, 4 likely | Each has type, why-they-ask, 3-point framework, evidence |
+| M5.1 | `generateQuestions` → 12 questions, 4 likely | Each has type, why-they-ask, 3-point framework, evidence |
 | M5.2 | Evidence enforcement (N2) | Non-gap question with empty evidence rejected by the DB CHECK — already confirmed at M1.9 |
 | M5.3 | Gap-question framing | Reviewed against 10 gap cases — zero scripted false claims |
-| M5.4 | Filters + accordion | 4 filter pills; keyboard-accessible accordion with correct ARIA roles |
+| M5.4 | Family tabs + accordion | Tabs per question family, `technical` and `system_design` always shown; keyboard-accessible accordion with correct ARIA roles |
+| M5.6 | `draftAnswer` worked answers (F7.2) | Mid tier, on demand, cached in `question_answers`; every first-person line traces to a bullet |
 | M5.5 | `skill_gaps` ordered by `mention_count` | Visibly correct against a posting that repeats one skill |
 | M5.6 | **Course catalog seed** | ~150 curated entries, top 40 skills, `verified_at` set, seeded into `courses`. Sources: roadmap.sh tracks, official free tutorials, hand-verified free video courses. Paid only where no credible free path exists, labelled |
 | M5.7 | Deterministic course matching | `lib/catalog/match.ts` — pure. Skill overlap → level fit → free-first → shortest |

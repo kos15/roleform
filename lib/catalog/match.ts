@@ -71,6 +71,37 @@ export function matchCourses(
     .map((x) => x.course);
 }
 
+/**
+ * Courses for the named concepts a worked answer rests on (F7.2).
+ *
+ * Same deterministic matcher, same law: a concept that maps to nothing in the
+ * catalog yields nothing. The model names concepts; it never names a link (N8).
+ * Concept order is preserved so the first idea in the answer leads.
+ */
+export function matchCoursesForConcepts(
+  concepts: string[],
+  catalog: MatchableCourse[],
+  limit = 3,
+): MatchableCourse[] {
+  const seen = new Set<string>();
+  const out: MatchableCourse[] = [];
+
+  for (const concept of concepts) {
+    for (const course of matchCourses(
+      { skillName: concept, userLevel: "working", requiredLevel: "working" },
+      catalog,
+      limit,
+    )) {
+      if (seen.has(course.id)) continue;
+      seen.add(course.id);
+      out.push(course);
+      if (out.length >= limit) return out;
+    }
+  }
+
+  return out;
+}
+
 function levelIndex(level: "beginner" | "intermediate" | "advanced"): number {
   return level === "beginner" ? 0 : level === "intermediate" ? 1 : 2;
 }

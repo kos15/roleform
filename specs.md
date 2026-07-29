@@ -39,7 +39,7 @@ and re-weighted."* Everything below is that sentence, enforced.
 - Per-analysis: JD via paste **or** file upload → posting metadata + requirements
 - Coverage: Strong match / Partial evidence / Not evidenced, plus the match score (§6)
 - **Tab 1 — Resumes:** six tailored drafts across three template families, evidence-bound, with per-draft diff, preview, Compare two, Download all
-- **Tab 2 — Prep:** ten likely interview questions, four flagged highly likely, each with type, why they ask, a three-point answer framework, and the profile evidence to pull from
+- **Tab 2 — Prep:** twelve likely interview questions, four flagged most likely, tabbed by family (technical and system design get their own), each with why they ask, a three-point answer framework, the profile evidence to pull from, and a full worked answer on demand
 - **Tab 3 — Learning:** skill gaps ordered by posting mention count, each with your level vs required, and two curated courses
 - History of past analyses
 - Export: DOCX + PDF per draft; zip for all
@@ -208,10 +208,19 @@ tailored_bullets                       -- ★ FABRICATION GUARD #1
 
 interview_questions                    -- ★ FABRICATION GUARD #2
   id, analysis_id, ordinal
-  type enum('behavioral','technical','situational','gap','culture')
+  type enum('behavioral','technical','situational','gap','culture','system_design')
   text, likely bool, why_they_ask text, frame text[]
   evidence_bullet_ids uuid[], source_requirement_id → jd_requirements null
   CHECK (type = 'gap' OR array_length(evidence_bullet_ids,1) > 0)
+
+question_answers                       -- worked answers, drafted on demand (F7.2)
+  id, clerk_user_id, question_id → interview_questions UNIQUE, analysis_id
+  headline text
+  sections     jsonb  -- [{heading, body}]      general knowledge, no personal claim
+  resume_hooks jsonb  -- [{bulletId, useIt}]    the ONLY first-person material
+  follow_ups text[], key_concepts text[], ai_run_id → ai_runs null, created_at
+  -- resume_hooks[].bulletId is validated against experience_bullets in the AI
+  -- layer and again on read; a hook that loses its bullet is dropped, not shown.
 
 skills                                 -- canonical vocabulary. Public read.
   id, name, category, aliases text[]
@@ -290,7 +299,7 @@ PER ANALYSIS (Step 1 of 3)
 RESULTS
   score header + 3 buckets
   ├─ Resumes   6 drafts · Compare two · Download all
-  ├─ Prep      10 questions · 4 filters · expandable
+  ├─ Prep      12 questions · family tabs · expandable · worked answer on demand
   └─ Learning  4 gaps by mention_count · 2 courses each
   → Preview [template] → diff · Still not evidenced · See courses → Learning
 ```
@@ -370,13 +379,44 @@ user the fix. Do not remove it.
 
 ### F7 — Tab 2: Prep
 
-Ten questions from the responsibilities and the profile gaps; four flagged **Highly likely**. Four
-filter pills. Each expands to **Why they ask**, a three-point **Answer framework**, and **Pull from:**
-the profile evidence.
+Twelve questions from the responsibilities and the profile gaps; four flagged **Most likely**. Each
+expands to **Why they ask**, a three-point **Answer framework**, and **Pull from** the profile
+evidence.
 
 - Non-gap questions must cite evidence (N2), enforced by CHECK.
 - Gap questions coach honest positioning — what to lean on instead, what you're doing about it. Never a fabricated credential.
 - The framework is scaffolding, not a script. Copy should say so.
+
+**Tabs by family.** `All` · `Most likely` · `Technical` · `System design`, then any of
+`Behavioural` / `Situational` / `Culture` / `Gaps` that the posting actually produced. The first four
+show even at zero, because their emptiness is itself information: a posting with no design round
+should say so rather than hide the tab. `system_design` is its own enum value, not a flavour of
+`technical` — a filter over a value that doesn't exist in the data is a filter that lies.
+
+### F7.2 — Worked answers
+
+A framework is right for rehearsing a behavioural answer and wrong for a technical or design one,
+where the substance *is* the answer. Any question can be expanded into a full worked answer:
+headline, three-to-five sections, follow-ups the interviewer would push into, and the concepts to be
+solid on.
+
+**The fabrication boundary is enforced by splitting the answer, not by prompting care:**
+
+| Block | Rule |
+|---|---|
+| `sections` | General knowledge about the subject. Makes no claim about the candidate, so there is nothing here to fabricate. |
+| `resumeHooks` | The only first-person material. Each cites one `experience_bullet` and restates only what that bullet already claims. A hook citing an unknown id is dropped at generation and again on read. |
+
+An empty `resumeHooks` is a correct answer — the UI says so plainly rather than reaching for an
+example that isn't there.
+
+**Cost.** Drafted on demand, one question at a time, on the **mid** tier, cached in
+`question_answers` and never re-charged. The expensive judgement — what this candidate can evidence —
+already happened in coverage and question generation; this step writes prose over decided facts.
+Twelve extra calls on every analysis would buy latency for a surface most users open once.
+
+`keyConcepts` are plain concept names, never links. Course links come from the curated catalog by the
+same deterministic matcher the Learning tab uses (N8).
 
 ### F8 — Tab 3: Learning
 

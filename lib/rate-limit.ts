@@ -54,5 +54,7 @@ export const LIMITS = {
   /** A full analysis is expensive; six per hour per user is generous in practice. */
   analysis: { limit: 6, windowSeconds: 3600 },
   upload: { limit: 10, windowSeconds: 3600 },
+  /** One mid-tier call per worked answer — cheap, but not free, and clickable. */
+  answer: { limit: 60, windowSeconds: 3600 },
   export: { limit: 40, windowSeconds: 3600 },
 } as const;

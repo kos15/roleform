@@ -224,6 +224,20 @@ textarea.input { border-radius: var(--radius-md); resize: vertical; }
   box-shadow: var(--shadow-sm);
 }
 
+/* A segmented control carrying more than three or four choices. The pill
+   silhouette survives one line; past that it has to wrap, and a wrapped pill
+   reads as a mistake — so this variant squares off to container radius. */
+.seg-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  border-radius: var(--radius-lg);
+}
+.seg > button > .seg-count {
+  margin-left: 0.4rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
+}
+
 .table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .table th {
   text-align: left;
@@ -251,6 +265,128 @@ textarea.input { border-radius: var(--radius-md); resize: vertical; }
   border: 1px solid var(--color-accent-200);
   border-radius: var(--radius-md);
   padding: 0.9rem 1.15rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Prep tab typography (F7)
+   A question is a sentence, not a label. It was set in semibold body copy at
+   body size, which read as shouting and left nothing louder for the answer
+   underneath it. Medium weight, a step up in size and a real line-height give
+   the accordion an actual hierarchy: question → eyebrow → prose.
+--------------------------------------------------------------------------- */
+
+.q-text {
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+}
+
+/* The small caps label above a block of prose. Replaces bold body text, which
+   competed with the question above it for the same emphasis. */
+.eyebrow {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+/* Answer prose. Long-form reading, so it gets a measure and a looser leading
+   than the rest of the app's UI copy. */
+.answer-prose {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  max-width: 68ch;
+  color: var(--color-text);
+}
+
+/* Where the candidate's own words enter the answer. The rule on the left is
+   the provenance made visible — this block, and only this block, speaks in
+   the first person (CLAUDE.md §3). */
+.hook {
+  border-left: 3px solid var(--color-accent-300);
+  padding-left: 1rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Motion
+   Every navigation in the app is a server round trip. Without a state between
+   "clicked" and "rendered" that trip reads as a lag, so the fix is half real
+   (route-level loading boundaries, which also make prefetch useful) and half
+   perceptual (something moves the instant you click).
+   One easing curve and three durations. Nothing here animates layout it
+   doesn't own, and all of it collapses under prefers-reduced-motion.
+--------------------------------------------------------------------------- */
+
+@theme {
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Radix publishes the measured height as a custom property, which is what makes
+   an accordion animate to `auto` at all. */
+@keyframes accordion-down {
+  from { height: 0; opacity: 0; }
+  to   { height: var(--radix-accordion-content-height); opacity: 1; }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); opacity: 1; }
+  to   { height: 0; opacity: 0; }
+}
+.accordion-content[data-state="open"] {
+  animation: accordion-down 240ms var(--ease-out-quint);
+}
+.accordion-content[data-state="closed"] {
+  animation: accordion-up 180ms var(--ease-out-quint);
+}
+
+/* Content arriving from the server, rather than appearing at full opacity as
+   if it had been there all along. */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.rise-in { animation: rise-in 260ms var(--ease-out-quint) both; }
+
+/* The skeleton's sweep. Two tones from the ramp, no ad-hoc colour. */
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+.skeleton {
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-sunken) 25%,
+    var(--color-bg-raised) 50%,
+    var(--color-bg-sunken) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+/* A button whose work is server-side and slow enough to doubt. */
+@keyframes breathe {
+  50% { opacity: 0.62; }
+}
+.btn[data-busy="true"] { animation: breathe 1.3s ease-in-out infinite; }
+
+/* A tab that has been clicked but whose segment hasn't arrived. Fires from
+   next/link's own pending state, so it is the real navigation, not a guess. */
+.seg > button[data-pending="true"] { animation: breathe 1s ease-in-out infinite; }
+
+.card { transition: border-color 160ms ease, box-shadow 160ms ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .accordion-content[data-state="open"],
+  .accordion-content[data-state="closed"],
+  .rise-in,
+  .skeleton,
+  .btn[data-busy="true"],
+  .seg > button[data-pending="true"] {
+    animation: none;
+  }
+  .rise-in { opacity: 1; transform: none; }
 }
 
 /* Lucide ships at stroke-width 2.75 across the app */

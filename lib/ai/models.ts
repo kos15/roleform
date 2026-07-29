@@ -27,4 +27,6 @@ export const TEMPERATURE = {
   analysis: 0.1,
   tailoring: 0.4,
   questions: 0.5,
+  /** Prose that has to read as one voice; the facts underneath are already fixed. */
+  answering: 0.3,
 } as const;

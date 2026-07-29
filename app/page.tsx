@@ -65,7 +65,7 @@ export default function MarketingPage() {
           {
             icon: MessageSquareQuote,
             title: "The questions you'll be asked",
-            body: "Ten questions derived from this posting, four flagged highly likely, each pointing at the experience to answer from.",
+            body: "Twelve questions derived from this posting — technical and system design in their own tabs — each pointing at the experience to answer from, and expandable into a full worked answer.",
           },
           {
             icon: GraduationCap,

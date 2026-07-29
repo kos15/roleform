@@ -1,120 +1,236 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import * as Accordion from "@radix-ui/react-accordion";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, CircleCheck } from "lucide-react";
 import { Card, Tag } from "@/components/ui";
+import { AnswerPanel } from "./answer-panel";
+import type { QuestionType, QuestionView } from "./types";
 
-type QuestionType = "behavioral" | "technical" | "situational" | "gap" | "culture";
+/**
+ * The Prep list (F7).
+ *
+ * Tabs are per family rather than one flat list: "technical" and
+ * "system_design" are what a candidate actually rehearses in a block, and
+ * hunting them out of twelve mixed questions was the real friction. Both are
+ * always offered even at zero — a posting that asks for no system design should
+ * say so plainly, not quietly hide the surface.
+ */
 
-interface Question {
-  id: string;
-  type: QuestionType;
-  text: string;
-  likely: boolean;
-  whyTheyAsk: string;
-  frame: string[];
-  evidence: string[];
+interface Tab {
+  key: string;
+  label: string;
+  match: (q: QuestionView) => boolean;
+  /** Shown even when empty, because its absence would itself be information. */
+  always?: boolean;
+  empty: string;
 }
 
-const FILTERS = [
-  { key: "all", label: "All" },
-  { key: "likely", label: "Highly likely" },
-  { key: "behavioral", label: "Behavioural" },
-  { key: "gap", label: "Gaps" },
-] as const;
+const TABS: Tab[] = [
+  {
+    key: "all",
+    label: "All",
+    match: () => true,
+    always: true,
+    empty: "No questions match that filter.",
+  },
+  {
+    key: "likely",
+    label: "Most likely",
+    match: (q) => q.likely,
+    always: true,
+    empty: "Nothing is flagged as highly likely for this posting.",
+  },
+  {
+    key: "technical",
+    label: "Technical",
+    match: (q) => q.type === "technical",
+    always: true,
+    empty:
+      "This posting doesn't lean on a specific tool or practice deeply enough to produce a technical round. We'd rather show you that than pad the tab.",
+  },
+  {
+    key: "system_design",
+    label: "System design",
+    match: (q) => q.type === "system_design",
+    always: true,
+    empty:
+      "Nothing in this posting involves designing or operating a system, so there's no design round to prepare for.",
+  },
+  {
+    key: "behavioral",
+    label: "Behavioural",
+    match: (q) => q.type === "behavioral",
+    empty: "No behavioural questions for this posting.",
+  },
+  {
+    key: "situational",
+    label: "Situational",
+    match: (q) => q.type === "situational",
+    empty: "No situational questions for this posting.",
+  },
+  {
+    key: "culture",
+    label: "Culture",
+    match: (q) => q.type === "culture",
+    empty: "No culture questions for this posting.",
+  },
+  {
+    key: "gap",
+    label: "Gaps",
+    match: (q) => q.type === "gap",
+    empty: "Nothing here probes something your profile can't evidence.",
+  },
+];
 
-export function QuestionList({ questions }: { questions: Question[] }) {
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]["key"]>("all");
+export function QuestionList({
+  questions,
+  answeredIds,
+}: {
+  questions: QuestionView[];
+  answeredIds: string[];
+}) {
+  const [tabKey, setTabKey] = useState("all");
+  const [open, setOpen] = useState<string[]>([]);
+  // Seeded from the server, then extended in place — drafting an answer should
+  // flip its badge immediately rather than waiting for a navigation.
+  const [answered, setAnswered] = useState(() => new Set(answeredIds));
 
-  const shown = questions.filter((q) =>
-    filter === "all" ? true : filter === "likely" ? q.likely : q.type === filter,
+  const markAnswered = useCallback((id: string) => {
+    setAnswered((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+  }, []);
+
+  const counts = useMemo(
+    () => new Map(TABS.map((t) => [t.key, questions.filter(t.match).length])),
+    [questions],
   );
+
+  const visibleTabs = TABS.filter((t) => t.always || (counts.get(t.key) ?? 0) > 0);
+  const tab = visibleTabs.find((t) => t.key === tabKey) ?? visibleTabs[0];
+  const shown = questions.filter(tab.match);
 
   return (
     <section>
       <div className="mb-5">
-        <h2>Ten questions this posting suggests</h2>
-        <p className="mt-1 text-[var(--color-text-muted)]">
-          Each framework is scaffolding for your own answer, not a script — and never a claim
-          you can&rsquo;t make.
+        <h2>{questions.length} questions this posting suggests</h2>
+        <p className="mt-1 max-w-[62ch] text-[var(--color-text-muted)]">
+          Each framework is scaffolding for your own answer, not a script — and never a claim you
+          can&rsquo;t make. Open one and ask for the full answer when you want to rehearse it.
         </p>
       </div>
 
-      <div className="mb-5 flex flex-wrap gap-2">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => setFilter(f.key)}
-            aria-pressed={filter === f.key}
-            className="rounded-[var(--radius-pill)]"
-          >
-            <Tag tone={filter === f.key ? "accent" : "default"}>{f.label}</Tag>
-          </button>
-        ))}
+      <div className="seg seg-wrap mb-6" role="tablist" aria-label="Question families">
+        {visibleTabs.map((t) => {
+          const selected = t.key === tab.key;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              onClick={() => setTabKey(t.key)}
+            >
+              {t.label}
+              <span className="seg-count">{counts.get(t.key) ?? 0}</span>
+            </button>
+          );
+        })}
       </div>
 
       {shown.length === 0 ? (
         <Card flat>
-          <p className="text-[var(--color-text-muted)]">No questions match that filter.</p>
+          <p className="max-w-[62ch] text-[var(--color-text-muted)]">{tab.empty}</p>
         </Card>
       ) : (
-        <Accordion.Root type="multiple" className="space-y-3">
-          {shown.map((q) => (
-            <Accordion.Item key={q.id} value={q.id} asChild>
-              <Card>
-                <Accordion.Header>
-                  <Accordion.Trigger className="group flex w-full items-start gap-3 text-left">
-                    <ChevronDown className="lucide mt-1 h-4 w-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
-                    <span className="flex-1">
-                      <span className="block font-semibold">{q.text}</span>
-                      <span className="mt-2 flex flex-wrap gap-2">
-                        <Tag tone="muted">{LABEL[q.type]}</Tag>
-                        {q.likely ? <Tag tone="accent">Highly likely</Tag> : null}
+        <Accordion.Root type="multiple" value={open} onValueChange={setOpen} className="space-y-3">
+          {shown.map((q, i) => {
+            const isOpen = open.includes(q.id);
+            return (
+              <Accordion.Item key={q.id} value={q.id} asChild>
+                <Card
+                  className={
+                    isOpen ? "border-[var(--color-accent-200)] shadow-[var(--shadow-md)]" : undefined
+                  }
+                >
+                  <Accordion.Header>
+                    <Accordion.Trigger className="group flex w-full items-start gap-4 text-left">
+                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-pill)] bg-[var(--color-bg-sunken)] text-xs font-semibold tabular-nums text-[var(--color-text-muted)] group-data-[state=open]:bg-[var(--color-accent-100)] group-data-[state=open]:text-[var(--color-accent-800)]">
+                        {i + 1}
                       </span>
-                    </span>
-                  </Accordion.Trigger>
-                </Accordion.Header>
 
-                <Accordion.Content className="overflow-hidden pt-4">
-                  <div className="space-y-4 pl-7 text-sm">
-                    <div>
-                      <p className="mb-1 font-semibold">Why they ask</p>
-                      <p className="text-[var(--color-text-muted)]">{q.whyTheyAsk}</p>
-                    </div>
+                      <span className="flex-1">
+                        <span className="q-text block">{q.text}</span>
+                        <span className="mt-2.5 flex flex-wrap items-center gap-2">
+                          <Tag tone={q.type === "gap" ? "warn" : "muted"}>{LABEL[q.type]}</Tag>
+                          {q.likely ? <Tag tone="accent">Most likely</Tag> : null}
+                          {answered.has(q.id) ? (
+                            <Tag tone="sage">
+                              <CircleCheck className="lucide h-3 w-3" />
+                              Answer ready
+                            </Tag>
+                          ) : null}
+                        </span>
+                      </span>
 
-                    <div>
-                      <p className="mb-1 font-semibold">Answer framework</p>
-                      <ol className="list-decimal space-y-1 pl-4 text-[var(--color-text-muted)]">
-                        {q.frame.map((point, i) => (
-                          <li key={i}>{point}</li>
-                        ))}
-                      </ol>
-                    </div>
+                      <ChevronDown className="lucide mt-1 h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-transform group-data-[state=open]:rotate-180" />
+                    </Accordion.Trigger>
+                  </Accordion.Header>
 
-                    {q.type === "gap" ? (
-                      <p className="text-accent-body">
-                        This one probes something your profile can&rsquo;t evidence. The
-                        framework above is about positioning honestly — what you lean on
-                        instead, and what you&rsquo;re doing about it.
-                      </p>
-                    ) : (
+                  <Accordion.Content className="accordion-content overflow-hidden">
+                    <div className="mt-5 space-y-5 pl-11">
                       <div>
-                        {/* N2: this can never be empty — the CHECK constraint refuses the row. */}
-                        <p className="mb-1 font-semibold">Pull from:</p>
-                        <ul className="list-disc space-y-1 pl-4 text-[var(--color-text-muted)]">
-                          {q.evidence.map((text, i) => (
-                            <li key={i}>{text}</li>
-                          ))}
-                        </ul>
+                        <p className="eyebrow mb-1.5">Why they ask</p>
+                        <p className="answer-prose text-[var(--color-text-muted)]">{q.whyTheyAsk}</p>
                       </div>
-                    )}
-                  </div>
-                </Accordion.Content>
-              </Card>
-            </Accordion.Item>
-          ))}
+
+                      <div>
+                        <p className="eyebrow mb-1.5">Answer framework</p>
+                        <ol className="space-y-2">
+                          {q.frame.map((point, n) => (
+                            <li key={n} className="flex gap-3">
+                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-[var(--radius-pill)] bg-[var(--color-accent-300)]" />
+                              <span className="answer-prose">{point}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+
+                      {q.type === "gap" ? (
+                        <p className="max-w-[62ch] text-sm text-accent-body">
+                          This one probes something your profile can&rsquo;t evidence. The
+                          framework above is about positioning honestly — what you lean on
+                          instead, and what you&rsquo;re doing about it.
+                        </p>
+                      ) : (
+                        <div>
+                          {/* N2: this can never be empty — the CHECK constraint refuses the row. */}
+                          <p className="eyebrow mb-1.5">Pull from</p>
+                          <ul className="space-y-1.5">
+                            {q.evidence.map((text, n) => (
+                              <li key={n} className="flex gap-3">
+                                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-[var(--radius-pill)] bg-[var(--color-sage-400)]" />
+                                <span className="answer-prose text-[var(--color-text-muted)]">
+                                  {text}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <AnswerPanel
+                        questionId={q.id}
+                        isOpen={isOpen}
+                        hasStored={answered.has(q.id)}
+                        isGap={q.type === "gap"}
+                        onDrafted={markAnswered}
+                      />
+                    </div>
+                  </Accordion.Content>
+                </Card>
+              </Accordion.Item>
+            );
+          })}
         </Accordion.Root>
       )}
     </section>
@@ -127,4 +243,5 @@ const LABEL: Record<QuestionType, string> = {
   situational: "Situational",
   gap: "Gap",
   culture: "Culture",
+  system_design: "System design",
 };

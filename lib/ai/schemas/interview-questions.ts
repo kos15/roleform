@@ -11,10 +11,15 @@ import { z } from "zod";
  * `frame` is scaffolding, not a script. For a gap question it coaches honest
  * positioning — what to lean on instead, what you're doing about it — and
  * never a credential the user cannot claim (CLAUDE.md §3).
+ *
+ * `system_design` is a first-class type rather than a flavour of `technical`.
+ * The Prep tab surfaces the two separately, and a role that never designs a
+ * system should honestly produce none of them — the count is not padded to
+ * fill a tab.
  */
 
 export const InterviewQuestionSchema = z.object({
-  type: z.enum(["behavioral", "technical", "situational", "gap", "culture"]),
+  type: z.enum(["behavioral", "technical", "situational", "gap", "culture", "system_design"]),
   text: z
     .string()
     .min(10)
@@ -43,8 +48,8 @@ export const InterviewQuestionSchema = z.object({
 export const InterviewQuestionsSchema = z.object({
   questions: z
     .array(InterviewQuestionSchema)
-    .length(10)
-    .describe("Exactly ten, ordered most to least likely. Exactly four have likely = true."),
+    .length(12)
+    .describe("Exactly twelve, ordered most to least likely. Exactly four have likely = true."),
 });
 
 export type InterviewQuestionOut = z.infer<typeof InterviewQuestionSchema>;

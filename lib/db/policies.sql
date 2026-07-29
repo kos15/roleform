@@ -29,6 +29,7 @@ declare
     'resume_drafts',
     'tailored_bullets',
     'interview_questions',
+    'question_answers',
     'skill_gaps',
     'exports',
     'ai_runs'

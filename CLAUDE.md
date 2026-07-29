@@ -278,7 +278,7 @@ That's the standard.
 - Server Actions by default; route handlers only for webhooks and streaming.
 - Zod at every boundary. Types inferred from schemas, never written alongside them.
 - `prisma/schema.prisma` is the truth; migrations are generated (`prisma migrate dev`), never hand-authored — except the two CHECK constraints (N1/N2 have no Prisma schema equivalent), which are added by hand to the migration SQL once and never touched again. RLS policies live in `lib/db/policies.sql`, in the repo, applied by script (`pnpm db:policies`) — never clicked into the Supabase dashboard.
-- Fixed vocabulary — do not introduce synonyms: `MasterProfile`, `ExperienceBullet`, `Analysis`, `ResumeDraft`, `TailoredBullet`, `InterviewQuestion`, `SkillGap`, `Course`.
+- Fixed vocabulary — do not introduce synonyms: `MasterProfile`, `ExperienceBullet`, `Analysis`, `ResumeDraft`, `TailoredBullet`, `InterviewQuestion`, `QuestionAnswer`, `SkillGap`, `Course`.
 - Typed `Result<T, AppError>` in domain and AI layers. Exceptions only for genuinely exceptional states.
 
 ## 14. Working style

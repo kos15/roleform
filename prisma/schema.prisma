@@ -115,12 +115,16 @@ enum TransformKind {
   @@map("transform_kind")
 }
 
+/// `system_design` is its own type, not a flavour of `technical`: the Prep tab
+/// gives each its own surface, and a filter over a value that doesn't exist in
+/// the data is a filter that silently lies.
 enum QuestionType {
   behavioral
   technical
   situational
   gap
   culture
+  system_design
 
   @@map("question_type")
 }
@@ -401,13 +405,51 @@ model InterviewQuestion {
   evidenceBulletIds   String[]     @default([]) @map("evidence_bullet_ids") @db.Uuid
   sourceRequirementId String?      @map("source_requirement_id") @db.Uuid
 
-  analysis          Analysis       @relation(fields: [analysisId], references: [id], onDelete: Cascade)
-  sourceRequirement JdRequirement? @relation(fields: [sourceRequirementId], references: [id], onDelete: SetNull)
+  analysis          Analysis        @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  sourceRequirement JdRequirement?  @relation(fields: [sourceRequirementId], references: [id], onDelete: SetNull)
+  answer            QuestionAnswer?
 
   @@index([analysisId], map: "interview_questions_analysis_idx")
   @@map("interview_questions")
   // ★ FABRICATION GUARD #2 — CHECK (type = 'gap' OR array_length(evidence_bullet_ids,1) > 0)
   // added by hand in the migration SQL — see the header comment.
+}
+
+/* ------------------------------------------------- worked answers (F7.2) */
+
+/// A full worked answer for one question, drafted on demand by the mid tier.
+///
+/// Deliberately separate from InterviewQuestion: it is generated lazily, per
+/// question, only when the user asks for it. Folding it into the analysis
+/// pipeline would put twelve extra model calls on the critical path of every
+/// run for a surface most users open once.
+///
+/// The fabrication boundary still holds (CLAUDE.md §3). `resumeHooks` are the
+/// only place the answer speaks in the first person, and every one of them
+/// carries the `experience_bullet` it derives from — same shape as N1, one FK
+/// short of it because the ids live inside the JSON payload the Zod schema
+/// validates on the way in AND on the way out. `theory` is general technical
+/// knowledge about the domain, not a claim about the candidate.
+model QuestionAnswer {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String   @map("clerk_user_id")
+  questionId  String   @unique @map("question_id") @db.Uuid
+  analysisId  String   @map("analysis_id") @db.Uuid
+  headline    String
+  /// [{ heading, body }] — the worked answer, validated by AnswerSectionSchema.
+  sections    Json     @default("[]")
+  /// [{ bulletId, useIt }] — first-person material, each tied to one bullet.
+  resumeHooks Json     @default("[]") @map("resume_hooks")
+  followUps   String[] @default([]) @map("follow_ups")
+  keyConcepts String[] @default([]) @map("key_concepts")
+  aiRunId     String?  @map("ai_run_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  question InterviewQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  aiRun    AiRun?            @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+
+  @@index([analysisId], map: "question_answers_analysis_idx")
+  @@map("question_answers")
 }
 
 /* ------------------------------------------------------------------ skills */
@@ -501,6 +543,7 @@ model AiRun {
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   tailoredBullets TailoredBullet[]
+  questionAnswers QuestionAnswer[]
 
   @@index([clerkUserId, createdAt], map: "ai_runs_user_created_idx")
   @@map("ai_runs")

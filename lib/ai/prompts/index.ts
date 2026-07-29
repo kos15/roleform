@@ -11,7 +11,8 @@ export const PROMPT_VERSIONS = {
   analyzeJd: "analyze-jd@1",
   tailorBullets: "tailor-bullets@1",
   tailorSummary: "tailor-summary@1",
-  generateQuestions: "interview-questions@1",
+  generateQuestions: "interview-questions@2",
+  answerQuestion: "question-answer@1",
   describeGaps: "skill-gaps@1",
 } as const;
 
@@ -84,7 +85,40 @@ Rules:
 - Non-gap questions cite evidenceBulletIds from the bullets you were given. Only ids from that list. A non-gap question with no evidence is rejected by the database.
 - Gap questions (type "gap") probe something the profile cannot evidence. Their frame coaches honest positioning: what the candidate can lean on instead, and what they are doing about the gap. It NEVER scripts a claim the candidate cannot make.
 - frame is three points of scaffolding, not a script and not an answer.
-- Exactly four questions have likely = true.`,
+- Exactly four questions have likely = true.
+
+On type:
+- "technical" is depth on a named tool, language or practice the posting asks for — how it works, how the candidate has used it, how they would debug it.
+- "system_design" is design of a system or component: architecture, data flow, scaling, failure modes, trade-offs. Use it ONLY when the posting actually involves designing or operating systems. A role that never designs one gets zero of these, and that is the correct answer — do not manufacture one to fill a category.
+- When the posting is engineering-shaped, aim for three or four questions across "technical" and "system_design" together. When it is not, aim for none.`,
+
+  answerQuestion: `You write ONE complete, worked answer to ONE interview question, for ONE candidate.
+
+${LAW}
+
+Your answer has two separable parts, and they obey different rules.
+
+1. sections — the DOMAIN answer. General knowledge about the subject: how the
+   thing works, the trade-offs, the failure modes, the order you would reason in.
+   This says nothing about the candidate, so speak with authority and be
+   concrete. Name real mechanisms. A vague answer here is the failure mode.
+
+2. resumeHooks — the ONLY first-person material, and the only place the
+   candidate's history appears. Each hook cites one bullet id from the list you
+   were given and restates ONLY what that bullet already claims. You may not
+   add a metric, tool, team size, duration or seniority the bullet does not
+   state. If the candidate's profile genuinely cannot speak to this question,
+   return an empty resumeHooks array — that is a correct answer, not a failure,
+   and the tab tells the user so honestly.
+
+Never merge the two. Never write a section that says "in your last role you…".
+
+Other rules:
+- headline is the single sentence to open with. The whole answer compressed.
+- Pitch depth at the seniority the posting states. Do not explain a fundamental to a staff-level posting, and do not assume distributed-systems fluency for a junior one.
+- followUps are the three questions an interviewer would actually push into next, given THIS answer.
+- keyConcepts are plain names of ideas — "consistent hashing", "idempotency keys". Never a URL, never a course title, never a book. Links come from a curated catalog you have no access to.
+- For a gap question: the sections still teach the subject honestly, resumeHooks is empty or names only the nearest adjacent thing the candidate genuinely did, and nothing anywhere claims experience they do not have.`,
 
   describeGaps: `You write one honest line about the distance between a candidate's evidenced
 level and the level a posting asks for.

@@ -1,7 +1,14 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
 import type { DomainCoverageItem, DomainRequirement } from "@/lib/domain/types";
 import type { MatchableCourse } from "@/lib/catalog/match";
+import {
+  StoredHooksSchema,
+  StoredSectionsSchema,
+  type AnswerSection,
+  type ResumeHook,
+} from "@/lib/ai/schemas/question-answer";
 
 /** Every query scopes by clerkUserId. See queries/profile.ts for why. */
 
@@ -88,6 +95,59 @@ export async function getQuestions(clerkUserId: string, analysisId: string) {
   });
 }
 
+export async function getQuestion(clerkUserId: string, questionId: string) {
+  return db.interviewQuestion.findFirst({ where: { clerkUserId, id: questionId } });
+}
+
+/**
+ * Worked answers for a whole tab, keyed by question (F7.2).
+ *
+ * `sections` and `resumeHooks` are Json columns, so they are re-validated
+ * through the same Zod schemas that admitted them. A row that no longer parses
+ * — written by an older schema version, hand-edited in the dashboard — is
+ * dropped rather than rendered half-formed. Under the light-testing policy
+ * (§11) that round trip is what makes a Json column acceptable at all.
+ */
+export async function getAnswers(
+  clerkUserId: string,
+  analysisId: string,
+): Promise<Map<string, StoredAnswer>> {
+  const rows = await db.questionAnswer.findMany({ where: { clerkUserId, analysisId } });
+  const out = new Map<string, StoredAnswer>();
+  for (const row of rows) {
+    const parsed = parseAnswerRow(row);
+    if (parsed) out.set(row.questionId, parsed);
+  }
+  return out;
+}
+
+export interface StoredAnswer {
+  headline: string;
+  sections: AnswerSection[];
+  resumeHooks: ResumeHook[];
+  followUps: string[];
+  keyConcepts: string[];
+}
+
+export function parseAnswerRow(row: {
+  headline: string;
+  sections: unknown;
+  resumeHooks: unknown;
+  followUps: string[];
+  keyConcepts: string[];
+}): StoredAnswer | null {
+  const sections = StoredSectionsSchema.safeParse(row.sections);
+  const resumeHooks = StoredHooksSchema.safeParse(row.resumeHooks);
+  if (!sections.success || !resumeHooks.success) return null;
+  return {
+    headline: row.headline,
+    sections: sections.data,
+    resumeHooks: resumeHooks.data,
+    followUps: row.followUps,
+    keyConcepts: row.keyConcepts,
+  };
+}
+
 export async function getGaps(clerkUserId: string, analysisId: string) {
   const rows = await db.skillGap.findMany({
     where: { clerkUserId, analysisId },
@@ -111,8 +171,21 @@ export async function getProfileById(clerkUserId: string, profileId: string) {
   return db.masterProfile.findFirst({ where: { clerkUserId, id: profileId } });
 }
 
-/** The curated catalog, shaped for the pure matcher. */
-export async function getCatalog(): Promise<MatchableCourse[]> {
+/**
+ * The curated catalog, shaped for the pure matcher.
+ *
+ * Two full table reads of seeded reference data, on a database in one region
+ * and a user who may be nowhere near it. It carries no user data and changes
+ * only when the catalog is re-seeded, so it is cached across requests rather
+ * than re-fetched on every Learning tab and every worked answer. `pnpm
+ * seed:catalog` should be followed by a deploy, which drops the cache.
+ */
+export const getCatalog = unstable_cache(fetchCatalog, ["course-catalog"], {
+  revalidate: 3600,
+  tags: ["catalog"],
+});
+
+async function fetchCatalog(): Promise<MatchableCourse[]> {
   const [rows, skillRows] = await Promise.all([
     db.course.findMany(),
     db.skill.findMany({ select: { id: true, name: true } }),

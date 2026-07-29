@@ -26,14 +26,18 @@ export default async function AnalysisLayout({
   const { userId } = await auth();
   if (!userId) redirect("/");
 
-  const analysis = await getAnalysis(userId, id);
-  if (!analysis) redirect("/history");
-  if (analysis.status !== "ready") return <>{children}</>;
-
-  const [requirements, coverage] = await Promise.all([
+  // Issued together, not chained. The database is in one region and these are
+  // three sequential round trips otherwise — the requirement and coverage reads
+  // are already scoped by user and analysis, so speculating on them costs a
+  // wasted query on the parsing path and saves a full round trip on every other
+  // one. Only `bulletTexts` genuinely depends on a prior result.
+  const [analysis, requirements, coverage] = await Promise.all([
+    getAnalysis(userId, id),
     getRequirements(userId, id),
     getCoverage(userId, id),
   ]);
+  if (!analysis) redirect("/history");
+  if (analysis.status !== "ready") return <>{children}</>;
 
   const evidenceIds = [...new Set(coverage.flatMap((c) => c.evidenceBulletIds))];
   const bulletTexts = await getBulletTexts(userId, evidenceIds);

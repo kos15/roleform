@@ -13,18 +13,34 @@ import type { AtsRating } from "@/lib/domain/types";
 export function Button({
   variant = "primary",
   size,
+  busy,
   className,
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost";
   size?: "sm";
+  /** Server-side work is under way. Drives the breathe animation, nothing else. */
+  busy?: boolean;
 }) {
   return (
     <button
+      data-busy={busy ? "true" : undefined}
+      aria-busy={busy || undefined}
       className={cn("btn", `btn-${variant}`, size === "sm" && "btn-sm", className)}
       {...props}
     />
   );
+}
+
+/**
+ * A placeholder with the shape of the thing that is coming.
+ *
+ * Used by the route-level loading boundaries. Deliberately shaped like the real
+ * layout rather than a generic spinner — the page stops moving when the content
+ * lands, instead of being replaced by something a different size.
+ */
+export function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return <div aria-hidden style={style} className={cn("skeleton", className)} />;
 }
 
 export function Card({ className, flat, ...props }: React.HTMLAttributes<HTMLDivElement> & { flat?: boolean }) {
