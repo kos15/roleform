@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { currentRole } from "@/lib/admin/role";
 import { clampCap, QUOTAS } from "@/lib/domain/quotas";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
@@ -21,12 +22,10 @@ export async function requireAdmin(): Promise<Result<string>> {
   const user = await requireUser();
   if (!user.ok) return user;
 
-  const row = await db.user.findUnique({
-    where: { clerkUserId: user.value },
-    select: { role: true },
-  });
-
-  if (row?.role !== "admin") {
+  // Read from Clerk, not from the mirrored column. The client can send any
+  // payload it likes, and the mirror is write-behind — the only thing worth
+  // gating on is the source of truth (lib/admin/role.ts).
+  if ((await currentRole(user.value)) !== "admin") {
     return err(
       appError(
         "unauthenticated",

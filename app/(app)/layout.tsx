@@ -4,17 +4,17 @@ import { UserButton } from "@clerk/nextjs";
 import { Brand } from "@/components/brand";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteFooter } from "@/components/site-footer";
-import { db } from "@/lib/db";
+import { currentRole } from "@/lib/admin/role";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
 
   // The chip says which role you are holding, because two of the nav links
   // behave differently depending on it and a 403 you could have predicted is a
-  // worse 403. One indexed lookup; missing row just drops the label.
-  const account = userId
-    ? await db.user.findUnique({ where: { clerkUserId: userId }, select: { role: true } })
-    : null;
+  // worse 403. Reads Clerk (memoised per request) and refreshes the mirror on
+  // the way past, so a role granted in the dashboard takes effect on the next
+  // page view rather than after a deploy.
+  const role = userId ? await currentRole(userId) : null;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -48,9 +48,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <ThemeToggle />
 
         <div className="flex flex-none items-center gap-2">
-          {account ? (
+          {role ? (
             <span className="hidden text-xs text-[var(--color-text-muted)] sm:inline">
-              {account.role === "admin" ? "Admin" : "Member"}
+              {role === "admin" ? "Admin" : "Member"}
             </span>
           ) : null}
           <UserButton />

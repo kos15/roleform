@@ -1,6 +1,7 @@
 import "server-only";
 import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
+import { initialsOf, roleFromMetadata, type Role } from "@/lib/admin/role";
 import { cycleStart, type QuotaKey } from "@/lib/domain/quotas";
 
 /**
@@ -14,8 +15,8 @@ import { cycleStart, type QuotaKey } from "@/lib/domain/quotas";
  *
  * Identity comes from Clerk, never from us. We store a hash of the address
  * (N7) precisely so that we cannot read one back, and an admin panel is not a
- * reason to start. Usage counts come from our tables; names and addresses come
- * from Clerk at render time and are never written down here.
+ * reason to start. Usage counts come from our tables; names, addresses and the
+ * admin role come from Clerk at render time and are never written down here.
  */
 
 /**
@@ -38,7 +39,7 @@ export interface Member {
   email: string;
   initials: string;
   plan: string;
-  role: "member" | "admin";
+  role: Role;
   suspended: boolean;
   joined: string;
   caps: Record<QuotaKey, number>;
@@ -51,7 +52,6 @@ export async function listMembers(): Promise<Member[]> {
     select: {
       clerkUserId: true,
       plan: true,
-      role: true,
       suspended: true,
       createdAt: true,
       quotaResetsAt: true,
@@ -79,7 +79,10 @@ export async function listMembers(): Promise<Member[]> {
       email: person?.email ?? "—",
       initials: initialsOf(name),
       plan: row.plan === "pro" ? "Pro" : "Free",
-      role: row.role,
+      // From Clerk, not from the mirrored column: the mirror only refreshes
+      // when a person visits, and a panel that shows a stale role is worse
+      // than one that costs a directory read.
+      role: person?.role ?? "member",
       suspended: row.suspended,
       joined: row.createdAt.toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
       caps: {
@@ -120,6 +123,7 @@ async function usageFor(clerkUserId: string, since: Date): Promise<MemberUsage> 
 interface Identity {
   name: string;
   email: string;
+  role: Role;
 }
 
 /**
@@ -137,6 +141,7 @@ async function resolveIdentities(userIds: string[]): Promise<Map<string, Identit
       map.set(u.id, {
         name: name || "Unnamed member",
         email: u.primaryEmailAddress?.emailAddress ?? "—",
+        role: roleFromMetadata(u.publicMetadata),
       });
     }
   } catch {
@@ -144,13 +149,6 @@ async function resolveIdentities(userIds: string[]): Promise<Map<string, Identit
     // not useful with a stack trace, and the trace would carry subjects (N7).
   }
   return map;
-}
-
-function initialsOf(name: string): string {
-  const parts = name.split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "··";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export interface WorkspaceStat {
@@ -201,18 +199,7 @@ export async function workspaceStats(): Promise<WorkspaceStat[]> {
   ];
 }
 
-/** Who a 403 should point at. Names only — this is shown to non-admins. */
-export async function listAdmins(): Promise<{ name: string; initials: string }[]> {
-  const rows = await db.user.findMany({
-    where: { role: "admin" },
-    select: { clerkUserId: true },
-    take: 8,
-  });
-  if (rows.length === 0) return [];
-
-  const directory = await resolveIdentities(rows.map((r) => r.clerkUserId));
-  return rows.map((r) => {
-    const name = directory.get(r.clerkUserId)?.name ?? "An admin";
-    return { name, initials: initialsOf(name) };
-  });
-}
+// Who a 403 should point at now lives in lib/admin/role.ts, beside the source
+// of truth it reads. Re-exported so callers have one import for "the admin
+// question" rather than two.
+export { listAdmins } from "@/lib/admin/role";

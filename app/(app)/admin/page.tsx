@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { listAdmins, listMembers, workspaceStats } from "@/lib/admin/members";
+import { listMembers, workspaceStats } from "@/lib/admin/members";
+import { currentRole, listAdmins } from "@/lib/admin/role";
 import { cycleStart } from "@/lib/domain/quotas";
 import { AccessDenied } from "./access-denied";
 import { AdminPanel } from "./admin-panel";
@@ -16,15 +17,18 @@ export default async function AdminPage() {
   const user = await requireUser();
   if (!user.ok) redirect("/sign-in");
 
-  const me = await db.user.findUnique({
-    where: { clerkUserId: user.value },
-    select: { role: true, capAnalyses: true, quotaResetsAt: true },
-  });
+  const [role, me] = await Promise.all([
+    currentRole(user.value),
+    db.user.findUnique({
+      where: { clerkUserId: user.value },
+      select: { capAnalyses: true, quotaResetsAt: true },
+    }),
+  ]);
 
   // A member gets the 403, not a redirect. Bouncing them somewhere else would
   // hide which permission they lack and who can grant it, which is the entire
   // content of that screen.
-  if (me?.role !== "admin") {
+  if (role !== "admin") {
     const [admins, used] = await Promise.all([
       listAdmins(),
       db.analysis.count({

@@ -152,7 +152,8 @@ real foreign keys, and JSONB cannot enforce them.
 ```
 users
   clerk_user_id text PRIMARY KEY, email_hash, plan, created_at
-  role enum('member','admin'), suspended bool
+  role enum('member','admin')        -- MIRROR of Clerk publicMetadata.role, not the truth
+  suspended bool
   cap_analyses, cap_resumes, cap_answers, cap_courses int   -- F15, each CHECKed
   quota_remaining int                -- superseded by cap_analyses; no longer read
   quota_resets_at timestamptz        -- anchors the rolling 30-day cycle
@@ -622,10 +623,25 @@ rather than one credit balance, because the four things cost different amounts a
 seams — telling someone out of answer drafts that they are out of analyses is the generic error this
 feature removes.
 
-**Scope.** One workspace, which in v1 is the whole install: there is no organisation model yet, so
-`users.role = admin` is an operator role. When organisations arrive, `listMembers()` grows a
-membership join and nothing else about the panel changes — which is why the caps live on `users` and
-not in a settings blob.
+**Scope.** One workspace, which in v1 is the whole install: organisations are not enabled on the
+Clerk instance, so the admin role is an operator role rather than a per-tenant one. When
+organisations arrive, `currentRole()` reads `orgRole` instead and `listMembers()` grows a membership
+join — nothing else about the panel changes, which is why the caps live on `users` and not in a
+settings blob.
+
+**The role lives in Clerk**, as `publicMetadata.role`, and that is the only source of truth
+(`lib/admin/role.ts`). It is set in the Clerk dashboard, which is where the people who grant
+permissions already work, and it keeps the privileged bit with the identity rather than beside the
+usage counters. `users.role` is a **write-behind mirror**, refreshed whenever a request resolves a
+role and written by nothing else — it exists so SQL can reason about roles, never so it can decide
+anything. Both the gate and the member list read Clerk directly; the 403's "who can grant it" list
+reads Clerk too, because the mirror only refreshes when a person visits and an admin who hasn't
+signed in since being granted the role would otherwise be missing from exactly the screen that
+points at them.
+
+`pnpm grant:admin <clerk_user_id> [--revoke]` does the same thing from a terminal, for scripting a
+new environment or fixing an instance you can only reach over ssh. It writes Clerk, then nudges the
+mirror.
 
 **Identity.** Names and addresses come from Clerk at render time, never from us (N7). The panel reads
 usage counts from our tables and cannot read a member's profile, résumés, answers or postings — not
