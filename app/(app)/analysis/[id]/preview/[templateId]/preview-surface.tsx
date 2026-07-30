@@ -27,6 +27,42 @@ const PAPER = "#ffffff";
 const INK = "#201e1d";
 const QUIET = "#645c50";
 const RULE = "#dcd3c4";
+/** The tinted card behind the skills list in the creative family. */
+const CREATIVE_TINT = "#f7f4ef";
+
+/** `Qualification, Institution` — the order both renderers read them in. */
+function educationLine(e: RenderModel["education"][number]): string {
+  return [e.qualification, e.institution].filter(Boolean).join(", ");
+}
+
+/** The creative family's inline section label. */
+function Chip({
+  accent,
+  className,
+  children,
+}: {
+  accent: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`mb-4 inline-block rounded-[3px] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-white ${className ?? ""}`}
+      style={{ background: accent }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** The quiet label above a block in the creative family's right column. */
+function AsideLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-2 text-[10px] uppercase tracking-[0.14em]" style={{ color: QUIET }}>
+      {children}
+    </div>
+  );
+}
 
 export function PreviewSurface({
   model,
@@ -222,7 +258,7 @@ function Classic({ model, template, bullet }: LayoutProps) {
         <Section title="Education">
           {model.education.map((e, i) => (
             <div key={i} className="flex flex-wrap justify-between gap-2.5 text-[12.5px]">
-              <span>{[e.qualification, e.institution].filter(Boolean).join(", ")}</span>
+              <span>{educationLine(e)}</span>
               <span style={{ color: QUIET }}>{e.dates}</span>
             </div>
           ))}
@@ -293,7 +329,7 @@ function Sidebar({ model, template, bullet }: LayoutProps) {
 
         {model.skills.length > 0 ? (
           <RailBlock title="Skills">
-            {model.skills.slice(0, 12).map((s) => (
+            {model.skills.map((s) => (
               <div key={s}>{s}</div>
             ))}
           </RailBlock>
@@ -303,9 +339,17 @@ function Sidebar({ model, template, bullet }: LayoutProps) {
           <RailBlock title="Education">
             {model.education.map((e, i) => (
               <div key={i}>
-                {[e.qualification, e.institution].filter(Boolean).join(", ")}
+                {educationLine(e)}
                 {e.dates ? ` · ${e.dates}` : ""}
               </div>
+            ))}
+          </RailBlock>
+        ) : null}
+
+        {model.certifications.length > 0 ? (
+          <RailBlock title="Certifications">
+            {model.certifications.map((c) => (
+              <div key={c}>{c}</div>
             ))}
           </RailBlock>
         ) : null}
@@ -334,20 +378,64 @@ function Sidebar({ model, template, bullet }: LayoutProps) {
                   <div className="mb-1.5 text-[12px]" style={{ color: QUIET }}>
                     {[role.employer, role.location].filter(Boolean).join(" · ")}
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    {role.bullets.map((b, j) => (
-                      <div key={j} className="flex gap-2 text-[12.5px] leading-[1.55]">
-                        <span style={{ color: template.accent }}>•</span>
-                        <span>{bullet(b, j)}</span>
-                      </div>
-                    ))}
+                  <MarkedBullets
+                    items={role.bullets}
+                    accent={template.accent}
+                    bullet={bullet}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        {model.projects.length > 0 ? (
+          <>
+            <RailHeading accent={template.accent}>Projects</RailHeading>
+            <div className="flex flex-col gap-5">
+              {model.projects.map((p, i) => (
+                <div key={i}>
+                  <div className="flex flex-wrap items-baseline justify-between gap-2.5">
+                    <div className="text-[13.5px] font-bold">{p.name}</div>
+                    <div className="whitespace-nowrap text-[11px]" style={{ color: QUIET }}>
+                      {p.dates}
+                    </div>
                   </div>
+                  <MarkedBullets items={p.bullets} accent={template.accent} bullet={bullet} />
                 </div>
               ))}
             </div>
           </>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Bullets carrying a literal mark.
+ *
+ * The mark is tinted rather than dropped, in both renderers: a coloured bullet
+ * character still extracts as a list, an absent one doesn't. The rail and
+ * creative families would otherwise lose their list structure to styling.
+ */
+function MarkedBullets({
+  items,
+  accent,
+  bullet,
+}: {
+  items: string[];
+  accent: string;
+  bullet: BulletRenderer;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {items.map((b, j) => (
+        <div key={j} className="flex gap-2 text-[12.5px] leading-[1.55]">
+          <span style={{ color: accent }}>•</span>
+          <span>{bullet(b, j)}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -394,12 +482,7 @@ function Creative({ model, template, bullet }: LayoutProps) {
 
           {model.roles.length > 0 ? (
             <>
-              <div
-                className="mb-4 inline-block rounded-[3px] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-white"
-                style={{ background: template.accent }}
-              >
-                Experience
-              </div>
+              <Chip accent={template.accent}>Experience</Chip>
               <div className="flex flex-col gap-5">
                 {model.roles.map((role, i) => (
                   <div
@@ -411,13 +494,36 @@ function Creative({ model, template, bullet }: LayoutProps) {
                     <div className="mb-1.5 text-[12px]" style={{ color: QUIET }}>
                       {[role.employer, role.dates].filter(Boolean).join(" · ")}
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      {role.bullets.map((b, j) => (
-                        <div key={j} className="text-[12.5px] leading-[1.58]">
-                          {bullet(b, j)}
-                        </div>
-                      ))}
-                    </div>
+                    <MarkedBullets
+                      items={role.bullets}
+                      accent={template.accent}
+                      bullet={bullet}
+                    />
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : null}
+
+          {model.projects.length > 0 ? (
+            <>
+              <Chip accent={template.accent} className="mt-5">
+                Projects
+              </Chip>
+              <div className="flex flex-col gap-5">
+                {model.projects.map((p, i) => (
+                  <div
+                    key={i}
+                    className="pl-4"
+                    style={{ borderLeft: `2px solid ${template.accent}` }}
+                  >
+                    <div className="text-sm font-bold">{p.name}</div>
+                    {p.dates ? (
+                      <div className="mb-1.5 text-[12px]" style={{ color: QUIET }}>
+                        {p.dates}
+                      </div>
+                    ) : null}
+                    <MarkedBullets items={p.bullets} accent={template.accent} bullet={bullet} />
                   </div>
                 ))}
               </div>
@@ -427,15 +533,10 @@ function Creative({ model, template, bullet }: LayoutProps) {
 
         <div className="flex w-full shrink-0 flex-col gap-5 sm:w-[12.5rem]">
           {model.skills.length > 0 ? (
-            <div className="rounded-[14px] p-4" style={{ background: "#f7f4ef" }}>
-              <div
-                className="mb-2 text-[10px] uppercase tracking-[0.14em]"
-                style={{ color: QUIET }}
-              >
-                Skills
-              </div>
+            <div className="rounded-[12px] p-4" style={{ background: CREATIVE_TINT }}>
+              <AsideLabel>Skills</AsideLabel>
               <div className="flex flex-wrap gap-1.5">
-                {model.skills.slice(0, 12).map((s) => (
+                {model.skills.map((s) => (
                   <span
                     key={s}
                     className="rounded-[var(--radius-pill)] px-2.5 py-0.5 text-[11px]"
@@ -450,21 +551,27 @@ function Creative({ model, template, bullet }: LayoutProps) {
 
           {model.education.length > 0 ? (
             <div>
-              <div
-                className="mb-2 text-[10px] uppercase tracking-[0.14em]"
-                style={{ color: QUIET }}
-              >
-                Education
-              </div>
+              <AsideLabel>Education</AsideLabel>
               {model.education.map((e, i) => (
-                <div key={i} className="text-[12px] leading-[1.55]">
-                  {[e.qualification, e.institution].filter(Boolean).join(", ")}
+                <div key={i} className="mb-1.5 text-[12px] leading-[1.55]">
+                  {educationLine(e)}
                   {e.dates ? (
                     <>
                       <br />
                       <span style={{ color: QUIET }}>{e.dates}</span>
                     </>
                   ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {model.certifications.length > 0 ? (
+            <div>
+              <AsideLabel>Certifications</AsideLabel>
+              {model.certifications.map((c) => (
+                <div key={c} className="mb-1 text-[12px] leading-[1.55]">
+                  {c}
                 </div>
               ))}
             </div>

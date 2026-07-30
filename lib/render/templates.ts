@@ -28,8 +28,16 @@ export interface TemplateDef {
   structuralFlags: StructuralFlags;
 }
 
-const SANS = "Figtree, system-ui, sans-serif";
-const SERIF = 'Georgia, "Times New Roman", serif';
+/**
+ * These stacks name the faces the PDF renderer actually has.
+ *
+ * `@react-pdf/renderer` ships the PDF base-14 — Helvetica and Times-Roman — and
+ * registering a webfont would mean fetching it on every render. So the on-screen
+ * preview asks for the same two faces rather than the brand's Figtree: a preview
+ * set in a typeface the download can't use is a preview that lies about it.
+ */
+const SANS = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+const SERIF = '"Times New Roman", Times, serif';
 
 const ALL_CLEAN: StructuralFlags = {
   singleColumnBody: true,

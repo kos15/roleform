@@ -18,6 +18,18 @@ import { templateById, type TemplateDef } from "../templates";
  * Text is real text throughout, so select-all highlights every character
  * (M6.8). No icons or graphics carry information — where a creative template
  * shows a mark, the same fact is also present as words.
+ *
+ * ── This file and `preview-surface.tsx` are one design in two renderers ──
+ *
+ * The on-screen preview promises the user what they are about to download, so
+ * the two have to agree on structure: same header shape, same section order,
+ * same rail on the same side, same accent doing the same job. They agree on
+ * ratios rather than pixels — this renderer works in points on A4 and scales
+ * every value off the body size so the density loop below can compress a
+ * document without redesigning it.
+ *
+ * If you change a layout here, change it there. A preview that lies about the
+ * download is worse than a plain one.
  */
 
 /**
@@ -26,6 +38,21 @@ import { templateById, type TemplateDef } from "../templates";
  * corrupts the one field a recruiter copies out of the document.
  */
 Font.registerHyphenationCallback((word) => [word]);
+
+/**
+ * The document's own ink. Not organic tokens: a résumé is the user's document
+ * going to a stranger, not a Roleform surface (CLAUDE.md §9). These are the same
+ * four values `preview-surface.tsx` uses, for the same reason.
+ */
+const INK = "#201e1d";
+const QUIET = "#645c50";
+const RULE = "#dcd3c4";
+const PAPER = "#ffffff";
+/** The tinted card behind the skills list in the creative family. */
+const CREATIVE_TINT = "#f7f4ef";
+
+/** Rail width, shared by the renderer and the preview's `sm:w-[32%]`. */
+const RAIL_WIDTH = "32%";
 
 /**
  * Density presets, tried in order until the document fits one page.
@@ -58,71 +85,214 @@ type Styles = ReturnType<typeof makeStyles>;
  * that DECLARES it, then inherits the result as an absolute value. The page
  * declares 1.45 at body size, so every descendant inherits that same absolute
  * line box — and any text set larger than the body then overlaps the line under
- * it. The name is 2× body size, so it must carry its own `lineHeight`.
+ * it. Anything set larger than the body must carry its own `lineHeight`.
  */
-function makeStyles(d: Density) {
+function makeStyles(d: Density, serif = false) {
   const f = d.font / 9.6;
   const g = d.gap;
+  // Broadsheet's serif is the template, not a theme. Both faces have to swap
+  // together: a Times body under Helvetica headings reads as a bug, which is
+  // exactly what it was.
+  const BODY = serif ? "Times-Roman" : "Helvetica";
+  const BOLD = serif ? "Times-Bold" : "Helvetica-Bold";
+  const size = serif ? d.font * 1.06 : d.font;
+  const leading = serif ? 1.5 : 1.45;
 
   return StyleSheet.create({
     page: {
       paddingTop: d.pad,
       paddingBottom: d.pad,
       paddingHorizontal: d.side,
-      fontSize: d.font,
-      lineHeight: 1.45,
-      fontFamily: "Helvetica",
-      color: "#1a1a1a",
+      fontSize: size,
+      lineHeight: leading,
+      fontFamily: BODY,
+      color: INK,
+      backgroundColor: PAPER,
     },
-    name: { fontSize: 20 * f, lineHeight: 1.15, fontFamily: "Helvetica-Bold", marginBottom: 2 * g },
-    headline: { fontSize: 10.5 * f, lineHeight: 1.3, marginBottom: 4 * g },
-    contact: { fontSize: 9 * f, lineHeight: 1.3, marginBottom: 14 * g },
-    sectionTitle: {
-      fontSize: 10 * f,
-      lineHeight: 1.25,
-      fontFamily: "Helvetica-Bold",
+    /** Sidebar and creative bleed their colour to the paper edge. */
+    pageBleed: {
+      paddingTop: 0,
+      paddingBottom: 0,
+      paddingHorizontal: 0,
+      fontSize: size,
+      lineHeight: leading,
+      fontFamily: BODY,
+      color: INK,
+      backgroundColor: PAPER,
+    },
+
+    /* ── the centred classic header ── */
+    centred: { textAlign: "center" },
+    nameLarge: {
+      fontSize: (serif ? 23 : 21) * f,
+      lineHeight: 1.15,
+      fontFamily: BOLD,
+      letterSpacing: -0.2,
+    },
+    headlineCaps: {
+      fontSize: 9.4 * f,
+      lineHeight: 1.3,
+      letterSpacing: 1.1,
       textTransform: "uppercase",
-      letterSpacing: 1,
-      marginTop: 14 * g,
-      marginBottom: 6 * g,
+      color: QUIET,
+      marginTop: 4 * g,
     },
-    roleHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 1 * g },
+    contactRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      marginTop: 6 * g,
+    },
+    contactItem: { fontSize: 8.8 * f, lineHeight: 1.3, color: QUIET, marginHorizontal: 6 },
+    /** 2pt in the template's accent — the classic family's one graphic move. */
+    headerRule: { borderBottomWidth: 2, marginTop: 10 * g },
+
+    /* ── sections ── */
+    section: { marginTop: 14 * g },
+    sectionTitle: {
+      fontSize: 8.6 * f,
+      lineHeight: 1.25,
+      fontFamily: BOLD,
+      textTransform: "uppercase",
+      letterSpacing: 1.5,
+    },
+    sectionRule: { borderBottomWidth: 0.8, borderBottomColor: RULE, marginTop: 5 * g },
+    sectionBody: { marginTop: 9 * g },
+
+    /* ── roles, projects, education ── */
+    roleHeader: { flexDirection: "row", justifyContent: "space-between" },
     // flex/flexShrink, not just space-between: in a narrow rail a long employer
     // name would otherwise lay out under its own dates.
-    roleTitle: { fontSize: 10.4 * f, lineHeight: 1.25, fontFamily: "Helvetica-Bold", flex: 1, paddingRight: 6 },
-    roleMeta: { fontSize: 9 * f, lineHeight: 1.3 },
-    roleDates: { fontSize: 9 * f, lineHeight: 1.3, flexShrink: 0, textAlign: "right" },
-    bulletRow: { flexDirection: "row", marginBottom: 2.5 * g, paddingRight: 6 },
-    bulletMark: { width: 10 },
-    bulletText: { flex: 1 },
-    block: { marginBottom: 9 * g },
-    rule: { borderBottomWidth: 0.8, marginBottom: 6 * g, marginTop: 1 * g },
-    columns: { flexDirection: "row" },
-    rail: { width: "31%", paddingRight: 14 },
-    main: { flex: 1 },
-    railRight: { width: "28%", paddingLeft: 14 },
-    band: { paddingVertical: 4 * g, paddingHorizontal: 8, marginTop: 14 * g, marginBottom: 6 * g },
-    bandText: {
-      fontSize: 10 * f,
+    roleTitle: {
+      fontSize: 10.2 * f,
       lineHeight: 1.25,
-      fontFamily: "Helvetica-Bold",
-      textTransform: "uppercase",
-      letterSpacing: 1,
-      color: "#ffffff",
+      fontFamily: BOLD,
+      flex: 1,
+      paddingRight: 6,
     },
-    listItem: { marginBottom: 1.5 * g },
+    roleMeta: { fontSize: 8.8 * f, lineHeight: 1.3, color: QUIET, marginTop: 1 * g },
+    roleDates: {
+      fontSize: 8.8 * f,
+      lineHeight: 1.3,
+      color: QUIET,
+      flexShrink: 0,
+      textAlign: "right",
+    },
+    roleBullets: { marginTop: 4 * g },
+    block: { marginBottom: 11 * g },
     eduItem: { marginBottom: 5 * g },
-    roleBullets: { marginTop: 3 * g },
+
+    bulletRow: { flexDirection: "row", marginBottom: 2.5 * g, paddingRight: 6 },
+    bulletMark: { width: 9 },
+    bulletText: { flex: 1 },
+
+    /* ── sidebar rail ── */
+    columns: { flexDirection: "row" },
+    railBg: { position: "absolute", top: 0, bottom: 0, width: RAIL_WIDTH },
+    rail: { width: RAIL_WIDTH, paddingVertical: 30, paddingHorizontal: 22 },
+    railName: { fontSize: 17 * f, lineHeight: 1.15, fontFamily: BOLD, color: PAPER },
+    railHeadline: { fontSize: 8.8 * f, lineHeight: 1.35, color: "rgba(255,255,255,0.85)", marginTop: 3 * g },
+    railLabel: {
+      fontSize: 7.6 * f,
+      lineHeight: 1.25,
+      letterSpacing: 1.3,
+      textTransform: "uppercase",
+      color: "rgba(255,255,255,0.7)",
+      marginBottom: 5 * g,
+    },
+    railText: { fontSize: 8.4 * f, lineHeight: 1.45, color: "rgba(255,255,255,0.92)" },
+    railBlock: { marginTop: 18 * g },
+    main: { flex: 1, paddingVertical: 30, paddingHorizontal: 26 },
+    /** The rail already names the section; the body labels its own in accent. */
+    mainLabel: {
+      fontSize: 7.6 * f,
+      lineHeight: 1.25,
+      letterSpacing: 1.3,
+      textTransform: "uppercase",
+      marginBottom: 7 * g,
+    },
+
+    /* ── creative band ── */
+    band: { paddingTop: 32, paddingBottom: 26, paddingHorizontal: 38 },
+    bandName: {
+      fontSize: 25 * f,
+      lineHeight: 1.08,
+      fontFamily: BOLD,
+      letterSpacing: -0.4,
+      color: PAPER,
+    },
+    bandHeadline: { fontSize: 10.5 * f, lineHeight: 1.3, color: "rgba(255,255,255,0.9)", marginTop: 6 * g },
+    bandContactRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 9 * g },
+    bandContactItem: { fontSize: 8.8 * f, lineHeight: 1.3, color: "rgba(255,255,255,0.85)", marginRight: 12 },
+    creativeBody: { flexDirection: "row", paddingTop: 20, paddingBottom: 32, paddingHorizontal: 38 },
+    creativeMain: { flex: 1, paddingRight: 18 },
+    creativeAside: { width: "30%" },
+    lede: { fontSize: 10 * f, lineHeight: 1.55, fontFamily: BOLD, marginBottom: 16 * g },
+    /** An inline chip rather than a full-width band — the design's own choice. */
+    chip: {
+      alignSelf: "flex-start",
+      borderRadius: 3,
+      paddingVertical: 3,
+      paddingHorizontal: 8,
+      marginBottom: 12 * g,
+    },
+    chipText: {
+      fontSize: 7.6 * f,
+      lineHeight: 1.25,
+      letterSpacing: 1.3,
+      textTransform: "uppercase",
+      color: PAPER,
+    },
+    /** Roles hang off an accent rule instead of sitting under a heading. */
+    creativeRole: { borderLeftWidth: 2, paddingLeft: 11, marginBottom: 13 * g },
+    /**
+     * The same title, without `flex: 1`.
+     *
+     * `roleTitle` is sized to share a row with its dates. Here the title and the
+     * meta line stack, and a flexed Text in a column container collapses to zero
+     * height — the meta line then draws straight over the title.
+     */
+    creativeRoleTitle: {
+      fontSize: 10.2 * f,
+      lineHeight: 1.25,
+      fontFamily: BOLD,
+    },
+    tintCard: { backgroundColor: CREATIVE_TINT, borderRadius: 12, padding: 12, marginBottom: 16 * g },
+    asideLabel: {
+      fontSize: 7.6 * f,
+      lineHeight: 1.25,
+      letterSpacing: 1.3,
+      textTransform: "uppercase",
+      color: QUIET,
+      marginBottom: 7 * g,
+    },
+    pillRow: { flexDirection: "row", flexWrap: "wrap" },
+    pill: {
+      backgroundColor: PAPER,
+      borderRadius: 999,
+      paddingVertical: 2,
+      paddingHorizontal: 7,
+      marginRight: 4,
+      marginBottom: 4,
+    },
+    pillText: { fontSize: 8 * f, lineHeight: 1.3 },
+    asideText: { fontSize: 8.6 * f, lineHeight: 1.45 },
+    asideItem: { marginBottom: 6 * g },
+    listItem: { marginBottom: 1.5 * g },
   });
 }
 
-function Bullets({ st, items }: { st: Styles; items: string[] }) {
+/* ── shared pieces ───────────────────────────────────────────────────────── */
+
+function Bullets({ st, items, accent }: { st: Styles; items: string[]; accent?: string }) {
   return (
     <>
       {items.map((text, i) => (
         <View key={i} style={st.bulletRow}>
-          {/* A literal bullet character, so extraction keeps the list structure. */}
-          <Text style={st.bulletMark}>•</Text>
+          {/* A literal bullet character, so extraction keeps the list structure.
+              The creative family tints it rather than dropping it — a coloured
+              mark still extracts, an absent one loses the list. */}
+          <Text style={accent ? [st.bulletMark, { color: accent }] : st.bulletMark}>•</Text>
           <Text style={st.bulletText}>{text}</Text>
         </View>
       ))}
@@ -130,161 +300,161 @@ function Bullets({ st, items }: { st: Styles; items: string[] }) {
   );
 }
 
-function Heading({ st, children, accent }: { st: Styles; children: string; accent: string }) {
+/** The classic family's section heading: black caps over a hairline rule. */
+function Section({
+  st,
+  title,
+  ruled = true,
+  children,
+}: {
+  st: Styles;
+  title: string;
+  ruled?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <View>
-      <Text style={[st.sectionTitle, { color: accent }]}>{children}</Text>
-      <View style={[st.rule, { borderBottomColor: accent }]} />
+    <View style={st.section}>
+      <Text style={st.sectionTitle}>{title}</Text>
+      {ruled ? <View style={st.sectionRule} /> : null}
+      <View style={st.sectionBody}>{children}</View>
     </View>
   );
 }
 
-function BandHeading({ st, children, accent }: { st: Styles; children: string; accent: string }) {
-  return (
-    <View style={[st.band, { backgroundColor: accent }]}>
-      <Text style={st.bandText}>{children}</Text>
-    </View>
-  );
-}
-
-function Experience({
+function RoleList({
   st,
   model,
   accent,
-  band,
+  withEmployerInTitle,
 }: {
   st: Styles;
   model: RenderModel;
-  accent: string;
-  band?: boolean;
+  accent?: string;
+  /** Classic runs "Position, Employer" on one line; the rail families don't. */
+  withEmployerInTitle?: boolean;
 }) {
-  const H = band ? BandHeading : Heading;
   return (
     <>
-      {model.roles.length > 0 && (
-        <>
-          <H st={st} accent={accent}>{SECTION_HEADINGS[1]}</H>
-          {model.roles.map((role, i) => (
-            <View key={i} style={st.block} wrap={false}>
-              <View style={st.roleHeader}>
-                <Text style={st.roleTitle}>{role.position}</Text>
-                <Text style={st.roleDates}>{role.dates}</Text>
-              </View>
-              <Text style={st.roleMeta}>
-                {[role.employer, role.location].filter(Boolean).join(" · ")}
-              </Text>
-              <View style={st.roleBullets}>
-                <Bullets st={st} items={role.bullets} />
-              </View>
-            </View>
-          ))}
-        </>
-      )}
-
-      {model.projects.length > 0 && (
-        <>
-          <H st={st} accent={accent}>{SECTION_HEADINGS[2]}</H>
-          {model.projects.map((project, i) => (
-            <View key={i} style={st.block} wrap={false}>
-              <View style={st.roleHeader}>
-                <Text style={st.roleTitle}>{project.name}</Text>
-                <Text style={st.roleDates}>{project.dates}</Text>
-              </View>
-              {project.description ? <Text style={st.roleMeta}>{project.description}</Text> : null}
-              <View style={st.roleBullets}>
-                <Bullets st={st} items={project.bullets} />
-              </View>
-            </View>
-          ))}
-        </>
-      )}
-    </>
-  );
-}
-
-function EducationBlock({
-  st,
-  model,
-  accent,
-  band,
-}: {
-  st: Styles;
-  model: RenderModel;
-  accent: string;
-  band?: boolean;
-}) {
-  if (model.education.length === 0) return null;
-  const H = band ? BandHeading : Heading;
-  return (
-    <>
-      <H st={st} accent={accent}>{SECTION_HEADINGS[3]}</H>
-      {model.education.map((e, i) => (
-        <View key={i} style={st.eduItem}>
+      {model.roles.map((role, i) => (
+        <View key={i} style={st.block} wrap={false}>
           <View style={st.roleHeader}>
-            <Text style={st.roleTitle}>{e.institution}</Text>
-            <Text style={st.roleDates}>{e.dates}</Text>
+            <Text style={st.roleTitle}>
+              {withEmployerInTitle && role.employer
+                ? `${role.position}, ${role.employer}`
+                : role.position}
+            </Text>
+            <Text style={st.roleDates}>{role.dates}</Text>
           </View>
-          {e.qualification ? <Text style={st.roleMeta}>{e.qualification}</Text> : null}
+          {withEmployerInTitle ? null : (
+            <Text style={st.roleMeta}>
+              {[role.employer, role.location].filter(Boolean).join(" · ")}
+            </Text>
+          )}
+          <View style={st.roleBullets}>
+            <Bullets st={st} items={role.bullets} accent={accent} />
+          </View>
         </View>
       ))}
     </>
   );
 }
 
+function ProjectList({ st, model, accent }: { st: Styles; model: RenderModel; accent?: string }) {
+  return (
+    <>
+      {model.projects.map((project, i) => (
+        <View key={i} style={st.block} wrap={false}>
+          <View style={st.roleHeader}>
+            <Text style={st.roleTitle}>{project.name}</Text>
+            <Text style={st.roleDates}>{project.dates}</Text>
+          </View>
+          {project.description ? <Text style={st.roleMeta}>{project.description}</Text> : null}
+          <View style={st.roleBullets}>
+            <Bullets st={st} items={project.bullets} accent={accent} />
+          </View>
+        </View>
+      ))}
+    </>
+  );
+}
+
+/** `Qualification, Institution` — the order the preview reads them in. */
+function educationLine(e: RenderModel["education"][number]): string {
+  return [e.qualification, e.institution].filter(Boolean).join(", ");
+}
+
 /* ------------------------------------------------------------ classic family */
 
 function ClassicDoc({
   st,
-  density,
   model,
   template,
 }: {
   st: Styles;
-  density: Density;
   model: RenderModel;
   template: TemplateDef;
 }) {
-  const serif = template.id === "broadsheet";
   const accent = template.accent;
-  const f = density.font / 9.6;
+
   return (
     <Document title={`${model.name} — ${template.name}`} author={model.name}>
-      <Page
-        size="A4"
-        style={[
-          st.page,
-          serif ? { fontFamily: "Times-Roman", fontSize: 10.2 * f, lineHeight: 1.5 } : {},
-        ]}
-      >
-        <Text style={[st.name, serif ? { fontFamily: "Times-Bold", fontSize: 22 * f } : {}]}>
-          {model.name}
-        </Text>
-        {model.headline ? <Text style={st.headline}>{model.headline}</Text> : null}
-        <Text style={st.contact}>{model.contactLine}</Text>
+      <Page size="A4" style={st.page}>
+        <View style={st.centred}>
+          {/* The serif family and its leading come from the stylesheet, which was
+              built with `serif` — nothing about the layout below differs. */}
+          <Text style={st.nameLarge}>{model.name}</Text>
+          {model.headline ? <Text style={st.headlineCaps}>{model.headline}</Text> : null}
+          {/* Contact as body text, one item per Text node, never graphics (F9). */}
+          <View style={st.contactRow}>
+            {model.contactParts.map((part) => (
+              <Text key={part} style={st.contactItem}>
+                {part}
+              </Text>
+            ))}
+          </View>
+        </View>
+        <View style={[st.headerRule, { borderBottomColor: accent }]} />
 
         {model.summary ? (
-          <>
-            <Heading st={st} accent={accent}>{SECTION_HEADINGS[0]}</Heading>
-            <Text style={st.block}>{model.summary}</Text>
-          </>
+          <Section st={st} title={SECTION_HEADINGS[0]} ruled={false}>
+            <Text>{model.summary}</Text>
+          </Section>
         ) : null}
 
-        <Experience st={st} model={model} accent={accent} />
-        <EducationBlock st={st} model={model} accent={accent} />
+        {model.roles.length > 0 ? (
+          <Section st={st} title={SECTION_HEADINGS[1]}>
+            <RoleList st={st} model={model} withEmployerInTitle />
+          </Section>
+        ) : null}
 
-        {model.skills.length > 0 && (
-          <>
-            <Heading st={st} accent={accent}>{SECTION_HEADINGS[4]}</Heading>
-            <Text style={st.block}>{model.skills.join(" · ")}</Text>
-          </>
-        )}
+        {model.projects.length > 0 ? (
+          <Section st={st} title={SECTION_HEADINGS[2]}>
+            <ProjectList st={st} model={model} />
+          </Section>
+        ) : null}
 
-        {model.certifications.length > 0 && (
-          <>
-            <Heading st={st} accent={accent}>{SECTION_HEADINGS[5]}</Heading>
-            <Bullets st={st} items={model.certifications} />
-          </>
-        )}
+        {model.skills.length > 0 ? (
+          <Section st={st} title={SECTION_HEADINGS[4]}>
+            <Text>{model.skills.join(" · ")}</Text>
+          </Section>
+        ) : null}
+
+        {model.education.length > 0 ? (
+          <Section st={st} title={SECTION_HEADINGS[3]}>
+            {model.education.map((e, i) => (
+              <View key={i} style={st.roleHeader}>
+                <Text style={st.roleTitle}>{educationLine(e)}</Text>
+                <Text style={st.roleDates}>{e.dates}</Text>
+              </View>
+            ))}
+          </Section>
+        ) : null}
+
+        {model.certifications.length > 0 ? (
+          <Section st={st} title={SECTION_HEADINGS[5]}>
+            <Text>{model.certifications.join(" · ")}</Text>
+          </Section>
+        ) : null}
       </Page>
     </Document>
   );
@@ -302,35 +472,58 @@ function SidebarDoc({
   template: TemplateDef;
 }) {
   const accent = template.accent;
-  const railRight = template.id === "margin-note";
+  const railRight = template.rail === "right";
 
   const rail = (
-    <View style={railRight ? st.railRight : st.rail}>
-      <Text style={[st.sectionTitle, { color: accent, marginTop: 0 }]}>Contact</Text>
-      {/* Body text, not graphics — the rail is a layout choice, not an icon set. */}
-      <Text style={{ marginBottom: 10 }}>{model.contactLine}</Text>
+    <View style={st.rail}>
+      <View>
+        <Text style={st.railName}>{model.name}</Text>
+        {model.headline ? <Text style={st.railHeadline}>{model.headline}</Text> : null}
+      </View>
 
-      {model.skills.length > 0 && (
-        <>
-          <Text style={[st.sectionTitle, { color: accent }]}>{SECTION_HEADINGS[4]}</Text>
+      <View style={st.railBlock}>
+        <Text style={st.railLabel}>Contact</Text>
+        {/* Body text, not graphics — the rail is a layout choice, not an icon set. */}
+        {model.contactParts.map((part) => (
+          <Text key={part} style={st.railText}>
+            {part}
+          </Text>
+        ))}
+      </View>
+
+      {model.skills.length > 0 ? (
+        <View style={st.railBlock}>
+          <Text style={st.railLabel}>{SECTION_HEADINGS[4]}</Text>
           {model.skills.map((s, i) => (
-            <Text key={i} style={st.listItem}>
+            <Text key={i} style={st.railText}>
               {s}
             </Text>
           ))}
-        </>
-      )}
+        </View>
+      ) : null}
 
-      {model.certifications.length > 0 && (
-        <>
-          <Text style={[st.sectionTitle, { color: accent }]}>{SECTION_HEADINGS[5]}</Text>
+      {model.education.length > 0 ? (
+        <View style={st.railBlock}>
+          <Text style={st.railLabel}>{SECTION_HEADINGS[3]}</Text>
+          {model.education.map((e, i) => (
+            <Text key={i} style={st.railText}>
+              {educationLine(e)}
+              {e.dates ? ` · ${e.dates}` : ""}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+
+      {model.certifications.length > 0 ? (
+        <View style={st.railBlock}>
+          <Text style={st.railLabel}>{SECTION_HEADINGS[5]}</Text>
           {model.certifications.map((c, i) => (
-            <Text key={i} style={st.listItem}>
+            <Text key={i} style={st.railText}>
               {c}
             </Text>
           ))}
-        </>
-      )}
+        </View>
+      ) : null}
     </View>
   );
 
@@ -338,21 +531,41 @@ function SidebarDoc({
     <View style={st.main}>
       {model.summary ? (
         <>
-          <Heading st={st} accent={accent}>{SECTION_HEADINGS[0]}</Heading>
+          <Text style={[st.mainLabel, { color: accent }]}>{SECTION_HEADINGS[0]}</Text>
           <Text style={st.block}>{model.summary}</Text>
         </>
       ) : null}
-      <Experience st={st} model={model} accent={accent} />
-      <EducationBlock st={st} model={model} accent={accent} />
+
+      {model.roles.length > 0 ? (
+        <>
+          <Text style={[st.mainLabel, { color: accent }]}>{SECTION_HEADINGS[1]}</Text>
+          <RoleList st={st} model={model} accent={accent} />
+        </>
+      ) : null}
+
+      {model.projects.length > 0 ? (
+        <>
+          <Text style={[st.mainLabel, { color: accent }]}>{SECTION_HEADINGS[2]}</Text>
+          <ProjectList st={st} model={model} accent={accent} />
+        </>
+      ) : null}
     </View>
   );
 
   return (
     <Document title={`${model.name} — ${template.name}`} author={model.name}>
-      <Page size="A4" style={st.page}>
-        <Text style={[st.name, { color: accent }]}>{model.name}</Text>
-        {model.headline ? <Text style={st.headline}>{model.headline}</Text> : null}
-        <View style={[st.rule, { borderBottomColor: accent, marginBottom: 12 }]} />
+      <Page size="A4" style={st.pageBleed}>
+        {/* The rail's colour is a full-height absolute layer, `fixed` so it
+            repeats if the document runs to a second page. A coloured View in
+            normal flow would only be as tall as the text inside it. */}
+        <View
+          fixed
+          style={[
+            st.railBg,
+            { backgroundColor: accent },
+            railRight ? { right: 0 } : { left: 0 },
+          ]}
+        />
         <View style={st.columns}>
           {railRight ? (
             <>
@@ -375,80 +588,118 @@ function SidebarDoc({
 
 function CreativeDoc({
   st,
-  density,
   model,
   template,
 }: {
   st: Styles;
-  density: Density;
   model: RenderModel;
   template: TemplateDef;
 }) {
   const accent = template.accent;
-  const editorial = template.id === "kite";
-  const f = density.font / 9.6;
 
   return (
     <Document title={`${model.name} — ${template.name}`} author={model.name}>
-      <Page size="A4" style={[st.page, { paddingTop: 0, paddingHorizontal: 0 }]}>
-        <View
-          style={{
-            backgroundColor: editorial ? accent : "#f4f4f2",
-            paddingVertical: (editorial ? 26 : 22) * density.gap,
-            paddingHorizontal: density.side,
-            marginBottom: 8 * density.gap,
-          }}
-        >
-          <Text style={[st.name, { fontSize: 24 * f, color: editorial ? "#ffffff" : accent }]}>
-            {model.name}
-          </Text>
-          {model.headline ? (
-            <Text style={[st.headline, { color: editorial ? "#f2e8e2" : "#333" }]}>
-              {model.headline}
-            </Text>
-          ) : null}
+      <Page size="A4" style={st.pageBleed}>
+        <View style={[st.band, { backgroundColor: accent }]}>
+          <Text style={st.bandName}>{model.name}</Text>
+          {model.headline ? <Text style={st.bandHeadline}>{model.headline}</Text> : null}
           {/* Contact repeated as words even where the design implies icons — no
               information is carried by a glyph alone. */}
-          <Text style={[st.contact, { marginBottom: 0, color: editorial ? "#f2e8e2" : "#333" }]}>
-            {model.contactLine}
-          </Text>
+          <View style={st.bandContactRow}>
+            {model.contactParts.map((part) => (
+              <Text key={part} style={st.bandContactItem}>
+                {part}
+              </Text>
+            ))}
+          </View>
         </View>
 
-        <View style={{ paddingHorizontal: density.side }}>
-          {model.summary ? (
-            <>
-              <BandHeading st={st} accent={accent}>{SECTION_HEADINGS[0]}</BandHeading>
-              <Text style={st.block}>{model.summary}</Text>
-            </>
-          ) : null}
+        <View style={st.creativeBody}>
+          <View style={st.creativeMain}>
+            {/* No heading over the summary: in this family it is the lede. */}
+            {model.summary ? <Text style={st.lede}>{model.summary}</Text> : null}
 
-          <View style={st.columns}>
-            <View style={{ flex: 1, paddingRight: 16 }}>
-              <Experience st={st} model={model} accent={accent} band />
-            </View>
-            <View style={{ width: "30%" }}>
-              {model.skills.length > 0 && (
-                <>
-                  <BandHeading st={st} accent={accent}>{SECTION_HEADINGS[4]}</BandHeading>
+            {model.roles.length > 0 ? (
+              <>
+                <View style={[st.chip, { backgroundColor: accent }]}>
+                  <Text style={st.chipText}>{SECTION_HEADINGS[1]}</Text>
+                </View>
+                {model.roles.map((role, i) => (
+                  <View
+                    key={i}
+                    style={[st.creativeRole, { borderLeftColor: accent }]}
+                    wrap={false}
+                  >
+                    <Text style={st.creativeRoleTitle}>{role.position}</Text>
+                    <Text style={st.roleMeta}>
+                      {[role.employer, role.dates].filter(Boolean).join(" · ")}
+                    </Text>
+                    <View style={st.roleBullets}>
+                      <Bullets st={st} items={role.bullets} accent={accent} />
+                    </View>
+                  </View>
+                ))}
+              </>
+            ) : null}
+
+            {model.projects.length > 0 ? (
+              <>
+                <View style={[st.chip, { backgroundColor: accent }]}>
+                  <Text style={st.chipText}>{SECTION_HEADINGS[2]}</Text>
+                </View>
+                {model.projects.map((project, i) => (
+                  <View
+                    key={i}
+                    style={[st.creativeRole, { borderLeftColor: accent }]}
+                    wrap={false}
+                  >
+                    <Text style={st.creativeRoleTitle}>{project.name}</Text>
+                    {project.dates ? <Text style={st.roleMeta}>{project.dates}</Text> : null}
+                    <View style={st.roleBullets}>
+                      <Bullets st={st} items={project.bullets} accent={accent} />
+                    </View>
+                  </View>
+                ))}
+              </>
+            ) : null}
+          </View>
+
+          <View style={st.creativeAside}>
+            {model.skills.length > 0 ? (
+              <View style={st.tintCard}>
+                <Text style={st.asideLabel}>{SECTION_HEADINGS[4]}</Text>
+                <View style={st.pillRow}>
                   {model.skills.map((s, i) => (
-                    <Text key={i} style={st.listItem}>
-                      {s}
-                    </Text>
+                    <View key={i} style={st.pill}>
+                      <Text style={st.pillText}>{s}</Text>
+                    </View>
                   ))}
-                </>
-              )}
-              <EducationBlock st={st} model={model} accent={accent} band />
-              {model.certifications.length > 0 && (
-                <>
-                  <BandHeading st={st} accent={accent}>{SECTION_HEADINGS[5]}</BandHeading>
-                  {model.certifications.map((c, i) => (
-                    <Text key={i} style={st.listItem}>
-                      {c}
-                    </Text>
-                  ))}
-                </>
-              )}
-            </View>
+                </View>
+              </View>
+            ) : null}
+
+            {model.education.length > 0 ? (
+              <View style={st.asideItem}>
+                <Text style={st.asideLabel}>{SECTION_HEADINGS[3]}</Text>
+                {model.education.map((e, i) => (
+                  <View key={i} style={st.asideItem}>
+                    <Text style={st.asideText}>{educationLine(e)}</Text>
+                    {e.dates ? <Text style={[st.asideText, { color: QUIET }]}>{e.dates}</Text> : null}
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {model.certifications.length > 0 ? (
+              <View style={st.asideItem}>
+                <Text style={st.asideLabel}>{SECTION_HEADINGS[5]}</Text>
+                {model.certifications.map((c, i) => (
+                  <Text key={i} style={[st.asideText, st.listItem]}>
+                    {c}
+                  </Text>
+                ))}
+              </View>
+            ) : null}
           </View>
         </View>
       </Page>
@@ -467,11 +718,13 @@ export function ResumeDocument({
 }): React.ReactElement {
   const template = templateById(templateId);
   if (!template) throw new Error(`unknown template: ${templateId}`);
-  const st = makeStyles(density);
+  // Broadsheet is the one template whose typeface is part of its identity, so the
+  // stylesheet is built for it rather than patched at the usage site.
+  const st = makeStyles(density, template.id === "broadsheet");
   if (template.kind === "classic")
-    return <ClassicDoc st={st} density={density} model={model} template={template} />;
+    return <ClassicDoc st={st} model={model} template={template} />;
   if (template.kind === "sidebar") return <SidebarDoc st={st} model={model} template={template} />;
-  return <CreativeDoc st={st} density={density} model={model} template={template} />;
+  return <CreativeDoc st={st} model={model} template={template} />;
 }
 
 /**

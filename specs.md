@@ -512,10 +512,32 @@ extraction.
 **Download all** — 6 × 2 zipped to `exports/{user}/{analysis}/all.zip`, served via `files.koustubh.org`.
 Filenames `Firstname-Lastname-Company-Role-Template.docx`.
 
+**The PDF and the preview are one design in two renderers.** `lib/render/pdf/index.tsx` and
+`preview-surface.tsx` must agree on structure — same header shape, same section order, same rail on the
+same side, same accent doing the same job. They agree on *ratios*, not pixels: the PDF works in points
+on A4 and scales every value off the body size so the density loop can compress a document without
+redesigning it. Change a layout in one, change it in the other; a preview that lies about the download
+is worse than a plain one.
+
+Two consequences worth stating, because both were bugs:
+
+- **Typefaces are the ones the PDF actually has.** react-pdf ships the PDF base-14, and registering a
+  webfont would mean fetching it per render. So `fontStack` names Helvetica and Times, not the brand's
+  Figtree — a preview set in a face the download can't use is a preview that lies. Broadsheet's serif
+  swaps the *whole* stylesheet, body and bold together.
+- **Neither renderer hides content.** No truncated skill lists, no dropped certifications. If a section
+  fits one surface it appears on both; the density loop is what handles length, not omission.
+- **The list mark is a literal character in every family**, tinted rather than dropped where the design
+  styles bullets away. A coloured `•` still extracts as a list; an absent one loses the structure.
+
+DOCX is deliberately not held to this. It is the *parseable* artifact — named paragraph styles, no rail,
+no colour band — and matching the PDF's layout would cost it the thing it is for.
+
 **Acceptance**
 - PDF text is selectable (select-all highlights every character).
 - DOCX opens in Word and Google Docs with styles intact, no repair prompt.
 - Round-trip (§12) recovers ≥95% of fields.
+- Every template's PDF and on-screen preview show the same sections in the same order.
 
 ### F10 — History
 
