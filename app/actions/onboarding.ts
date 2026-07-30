@@ -7,8 +7,12 @@ import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { extractText, MAX_UPLOAD_BYTES } from "@/lib/extract/text";
 import { extractProfile as extractProfileAi } from "@/lib/ai/extract-profile";
 import { BUCKET_RESUMES, resumePath, uploadObject } from "@/lib/supabase/storage";
-import { commitProfile as commitProfileDb } from "@/lib/db/queries/profile";
-import { ResumeJsonSchema, type StoredResume } from "@/lib/ai/schemas/resume-json";
+import { commitProfile as commitProfileDb, saveProfileEdit } from "@/lib/db/queries/profile";
+import {
+  ResumeJsonSchema,
+  StoredResumeSchema,
+  type StoredResume,
+} from "@/lib/ai/schemas/resume-json";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 import type { ExtractProfileResult } from "@/lib/ai/schemas/resume-json";
 
@@ -139,16 +143,21 @@ export async function updateProfile(draft: unknown): Promise<Result<{ profileId:
   const user = await requireUser();
   if (!user.ok) return user;
 
-  const parsed = ResumeJsonSchema.safeParse(draft);
+  // StoredResumeSchema, not ResumeJsonSchema: the narrower one drops
+  // x_roleform, and x_roleform is where the bullet ids live. Parsing a save
+  // with it threw away every tailored bullet's route home (N1).
+  const parsed = StoredResumeSchema.safeParse(draft);
   if (!parsed.success) return err(appError("invalid_input", "That change didn't validate."));
 
   const existing = await db.masterProfile.findFirst({ where: { clerkUserId: user.value } });
   if (!existing) return err(appError("not_found", "No profile yet."));
 
-  const result = await commitProfileDb({
+  // saveProfileEdit, not commitProfile: editing a profile is not importing one.
+  // See the comment on saveProfileEdit for what the old path destroyed.
+  const result = await saveProfileEdit({
     clerkUserId: user.value,
+    profileId: existing.id,
     resume: parsed.data as StoredResume,
-    sourceDocumentId: existing.sourceDocumentId,
   });
 
   revalidatePath("/profile");

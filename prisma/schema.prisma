@@ -280,6 +280,14 @@ model ExperienceBullet {
   skillIds      String[]    @default([]) @map("skill_ids") @db.Uuid
   metrics       Json        @default("[]")
   recencyMonths Int?        @map("recency_months")
+  /// Removed from the profile, kept for provenance.
+  ///
+  /// A tailored bullet points here with onDelete: Restrict (N1), so a bullet a
+  /// past analysis cited cannot be deleted without taking that analysis's
+  /// evidence with it — and §6.2 invariant 4 says profile edits never rewrite
+  /// history. Retiring is how both stay true: the row survives so old drafts
+  /// keep their source, and every read of the living profile filters it out.
+  retiredAt     DateTime?   @map("retired_at") @db.Timestamptz
 
   profile         MasterProfile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   tailoredBullets TailoredBullet[]

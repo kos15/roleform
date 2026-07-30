@@ -360,6 +360,14 @@ h3 { font-size: 1.3rem; }
 textarea.input { border-radius: var(--radius-md); resize: vertical; }
 .input::placeholder { color: var(--color-text-muted); }
 
+/* `.input` sets width:100%, which is right for a field in a stack and wrong for
+   the few that sit inline — a years box, a page number. Both are one class deep,
+   so a Tailwind width utility loses to source order and the field silently
+   spans its row. This variant is the way to opt out: size the wrapper, and the
+   input fills it. */
+.input-inline { width: 100%; }
+.field-inline { display: inline-flex; }
+
 .seg {
   display: inline-flex;
   padding: 0.25rem;

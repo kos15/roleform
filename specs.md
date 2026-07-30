@@ -565,6 +565,49 @@ no colour band — and matching the PDF's layout would cost it the thing it is f
 Past analyses: company, title, score, date, status. Opens stored results — no regeneration, no
 re-billing. Master profile edits never rewrite past analyses (§6.2 invariant 4).
 
+### F11 — Profile
+
+One screen over the whole corpus, because the corpus is one thing. Two columns: identity and
+contact, summary, skills, experience, then education / certifications / languages / preferences;
+aside carries profile strength and the checks that explain it. The AI layer writes to none of it
+(N3) — that is what makes the fabrication guard mean anything.
+
+**The evidence label is the point.** Every bullet and every skill says how often it has actually
+been cited by a draft, counted from `tailored_bullets`. A bullet at zero is either badly written or
+about work nobody is hiring for, and either way it is the next thing to fix. Two counting rules
+matter and both are easy to get wrong:
+
+- **Per analysis, not per row.** One run renders a bullet into six templates. Counting rows says
+  "used 6×" for a bullet used once, and climbs six at a time for work done once.
+- **A skill reports bullets, not a sum.** Adding its bullets' counts up would count one analysis
+  once per bullet it cited, producing a figure that sounds like a tally of postings and isn't.
+
+**Skill suggestions** come from this user's own `skill_gaps` — things their analyses already found
+missing — not a popularity list. Hence "from your recent analyses". Adding one puts a name on the
+profile with no bullet behind it, which is a claim rather than proof, and the section says so.
+
+**Profile strength** (`lib/domain/profile-strength.ts`, PURE) is a score out of 100 on a stated
+rubric, not a percentage of anything and not a prediction. Every factor is a property of the corpus
+— bullet count, how many carry numbers, how many have been cited, summary length, proficiency
+coverage, links — because a completeness meter that ticks up when you fill in a phone number would
+be measuring the form, which is the same class of dishonesty as an "ATS score" (N4). The checks
+beside it are the same computation rendered as sentences, so the list always explains the ring.
+
+**Saving is not importing.** `commitProfile` replaces the profile and mints new bullet ids;
+`saveProfileEdit` matches on the paths in `x_roleform.bulletIds` and updates in place — existing
+path updates its row, new path inserts, removed path **retires** (`experience_bullets.retired_at`).
+Retiring is what lets someone drop a bullet without rewriting the history of an analysis that
+quoted it (§6.2 invariant 4), and it is required: `tailored_bullets.source_bullet_id` is
+`onDelete: Restrict` (N1), so deletion would fail outright once any analysis exists. Every read of
+the living profile filters `retired_at is null`.
+
+Edits validate against `StoredResumeSchema`, not `ResumeJsonSchema` — the narrower one drops
+`x_roleform`, and that is where the bullet ids live.
+
+**Acceptance:** editing a bullet leaves every id unchanged and no dangling `source_bullet_id`;
+deleting a cited bullet retires it rather than throwing, and re-adding the same path revives it; a
+bullet used by one analysis reads "used as evidence 1×", not 6.
+
 ### F12 — The written pages
 
 `/how-it-works`, `/privacy`, `/terms`, `/changelog`, `/support`. Public — no session. A promise you

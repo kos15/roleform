@@ -1,11 +1,19 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { getBullets, getProfileWithDocument } from "@/lib/db/queries/profile";
-import { Button, Card, EmptyState, Tag } from "@/components/ui";
+import {
+  getBullets,
+  getEvidenceCounts,
+  getProfileWithDocument,
+  getSuggestedSkills,
+} from "@/lib/db/queries/profile";
+import { Button, EmptyState } from "@/components/ui";
+import { PageIntro } from "@/components/page-intro";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 import { ProfileEditor } from "./profile-editor";
 import { DeleteAccount } from "./delete-account";
+
+export const metadata = { title: "Your profile · Roleform" };
 
 export default async function ProfilePage() {
   const { userId } = await auth();
@@ -18,40 +26,52 @@ export default async function ProfilePage() {
         <EmptyState title="No profile yet">
           Import a résumé and Roleform will have something to work from.
         </EmptyState>
-        <Link href="/onboarding">
+        <Link href="/onboarding" className="no-underline">
           <Button>Import résumé</Button>
         </Link>
       </div>
     );
   }
 
-  const bullets = await getBullets(userId, loaded.profile.id);
   const resume = loaded.profile.resumeJson as unknown as StoredResume;
 
+  const [bullets, evidence, suggestions] = await Promise.all([
+    getBullets(userId, loaded.profile.id),
+    getEvidenceCounts(userId),
+    getSuggestedSkills(
+      userId,
+      resume.skills.map((s) => s.name),
+    ),
+  ]);
+
+  // Path → times used, so the editor can label a bullet without knowing that
+  // ids exist. The mapping lives in x_roleform (§6.1), which is the only thing
+  // tying a line in the document to a row in the corpus.
+  const bulletIds = resume.x_roleform?.bulletIds ?? {};
+  const evidenceByPath: Record<string, number> = {};
+  for (const [path, id] of Object.entries(bulletIds)) {
+    evidenceByPath[path] = evidence.get(id) ?? 0;
+  }
+
   return (
-    <div className="max-w-3xl space-y-6">
-      <h1>Your profile</h1>
+    <div className="rise-in">
+      <PageIntro kicker="Your profile" title="The corpus we draw on">
+        Everything a tailored résumé can say has to exist here first. Each entry shows how often it
+        has actually been used as evidence — the ones at zero are the ones worth rewriting.
+      </PageIntro>
 
-      {/* The card the design specifies: filename · Parsed · N yrs · N skills (F1). */}
-      <Card flat className="flex flex-wrap items-center gap-3">
-        <strong>{loaded.document?.filename ?? "Manual entry"}</strong>
-        <Tag tone="sage">Parsed</Tag>
-        <Tag tone="muted">{Number(loaded.profile.yearsExperience)} yrs experience</Tag>
-        <Tag tone="muted">{loaded.profile.skillCount} skills</Tag>
-        <Tag tone="muted">{bullets.length} bullets</Tag>
-        <Link href="/onboarding" className="ml-auto text-sm font-semibold text-accent-body">
-          Replace résumé
-        </Link>
-      </Card>
+      <ProfileEditor
+        initial={resume}
+        evidenceByPath={evidenceByPath}
+        suggestions={suggestions}
+        bulletCount={bullets.length}
+        sourceFilename={loaded.document?.filename ?? null}
+        updatedAt={loaded.profile.updatedAt.toISOString()}
+      />
 
-      <p className="text-[var(--color-text-muted)]">
-        These are your facts, in your words. Roleform reorders and rephrases them per posting —
-        it never adds to them, and every edit here is yours alone.
-      </p>
-
-      <ProfileEditor initial={resume} />
-
-      <DeleteAccount />
+      <div className="mt-8 max-w-3xl">
+        <DeleteAccount />
+      </div>
     </div>
   );
 }

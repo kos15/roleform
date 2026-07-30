@@ -108,13 +108,51 @@ export const ResumeJsonSchema = z.object({
 
 export type ResumeJson = z.infer<typeof ResumeJsonSchema>;
 
-/** Roleform's namespaced extension. Keeps the document valid and portable. */
-export interface RoleformExtension {
-  schemaVersion: 1;
+/**
+ * Roleform's namespaced extension. Keeps the document valid and portable.
+ *
+ * Everything the product needs that JSON Resume has no field for lives here
+ * rather than widening `ResumeJsonSchema`: that schema is the LLM's contract
+ * under strict structured output (see the note at the top of this file), and a
+ * field the model has no business filling in should not appear in the shape we
+ * hand it. These are user-authored (N3) and never model-written.
+ */
+export const RoleformExtensionSchema = z.object({
+  schemaVersion: z.literal(1),
   /** "work.0.highlights.0" → experience_bullets.id */
-  bulletIds: Record<string, string>;
-  sensitivity: { hidePhone: boolean; hideAddress: boolean };
-}
+  bulletIds: z.record(z.string(), z.string()),
+  sensitivity: z.object({ hidePhone: z.boolean(), hideAddress: z.boolean() }),
+  /** Skill name → years, for the profile's skill rows. JSON Resume has no field. */
+  skillYears: z.record(z.string(), z.number().min(0).max(60)).optional(),
+  /**
+   * What the person is looking for. Recorded because they told us, and shown
+   * back to them — nothing in the pipeline reads it, and the section says so
+   * rather than implying a filter that doesn't exist.
+   */
+  preferences: z
+    .object({
+      targetTitles: z.string().max(200),
+      workMode: z.string().max(200),
+      noticePeriod: z.string().max(100),
+      expectedRange: z.string().max(100),
+    })
+    .optional(),
+});
+
+export type RoleformExtension = z.infer<typeof RoleformExtensionSchema>;
+
+/**
+ * The document as we store it: JSON Resume plus our namespace.
+ *
+ * The profile editor validates against THIS, not `ResumeJsonSchema` — parsing
+ * a save with the narrower schema silently dropped `x_roleform`, which is
+ * where the bullet ids live, and losing those loses every tailored bullet's
+ * route back to its source (N1).
+ */
+export const StoredResumeSchema = ResumeJsonSchema.extend({
+  $schema: z.string().optional(),
+  x_roleform: RoleformExtensionSchema.optional(),
+});
 
 export interface StoredResume extends ResumeJson {
   $schema?: string;

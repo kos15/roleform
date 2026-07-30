@@ -27,11 +27,41 @@ export async function getProfileWithDocument(clerkUserId: string) {
   return { profile, document: document ?? null };
 }
 
+/** The living profile. Retired bullets are history, not corpus (§6.2 inv. 4). */
 export async function getBullets(clerkUserId: string, profileId: string) {
   return db.experienceBullet.findMany({
-    where: { clerkUserId, profileId },
+    where: { clerkUserId, profileId, retiredAt: null },
     orderBy: { ordinal: "asc" },
   });
+}
+
+/**
+ * How often each bullet has actually been used as evidence.
+ *
+ * Counted from `tailored_bullets`, which is the only place that fact exists —
+ * a bullet is evidence when a draft cited it, and N1 guarantees every draft
+ * line has a source. This is what makes the profile's "never used as evidence"
+ * label worth reading: it is a measurement, not an encouragement.
+ *
+ * **Counted per ANALYSIS, not per row.** One run renders the bullet into six
+ * templates, so a naive row count says "used 6×" for a bullet used once, and
+ * the number climbs six at a time for work the person did once. The label says
+ * "used as evidence N×"; N has to be the number of postings it answered.
+ */
+export async function getEvidenceCounts(clerkUserId: string): Promise<Map<string, number>> {
+  const rows = await db.tailoredBullet.findMany({
+    where: { clerkUserId },
+    select: { sourceBulletId: true, draft: { select: { analysisId: true } } },
+  });
+
+  const analysesPerBullet = new Map<string, Set<string>>();
+  for (const row of rows) {
+    const seen = analysesPerBullet.get(row.sourceBulletId) ?? new Set<string>();
+    seen.add(row.draft.analysisId);
+    analysesPerBullet.set(row.sourceBulletId, seen);
+  }
+
+  return new Map([...analysesPerBullet].map(([id, set]) => [id, set.size]));
 }
 
 export function toDomainBullets(
@@ -51,6 +81,45 @@ export function toDomainBullets(
     skillNames: skillsIn(r.text),
     recencyMonths: r.recencyMonths,
   }));
+}
+
+/**
+ * Skills the recent postings asked for that the profile doesn't list.
+ *
+ * Drawn from this user's own `skill_gaps` — the things analyses have already
+ * found missing — rather than from a generic "popular skills" list. That makes
+ * the suggestion a fact about postings they actually looked at, and it is why
+ * the section is titled "from your recent analyses" and not "trending".
+ *
+ * Adding one is a claim, not proof: it puts a name on the profile with no
+ * bullet behind it, which is exactly why the skills section says so.
+ */
+export async function getSuggestedSkills(
+  clerkUserId: string,
+  alreadyListed: string[],
+  limit = 6,
+): Promise<string[]> {
+  const gaps = await db.skillGap.findMany({
+    where: { clerkUserId },
+    orderBy: { mentionCount: "desc" },
+    take: 60,
+    select: { skill: { select: { name: true } } },
+  });
+
+  const have = new Set(alreadyListed.map((s) => s.trim().toLowerCase()));
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const gap of gaps) {
+    const name = gap.skill.name;
+    const key = name.toLowerCase();
+    if (have.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    out.push(name);
+    if (out.length >= limit) break;
+  }
+
+  return out;
 }
 
 /**
@@ -157,6 +226,154 @@ export async function commitProfile(args: {
     });
 
     return { profileId: profile.id, bulletCount: rows.length, yearsExperience };
+  });
+}
+
+/**
+ * Saving an edit to an EXISTING profile (M2.6).
+ *
+ * Distinct from `commitProfile` on purpose, and the distinction is the whole
+ * point. `commitProfile` is the import path: it replaces the profile, which
+ * cascades every `experience_bullets` row away and mints new ids. Running that
+ * on every autosave did two bad things — it broke outright once any analysis
+ * existed (`tailored_bullets.source_bullet_id` is `onDelete: Restrict`, N1),
+ * and where it did succeed it severed every past draft's route back to the
+ * bullet it came from.
+ *
+ * This path matches on the paths already recorded in `x_roleform.bulletIds`:
+ *
+ *   - a path that still exists  → UPDATE the text in place, id unchanged
+ *   - a path that is new        → INSERT with a fresh id
+ *   - a path that has gone      → RETIRE, never delete
+ *
+ * Retiring is what lets someone remove a bullet from their profile without
+ * rewriting the history of an analysis that quoted it.
+ */
+export async function saveProfileEdit(args: {
+  clerkUserId: string;
+  profileId: string;
+  resume: StoredResume;
+}): Promise<{ profileId: string; retired: number }> {
+  const resume = structuredClone(args.resume);
+  const previousIds = resume.x_roleform?.bulletIds ?? {};
+
+  // Path → text, in the order the document lists them. Ordinal is that order,
+  // so reordering bullets on screen reorders them in the corpus too.
+  const present: Array<{
+    path: string;
+    scope: "work" | "project" | "volunteer";
+    scopeRef: string;
+    text: string;
+    recencyMonths: number | null;
+  }> = [];
+
+  resume.work.forEach((work, wi) =>
+    work.highlights.forEach((text, hi) =>
+      present.push({
+        path: `work.${wi}.highlights.${hi}`,
+        scope: "work",
+        scopeRef: `work.${wi}`,
+        text,
+        recencyMonths: monthsSince(work.endDate),
+      }),
+    ),
+  );
+  resume.projects.forEach((project, pi) =>
+    project.highlights.forEach((text, hi) =>
+      present.push({
+        path: `projects.${pi}.highlights.${hi}`,
+        scope: "project",
+        scopeRef: `projects.${pi}`,
+        text,
+        recencyMonths: monthsSince(project.endDate),
+      }),
+    ),
+  );
+  resume.volunteer.forEach((v, vi) =>
+    v.highlights.forEach((text, hi) =>
+      present.push({
+        path: `volunteer.${vi}.highlights.${hi}`,
+        scope: "volunteer",
+        scopeRef: `volunteer.${vi}`,
+        text,
+        recencyMonths: monthsSince(v.endDate),
+      }),
+    ),
+  );
+
+  const bulletIds: Record<string, string> = {};
+  const keptIds = new Set<string>();
+
+  return db.$transaction(async (tx) => {
+    for (const [ordinal, entry] of present.entries()) {
+      const existingId = previousIds[entry.path];
+
+      if (existingId) {
+        // updateMany, not update: a stale path in the extension must not throw
+        // in the middle of someone's save.
+        const { count } = await tx.experienceBullet.updateMany({
+          where: { id: existingId, clerkUserId: args.clerkUserId },
+          data: {
+            text: entry.text,
+            scope: entry.scope,
+            scopeRef: entry.scopeRef,
+            ordinal,
+            recencyMonths: entry.recencyMonths,
+            retiredAt: null,
+          },
+        });
+        if (count > 0) {
+          bulletIds[entry.path] = existingId;
+          keptIds.add(existingId);
+          continue;
+        }
+      }
+
+      const created = await tx.experienceBullet.create({
+        data: {
+          clerkUserId: args.clerkUserId,
+          profileId: args.profileId,
+          scope: entry.scope,
+          scopeRef: entry.scopeRef,
+          ordinal,
+          text: entry.text,
+          recencyMonths: entry.recencyMonths,
+        },
+        select: { id: true },
+      });
+      bulletIds[entry.path] = created.id;
+      keptIds.add(created.id);
+    }
+
+    const { count: retired } = await tx.experienceBullet.updateMany({
+      where: {
+        clerkUserId: args.clerkUserId,
+        profileId: args.profileId,
+        retiredAt: null,
+        id: { notIn: [...keptIds] },
+      },
+      data: { retiredAt: new Date() },
+    });
+
+    resume.x_roleform = {
+      schemaVersion: 1,
+      bulletIds,
+      sensitivity: resume.x_roleform?.sensitivity ?? { hidePhone: false, hideAddress: true },
+      skillYears: resume.x_roleform?.skillYears,
+      preferences: resume.x_roleform?.preferences,
+    };
+
+    await tx.masterProfile.update({
+      where: { id: args.profileId },
+      data: {
+        resumeJson: resume as object,
+        skillCount: resume.skills.length,
+        yearsExperience: String(estimateYears(resume)),
+        updatedAt: new Date(),
+      },
+    });
+
+    return { profileId: args.profileId, retired };
   });
 }
 
