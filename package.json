@@ -15,6 +15,7 @@
     "script": "tsx --tsconfig tsconfig.scripts.json",
     "db:policies": "pnpm script scripts/apply-policies.ts",
     "seed:catalog": "pnpm script scripts/seed-catalog.ts",
+    "grant:admin": "pnpm script scripts/grant-admin.ts",
     "check:constraints": "pnpm script scripts/smoke-constraints.ts",
     "check:coverage": "pnpm script scripts/coverage-fixtures.ts",
     "check:fabrication": "pnpm script scripts/fabrication-eval.ts",
