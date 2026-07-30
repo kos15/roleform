@@ -21,6 +21,12 @@ const MODEL: RenderModel = {
   name: "Priya Raman",
   headline: "Senior Frontend Engineer",
   contactLine: "priya.raman@example.com · +44 7700 900123 · Bristol, England · priyaraman.dev",
+  contactParts: [
+    "priya.raman@example.com",
+    "+44 7700 900123",
+    "Bristol, England",
+    "priyaraman.dev",
+  ],
   summary:
     "Frontend engineer with six years building production web applications, most recently on a design system used across four product teams.",
   roles: [

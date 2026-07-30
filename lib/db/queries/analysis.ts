@@ -81,6 +81,24 @@ export async function getDraft(clerkUserId: string, draftId: string) {
   return db.resumeDraft.findFirst({ where: { clerkUserId, id: draftId } });
 }
 
+/**
+ * How much sits behind each tab, for the counts in the tab bar.
+ *
+ * Three counts rather than three full reads — this runs in the analysis layout,
+ * on every tab navigation, and the rows themselves are fetched by whichever tab
+ * actually renders them. A tab reading zero is information: a surface that
+ * failed to generate says so before you click it.
+ */
+export async function getTabCounts(clerkUserId: string, analysisId: string) {
+  const where = { clerkUserId, analysisId };
+  const [resumes, questions, gaps] = await Promise.all([
+    db.resumeDraft.count({ where }),
+    db.interviewQuestion.count({ where }),
+    db.skillGap.count({ where }),
+  ]);
+  return { resumes, questions, gaps };
+}
+
 export async function getTailoredBullets(clerkUserId: string, draftId: string) {
   return db.tailoredBullet.findMany({
     where: { clerkUserId, draftId },

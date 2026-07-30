@@ -15,24 +15,43 @@ import { usePathname } from "next/navigation";
  * it. `useLinkStatus` reports Next's own pending state for THIS link, so the
  * button can say so immediately — paired with the route's loading.tsx, which
  * both fills the wait and gives prefetch a boundary to fetch.
+ *
+ * The count is rendered before the tab is opened on purpose: a surface that
+ * generated nothing should be visible as empty from here, not after a click.
  */
-const TABS = [
-  { slug: "resumes", label: "Resumes" },
-  { slug: "prep", label: "Prep" },
-  { slug: "learning", label: "Learning" },
-] as const;
+export interface TabCounts {
+  resumes: number;
+  questions: number;
+  gaps: number;
+}
 
-export function AnalysisTabs({ analysisId }: { analysisId: string }) {
+export function AnalysisTabs({
+  analysisId,
+  counts,
+}: {
+  analysisId: string;
+  counts: TabCounts;
+}) {
   const pathname = usePathname();
 
+  const tabs = [
+    { slug: "resumes", label: "Résumés", count: String(counts.resumes) },
+    { slug: "prep", label: "Interview prep", count: String(counts.questions) },
+    {
+      slug: "learning",
+      label: "Learning",
+      count: `${counts.gaps} gap${counts.gaps === 1 ? "" : "s"}`,
+    },
+  ];
+
   return (
-    <div className="seg" role="tablist" aria-label="Analysis sections">
-      {TABS.map((tab) => {
+    <div className="tab-bar" role="tablist" aria-label="Analysis sections">
+      {tabs.map((tab) => {
         const href = `/analysis/${analysisId}/${tab.slug}`;
         const selected = pathname === href;
         return (
           <Link key={tab.slug} href={href} role="tab" aria-selected={selected} tabIndex={0}>
-            <TabButton label={tab.label} selected={selected} />
+            <TabButton label={tab.label} count={tab.count} selected={selected} />
           </Link>
         );
       })}
@@ -41,16 +60,26 @@ export function AnalysisTabs({ analysisId }: { analysisId: string }) {
 }
 
 /** Must be a child of Link — that is where useLinkStatus reads its state from. */
-function TabButton({ label, selected }: { label: string; selected: boolean }) {
+function TabButton({
+  label,
+  count,
+  selected,
+}: {
+  label: string;
+  count: string;
+  selected: boolean;
+}) {
   const { pending } = useLinkStatus();
   return (
     <button
       type="button"
       aria-selected={selected}
       data-pending={pending ? "true" : undefined}
+      className={pending ? "opacity-70" : undefined}
       tabIndex={-1}
     >
       {label}
+      <span className="tab-count">{count}</span>
     </button>
   );
 }

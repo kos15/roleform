@@ -4,6 +4,13 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { TEMPLATES } from "@/lib/render/templates";
 
+/**
+ * Six chips rather than a select.
+ *
+ * The whole point of this screen is comparing layouts, and a closed select hides
+ * five of the six behind a click. At six fixed options the chips also read as a
+ * set — you can see how many drafts exist without opening anything.
+ */
 export function TemplateSwitcher({
   analysisId,
   current,
@@ -14,31 +21,40 @@ export function TemplateSwitcher({
   available: string[];
 }) {
   const router = useRouter();
-  // Switching template re-renders the whole diff on the server. Without this the
-  // select snapped back to the old value for the length of the round trip and
-  // read as a dropped click.
+  // Switching template re-renders the whole preview on the server. Without this
+  // the chip stayed unselected for the length of the round trip and read as a
+  // dropped click.
   const [pending, startTransition] = useTransition();
   const options = TEMPLATES.filter((t) => available.includes(t.id));
 
   return (
-    <label className="flex items-center gap-2 text-sm">
-      <span className="font-semibold text-[var(--color-text-muted)]">Template</span>
-      <select
-        className="input w-auto"
-        value={current}
-        aria-busy={pending || undefined}
-        disabled={pending}
-        onChange={(e) => {
-          const next = e.target.value;
-          startTransition(() => router.push(`/analysis/${analysisId}/preview/${next}`));
-        }}
-      >
-        {options.map((t) => (
-          <option key={t.id} value={t.id}>
+    <div
+      className="flex flex-wrap gap-1.5 rounded-[var(--radius-lg)] border border-[var(--color-line)] p-3"
+      style={{ background: "var(--color-bg-sunken)" }}
+      aria-busy={pending || undefined}
+    >
+      {options.map((t) => {
+        const selected = t.id === current;
+        return (
+          <button
+            key={t.id}
+            type="button"
+            aria-current={selected ? "true" : undefined}
+            disabled={pending}
+            onClick={() =>
+              startTransition(() => router.push(`/analysis/${analysisId}/preview/${t.id}`))
+            }
+            className="rounded-[var(--radius-pill)] border px-3 py-1.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed"
+            style={{
+              borderColor: selected ? "var(--color-accent-500)" : "var(--color-line)",
+              background: selected ? "var(--color-accent-500)" : "var(--color-bg)",
+              color: selected ? "var(--color-on-accent)" : "var(--color-text)",
+            }}
+          >
             {t.name}
-          </option>
-        ))}
-      </select>
-    </label>
+          </button>
+        );
+      })}
+    </div>
   );
 }

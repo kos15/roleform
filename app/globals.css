@@ -41,11 +41,17 @@
 
   /* state — kept inside the warm family on purpose */
   --color-warn-100: #fbf0d5;
+  --color-warn-200: #e8d5a4;
   --color-warn-500: #b8892a;
   --color-warn-700: #7d5c17;
   --color-danger-100: #f8ded9;
+  --color-danger-200: #edbfb5;
   --color-danger-500: #b4462f;
   --color-danger-700: #7d2f1f;
+
+  /* Ink that sits ON the accent — a fill, so it inverts with the theme rather
+     than staying white and dropping to 2:1 on the lighter dark-mode accent. */
+  --color-on-accent: #ffffff;
 
   /* type */
   --font-heading: var(--font-caprasimo), Georgia, serif;
@@ -61,6 +67,75 @@
   --shadow-sm: 0 1px 2px rgb(32 30 29 / 0.06), 0 2px 6px rgb(32 30 29 / 0.05);
   --shadow-md: 0 2px 6px rgb(32 30 29 / 0.07), 0 10px 24px rgb(32 30 29 / 0.08);
   --shadow-lg: 0 4px 12px rgb(32 30 29 / 0.08), 0 24px 48px rgb(32 30 29 / 0.12);
+}
+
+/* ---------------------------------------------------------------------------
+   organic — dark theme
+
+   The same roles at the same steps, re-derived on a dark ground rather than a
+   second palette: every ramp keeps its direction (100 = the tinted-fill end,
+   900 = the text-on-tint end), so nothing that reads a token has to know which
+   theme it is in. That is the whole reason this is a var override and not a
+   `dark:` variant sprinkled through the components.
+
+   Selector is `html[data-theme]` on purpose — Tailwind emits the light values
+   into `:root`, which has the same specificity as a bare attribute selector,
+   and source order between the two is a build detail we shouldn't depend on.
+--------------------------------------------------------------------------- */
+
+html[data-theme="dark"] {
+  --color-bg: #191512;
+  --color-bg-raised: #241f19;
+  --color-bg-sunken: #2b2620;
+  --color-text: #f4ead9;
+  --color-text-muted: #968b78;
+  --color-line: color-mix(in srgb, #f4ead9 18%, transparent);
+
+  --color-accent-100: #2c1a10;
+  --color-accent-200: #402515;
+  --color-accent-300: #5a341c;
+  --color-accent-400: #8a5029;
+  --color-accent-500: #d67f48;
+  --color-accent-600: #ec9760;
+  --color-accent-700: #ffc6a5;
+  --color-accent-800: #ffe1d0;
+  --color-accent-900: #fff2eb;
+
+  --color-sage-100: #1d2115;
+  --color-sage-200: #282e1c;
+  --color-sage-300: #37402a;
+  --color-sage-400: #4f5b3b;
+  --color-sage-500: #8fa073;
+  --color-sage-600: #a6b78a;
+  --color-sage-700: #ccdbb2;
+  --color-sage-800: #e1eecc;
+  --color-sage-900: #f0fae1;
+
+  --color-warn-100: #2e2412;
+  --color-warn-200: #4a3a1c;
+  --color-warn-500: #d8a94a;
+  --color-warn-700: #f0d495;
+  --color-danger-100: #2e1712;
+  --color-danger-200: #4a251c;
+  --color-danger-500: #d9755b;
+  --color-danger-700: #f2b6a4;
+
+  /* On a dark ground the shadow is ambient darkness plus the hairline edge the
+     raised surfaces already carry — the light-theme ink tint disappears. */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-md: 0 3px 12px rgb(0 0 0 / 0.55);
+  --shadow-lg: 0 14px 36px rgb(0 0 0 / 0.6);
+
+  --color-on-accent: #241f19;
+}
+
+/* The ground and the ink cross-fade; nothing else in the app transitions colour,
+   so the switch reads as one movement rather than forty. */
+html {
+  transition: background-color 300ms ease, color 300ms ease;
+}
+html[data-theme] body {
+  transition: background-color 300ms ease, color 300ms ease;
 }
 
 /* ---------------------------------------------------------------------------
@@ -119,7 +194,7 @@ h3 { font-size: 1.3rem; }
 .btn:active { transform: translateY(1px); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.btn-primary { background: var(--color-accent-500); color: #fff; }
+.btn-primary { background: var(--color-accent-500); color: var(--color-on-accent); }
 .btn-primary:hover:not(:disabled) { background: var(--color-accent-600); }
 
 .btn-secondary {
@@ -142,6 +217,14 @@ h3 { font-size: 1.3rem; }
   padding: 1.5rem;
 }
 .card-flat { box-shadow: none; }
+
+/* The small-caps label at the top of a card, above its title. */
+.card-kicker {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent-700);
+}
 
 .tag {
   display: inline-flex;
@@ -174,16 +257,91 @@ h3 { font-size: 1.3rem; }
 
 .tag-accent { background: var(--color-accent-100); color: var(--color-accent-800); border-color: var(--color-accent-200); }
 .tag-sage { background: var(--color-sage-100); color: var(--color-sage-800); border-color: var(--color-sage-200); }
-.tag-warn { background: var(--color-warn-100); color: var(--color-warn-700); border-color: #e8d5a4; }
+.tag-warn { background: var(--color-warn-100); color: var(--color-warn-700); border-color: var(--color-warn-200); }
 .tag-muted { background: transparent; color: var(--color-text-muted); }
 
+/* Sticky, and on the ground rather than a raised surface — the header is chrome
+   the page scrolls under, not a card sitting on top of it. */
 .nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 1.25rem;
-  padding: 1rem 1.75rem;
-  background: var(--color-bg-raised);
+  padding: 0.8rem clamp(1rem, 4vw, 2.5rem);
+  background: var(--color-bg);
   border-bottom: 1px solid var(--color-line);
+}
+
+/* ---------------------------------------------------------------------------
+   Tab bar — the three analysis surfaces
+
+   Distinct from `.seg` on purpose. `.seg` is a filter inside one surface (the
+   prep families); this is navigation between surfaces, and it carries a count
+   per tab. Underline rather than pill, because six items with counts do not fit
+   a pill row at any width worth designing for.
+--------------------------------------------------------------------------- */
+
+.tab-bar {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-line);
+}
+.tab-bar a {
+  text-decoration: none;
+  color: inherit;
+  white-space: nowrap;
+}
+.tab-bar button {
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  padding: 0.75rem 1rem;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 180ms ease;
+}
+.tab-bar button[aria-selected="true"] {
+  color: var(--color-text);
+  border-bottom-color: var(--color-accent);
+}
+.tab-bar .tab-count {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  margin-left: 0.45rem;
+  color: var(--color-text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Meter — "where you are" against "what the posting asks"
+
+   Two facts in one track: a filled bar for the level the profile evidences, and
+   a tick for the level the posting requires. The gap between them is the point,
+   so it is drawn rather than described.
+--------------------------------------------------------------------------- */
+
+.meter {
+  position: relative;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-sunken);
+}
+.meter-have {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-sage-500);
+  transition: width 800ms var(--ease-out-quint);
+}
+.meter-need {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  background: var(--color-accent);
 }
 
 .field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
@@ -365,6 +523,73 @@ textarea.input { border-radius: var(--radius-md); resize: vertical; }
   animation: shimmer 1.4s linear infinite;
 }
 
+/* Something arriving one item at a time. Delay is set per element in JSX; the
+   curve and the distance live here so the whole app pops in identically. */
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
+.pop-in { animation: pop-in 450ms var(--ease-out-quint) both; }
+
+/* ---------------------------------------------------------------------------
+   The parsing figures
+
+   Each stage of the analysis gets a small diagram of the work it is actually
+   doing — a page being read, requirements being matched, bullets being lifted,
+   questions forming. They're decorative and they loop, which is exactly what a
+   progress bar can't say: WHAT is taking the time.
+
+   They are the only looping animations in the app. Every one of them stops
+   under prefers-reduced-motion, including the inline delays, via the
+   `.stage-figure` reset at the bottom of this file.
+--------------------------------------------------------------------------- */
+
+@keyframes fig-scan {
+  0%        { transform: translateY(0); opacity: 0; }
+  8%, 92%   { opacity: 1; }
+  100%      { transform: translateY(148px); opacity: 0; }
+}
+@keyframes fig-read {
+  0%, 40%   { opacity: 0.35; }
+  55%, 100% { opacity: 1; }
+}
+@keyframes fig-draw {
+  0%        { stroke-dashoffset: 120; }
+  45%, 100% { stroke-dashoffset: 0; }
+}
+@keyframes fig-lock {
+  0%, 30%   { opacity: 0.3; transform: scale(0.94); }
+  45%, 100% { opacity: 1; transform: none; }
+}
+@keyframes fig-lift-down {
+  0%, 20%   { transform: translateY(0); }
+  45%, 100% { transform: translateY(26px); }
+}
+@keyframes fig-lift-up {
+  0%, 20%   { transform: translateY(0); }
+  45%, 100% { transform: translateY(-26px); }
+}
+@keyframes fig-type {
+  0%        { width: 8%; }
+  70%, 100% { width: 88%; }
+}
+@keyframes fig-caret {
+  50% { opacity: 0; }
+}
+@keyframes fig-float {
+  50% { transform: translateY(-4px); }
+}
+
+.fig-scan      { animation: fig-scan 2s linear infinite; }
+.fig-read      { animation: fig-read 2s var(--ease-out-quint) infinite; }
+.fig-draw      { animation: fig-draw 2.2s var(--ease-out-quint) infinite; }
+.fig-lock      { animation: fig-lock 2.2s var(--ease-out-quint) infinite; }
+.fig-lift-down { animation: fig-lift-down 2.4s var(--ease-out-quint) infinite; }
+.fig-lift-up   { animation: fig-lift-up 2.4s var(--ease-out-quint) infinite; }
+.fig-type      { animation: fig-type 2.4s var(--ease-out-quint) infinite; }
+.fig-caret     { animation: fig-caret 700ms steps(1) infinite; }
+.fig-float     { animation: fig-float 3s ease-in-out infinite; }
+
 /* A button whose work is server-side and slow enough to doubt. */
 @keyframes breathe {
   50% { opacity: 0.62; }
@@ -373,7 +598,8 @@ textarea.input { border-radius: var(--radius-md); resize: vertical; }
 
 /* A tab that has been clicked but whose segment hasn't arrived. Fires from
    next/link's own pending state, so it is the real navigation, not a guess. */
-.seg > button[data-pending="true"] { animation: breathe 1s ease-in-out infinite; }
+.seg > button[data-pending="true"],
+.tab-bar button[data-pending="true"] { animation: breathe 1s ease-in-out infinite; }
 
 .card { transition: border-color 160ms ease, box-shadow 160ms ease; }
 
@@ -381,12 +607,25 @@ textarea.input { border-radius: var(--radius-md); resize: vertical; }
   .accordion-content[data-state="open"],
   .accordion-content[data-state="closed"],
   .rise-in,
+  .pop-in,
   .skeleton,
   .btn[data-busy="true"],
-  .seg > button[data-pending="true"] {
+  .seg > button[data-pending="true"],
+  .tab-bar button[data-pending="true"] {
     animation: none;
   }
-  .rise-in { opacity: 1; transform: none; }
+  .rise-in,
+  .pop-in { opacity: 1; transform: none; }
+
+  /* The figures animate per-element with delays set in JSX, so the reset has to
+     reach inside them rather than name each class. */
+  .stage-figure,
+  .stage-figure * {
+    animation: none !important;
+    transition: none !important;
+  }
+  html,
+  html[data-theme] body { transition: none; }
 }
 
 /* Lucide ships at stroke-width 2.75 across the app */

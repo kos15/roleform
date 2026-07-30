@@ -16,8 +16,20 @@ export interface TemplateDef {
   kind: TemplateKind;
   blurb: string;
   accent: string;
+  /**
+   * Which side the rail sits on. Sidebar templates only — it's what separates
+   * Ledger from Margin Note, and the on-screen preview has to agree with the
+   * export or the preview is lying about the document.
+   */
+  rail?: "left" | "right";
+  /** The document's own typeface. Not an organic token: a résumé is not a
+   *  Roleform surface (CLAUDE.md §9), and Broadsheet's serif is the template. */
+  fontStack: string;
   structuralFlags: StructuralFlags;
 }
+
+const SANS = "Figtree, system-ui, sans-serif";
+const SERIF = 'Georgia, "Times New Roman", serif';
 
 const ALL_CLEAN: StructuralFlags = {
   singleColumnBody: true,
@@ -34,6 +46,7 @@ export const TEMPLATES: TemplateDef[] = [
     kind: "classic",
     blurb: "Single column, standard headings, nothing between your words and the parser.",
     accent: "#1f2933",
+    fontStack: SANS,
     structuralFlags: { ...ALL_CLEAN },
   },
   {
@@ -42,6 +55,7 @@ export const TEMPLATES: TemplateDef[] = [
     kind: "classic",
     blurb: "A serif classic with generous leading. Reads well on paper and parses clean.",
     accent: "#2b2118",
+    fontStack: SERIF,
     structuralFlags: { ...ALL_CLEAN },
   },
   {
@@ -50,6 +64,8 @@ export const TEMPLATES: TemplateDef[] = [
     kind: "sidebar",
     blurb: "Skills and contact in a left rail. Easier for a human to skim, harder for a parser.",
     accent: "#1d3a4f",
+    rail: "left",
+    fontStack: SANS,
     // Two-column body — one violation, so Medium. Honest, not flattering.
     structuralFlags: { ...ALL_CLEAN, singleColumnBody: false },
   },
@@ -59,6 +75,8 @@ export const TEMPLATES: TemplateDef[] = [
     kind: "sidebar",
     blurb: "A narrow right rail for dates and skills; the main column stays plain text.",
     accent: "#3c3a52",
+    rail: "right",
+    fontStack: SANS,
     structuralFlags: { ...ALL_CLEAN, singleColumnBody: false },
   },
   {
@@ -67,6 +85,7 @@ export const TEMPLATES: TemplateDef[] = [
     kind: "creative",
     blurb: "Coloured section bands and an icon contact row. Striking; parses worst of the six.",
     accent: "#0f766e",
+    fontStack: SANS,
     structuralFlags: {
       ...ALL_CLEAN,
       singleColumnBody: false,
@@ -80,6 +99,7 @@ export const TEMPLATES: TemplateDef[] = [
     kind: "creative",
     blurb: "Editorial layout with a graphic header. For portfolios and direct applications.",
     accent: "#7c2d12",
+    fontStack: SANS,
     structuralFlags: {
       ...ALL_CLEAN,
       singleColumnBody: false,

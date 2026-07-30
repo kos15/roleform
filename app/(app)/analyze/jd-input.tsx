@@ -71,72 +71,96 @@ export function JdInput() {
       {error ? <ErrorRegion title="We couldn't use that">{error}</ErrorRegion> : null}
 
       {mode === "paste" ? (
-        <div>
+        <div className="rise-in">
           <Textarea
             aria-label="Job description text"
             rows={14}
             placeholder="Paste the full posting — responsibilities, requirements, the lot."
             value={text}
             onChange={(e) => setText(e.target.value)}
+            className="min-h-[16.5rem]"
           />
-          <div className="mt-2 flex items-center gap-4 text-sm text-[var(--color-text-muted)]">
-            <span>{text.length.toLocaleString()} characters</span>
-            <button
-              type="button"
-              className="font-semibold text-accent-body"
-              onClick={() => setText(SAMPLE_JD)}
-            >
-              Load sample JD
-            </button>
-            {devAffordances ? (
-              <button
-                type="button"
-                className="font-semibold text-accent-body"
-                onClick={() => setText("not a job posting")}
-              >
-                Try: an unreadable input
-              </button>
-            ) : null}
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <span className="text-sm text-[var(--color-text-muted)]">
+              {text.length.toLocaleString()} characters
+              {/* The floor is quoted only once there is something to measure —
+                  "we need at least 120" over an empty box is a scolding. */}
+              {text.length > 0 && text.trim().length < 120 ? " · we need at least 120" : ""}
+            </span>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setText(SAMPLE_JD)}>
+                Load sample posting
+              </Button>
+              {devAffordances ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setText("not a job posting")}
+                >
+                  Try: an unreadable input
+                </Button>
+              ) : null}
+              <Button onClick={submit} disabled={!canSubmit || busy} busy={busy}>
+                {busy ? "Starting…" : "Analyze posting"}
+              </Button>
+            </div>
           </div>
         </div>
       ) : (
-        <label
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            const dropped = e.dataTransfer.files[0];
-            if (dropped) setFile(dropped);
-          }}
-          className="block cursor-pointer rounded-[var(--radius-lg)] border-2 border-dashed p-12 text-center"
-          style={{
-            borderColor: dragging ? "var(--color-accent-500)" : "var(--color-line)",
-            background: dragging ? "var(--color-accent-100)" : "var(--color-bg-raised)",
-          }}
-        >
-          <FileUp className="lucide mx-auto mb-3 h-7 w-7 text-[var(--color-accent-600)]" />
-          <span className="block font-semibold">
-            {file ? file.name : "Drop the posting here, or choose a file"}
-          </span>
-          <span className="mt-1 block text-sm text-[var(--color-text-muted)]">
-            PDF, DOCX or TXT, up to 5 MB
-          </span>
-          <input
-            type="file"
-            accept=".pdf,.docx,.txt,application/pdf,text/plain"
-            className="sr-only"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-        </label>
-      )}
+        <div className="rise-in">
+          <label
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              const dropped = e.dataTransfer.files[0];
+              if (dropped) setFile(dropped);
+            }}
+            className="block cursor-pointer rounded-[var(--radius-lg)] border-2 border-dashed px-7 py-10 text-center transition-[background-color,border-color,transform] duration-200"
+            style={{
+              borderColor: dragging ? "var(--color-accent-500)" : "var(--color-line)",
+              background: dragging ? "var(--color-accent-100)" : "var(--color-bg-raised)",
+              transform: dragging ? "scale(1.012)" : undefined,
+            }}
+          >
+            <span
+              className={`mx-auto mb-4 grid h-[58px] w-[58px] place-items-center rounded-[var(--radius-pill)] ${dragging ? "fig-float" : ""}`}
+              style={{ background: "var(--color-accent-200)" }}
+            >
+              <FileUp className="lucide h-6 w-6 text-[var(--color-accent-800)]" />
+            </span>
+            <span className="block font-[family-name:var(--font-heading)] text-xl">
+              {file
+                ? file.name
+                : dragging
+                  ? "Drop it — we'll take it from here"
+                  : "Drop the posting here, or choose a file"}
+            </span>
+            <span className="mb-4 mt-1.5 block text-sm text-[var(--color-text-muted)]">
+              PDF, DOCX or TXT · up to 5 MB
+            </span>
+            {/* A span, not a button: the whole label is the control, and a nested
+                button would swallow the click that opens the file picker. */}
+            <span className="btn btn-secondary">Choose a file</span>
+            <input
+              type="file"
+              accept=".pdf,.docx,.txt,application/pdf,text/plain"
+              className="sr-only"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
 
-      <Button onClick={submit} disabled={!canSubmit || busy}>
-        {busy ? "Starting…" : "Analyze job description"}
-      </Button>
+          <div className="mt-3 flex justify-end">
+            <Button onClick={submit} disabled={!canSubmit || busy} busy={busy}>
+              {busy ? "Starting…" : "Analyze posting"}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -21,6 +21,12 @@ export interface RenderModel {
   headline: string;
   /** Contact as plain body text, never graphics (F9). */
   contactLine: string;
+  /**
+   * The same parts, unjoined. A single-column template sets them as one line; a
+   * rail stacks them. Re-splitting `contactLine` on its separator would break
+   * the moment an address contained one.
+   */
+  contactParts: string[];
   summary: string;
   roles: RenderRole[];
   projects: Array<{ name: string; description: string; bullets: string[]; dates: string }>;
@@ -87,6 +93,7 @@ export function buildRenderModel(args: {
     name: resume.basics.name,
     headline: resume.basics.label,
     contactLine: contactParts.join(" · "),
+    contactParts,
     summary: args.summary || resume.basics.summary,
     roles,
     projects: resume.projects.map((p, pi) => ({

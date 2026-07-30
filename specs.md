@@ -309,6 +309,26 @@ deterministic, reproducible and explainable line by line.
 
 ## 9. Feature specifications
 
+### F0 — Shell and theme
+
+Sticky header on the ground (not a raised surface): brand mark, `New analysis · History · Profile`,
+theme switch, Clerk user button.
+
+**Theme.** Light and dark, switched by `data-theme` on the html element. Dark is the same roles at the
+same ramp steps re-derived on a dark ground — a variable override in `globals.css`, never a `dark:`
+variant in components, so anything reading a token is theme-agnostic by construction (N9). Ramps keep
+their direction in both themes: `100` is always the tinted-fill end, `900` always the text-on-tint end.
+
+- `--color-on-accent` carries the ink that sits *on* the accent. It has to invert: white on the
+  lighter dark-mode accent is ~2:1.
+- Preference is stored in `localStorage` and resolved by a synchronous script in `<head>`. No stored
+  preference falls through to `prefers-color-scheme`, not to light.
+- Only the ground and the ink cross-fade. Nothing else transitions colour, so the switch reads as one
+  movement.
+
+**Acceptance:** no flash of the wrong theme on hard reload; the switch survives navigation and reload;
+export output is unaffected (a résumé is the user's document, not a Roleform surface).
+
 ### F1 — Onboarding: profile import
 
 Upload PDF/DOCX/TXT ≤5 MB → `resumes` bucket → raw text (`unpdf` / `mammoth` / plain) →
@@ -328,34 +348,60 @@ Profile card afterwards reads `filename · Parsed · N yrs experience · N skill
 
 ### F2 — JD input (Step 1 of 3)
 
+`Step 1 of 3 · The posting` → *"One résumé in, six tailored out"*. Two columns: the posting goes in the
+left, and the right rail holds the corpus and the contract — the profile card, and **What comes back**
+in three numbered lines. Side by side on purpose: you can see what we'll draw *on* while you paste the
+thing we'll draw *against*.
+
 Segmented control: **Upload file** / **Paste text**.
 
 - Drop zone with drag states (`dzBg`, `dzBorder`, `dzTitle`, `dropGood`/`dropBad`) — PDF, DOCX or TXT up to 5 MB.
-- Paste mode: textarea with live `charCount` and **Load sample JD**.
+- Paste mode: textarea with live `charCount` and **Load sample posting**. The 120-character floor is
+  quoted only once there is something to measure — over an empty box it's a scolding.
 - Design's demo affordances ("Try: a valid posting / an unreadable file") ship behind a dev flag, not in production UI.
 - Error region (`errorTitle` + `error`) renders inline in accent-800 on accent-100, never a toast.
-- Primary action **Analyze job description**, disabled until input is valid.
+- Primary action **Analyze posting**, disabled until input is valid.
 
 **Acceptance:** identical JD text (by `content_hash`) reuses the prior analysis, no second charge.
 
 ### F3 — Parsing screen
 
-Spinner, `progressPct` bar, four named steps resolving in sequence (`s.label`, `s.color`, `s.mark`,
-`s.dotBg`): *Reading the posting → Matching against your profile → Rewriting your resume → Preparing
-questions and courses.* Streamed, never a fake timer. A stage failure stops there and says what
-failed — a spinner that lies is worse than an error.
+`Step 2 of 3 · N% complete`, the running stage's own heading and description, `progressPct` bar, and
+four named steps resolving in sequence with a per-row status: *Reading the posting → Matching against
+your profile → Rewriting your resume → Preparing questions and courses.* Streamed, never a fake timer.
+A stage failure stops there and says what failed — a spinner that lies is worse than an error.
+
+**Stage figures.** Each stage carries a small looping diagram of the work it is doing: a page under a
+scan line, requirements wired to the bullets that evidence them (and one wired to nothing), a bullet
+being typed while two others swap places, questions and course cards forming. They answer what a
+progress bar can't — *what* is taking the time. They are the only looping animations in the app, only
+one is mounted at a time, they are `aria-hidden`, and the whole set freezes under
+`prefers-reduced-motion`. The accessible account of progress is the stage list and the progressbar.
 
 ### F4 — Coverage + score header
 
 `Analysis complete · {jdSource}` with extracted JdMeta, the score ring, verdict, note, and three
 bucket cards with counts and tags.
 
+Below it, the three surfaces as an underline tab bar carrying a count each — `Résumés 6`,
+`Interview prep 10`, `Learning 4 gaps`. The counts are read before the tab is opened on purpose: a
+surface that generated nothing is visible as empty from here rather than after a click (§11
+Reliability). Real links, so a tab is shareable and the back button behaves.
+
 **Acceptance:** every **Strong match** tag traces to a specific bullet in one click.
 
 ### F5 — Tab 1: Resumes ("Six drafts, same evidence")
 
-Six cards: thumbnail by family, name, `pages`, `kind` tag, `ATS {rating}` badge. Plus **Compare two**
-and **Download all**. `tailorSummary` states in one line what changed across all drafts.
+Six cards: thumbnail by family, name, `pages`, `kind` tag, `ATS {rating}` badge, plus **Download all**.
+`tailorSummary` states in one line what changed across all drafts.
+
+The thumbnail is an abstract miniature of the layout — grey bars on white paper, the template's own
+accent, no readable text. Its job is to make the ATS badge legible: you can *see* Ledger's two-column
+body and Atlas's icon-only contact row, which is what costs each of them its rating. Paper colours, not
+brand tokens; the §9 export exemption covers the picture of the document as well as the document.
+
+**Compare two** appears in the design as a decorative control with no behaviour. It is deferred rather
+than shipped dead — a button that does nothing is worse than one that isn't there.
 
 Per draft: rewritten evidence-bound bullets, section ordering, skills reordered to lead with
 JD-relevant ones the profile actually contains, summary line assembled only from existing claims.
@@ -369,10 +415,20 @@ JD-relevant ones the profile actually contains, summary line assembled only from
 
 ### F6 — Preview + diff
 
-Full-page preview of the actual template family, with **All templates**, **Edit content**,
-**Download DOCX**, **Download PDF**, a template switcher, and a right rail: `cur.name`, `cur.blurb`,
-kind tag, ATS tag, **What changed for this posting** (`changes`), and **Still not evidenced**
-(`missing`) with **See courses for these** linking into the Learning tab.
+Full-page preview of the actual template family — same layout, same accent, same typeface as the
+export, on white paper — with **All six drafts**, **Download DOCX**, **Download PDF**, a six-chip
+template switcher, and a right rail: `cur.name`, `cur.blurb`, kind tag, ATS tag, the computed rating's
+own reasons, **What changed for this posting** (`changes`), and **Still not evidenced** (`missing`)
+with **See courses for these** linking into the Learning tab.
+
+Two demands pull against each other here: the preview has to look like the download or it is lying
+about it, and it has to show what we changed in the user's own words, which the download deliberately
+doesn't. Resolution: **the diff is drawn inside the bullets, not in a panel beside them.** Word-level,
+with the `transform` labelled — `rephrase` and `requantify` are different promises (§3). Highlighting
+is on by default and the toggle turns it *off*; the user should never have to hunt for what we altered.
+
+The rating's reasons are read off the same structural flags the rating was computed from (N5), never
+hand-written prose that could drift away from the badge beside it. **Edit content** is not implemented.
 
 That cross-link is the product's best moment: the preview admits what it can't cover and hands the
 user the fix. Do not remove it.
@@ -424,8 +480,13 @@ same deterministic matcher the Learning tab uses (N8).
 them**." Mention count is the honest proxy for what the employer cares about, and it comes free from
 JD analysis.
 
-Per gap: skill, level tag, note, `You` vs `Required`, `Mentioned N×`, and two course cards (provider
-mark, title, price, length, level, **View course**).
+Per gap: skill, level tag, note, `Mentioned N×`, and two course cards (provider mark, title, price,
+length, level, **View course**).
+
+`You` vs `Required` is drawn rather than described: one track, a filled bar for the level the profile
+evidences and a tick for the level the posting asks for. The two enums differ (`none…strong` against
+`exposure…expert`) but measure the same quantity, so `lib/domain/levels.ts` puts them on one five-rung
+ordinal scale. It is a position on that scale, not a percentage of skill.
 
 **Course catalog (N8).** Curated, version-controlled in `lib/catalog/courses.ts`, seeded into the
 `courses` table. Never model-generated. Seed sources: **roadmap.sh** tracks per domain, official free
@@ -492,7 +553,7 @@ that catches one.
 | Privacy | Résumé and JD text are user data. No training use, no third-party analytics on document content. Delete = hard delete of rows + storage objects within 24h. |
 | Security | RLS on every user table (§5.3) · service-role key server-only · signed, expiring storage URLs · every Server Action scopes by session subject |
 | Uploads | MIME sniffing not extension trust; 5 MB cap; encrypted PDFs rejected with a reason |
-| A11y | Keyboard-navigable; tabs and accordions correctly roled; AA contrast — accent is only 3:1 on the ground, so body copy in accent uses `--color-accent-700` |
+| A11y | Keyboard-navigable; tabs and accordions correctly roled; AA contrast — accent is only 3:1 on the ground, so body copy in accent uses `--color-accent-700`. Both themes (F0) carry the same contract; ink on the accent comes from `--color-on-accent`, which inverts. All motion collapses under `prefers-reduced-motion`, including the stage figures (F3) |
 | Reliability | LLM failure on one surface degrades that tab, never the whole analysis. A failed Prep tab must not lose the résumés. |
 
 ## 12. Verification policy

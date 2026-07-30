@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, CircleDashed, Loader2, TriangleAlert } from "lucide-react";
-import { Button, Card, ErrorRegion } from "@/components/ui";
+import { Button, ErrorRegion } from "@/components/ui";
+import { StageFigure } from "@/components/stage-figure";
 import { STAGES, type StageKey, type StageState, type StageUpdate } from "@/lib/pipeline/stages";
 
 /**
@@ -12,6 +13,9 @@ import { STAGES, type StageKey, type StageState, type StageUpdate } from "@/lib/
  * Four named steps resolving in sequence against REAL state streamed from the
  * pipeline. Never a fake timer: a spinner that lies is worse than an error, so
  * a stage failure stops there and says what failed.
+ *
+ * The heading, the description and the figure all follow the stage the pipeline
+ * says is running. Nothing on this screen advances on its own.
  */
 export function ParsingScreen({
   analysisId,
@@ -97,52 +101,93 @@ export function ParsingScreen({
     );
   }
 
-  return (
-    <div className="max-w-2xl">
-      <h1 className="mb-6">Reading the posting</h1>
+  // The running stage, or the last one that finished — never "none", so the
+  // heading and figure don't blank out between two stream updates.
+  const current =
+    STAGES.find((s) => states[s.key] === "running") ??
+    [...STAGES].reverse().find((s) => states[s.key] !== "pending") ??
+    STAGES[0];
 
-      <div
-        className="mb-8 h-2 w-full overflow-hidden rounded-[var(--radius-pill)]"
-        style={{ background: "var(--color-bg-sunken)" }}
-        role="progressbar"
-        aria-valuenow={progressPct}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label="Analysis progress"
-      >
+  return (
+    <div className="max-w-3xl">
+      <div className="rise-in">
+        <p className="eyebrow mb-2.5 text-[var(--color-accent-700)]">
+          Step 2 of 3 · {progressPct}% complete
+        </p>
+        <h1 className="mb-2 text-4xl">{current.label}</h1>
+        <p className="mb-6 max-w-[60ch] text-[var(--color-text-muted)]">{current.description}</p>
+
         <div
-          className="h-full rounded-[var(--radius-pill)] transition-[width] duration-500"
-          style={{ width: `${progressPct}%`, background: "var(--color-accent-500)" }}
-        />
+          className="mb-7 h-2 w-full overflow-hidden rounded-[var(--radius-pill)]"
+          style={{ background: "var(--color-bg-sunken)" }}
+          role="progressbar"
+          aria-valuenow={progressPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Analysis progress"
+        >
+          <div
+            className="h-full rounded-[var(--radius-pill)] transition-[width] duration-500"
+            style={{ width: `${progressPct}%`, background: "var(--color-accent-500)" }}
+          />
+        </div>
       </div>
 
-      <Card>
-        <ol className="space-y-4">
-          {STAGES.map((stage) => {
-            const state = states[stage.key];
-            return (
-              <li key={stage.key} className="flex items-center gap-3">
-                <StageIcon state={state} />
-                <span
-                  className={
-                    state === "pending" ? "text-[var(--color-text-muted)]" : "font-semibold"
-                  }
-                >
-                  {stage.label}
-                </span>
-                {messages[stage.key] ? (
-                  <span className="text-sm text-[var(--color-warn-700)]">
-                    {messages[stage.key]}
-                  </span>
-                ) : null}
-              </li>
-            );
-          })}
-        </ol>
-      </Card>
+      {/* Not a Card: the figure needs to clip its own animation, and a card's
+          shadow around a looping diagram reads as a second progress widget. */}
+      <div
+        className="mb-6 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] p-5 sm:p-6"
+        style={{ background: "var(--color-bg-raised)" }}
+      >
+        <StageFigure stage={current.key} />
+      </div>
+
+      <ol className="mb-7">
+        {STAGES.map((stage) => {
+          const state = states[stage.key];
+          const active = state === "running";
+          return (
+            <li
+              key={stage.key}
+              className="flex flex-wrap items-center gap-3 border-b border-[var(--color-line)] py-2.5"
+            >
+              <StageIcon state={state} />
+              <span
+                className={
+                  state === "pending"
+                    ? "text-[var(--color-text-muted)]"
+                    : active
+                      ? "font-semibold"
+                      : undefined
+                }
+              >
+                {stage.label}
+              </span>
+              {messages[stage.key] ? (
+                <span className="text-sm text-[var(--color-warn-700)]">{messages[stage.key]}</span>
+              ) : null}
+              <span className="ml-auto text-xs text-[var(--color-text-muted)]">
+                {STATUS_LABEL[state]}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+
+      <p className="max-w-[60ch] text-sm text-[var(--color-text-muted)]">
+        A stage that fails stops there and says what failed — we resume rather than restart.
+      </p>
     </div>
   );
 }
+
+const STATUS_LABEL: Record<StageState, string> = {
+  pending: "pending",
+  running: "running",
+  done: "done",
+  degraded: "partial",
+  failed: "failed",
+};
 
 function StageIcon({ state }: { state: StageState }) {
   if (state === "running") {

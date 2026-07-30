@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getDrafts } from "@/lib/db/queries/analysis";
 import { templateById } from "@/lib/render/templates";
 import { AtsBadge, Card, EmptyState, Tag } from "@/components/ui";
+import { TemplateThumb } from "@/components/template-thumb";
 import { DownloadAll } from "./download-all";
 
 /**
@@ -46,15 +47,13 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
           if (!template) return null;
           return (
             <Link key={draft.id} href={`/analysis/${id}/preview/${draft.templateId}`}>
-              <Card className="h-full transition-shadow hover:shadow-[var(--shadow-md)]">
-                <div
-                  className="mb-4 h-28 rounded-[var(--radius-md)]"
-                  style={{ background: "var(--color-bg-sunken)" }}
-                  aria-hidden
-                />
-                <h3 className="mb-1">{template.name}</h3>
-                <p className="mb-3 text-sm text-[var(--color-text-muted)]">{template.blurb}</p>
-                <div className="flex flex-wrap gap-2">
+              <Card className="flex h-full flex-col gap-3 p-3.5 transition-transform hover:-translate-y-[3px] hover:shadow-[var(--shadow-md)]">
+                <TemplateThumb template={template} />
+                <div>
+                  <h3 className="mb-1 text-lg">{template.name}</h3>
+                  <p className="text-sm text-[var(--color-text-muted)]">{template.blurb}</p>
+                </div>
+                <div className="mt-auto flex flex-wrap gap-2">
                   <Tag tone="muted">{draft.pageCount} page{draft.pageCount === 1 ? "" : "s"}</Tag>
                   <Tag>{template.kind}</Tag>
                   <AtsBadge rating={draft.atsRating} />

@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { ExternalLink } from "lucide-react";
 import { getCatalog, getGaps } from "@/lib/db/queries/analysis";
 import { matchCourses } from "@/lib/catalog/match";
+import { levelPosition } from "@/lib/domain/levels";
 import { Card, EmptyState, Tag } from "@/components/ui";
 
 /**
@@ -49,7 +50,8 @@ export default async function LearningTab({
           evidence
         </h2>
         <p className="mt-1 text-[var(--color-text-muted)]">
-          Ordered by how often the posting mentions them.
+          Ordered by how often the posting mentions them. Courses come from a vetted catalog —
+          where we have nothing checked, we say so.
           {wanted ? " Filtered to the skills you came here for." : ""}
         </p>
       </div>
@@ -63,14 +65,41 @@ export default async function LearningTab({
 
           return (
             <Card key={gap.id}>
-              <div className="mb-3 flex flex-wrap items-center gap-3">
-                <h3>{gap.skillName}</h3>
-                <Tag tone="accent">Mentioned {gap.mentionCount}×</Tag>
-                <Tag tone="muted">You: {gap.userLevel}</Tag>
-                <Tag tone="muted">Required: {gap.requiredLevel}</Tag>
-              </div>
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-5">
+                <div className="max-w-[56ch]">
+                  <div className="mb-2 flex flex-wrap items-center gap-2.5">
+                    <h3>{gap.skillName}</h3>
+                    <Tag tone="accent">Mentioned {gap.mentionCount}×</Tag>
+                    <Tag tone="muted">You: {gap.userLevel}</Tag>
+                    <Tag tone="muted">Required: {gap.requiredLevel}</Tag>
+                  </div>
+                  <p className="text-[var(--color-text-muted)]">{gap.note}</p>
+                </div>
 
-              <p className="mb-4 text-[var(--color-text-muted)]">{gap.note}</p>
+                {/* The distance, drawn. The bar is what the profile evidences,
+                    the tick is what the posting asks for — the gap between them
+                    is the thing the courses below are for. */}
+                <div className="w-full min-w-[11rem] max-w-[14rem] flex-1">
+                  <div className="mb-1.5 flex justify-between text-xs text-[var(--color-text-muted)]">
+                    <span>You</span>
+                    <span>Required</span>
+                  </div>
+                  <div
+                    className="meter"
+                    role="img"
+                    aria-label={`Your level: ${gap.userLevel}. This posting asks for: ${gap.requiredLevel}.`}
+                  >
+                    <span
+                      className="meter-have"
+                      style={{ width: `${levelPosition(gap.userLevel)}%` }}
+                    />
+                    <span
+                      className="meter-need"
+                      style={{ left: `${levelPosition(gap.requiredLevel)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
 
               {courses.length === 0 ? (
                 <p className="text-sm text-accent-body">

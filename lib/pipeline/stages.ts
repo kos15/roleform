@@ -5,11 +5,38 @@
  * is worse than an error, so a stage failure stops there and says what failed.
  */
 
+/**
+ * `label` is the row in the stage list; `description` is the sentence shown
+ * while that stage is the running one. The description says what the stage does
+ * and, where it matters, what it refuses to do — the matching stage is the one
+ * that decides what counts as evidence, and saying so here is cheaper than
+ * defending the score later.
+ */
 export const STAGES = [
-  { key: "reading", label: "Reading the posting" },
-  { key: "matching", label: "Matching against your profile" },
-  { key: "rewriting", label: "Rewriting your resume" },
-  { key: "preparing", label: "Preparing questions and courses" },
+  {
+    key: "reading",
+    label: "Reading the posting",
+    description:
+      "Pulling the title, the responsibilities and every stated requirement out of the document — before anything is matched or rewritten.",
+  },
+  {
+    key: "matching",
+    label: "Matching against your profile",
+    description:
+      "Checking each requirement against your own words. Nothing counts as evidence unless one of your bullets actually says it.",
+  },
+  {
+    key: "rewriting",
+    label: "Rewriting your resume",
+    description:
+      "Reordering and rewording your bullets against this posting. Every generated line keeps a key back to the bullet you wrote.",
+  },
+  {
+    key: "preparing",
+    label: "Preparing questions and courses",
+    description:
+      "Drawing the questions this posting invites, then matching what you can't evidence to courses from the vetted catalog.",
+  },
 ] as const;
 
 export type StageKey = (typeof STAGES)[number]["key"];

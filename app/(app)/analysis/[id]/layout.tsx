@@ -5,6 +5,7 @@ import {
   getBulletTexts,
   getCoverage,
   getRequirements,
+  getTabCounts,
 } from "@/lib/db/queries/analysis";
 import { ResultsHeader } from "./results-header";
 import { AnalysisTabs } from "./analysis-tabs";
@@ -31,10 +32,11 @@ export default async function AnalysisLayout({
   // are already scoped by user and analysis, so speculating on them costs a
   // wasted query on the parsing path and saves a full round trip on every other
   // one. Only `bulletTexts` genuinely depends on a prior result.
-  const [analysis, requirements, coverage] = await Promise.all([
+  const [analysis, requirements, coverage, counts] = await Promise.all([
     getAnalysis(userId, id),
     getRequirements(userId, id),
     getCoverage(userId, id),
+    getTabCounts(userId, id),
   ]);
   if (!analysis) redirect("/history");
   if (analysis.status !== "ready") return <>{children}</>;
@@ -61,7 +63,7 @@ export default async function AnalysisLayout({
         coverage={coverage}
         bulletTexts={Object.fromEntries(bulletTexts)}
       />
-      <AnalysisTabs analysisId={id} />
+      <AnalysisTabs analysisId={id} counts={counts} />
       {children}
     </div>
   );

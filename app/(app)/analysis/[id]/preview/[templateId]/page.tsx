@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { GraduationCap } from "lucide-react";
+import { ArrowLeft, GraduationCap } from "lucide-react";
 import { getAnalysis, getDrafts, getTailoredBullets } from "@/lib/db/queries/analysis";
 import { buildRenderModel } from "@/lib/render/model";
 import { templateById } from "@/lib/render/templates";
 import { AtsBadge, Card, EmptyState, Tag } from "@/components/ui";
 import { atsViolations } from "@/lib/render/ats-rules";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
-import { DiffView } from "./diff-view";
+import { PreviewSurface } from "./preview-surface";
 import { DownloadButtons } from "./download-buttons";
 import { TemplateSwitcher } from "./template-switcher";
 
@@ -57,51 +57,64 @@ export default async function PreviewPage({
   const violations = atsViolations(template.structuralFlags);
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
-      <div>
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <Link href={`/analysis/${id}/resumes`} className="text-sm font-semibold text-accent-body">
-            ← All templates
-          </Link>
-          <TemplateSwitcher
-            analysisId={id}
-            current={templateId}
-            available={drafts.map((d) => d.templateId)}
-          />
-        </div>
-
-        <DiffView
-          model={model}
-          pairs={tailored.map((t) => ({
-            original: t.originalText,
-            rewritten: t.rewrittenText,
-            transform: t.transform,
-          }))}
-        />
-      </div>
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_21rem]">
+      <PreviewSurface
+        model={model}
+        template={template}
+        pairs={tailored.map((t) => ({
+          original: t.originalText,
+          rewritten: t.rewrittenText,
+          transform: t.transform,
+        }))}
+        actions={
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href={`/analysis/${id}/resumes`} className="btn btn-ghost btn-sm">
+              <ArrowLeft className="lucide h-4 w-4" /> All six drafts
+            </Link>
+            <DownloadButtons draftId={draft.id} />
+          </div>
+        }
+      />
 
       <aside className="min-w-0 space-y-5">
-        <Card>
+        <div>
           <h3 className="mb-1">{template.name}</h3>
           <p className="mb-3 text-sm text-[var(--color-text-muted)]">{template.blurb}</p>
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             <Tag>{template.kind}</Tag>
             <AtsBadge rating={draft.atsRating} />
+            <Tag tone="muted">
+              {draft.pageCount} page{draft.pageCount === 1 ? "" : "s"}
+            </Tag>
           </div>
 
-          {violations.length > 0 ? (
-            <div className="mb-4 text-sm text-[var(--color-text-muted)]">
-              <p className="mb-1 font-semibold text-[var(--color-text)]">Why it rates that way</p>
-              <ul className="list-disc space-y-1 pl-4">
-                {violations.map((v) => (
-                  <li key={v}>{v} — not met</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+          {/* The rating's own reasons, read off the structural flags the rating
+              was computed from (N5) — never a hand-written justification, which
+              would be free to drift away from the badge beside it. */}
+          <div className="mt-3 text-xs text-[var(--color-text-muted)]">
+            {violations.length === 0 ? (
+              <p>All five structural rules met, so it rates High.</p>
+            ) : (
+              <>
+                <p className="mb-1">
+                  {violations.length === 1 ? "One violation" : `${violations.length} violations`},
+                  so it rates {draft.atsRating}:
+                </p>
+                <ul className="list-disc space-y-0.5 pl-4">
+                  {violations.map((v) => (
+                    <li key={v}>{v} — not met</li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        </div>
 
-          <DownloadButtons draftId={draft.id} />
-        </Card>
+        <TemplateSwitcher
+          analysisId={id}
+          current={templateId}
+          available={drafts.map((d) => d.templateId)}
+        />
 
         <Card>
           <h3 className="mb-2">What changed for this posting</h3>
