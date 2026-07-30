@@ -51,6 +51,21 @@ begin
   end loop;
 end $$;
 
+-- --------------------------------------------------------- support messages
+-- contact_messages is the one user table whose rows can legitimately have a
+-- NULL subject: the contact page is public, so a signed-out sender has no
+-- Clerk id to key on. Those rows are written by the Server Action over the
+-- Prisma connection (which bypasses RLS) and are readable only by the service
+-- role. Through the anon client, the rule is the same as everywhere else —
+-- your own rows, and only if the request carries the authenticated role.
+
+alter table public.contact_messages enable row level security;
+alter table public.contact_messages force row level security;
+drop policy if exists "own rows" on public.contact_messages;
+create policy "own rows" on public.contact_messages for all to authenticated
+  using      (clerk_user_id = public.clerk_user_id())
+  with check (clerk_user_id = public.clerk_user_id());
+
 -- ------------------------------------------------------------ reference data
 -- templates / skills / courses are seeded, not user-owned: public read, no
 -- write policy for authenticated users. Writes go through the service role,

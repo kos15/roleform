@@ -8,13 +8,13 @@ import { computeCoverage, scoreAnalysis } from "@/lib/domain/coverage";
 import { orderSkills, rankBullets } from "@/lib/domain/ordering";
 import { summariseChanges } from "@/lib/domain/diff";
 import { canonicalSkill, skillsIn } from "@/lib/catalog/skills";
-import { TEMPLATES, ratingFor } from "@/lib/render/templates";
+import { TEMPLATES, ratingFor, type TemplateDef } from "@/lib/render/templates";
 import { buildRenderModel, type RenderModel } from "@/lib/render/model";
 import { renderFitted } from "@/lib/render/pdf";
 import { getBullets, toDomainBullets } from "@/lib/db/queries/profile";
 import { getProfileById } from "@/lib/db/queries/analysis";
 import { progressFor, type StageEmitter } from "./stages";
-import type { DomainBullet, DomainRequirement } from "@/lib/domain/types";
+import type { AtsRating, DomainBullet, DomainRequirement } from "@/lib/domain/types";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 
 /**
@@ -48,6 +48,14 @@ export async function runAnalysis(args: {
   const resume = profile.resumeJson as unknown as StoredResume;
   const bulletRows = await getBullets(clerkUserId, profile.id);
   const bullets = toDomainBullets(bulletRows);
+
+  // Read once, at the top: the caps that apply are the ones in force when the
+  // run started. An admin lowering a cap mid-run does not truncate a run that
+  // is already paying for itself (F15).
+  const caps = (await db.user.findUnique({
+    where: { clerkUserId },
+    select: { capResumes: true },
+  })) ?? { capResumes: TEMPLATES.length };
 
   // specs §13: a profile with zero bullets blocks analysis. The tool has
   // nothing to work from, and saying so beats inventing something.
@@ -204,6 +212,7 @@ export async function runAnalysis(args: {
 
     await writeDrafts({
       clerkUserId,
+      capResumes: caps.capResumes,
       analysisId,
       resume,
       requirements,
@@ -314,8 +323,28 @@ async function resolveSkillIds(names: string[]): Promise<Map<string, string>> {
  * rewrites of the same fact would produce six subtly different versions of the
  * user's history, which is exactly what the spine exists to prevent.
  */
+/**
+ * Which templates render, under this member's `capResumes` (F15).
+ *
+ * Below six we render the highest-ATS ones first, because a member who only
+ * gets three drafts should get the three most likely to survive a parser — not
+ * the three that happened to be first in the array. Ties keep declaration
+ * order, so the choice is stable between runs.
+ */
+function templatesFor(cap: number): TemplateDef[] {
+  if (cap >= TEMPLATES.length) return TEMPLATES;
+  const rank: Record<AtsRating, number> = { High: 0, Medium: 1, Low: 2 };
+  return [...TEMPLATES]
+    .map((t, i) => ({ t, i, r: rank[ratingFor(t.id)] }))
+    .sort((a, b) => a.r - b.r || a.i - b.i)
+    .slice(0, Math.max(0, cap))
+    .map((x) => x.t);
+}
+
 async function writeDrafts(args: {
   clerkUserId: string;
+  /** 0–6. Set per member in the admin panel; six by default. */
+  capResumes: number;
   analysisId: string;
   resume: StoredResume;
   requirements: DomainRequirement[];
@@ -349,7 +378,7 @@ async function writeDrafts(args: {
     summary: resumeJson.basics.summary,
   });
 
-  for (const template of TEMPLATES) {
+  for (const template of templatesFor(args.capResumes)) {
     const draft = await db.resumeDraft.create({
       data: {
         clerkUserId: args.clerkUserId,

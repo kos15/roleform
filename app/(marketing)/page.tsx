@@ -6,23 +6,7 @@ import { Button, Card, Tag } from "@/components/ui";
 
 export default function MarketingPage() {
   return (
-    <main className="mx-auto max-w-5xl px-6 py-20">
-      <nav className="mb-24 flex items-center justify-between">
-        <span className="font-[family-name:var(--font-heading)] text-2xl">Roleform</span>
-        <Show when="signed-out">
-          <SignInButton mode="modal">
-            <Button variant="secondary" size="sm">
-              Sign in
-            </Button>
-          </SignInButton>
-        </Show>
-        <Show when="signed-in">
-          <Link href="/analyze">
-            <Button size="sm">Open Roleform</Button>
-          </Link>
-        </Show>
-      </nav>
-
+    <div className="mx-auto max-w-5xl px-6 py-20">
       {/* Left-aligned and asymmetric — whitespace on the right (CLAUDE.md §9). */}
       <div className="max-w-2xl">
         <Tag tone="accent" className="mb-6">
@@ -84,8 +68,9 @@ export default function MarketingPage() {
       <p className="mt-16 max-w-xl text-sm text-[var(--color-text-muted)]">
         The match score is requirement coverage — how much of the posting your profile can
         evidence. It isn&rsquo;t an ATS score, and it doesn&rsquo;t predict a callback. Nobody
-        can honestly sell you that number.
+        can honestly sell you that number.{" "}
+        <Link href="/how-it-works">Read how the four stages work</Link>.
       </p>
-    </main>
+    </div>
   );
 }

@@ -151,7 +151,17 @@ real foreign keys, and JSONB cannot enforce them.
 
 ```
 users
-  clerk_user_id text PRIMARY KEY, email_hash, plan, quota_remaining, created_at
+  clerk_user_id text PRIMARY KEY, email_hash, plan, created_at
+  role enum('member','admin'), suspended bool
+  cap_analyses, cap_resumes, cap_answers, cap_courses int   -- F15, each CHECKed
+  quota_remaining int                -- superseded by cap_analyses; no longer read
+  quota_resets_at timestamptz        -- anchors the rolling 30-day cycle
+
+contact_messages                       -- F13. The one table whose subject may be NULL:
+  id, clerk_user_id text NULL, name, email, subject, body, created_at
+  -- the contact page is public, so a signed-out sender has no subject to key on.
+  -- Those rows are written over the Prisma connection and read by the service
+  -- role only; through the anon client the rule is own-rows as everywhere else.
 
 master_profiles
   id, clerk_user_id, resume_json (jsonb), schema_version,
@@ -311,8 +321,18 @@ deterministic, reproducible and explainable line by line.
 
 ### F0 — Shell and theme
 
-Sticky header on the ground (not a raised surface): brand mark, `New analysis · History · Profile`,
-theme switch, Clerk user button.
+Sticky header on the ground (not a raised surface): brand mark, `New analysis · History · Profile ·
+Admin · Status`, theme switch, role label, Clerk user button.
+
+`Admin` is shown to every member, not only to admins. A link that quietly isn't there teaches nobody
+anything; a 403 that names the missing permission and the people who hold it (F15) is the more useful
+outcome of the same click.
+
+**Footer**, on every surface including the public ones: the mark and the one-line promise, then three
+columns — Product (`New analysis · History · Profile · Status`), Company (`How it works · Privacy ·
+Contact`) and Support us — over a rule carrying `Terms · Privacy · Changelog`. The dot beside `Status`
+is live: it renders only when a stage is actually degraded, from the same aggregate F14 reads. A
+decorative pulse next to the word "Status" would be the exact lie that page exists to prevent.
 
 **Theme.** Light and dark, switched by `data-theme` on the html element. Dark is the same roles at the
 same ramp steps re-derived on a dark ground — a variable override in `globals.css`, never a `dark:`
@@ -544,6 +564,97 @@ no colour band — and matching the PDF's layout would cost it the thing it is f
 Past analyses: company, title, score, date, status. Opens stored results — no regeneration, no
 re-billing. Master profile edits never rewrite past analyses (§6.2 invariant 4).
 
+### F12 — The written pages
+
+`/how-it-works`, `/privacy`, `/terms`, `/changelog`, `/support`. Public — no session. A promise you
+have to create an account to read is not a promise you can act on, and privacy is the promise this
+product most needs to make in writing.
+
+Content lives in `lib/content/` rather than a CMS, because each page is a commitment the code has to
+keep: when §3's fabrication boundary moves, "What we can't tell you" moves in the same commit.
+
+- **How it works** is the four stages, each with what it *refuses* to do. The refusals are set as a
+  list, not buried in prose — they are the load-bearing sentences.
+- **Changelog** records fixes as plainly as features, tagged `Release · Feature · Improvement · Fix`.
+- **Support us** publishes where the money goes, labelled **planned allocation** rather than a report,
+  because we have not taken a quarter of money yet. Presenting a forecast as a result is the same
+  class of lie as an "ATS score" (N4).
+
+**Acceptance:** all five render signed out; no page claims a number it cannot source.
+
+### F13 — Contact
+
+Public form → Zod → `contact_messages`. Stored, not sent: there is no mail provider wired in, and a
+form that says "sent" while dropping the message would be worse than no form. The confirmation says
+*filed*, and names the address we will reply to.
+
+Prefill comes from Clerk when there is a session — never from us. We hold a hash of the address (N7)
+precisely so we cannot read one back.
+
+**Acceptance:** a message under 20 characters is refused with a reason; six in an hour is refused with
+the direct address; the row survives with `clerk_user_id` null for a signed-out sender.
+
+### F14 — Status
+
+`/status`, public. Per-stage health for the four-stage pipeline, **derived, never authored**: each
+stage's state is read back out of `ai_runs` over the last hour — degraded at ≥20% schema-invalid or a
+mean of ≥1 corrective retry. Under five runs a stage reports Operational *and says the sample is too
+small to be a verified one*; "unknown" dressed up as "healthy" is the failure this page exists to
+avoid. Matching runs no model at all (`lib/domain/coverage.ts` is pure), so it says it has no worker
+to degrade.
+
+**Parked run.** For a signed-in viewer, the newest analysis still in `parsing`. Progress is counted
+from what the run persisted — requirements mean reading finished, coverage items mean matching
+finished, drafts mean rewriting, questions mean preparing — so the bar is a fact about rows, not a
+guess about a worker. A stage in flight contributes nothing; rounding up would be an invention.
+
+The page re-reads itself every 30 seconds and shows the countdown, so the number on screen has a
+known age.
+
+**Acceptance:** with the pipeline healthy the page says so without inventing an incident; with a
+degraded stage the header names *which* stage and the other three still read Operational.
+
+### F15 — Generation controls (admin)
+
+Four caps per member, on `users`, each with a CHECK constraint: `capAnalyses` (per cycle),
+`capResumes` (per analysis, 0–6), `capAnswers` (per cycle), `capCourses` (per gap, 0–6). Four caps
+rather than one credit balance, because the four things cost different amounts and fail at different
+seams — telling someone out of answer drafts that they are out of analyses is the generic error this
+feature removes.
+
+**Scope.** One workspace, which in v1 is the whole install: there is no organisation model yet, so
+`users.role = admin` is an operator role. When organisations arrive, `listMembers()` grows a
+membership join and nothing else about the panel changes — which is why the caps live on `users` and
+not in a settings blob.
+
+**Identity.** Names and addresses come from Clerk at render time, never from us (N7). The panel reads
+usage counts from our tables and cannot read a member's profile, résumés, answers or postings — not
+as policy but because the RLS policy keyed to the subject does not admit it.
+
+**Enforcement**, each at its own seam:
+
+| Cap | Where | Behaviour at the cap |
+|---|---|---|
+| `capAnalyses` | `checkAnalysisAllowance` | New runs refused, naming the cap and the admins who can raise it. Existing analyses stay readable. |
+| `capResumes` | `writeDrafts` | Renders the highest-ATS templates first. Below six is fewer drafts, never worse ones. |
+| `capAnswers` | `draftAnswer` | Frameworks stay free at every cap, including zero. Already-drafted answers stay readable. |
+| `capCourses` | Learning tab | Bounds the course list per gap. **The gap is always shown**, at any cap including zero. |
+
+Counted from rows, never decremented from a balance — so a run that fails to start costs nothing and
+the two ways a balance drifts (a crash between decrement and insert, a refund that fires twice) stop
+being representable. This replaced `users.quota_remaining`, which is no longer read.
+
+**Suspension** stops new generation only. Existing analyses stay readable; we never lock someone out
+of their own documents (§13).
+
+**403.** A member reaching `/admin` gets a screen naming the permission, what they can still do with
+their own numbers in it, and which admins can grant it — plus a request button that files a support
+message rather than inventing a notification path.
+
+**Acceptance:** a member cannot change another member's caps through the action even with a forged
+payload (the role is re-read server-side); a cap of 0 renders as "Off" and refuses with a sentence,
+not an error code.
+
 ## 10. AI layer
 
 | Purpose | Function | Schema | Tier | Retry |
@@ -633,6 +744,10 @@ exportAll(analysisId)                 → { zipSignedUrl }
 listAnalyses(cursor)                  → History page
 deleteAccount()                       → hard delete of rows + storage objects
 POST /api/webhooks/clerk              → user lifecycle
+
+sendContactMessage(prev, formData)    → ContactState        // F13, public — no session
+updateMemberCaps({ clerkUserId, caps, suspended })          // F15, re-reads role server-side
+requestAdminAccess()                  → files a support message
 ```
 
 ## 15. Open decisions

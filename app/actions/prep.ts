@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { checkAnswerAllowance, requireUser } from "@/lib/auth";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { generateAnswer } from "@/lib/ai/answer";
 import {
@@ -56,6 +56,13 @@ export async function draftAnswer(questionId: string): Promise<Result<AnswerView
       ),
     );
   }
+
+  // The answers cap (F15). Checked after the cache lookup above on purpose: a
+  // question you have already had drafted stays readable at any cap, because
+  // re-reading it costs nothing and taking it away would be a punishment
+  // rather than a limit.
+  const allowance = await checkAnswerAllowance(user.value);
+  if (!allowance.ok) return allowance;
 
   const [analysis, profile] = await Promise.all([
     getAnalysis(user.value, question.analysisId),

@@ -3,7 +3,7 @@
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { consumeAnalysisQuota, refundAnalysisQuota, requireUser } from "@/lib/auth";
+import { checkAnalysisAllowance, requireUser } from "@/lib/auth";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { extractText, MAX_UPLOAD_BYTES } from "@/lib/extract/text";
 import { getProfile } from "@/lib/db/queries/profile";
@@ -68,30 +68,26 @@ export async function createAnalysis(input: {
     );
   }
 
-  const quota = await consumeAnalysisQuota(user.value);
-  if (!quota.ok) return quota;
+  const allowance = await checkAnalysisAllowance(user.value);
+  if (!allowance.ok) return allowance;
 
-  try {
-    const row = await db.analysis.create({
-      data: {
-        clerkUserId: user.value,
-        profileId: profile.id,
-        jdSource: input.source,
-        jdFilename: filename,
-        rawText,
-        contentHash,
-        status: "parsing",
-      },
-      select: { id: true },
-    });
+  // The row IS the charge — see lib/auth.ts. A create that throws leaves
+  // nothing behind, so there is no refund to get wrong.
+  const row = await db.analysis.create({
+    data: {
+      clerkUserId: user.value,
+      profileId: profile.id,
+      jdSource: input.source,
+      jdFilename: filename,
+      rawText,
+      contentHash,
+      status: "parsing",
+    },
+    select: { id: true },
+  });
 
-    revalidatePath("/history");
-    return ok({ analysisId: row.id, reused: false });
-  } catch (e) {
-    // Never charge for a run that never started.
-    await refundAnalysisQuota(user.value);
-    throw e;
-  }
+  revalidatePath("/history");
+  return ok({ analysisId: row.id, reused: false });
 }
 
 function normalise(s: string): string {

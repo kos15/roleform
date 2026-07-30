@@ -2,6 +2,8 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
+import { listAdmins } from "@/lib/admin/members";
+import { cycleStart } from "@/lib/domain/quotas";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 /** N7: the address itself is never stored, only enough to de-duplicate. */
@@ -44,13 +46,25 @@ export async function requireUser(): Promise<Result<string>> {
 }
 
 /**
- * Quota check (M7.2). Exhaustion blocks NEW analyses only — past analyses stay
- * fully readable. We never lock a user out of their own data (specs §13).
+ * Analyses allowance (M7.2, F15). Exhaustion blocks NEW analyses only — past
+ * analyses stay fully readable. We never lock a user out of their own data
+ * (specs §13).
+ *
+ * Counted from the `analyses` table rather than decremented from a balance.
+ * That is the whole reason the refund path is gone: a run that fails to start
+ * leaves no row, so there is nothing to give back, and the two ways a balance
+ * could drift — a crash between decrement and insert, and a refund that fires
+ * twice — stop being representable.
+ *
+ * The refusal names the cap and the admins who can raise it. A generic "quota
+ * exceeded" is the failure this feature exists to remove (F15).
  */
-export async function consumeAnalysisQuota(clerkUserId: string): Promise<Result<number>> {
+export async function checkAnalysisAllowance(
+  clerkUserId: string,
+): Promise<Result<{ used: number; cap: number }>> {
   let row = await db.user.findUnique({
     where: { clerkUserId },
-    select: { quotaRemaining: true },
+    select: { capAnalyses: true, suspended: true, quotaResetsAt: true },
   });
 
   // A signed-in subject with no row means the webhook hasn't landed. Provision
@@ -59,34 +73,95 @@ export async function consumeAnalysisQuota(clerkUserId: string): Promise<Result<
     await provisionUser(clerkUserId);
     row = await db.user.findUnique({
       where: { clerkUserId },
-      select: { quotaRemaining: true },
+      select: { capAnalyses: true, suspended: true, quotaResetsAt: true },
     });
   }
 
   if (!row) return err(appError("not_found", "We couldn't find your account."));
-  if (row.quotaRemaining <= 0) {
+
+  if (row.suspended) {
     return err(
       appError(
         "quota_exhausted",
-        "You've used this month's analyses. Your existing analyses stay available.",
+        `Generation is suspended on your account${await askWhom()}. Everything you've already run stays readable.`,
       ),
     );
   }
 
-  const updated = await db.user.update({
-    where: { clerkUserId },
-    data: { quotaRemaining: { decrement: 1 } },
-    select: { quotaRemaining: true },
+  const used = await db.analysis.count({
+    where: { clerkUserId, createdAt: { gte: cycleStart(row.quotaResetsAt) } },
   });
 
-  return ok(updated.quotaRemaining);
+  if (used >= row.capAnalyses) {
+    return err(
+      appError(
+        "quota_exhausted",
+        row.capAnalyses === 0
+          ? `Your JD analyses cap is set to zero${await askWhom()}.`
+          : `You've used all ${row.capAnalyses} JD analyses in this cycle${await askWhom()}. Your existing analyses stay available.`,
+      ),
+    );
+  }
+
+  return ok({ used, cap: row.capAnalyses });
 }
 
-export async function refundAnalysisQuota(clerkUserId: string): Promise<void> {
-  // updateMany so a refund on a since-deleted account is a no-op rather than a
-  // throw inside another failure's cleanup path.
-  await db.user.updateMany({
+/**
+ * Answer-draft allowance (F15).
+ *
+ * Same shape as the analyses cap and for the same reason: counted from the
+ * rows that exist, so a draft that fails to save costs nothing. Frameworks are
+ * free at every cap — only a full drafted answer counts, which is what the
+ * admin panel's description promises.
+ */
+export async function checkAnswerAllowance(
+  clerkUserId: string,
+): Promise<Result<{ used: number; cap: number }>> {
+  const row = await db.user.findUnique({
     where: { clerkUserId },
-    data: { quotaRemaining: { increment: 1 } },
+    select: { capAnswers: true, suspended: true, quotaResetsAt: true },
   });
+  if (!row) return err(appError("not_found", "We couldn't find your account."));
+
+  if (row.suspended) {
+    return err(
+      appError(
+        "quota_exhausted",
+        `Generation is suspended on your account${await askWhom()}. The questions and their frameworks stay readable.`,
+      ),
+    );
+  }
+
+  const used = await db.questionAnswer.count({
+    where: { clerkUserId, createdAt: { gte: cycleStart(row.quotaResetsAt) } },
+  });
+
+  if (used >= row.capAnswers) {
+    return err(
+      appError(
+        "quota_exhausted",
+        row.capAnswers === 0
+          ? `Full answer drafts are switched off on your account${await askWhom()}. Every question still shows its framework and the bullets to answer from.`
+          : `You've used all ${row.capAnswers} full answer drafts in this cycle${await askWhom()}. Frameworks stay free, and answers you've already drafted stay readable.`,
+      ),
+    );
+  }
+
+  return ok({ used, cap: row.capAnswers });
+}
+
+/**
+ * " — ask Devika Nair or Rahul Sen to raise it", or nothing when we genuinely
+ * don't know who to point at. Only called on the refusal path, so the identity
+ * lookup costs nothing in the common case.
+ */
+async function askWhom(): Promise<string> {
+  const admins = await listAdmins();
+  if (admins.length === 0) return "";
+  const names = admins.map((a) => a.name);
+  const list =
+    names.length === 1
+      ? names[0]
+      : `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`;
+  return ` — ask ${list} to raise it`;
 }

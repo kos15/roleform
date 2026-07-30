@@ -170,6 +170,16 @@ enum PlanTier {
   @@map("plan")
 }
 
+/// Who can change other people's generation caps. Deliberately two values and
+/// not a permission bitfield: there is exactly one privileged action in this
+/// product, and a role enum makes "who can do it" a column you can read.
+enum UserRole {
+  member
+  admin
+
+  @@map("user_role")
+}
+
 /* ------------------------------------------------------------------ users */
 
 /// clerkUserId is TEXT, not uuid — Clerk subjects are strings (§5.3).
@@ -181,7 +191,39 @@ model User {
   quotaResetsAt  DateTime? @map("quota_resets_at") @db.Timestamptz
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
+  role      UserRole @default(member)
+  /// Suspended stops NEW generation only. Existing analyses stay readable —
+  /// we never lock someone out of their own documents (specs §13).
+  suspended Boolean  @default(false)
+
+  /// Generation caps, one per expensive thing the product does (F15).
+  /// Separate columns rather than a JSON blob: each is enforced at a different
+  /// seam, each needs its own CHECK, and a cap you can't constrain in the
+  /// database is a cap the light-testing policy can't rely on (CLAUDE.md §11).
+  /// 0 means off, and "off" is a legitimate setting — hence the >= 0 CHECKs
+  /// added by hand in the migration rather than a nullable column.
+  capAnalyses Int @default(40) @map("cap_analyses") // per cycle
+  capResumes  Int @default(6) @map("cap_resumes") // per analysis, of six templates
+  capAnswers  Int @default(40) @map("cap_answers") // per cycle
+  capCourses  Int @default(4) @map("cap_courses") // per gap
+
   @@map("users")
+}
+
+/// Support mail (F16). Not user-owned content in the résumé sense, but it
+/// carries an address the sender typed on purpose, so it lives behind RLS with
+/// the same shape as everything else and is never joined to a profile.
+model ContactMessage {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String?  @map("clerk_user_id")
+  name        String
+  email       String
+  subject     String
+  body        String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt], map: "contact_messages_created_idx")
+  @@map("contact_messages")
 }
 
 /* -------------------------------------------------------- source documents */

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { ExternalLink } from "lucide-react";
+import { db } from "@/lib/db";
 import { getCatalog, getGaps } from "@/lib/db/queries/analysis";
 import { matchCourses } from "@/lib/catalog/match";
 import { levelPosition } from "@/lib/domain/levels";
@@ -27,7 +28,15 @@ export default async function LearningTab({
   const { userId } = await auth();
   if (!userId) redirect("/");
 
-  const [gaps, catalog] = await Promise.all([getGaps(userId, id), getCatalog()]);
+  const [gaps, catalog, account] = await Promise.all([
+    getGaps(userId, id),
+    getCatalog(),
+    // The per-gap course cap (F15). It bounds the LIST, never the gap itself:
+    // a gap is shown whether or not it has a course beside it, at any cap
+    // including zero. That is the promise the admin panel makes.
+    db.user.findUnique({ where: { clerkUserId: userId }, select: { capCourses: true } }),
+  ]);
+  const capCourses = account?.capCourses ?? 2;
 
   if (gaps.length === 0) {
     return (
@@ -61,6 +70,7 @@ export default async function LearningTab({
           const courses = matchCourses(
             { skillName: gap.skillName, userLevel: gap.userLevel, requiredLevel: gap.requiredLevel },
             catalog,
+            capCourses,
           );
 
           return (
