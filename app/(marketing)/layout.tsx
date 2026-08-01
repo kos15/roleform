@@ -26,6 +26,9 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           <Link href="/how-it-works" className="text-[var(--color-text-muted)]">
             How it works
           </Link>
+          <Link href="/pricing" className="text-[var(--color-text-muted)]">
+            Pricing
+          </Link>
           <Link href="/changelog" className="text-[var(--color-text-muted)]">
             Changelog
           </Link>

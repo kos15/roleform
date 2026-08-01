@@ -6,7 +6,7 @@ import { SPEND_BASIS, SUPPORT_SPEND, SUPPORT_TIERS } from "@/lib/content/support
 export const metadata: Metadata = {
   title: "Support us · Roleform",
   description:
-    "Independent, ad-free, and paid for by the people who use it. No recruiter side, no affiliate links.",
+    "Independent, ad-free, and paid for by people who use it. No recruiter side, no affiliate links.",
 };
 
 export default function SupportPage() {

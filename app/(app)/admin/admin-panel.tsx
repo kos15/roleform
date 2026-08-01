@@ -106,7 +106,7 @@ export function AdminPanel({ members }: { members: Member[] }) {
                   <span className="flex flex-wrap items-center gap-[7px]">
                     <span className="text-[0.9rem] font-semibold">{member.name}</span>
                     {member.role === "admin" ? <Tag tone="accent">Admin</Tag> : null}
-                    {drafts[member.clerkUserId] ? <Tag tone="muted">Unsaved</Tag> : null}
+                    {drafts[member.clerkUserId] ? <Tag tone="muted">Edited</Tag> : null}
                   </span>
                   <span className="block truncate text-xs text-[var(--color-text-muted)]">
                     {member.email}

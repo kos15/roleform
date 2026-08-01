@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import { Brand } from "@/components/brand";
@@ -6,16 +7,26 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteFooter } from "@/components/site-footer";
 import { currentRole } from "@/lib/admin/role";
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
+/**
+ * The chip says which role you are holding, because two of the nav links behave
+ * differently depending on it and a 403 you could have predicted is a worse
+ * 403. Reads Clerk (memoised per request) and refreshes the mirror on the way
+ * past, so a role granted in the dashboard takes effect on the next page view
+ * rather than after a deploy.
+ */
+async function RoleChip() {
   const { userId } = await auth();
+  if (!userId) return null;
 
-  // The chip says which role you are holding, because two of the nav links
-  // behave differently depending on it and a 403 you could have predicted is a
-  // worse 403. Reads Clerk (memoised per request) and refreshes the mirror on
-  // the way past, so a role granted in the dashboard takes effect on the next
-  // page view rather than after a deploy.
-  const role = userId ? await currentRole(userId) : null;
+  const role = await currentRole(userId);
+  return (
+    <span className="hidden text-xs text-[var(--color-text-muted)] sm:inline">
+      {role === "admin" ? "Admin" : "Member"}
+    </span>
+  );
+}
 
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="nav">
@@ -48,11 +59,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <ThemeToggle />
 
         <div className="flex flex-none items-center gap-2">
-          {role ? (
-            <span className="hidden text-xs text-[var(--color-text-muted)] sm:inline">
-              {role === "admin" ? "Admin" : "Member"}
-            </span>
-          ) : null}
+          {/* Suspended for the same reason as the footer's status dot: this
+              chip costs a Clerk read, and a layout that awaits resolves before
+              any child renders — so awaiting it here held the FIRST PAINT of
+              every signed-in page behind a directory round trip, and no child
+              loading.tsx could get in front of it. */}
+          <Suspense fallback={null}>
+            <RoleChip />
+          </Suspense>
           <UserButton />
         </div>
       </header>

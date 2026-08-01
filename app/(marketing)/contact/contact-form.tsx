@@ -50,7 +50,7 @@ export function ContactForm({
         </Field>
       </div>
 
-      <Field label="What's this about">
+      <Field label="Subject">
         <Input
           name="subject"
           required

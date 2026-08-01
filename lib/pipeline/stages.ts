@@ -27,7 +27,7 @@ export const STAGES = [
   },
   {
     key: "rewriting",
-    label: "Rewriting your resume",
+    label: "Rewriting your résumé",
     description:
       "Reordering and rewording your bullets against this posting. Every generated line keeps a key back to the bullet you wrote.",
   },

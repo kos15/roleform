@@ -79,6 +79,45 @@ export async function updateMemberCaps(input: CapsInput): Promise<Result<null>> 
   return ok(null);
 }
 
+const DefaultsSchema = z.object({
+  analyses: z.number().int(),
+  resumes: z.number().int(),
+  answers: z.number().int(),
+  courses: z.number().int(),
+});
+
+export type DefaultsInput = z.infer<typeof DefaultsSchema>;
+
+/**
+ * Workspace defaults (F15) — the caps a NEW account is provisioned with.
+ *
+ * Deliberately does not touch a single existing row. An admin who wants to
+ * move someone already here has the per-member panel, where they can see the
+ * usage they are moving the line across. A "defaults" control that silently
+ * re-capped the whole workspace would be the generic, unexplained refusal this
+ * feature exists to remove — just delivered a day later.
+ */
+export async function updateWorkspaceDefaults(input: DefaultsInput): Promise<Result<null>> {
+  const admin = await requireAdmin();
+  if (!admin.ok) return admin;
+
+  const parsed = DefaultsSchema.safeParse(input);
+  if (!parsed.success) return err(appError("invalid_input", "Those defaults didn't make sense."));
+
+  const caps = Object.fromEntries(
+    QUOTAS.map((q) => [q.column, clampCap(q.key, parsed.data[q.key])]),
+  ) as Record<(typeof QUOTAS)[number]["column"], number>;
+
+  await db.workspaceSettings.upsert({
+    where: { id: "workspace" },
+    create: { id: "workspace", ...caps },
+    update: caps,
+  });
+
+  revalidatePath("/admin");
+  return ok(null);
+}
+
 /**
  * A member asking to be let in (F15).
  *

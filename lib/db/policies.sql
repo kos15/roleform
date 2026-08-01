@@ -84,6 +84,18 @@ begin
   end loop;
 end $$;
 
+-- ------------------------------------------------------- workspace settings
+-- The caps a new account is provisioned with (F15). Not user data and not
+-- reference data: it is operator configuration, read and written only by the
+-- admin path over the Prisma connection, which bypasses RLS.
+--
+-- RLS on with NO policy is the point. Every table gets RLS (N10); this one has
+-- nothing an anon or authenticated request has any business reading, so the
+-- absence of a policy is the rule rather than an omission.
+alter table public.workspace_settings enable row level security;
+alter table public.workspace_settings force row level security;
+drop policy if exists "public read" on public.workspace_settings;
+
 -- --------------------------------------------------------------- storage RLS
 -- Path prefix must match the requesting subject (specs §6.3):
 --   resume/{clerk_user_id}/...

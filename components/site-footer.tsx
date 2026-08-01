@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { BrandMark, Wordmark } from "@/components/brand";
 import { anyDegraded, pipelineHealth } from "@/lib/status/health";
 
@@ -15,11 +16,16 @@ import { anyDegraded, pipelineHealth } from "@/lib/status/health";
  * degraded, read from the same aggregate the status page renders — a decorative
  * pulse next to the word "Status" would be the exact lie that page exists to
  * prevent.
+ *
+ * **The footer is NOT async, and that matters more than it looks.** It sits in
+ * both layouts, so while it awaited its health read, every page in the product
+ * — including ones that had nothing else to wait for — held its first paint
+ * behind a database round trip, and no child `loading.tsx` could help because a
+ * layout resolves before its children render at all. Only the dot needs the
+ * read, so only the dot is suspended: the links, the wordmark and the copyright
+ * paint immediately and the dot arrives when it knows something.
  */
-export async function SiteFooter() {
-  const stages = await pipelineHealth();
-  const degraded = anyDegraded(stages);
-
+export function SiteFooter() {
   return (
     <footer className="mt-auto border-t border-[var(--color-line)] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.6rem,4vw,2.25rem)]">
       <div className="mx-auto flex max-w-[1180px] flex-wrap items-start justify-between gap-7">
@@ -42,18 +48,18 @@ export async function SiteFooter() {
             <FooterLink href="/profile">Profile</FooterLink>
             <FooterLink href="/status">
               Status
-              {degraded ? (
-                <span
-                  aria-label="a stage is degraded"
-                  className="ml-1.5 inline-block h-1.5 w-1.5 rounded-[var(--radius-pill)] bg-[var(--color-accent)] align-middle [animation:breathe_1.6s_ease-in-out_infinite]"
-                />
-              ) : null}
+              {/* No fallback: the absence of a dot is the healthy state, so an
+                  empty slot while the read is in flight says the right thing. */}
+              <Suspense fallback={null}>
+                <DegradedDot />
+              </Suspense>
             </FooterLink>
           </div>
 
           <div className="flex flex-col gap-2">
             <FooterHeading>Company</FooterHeading>
             <FooterLink href="/how-it-works">How it works</FooterLink>
+            <FooterLink href="/pricing">Pricing</FooterLink>
             <FooterLink href="/privacy">Privacy</FooterLink>
             <FooterLink href="/contact">Contact</FooterLink>
           </div>
@@ -93,6 +99,19 @@ export async function SiteFooter() {
         </div>
       </div>
     </footer>
+  );
+}
+
+/** The one part of the footer that costs a query, isolated so only it waits. */
+async function DegradedDot() {
+  const stages = await pipelineHealth();
+  if (!anyDegraded(stages)) return null;
+
+  return (
+    <span
+      aria-label="a stage is degraded"
+      className="ml-1.5 inline-block h-1.5 w-1.5 rounded-[var(--radius-pill)] bg-[var(--color-accent)] align-middle [animation:breathe_1.6s_ease-in-out_infinite]"
+    />
   );
 }
 

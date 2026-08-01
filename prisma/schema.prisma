@@ -210,6 +210,33 @@ model User {
   @@map("users")
 }
 
+/// The caps a NEW account is created with (F15).
+///
+/// One row, always. The column defaults on `users` are what Postgres applies
+/// when nothing else says otherwise; this is what the workspace says instead,
+/// and `provisionUser` reads it at account creation. Changing a default never
+/// touches an existing member — their caps are already their own row, and
+/// silently re-capping people who have been working under a number is the
+/// opposite of the promise the panel makes.
+///
+/// Same bounds as the per-member caps, CHECKed by hand in the migration for
+/// the same reason (CLAUDE.md §11): with no test suite the constraint is the
+/// guarantee.
+model WorkspaceSettings {
+  /// Fixed key. A single-row table with a real primary key beats a bare
+  /// `settings` row we have to remember not to duplicate.
+  id String @id @default("workspace")
+
+  capAnalyses Int @default(40) @map("cap_analyses")
+  capResumes  Int @default(6) @map("cap_resumes")
+  capAnswers  Int @default(40) @map("cap_answers")
+  capCourses  Int @default(4) @map("cap_courses")
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("workspace_settings")
+}
+
 /// Support mail (F16). Not user-owned content in the résumé sense, but it
 /// carries an address the sender typed on purpose, so it lives behind RLS with
 /// the same shape as everything else and is never joined to a profile.

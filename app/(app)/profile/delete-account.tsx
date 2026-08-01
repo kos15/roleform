@@ -34,7 +34,7 @@ export function DeleteAccount() {
       <h3 className="mb-2">Delete everything</h3>
       <p className="mb-4 text-sm text-[var(--color-text-muted)]">
         Removes your profile, every analysis, and the résumé files themselves from storage.
-        Immediate and irreversible.
+        Immediate and irreversible. Backups purge within 30 days.
       </p>
       {error ? <ErrorRegion title="Deletion failed">{error}</ErrorRegion> : null}
       <div className="flex flex-wrap items-center gap-3">

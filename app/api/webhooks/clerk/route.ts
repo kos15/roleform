@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { Webhook } from "svix";
 import { db } from "@/lib/db";
 import { hashEmail } from "@/lib/auth";
+import { workspaceDefaults } from "@/lib/admin/defaults";
 import { deleteEverythingFor } from "./delete";
 
 /**
@@ -45,9 +46,20 @@ export async function POST(request: Request) {
   if (event.type === "user.created") {
     const emails = event.data.email_addresses as Array<{ email_address: string }> | undefined;
     const email = emails?.[0]?.email_address ?? "";
+    // The workspace defaults apply here too — this and `provisionUser` are the
+    // two doors into a new account, and they have to agree about what a new
+    // account starts with (lib/admin/defaults.ts).
+    const defaults = await workspaceDefaults();
     await db.user.upsert({
       where: { clerkUserId },
-      create: { clerkUserId, emailHash: hashEmail(email) },
+      create: {
+        clerkUserId,
+        emailHash: hashEmail(email),
+        capAnalyses: defaults.analyses,
+        capResumes: defaults.resumes,
+        capAnswers: defaults.answers,
+        capCourses: defaults.courses,
+      },
       update: {},
     });
   }

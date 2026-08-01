@@ -55,16 +55,24 @@ export interface SpendLine {
   note: string;
 }
 
+/**
+ * Vetting leads, though compute is the larger line.
+ *
+ * Not a sort order — an argument. The sentence above this list says a product
+ * that vets courses should be able to say who pays for the vetting, and the
+ * first row under that sentence should be the vetting. Ordering by percentage
+ * would put the least surprising number first and bury the claim.
+ */
 export const SUPPORT_SPEND: SpendLine[] = [
-  {
-    label: "Pipeline compute",
-    pct: 41,
-    note: "Reading, matching, rewriting and drafting.",
-  },
   {
     label: "Course catalog vetting",
     pct: 38,
     note: "Someone takes each course before it can be recommended.",
+  },
+  {
+    label: "Pipeline compute",
+    pct: 41,
+    note: "Reading, matching, rewriting and drafting.",
   },
   {
     label: "Hosting and storage",

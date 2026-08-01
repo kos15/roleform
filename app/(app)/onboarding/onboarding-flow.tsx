@@ -117,7 +117,7 @@ export function OnboardingFlow() {
           Drop your résumé here, or choose a file
         </span>
         <span className="block text-sm text-[var(--color-text-muted)]">
-          PDF, DOCX or TXT, up to 5 MB
+          PDF, DOCX or TXT · up to 5 MB
         </span>
         <input
           type="file"

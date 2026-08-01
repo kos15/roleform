@@ -3,6 +3,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { initialsOf, roleFromMetadata, type Role } from "@/lib/admin/role";
 import { cycleStart, type QuotaKey } from "@/lib/domain/quotas";
+import type { PlanId } from "@/lib/content/pricing";
 
 /**
  * The member list behind the admin panel (F15).
@@ -38,6 +39,9 @@ export interface Member {
   name: string;
   email: string;
   initials: string;
+  /** The row's own value, for anything that has to match a plan (lib/admin/plans.ts). */
+  planId: PlanId;
+  /** The same fact, spelled the way the panel prints it. */
   plan: string;
   role: Role;
   suspended: boolean;
@@ -78,6 +82,7 @@ export async function listMembers(): Promise<Member[]> {
       name,
       email: person?.email ?? "—",
       initials: initialsOf(name),
+      planId: row.plan === "pro" ? "pro" : "free",
       plan: row.plan === "pro" ? "Pro" : "Free",
       // From Clerk, not from the mirrored column: the mirror only refreshes
       // when a person visits, and a panel that shows a stale role is worse

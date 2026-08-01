@@ -101,7 +101,7 @@ export function JdInput() {
                 </Button>
               ) : null}
               <Button onClick={submit} disabled={!canSubmit || busy} busy={busy}>
-                {busy ? "Starting…" : "Analyze posting"}
+                {busy ? "Starting…" : "Analyse posting"}
               </Button>
             </div>
           </div>
@@ -156,7 +156,7 @@ export function JdInput() {
 
           <div className="mt-3 flex justify-end">
             <Button onClick={submit} disabled={!canSubmit || busy} busy={busy}>
-              {busy ? "Starting…" : "Analyze posting"}
+              {busy ? "Starting…" : "Analyse posting"}
             </Button>
           </div>
         </div>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { listAnalyses } from "@/lib/db/queries/analysis";
+import type { AnalysisStatus } from "@/lib/generated/prisma/enums";
 import { Card, EmptyState, Tag } from "@/components/ui";
 
 /**
@@ -11,6 +12,13 @@ import { Card, EmptyState, Tag } from "@/components/ui";
  * never rewrite past analyses, because original_text is snapshotted on every
  * tailored bullet (specs §6.2 invariant 4).
  */
+/** The enum is a database value; the table shows a written label. */
+const STATUS_LABEL: Record<AnalysisStatus, string> = {
+  parsing: "Analysing",
+  ready: "Ready",
+  failed: "Failed",
+};
+
 export default async function HistoryPage() {
   const { userId } = await auth();
   if (!userId) redirect("/");
@@ -49,7 +57,7 @@ export default async function HistoryPage() {
                   <Tag
                     tone={row.status === "ready" ? "sage" : row.status === "failed" ? "accent" : "muted"}
                   >
-                    {row.status}
+                    {STATUS_LABEL[row.status]}
                   </Tag>
                 </td>
                 <td className="text-[var(--color-text-muted)]">

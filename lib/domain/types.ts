@@ -59,7 +59,11 @@ export type AppErrorCode =
   | "model_failed"
   | "fabrication_blocked"
   | "storage_failed"
-  | "conflict";
+  | "conflict"
+  /** A dependency this deployment hasn't been given keys for (F17). */
+  | "misconfigured"
+  /** A third party we call answered badly, or not at all (F17). */
+  | "upstream_failed";
 
 export interface AppError {
   code: AppErrorCode;

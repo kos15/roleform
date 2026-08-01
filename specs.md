@@ -158,6 +158,14 @@ users
   quota_remaining int                -- superseded by cap_analyses; no longer read
   quota_resets_at timestamptz        -- anchors the rolling 30-day cycle
 
+workspace_settings                     -- F15. Operator config, not user data. One row,
+  id text PRIMARY KEY DEFAULT 'workspace'   -- CHECKed to that single value
+  cap_analyses, cap_resumes, cap_answers, cap_courses int  -- same bounds as users, CHECKed
+  updated_at timestamptz
+  -- The caps a NEW account is provisioned with. RLS is ON with NO policy: no
+  -- anon or authenticated request has business reading it, and the admin path
+  -- goes over the Prisma connection, which bypasses RLS.
+
 contact_messages                       -- F13. The one table whose subject may be NULL:
   id, clerk_user_id text NULL, name, email, subject, body, created_at
   -- the contact page is public, so a signed-out sender has no subject to key on.
@@ -706,13 +714,109 @@ being representable. This replaced `users.quota_remaining`, which is no longer r
 **Suspension** stops new generation only. Existing analyses stay readable; we never lock someone out
 of their own documents (§13).
 
+**Workspace defaults.** The four caps a **new** account is provisioned with, held as a single row in
+`workspace_settings` under the same CHECK bounds as the per-member caps. Both doors into a new
+account — `provisionUser` and the `user.created` webhook — read it, so they agree about what a new
+account starts with. Editing a default deliberately touches **no existing row**: a member's caps are
+already their own, and an admin who wants to move one has the per-member panel, where the usage they
+are moving the line across is on screen beside it. A "defaults" control that silently re-capped the
+workspace would be the unexplained refusal this feature exists to remove, delivered a day later.
+
+**View as a member.** `/admin?view=member` renders the 403 for someone who holds the permission, so
+an admin can read what a refusal actually says before a member does. The request-access button is
+inert there — filing a request against yourself would put a lie in the other admins' inbox.
+
+**Workspace name.** `NEXT_PUBLIC_WORKSPACE_NAME` names the admin kicker ("Admin · Acme workspace")
+and the 403's admin list ("Admins on Acme"). Unset is a supported state, not a placeholder: both
+fall back to generic wording rather than print an invented company name onto someone's 403.
+
 **403.** A member reaching `/admin` gets a screen naming the permission, what they can still do with
 their own numbers in it, and which admins can grant it — plus a request button that files a support
-message rather than inventing a notification path.
+message rather than inventing a notification path. Once filed, the confirmation names the admins it
+went to rather than saying only "Sent".
 
 **Acceptance:** a member cannot change another member's caps through the action even with a forged
 payload (the role is re-read server-side); a cap of 0 renders as "Off" and refuses with a sentence,
 not an error code.
+
+### F16 — Loading states
+
+Every route has a `loading.tsx` — all of them, including the landing page, which reads nothing but
+still builds as `ƒ` because Clerk's middleware runs on it, so a click on the wordmark from inside the
+app holds the old screen exactly like any other route. A page that reads the database or the
+identity provider without one shows the **previous** page until its round trip finishes, which reads
+as a dead click — the one failure a placeholder genuinely prevents. Each skeleton mirrors the layout
+it stands in for, so content landing does not reflow the page, and the Suspense boundary it creates
+is also what lets Next prefetch a dynamic route at all.
+
+**A layout that awaits blocks everything under it**, and no child `loading.tsx` can get in front of
+that — the layout resolves before its children render. Both layouts previously did: the footer
+awaited pipeline health and the app header awaited the Clerk role for its chip, so every page in the
+product held its first paint behind two round trips it did not need. Both are now isolated behind
+their own `<Suspense>` with the async work pushed into a leaf component (`DegradedDot`, `RoleChip`).
+The links, the wordmark and the nav paint immediately; the two live details arrive when they know
+something. **Layouts stay synchronous** — if one needs data, the data goes in a suspended leaf.
+
+The degraded dot's fallback is `null` on purpose: absence is the healthy state, so an empty slot
+while the read is in flight says the right thing rather than flashing a placeholder that implies a
+problem.
+
+### F17 — Pricing
+
+Two plans, `free` and `pro` (₹400/month), matching the `PlanTier` enum. **A plan IS its four caps.**
+Each row of the comparison table is a `QuotaKey` and the number beside it is the number enforced at
+that cap's own seam (F15) — there is no prose describing a limit in words, because a sentence and a
+constraint drift and the sentence is the one people read before paying.
+
+| | Free | Pro |
+|---|---|---|
+| JD analyses | 10 / month | 40 / month |
+| Résumés rendered | 2 / analysis | 6 / analysis |
+| Full answer drafts | Off | 40 / month |
+| Course matches | 2 / gap | 4 / gap |
+
+The free row is also what `workspaceDefaults()` **seeds** a fresh install with, so a new account
+really does start on the numbers the page publishes. Seeded once — an admin who raises a default
+afterwards is not overwritten on the next read.
+
+**Refusals, published on the page** for the same reason the four pipeline stages publish theirs:
+paying does not move the match score (it is requirement coverage — a fact about your own document),
+does not add experience to your profile, and does not buy a better model, parser or rewrite. The
+pipeline is the same one on both plans. This is the page a product is most tempted to overclaim on,
+which is the reason to state the boundary here rather than only in §3.
+
+**Payments — Razorpay**, over `fetch` and `node:crypto` with no SDK: order creation is one
+authenticated POST and webhook verification is one HMAC, and a dependency for that is one more thing
+to audit and pin for no capability gained (§8's reasoning). The amount is read server-side from
+`PRO_PRICE_PAISE`; a price the browser sends is a price the browser chooses. The checkout script is
+loaded **on first click**, never on page load — a pricing page that ships a third-party payment
+script to be *read* hands a tracker to everyone who was only comparing numbers.
+
+**The plan is granted only in the webhook**, on `payment.captured` — never `payment.authorized`,
+which is money that can still fail to settle. The client handler refreshes and nothing more; an
+action that flipped the plan on a click would grant Pro to anyone who could open the network tab.
+Upgrading writes the Pro row's four caps onto the account alongside `plan`, because the table on the
+page IS those numbers. Unset keys are a supported state: the button says payments aren't switched on
+rather than failing into a blank window.
+
+**The same two plans appear at the foot of the admin panel** (the design's "Plans & coupons" strip),
+read from the same `PLANS` table `/pricing` renders — so the panel cannot quote an operator a cap the
+public page does not sell. Nothing there is editable: caps are changed per member in the panel above
+or for the next signup under Workspace defaults, and a third control writing the same four columns is
+a third place for them to disagree. The one number that is not already on `/pricing` is the one worth
+an admin's attention — how many accounts on a plan carry a cap that plan does not publish
+(`rollUpPlans`, rolled up from the member list already loaded, so the strip costs no second query).
+
+**No coupons.** The design shows four coupon rows with redemption counters and toggles. There is no
+coupon table, no redemption seam and nothing that would honour a code at the point of payment, and a
+toggle that changes nobody's bill is the decorative surface the rest of this product refuses to
+ship. If coupons arrive they arrive as a table with a cap and a redemption count, enforced where the
+order amount is computed — not as a page.
+
+**Acceptance:** an unsigned or wrongly-signed webhook is refused before its body is parsed; the
+displayed price and the charged amount come from one constant; a signed-out visitor clicking Go Pro
+is sent to sign in and returned to `/pricing`, not shown an error; every cap printed in the admin
+plan strip equals the one on `/pricing` for that plan.
 
 ## 10. AI layer
 
@@ -806,6 +910,9 @@ POST /api/webhooks/clerk              → user lifecycle
 
 sendContactMessage(prev, formData)    → ContactState        // F13, public — no session
 updateMemberCaps({ clerkUserId, caps, suspended })          // F15, re-reads role server-side
+updateWorkspaceDefaults(caps)                               // F15, new accounts only — never an existing row
+startProCheckout()                          → RazorpayOrder // F17, amount read server-side
+POST /api/webhooks/razorpay                    (route)      // F17, the ONLY place users.plan is raised
 requestAdminAccess()                  → files a support message
 ```
 

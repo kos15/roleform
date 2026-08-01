@@ -568,9 +568,9 @@ export function ProfileEditor({
           <span className="w-full text-xs">
             {status === "saving" && "Saving…"}
             {status === "saved" && "All changes saved"}
-            {status === "idle" && "Changes save as you type."}
+            {status === "idle" && "Changes save as you type"}
             {status === "error" && (
-              <span className="text-[var(--color-danger-700)]">That change didn&rsquo;t save.</span>
+              <span className="text-[var(--color-danger-700)]">That change didn&rsquo;t save</span>
             )}
           </span>
         </div>
@@ -683,7 +683,7 @@ function IdentitySection({
         </Labelled>
         <Labelled label="Website or portfolio">
           <Input
-            placeholder="Nothing here yet"
+            placeholder="yoursite.com"
             value={basics.url}
             onChange={(e) => setBasics({ url: e.target.value })}
           />

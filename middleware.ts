@@ -7,19 +7,26 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
  * So do the written pages. Privacy and terms in particular are promises about
  * what we do with a résumé — a promise you must create an account to read is
  * not one you can act on. Status is public for the same reason: the people most
- * likely to need it are the ones who can't get in.
+ * likely to need it are the ones who can't get in. Pricing joins them: a price
+ * you have to sign up to read is not a price you can compare.
+ *
+ * Both webhooks are public because they are called by a machine that has no
+ * session. Each verifies its own signature — that is what stands in for the
+ * session, and it is checked before either handler touches its body.
  */
 const isPublic = createRouteMatcher([
   "/",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api/webhooks/clerk",
+  "/api/webhooks/razorpay",
   "/how-it-works",
   "/privacy",
   "/terms",
   "/changelog",
   "/contact",
   "/support",
+  "/pricing",
   "/status",
 ]);
 

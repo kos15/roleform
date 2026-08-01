@@ -29,7 +29,7 @@ export default async function AnalyzePage() {
     <div>
       <div className="rise-in mb-8 max-w-[620px]">
         <p className="eyebrow mb-2.5 text-[var(--color-accent-700)]">Step 1 of 3 · The posting</p>
-        <h1 className="mb-3">One résumé in, six tailored out</h1>
+        <h1 className="mb-3">One résumé in. Six tailored out.</h1>
         <p className="text-[var(--color-text-muted)]">
           Paste or drop the posting. Roleform reads it, scores how much of it your own profile can
           evidence, and returns six drafts, the questions this posting invites, and the gaps it

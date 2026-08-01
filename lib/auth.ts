@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { listAdmins } from "@/lib/admin/members";
+import { workspaceDefaults } from "@/lib/admin/defaults";
 import { cycleStart } from "@/lib/domain/quotas";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
@@ -19,15 +20,29 @@ export function hashEmail(email: string): string {
  * a user who signs up and clicks straight through. Every one of those leaves a
  * signed-in person with no row and no way to act. Idempotent upsert, so the
  * webhook arriving late is a no-op rather than a conflict.
+ *
+ * Caps come from the workspace defaults (F15), not from the column defaults —
+ * this is the only moment they apply. `update: {}` is what keeps that true: a
+ * second call for an existing account must not re-apply a default over caps an
+ * admin has since set by hand.
  */
 export async function provisionUser(clerkUserId: string): Promise<void> {
   const clerk = await currentUser();
   const email =
     clerk?.primaryEmailAddress?.emailAddress ?? clerk?.emailAddresses?.[0]?.emailAddress ?? "";
 
+  const defaults = await workspaceDefaults();
+
   await db.user.upsert({
     where: { clerkUserId },
-    create: { clerkUserId, emailHash: hashEmail(email) },
+    create: {
+      clerkUserId,
+      emailHash: hashEmail(email),
+      capAnalyses: defaults.analyses,
+      capResumes: defaults.resumes,
+      capAnswers: defaults.answers,
+      capCourses: defaults.courses,
+    },
     update: {},
   });
 }
