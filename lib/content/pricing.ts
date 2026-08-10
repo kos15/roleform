@@ -11,7 +11,7 @@
  * only say what something can evidence. Here the evidence is `users.cap_*`.
  */
 
-import { QUOTAS, type QuotaKey } from "@/lib/domain/quotas";
+import { QUOTAS, displayCap, type QuotaKey } from "@/lib/domain/quotas";
 import { RUN_ESTIMATE, formatCount } from "@/lib/domain/tokens";
 
 export type PlanId = "free" | "pro" | "ultra";
@@ -165,6 +165,45 @@ export const PLAN_ROWS: PlanRow[] = QUOTAS.map((q) => ({
   unit: q.unit,
   note: NOTES[q.key],
 }));
+
+/**
+ * The "Side by side" table (F17).
+ *
+ * Every row here is a number the code enforces at a seam — the five caps, plus
+ * the two facts about top-ups. The design's own table carries three more rows
+ * (DOCX vs "PDF only", before/after diff, multiple profiles) and they are
+ * deliberately absent: nothing gates export or the diff by plan, and multiple
+ * profiles do not exist at all (D1). Printing them would put a claim on the
+ * pricing page that no constraint backs, which is the exact failure this page's
+ * "a plan IS its caps" rule exists to prevent.
+ *
+ * If those three are ever wanted, they arrive as enforcement first and a row
+ * second — in that order, never the reverse.
+ */
+export interface CompareRow {
+  label: string;
+  unit: string;
+  /** One cell per plan, in PLANS order. */
+  cells: string[];
+}
+
+export const COMPARE_ROWS: CompareRow[] = [
+  ...QUOTAS.map((q) => ({
+    label: q.label,
+    unit: q.unit,
+    cells: PLANS.map((p) => displayCap(q.key, p.caps[q.key])),
+  })),
+  {
+    label: "What a full run costs",
+    unit: "about, measured from ai_runs",
+    cells: PLANS.map(() => formatCount(RUN_ESTIMATE)),
+  },
+  {
+    label: "One-off top-ups",
+    unit: "never renew, never expire",
+    cells: PLANS.map((p) => (canBuyTopup(p.id) ? "✓" : "—")),
+  },
+];
 
 /**
  * What the page will not claim, stated on the page (F17).

@@ -1,10 +1,11 @@
+import { Fragment } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageIntro, Bullet } from "@/components/page-intro";
 import { Tag } from "@/components/ui";
 import { displayCap } from "@/lib/domain/quotas";
-import { PLANS, PLAN_ROWS, PRICING_REFUSALS, TOPUPS } from "@/lib/content/pricing";
-import { RUN_ESTIMATE, formatCount } from "@/lib/domain/tokens";
+import { COMPARE_ROWS, PLANS, PLAN_ROWS, PRICING_REFUSALS, TOPUPS } from "@/lib/content/pricing";
+import { RUN_ESTIMATE, TOKEN_STAGES, formatCount } from "@/lib/domain/tokens";
 import { CheckoutButton } from "@/components/checkout-button";
 
 export const metadata: Metadata = {
@@ -90,6 +91,98 @@ export default function PricingPage() {
           </div>
         ))}
       </div>
+
+      {/* Side by side. Every row is a cap the code enforces — see COMPARE_ROWS
+          for the three the design carries that this deliberately omits. The
+          grid scrolls inside its own rounded box rather than widening the page;
+          a comparison table is the one layout that cannot reflow. */}
+      <section className="mb-9">
+        <h3 className="mb-1.5">Side by side</h3>
+        <p className="mb-4 max-w-[56ch] text-[0.85rem] leading-relaxed text-[var(--color-text-muted)]">
+          Every row is a number enforced at its own seam. Nothing here is a feature list — if it is
+          on this table, there is a constraint behind it.
+        </p>
+        <div className="table-scroll rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+          <div className="grid min-w-[36rem] [grid-template-columns:minmax(11rem,1.6fr)_repeat(3,minmax(6rem,1fr))]">
+            <div className="card-kicker bg-[var(--color-bg-raised)] px-[1.125rem] py-3.5 text-[var(--color-text-muted)]">
+              What you get
+            </div>
+            {PLANS.map((plan) => (
+              <div
+                key={plan.id}
+                className="px-3 py-3.5 text-center font-[family-name:var(--font-heading)] text-base"
+                style={
+                  plan.featured
+                    ? { background: "var(--color-accent-100)", color: "var(--color-accent-800)" }
+                    : { background: "var(--color-bg-raised)" }
+                }
+              >
+                {plan.name}
+              </div>
+            ))}
+
+            {COMPARE_ROWS.map((row) => (
+              <Fragment key={row.label}>
+                <div className="flex flex-col gap-0.5 border-t border-[var(--color-line)] px-[1.125rem] py-3.5 text-[0.85rem]">
+                  <span className="font-semibold">{row.label}</span>
+                  <span className="text-xs text-[var(--color-text-muted)]">{row.unit}</span>
+                </div>
+                {row.cells.map((cell, i) => (
+                  <div
+                    key={PLANS[i].id}
+                    className="border-t border-[var(--color-line)] px-3 py-3.5 text-center text-sm tabular-nums"
+                    style={
+                      PLANS[i].featured
+                        ? { background: "var(--color-accent-100)", color: "var(--color-accent-800)", fontWeight: 600 }
+                        : undefined
+                    }
+                  >
+                    {cell}
+                  </div>
+                ))}
+              </Fragment>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* What a token is. The same four estimates the wall itemises when it
+          refuses a run — published before you pay rather than only at the
+          moment we say no. */}
+      <section className="mb-9 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[clamp(1.25rem,3vw,1.625rem)]">
+        <h3 className="mb-1.5">What a token is</h3>
+        <p className="mb-4 max-w-[56ch] text-[0.85rem] leading-relaxed text-[var(--color-text-muted)]">
+          The unit the pipeline actually consumes, measured from every model call rather than
+          estimated after the fact. We show it rather than hiding it behind a credit.
+        </p>
+        <ul className="flex max-w-[34rem] list-none flex-col gap-2 p-0">
+          {TOKEN_STAGES.map((stage) => (
+            <li key={stage.stage} className="flex items-center gap-3 text-[0.85rem]">
+              <span className="min-w-0 flex-1">{stage.stage}</span>
+              <span className="hidden h-[5px] w-20 flex-none overflow-hidden rounded-[var(--radius-pill)] bg-[var(--color-bg-sunken)] sm:block">
+                <span
+                  className="block h-full rounded-[var(--radius-pill)]"
+                  style={{
+                    width: `${Math.round((stage.estimate / 8400) * 100)}%`,
+                    background: "var(--color-sage-600)",
+                  }}
+                />
+              </span>
+              <span className="w-14 flex-none text-right tabular-nums text-[var(--color-text-muted)]">
+                {formatCount(stage.estimate)}
+              </span>
+            </li>
+          ))}
+          <li className="flex items-center gap-3 border-t border-[var(--color-line)] pt-2 text-[0.85rem] font-semibold">
+            <span className="min-w-0 flex-1">A full analysis</span>
+            <span className="w-14 flex-none text-right tabular-nums">{formatCount(RUN_ESTIMATE)}</span>
+          </li>
+        </ul>
+        <p className="mt-3 text-xs leading-relaxed text-[var(--color-text-muted)]">
+          Coverage, gaps and question frameworks cost nothing. A run that cannot be afforded is
+          refused before its first stage, never half-run.
+        </p>
+      </section>
 
       {/* Top-ups sit between the plans and the caps table on purpose: they are
           the answer to "what if I run out in week three", and that question is
