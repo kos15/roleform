@@ -20,7 +20,7 @@ export default function SupportPage() {
         profiles. That only stays true if the money comes from you.
       </PageIntro>
 
-      <div className="mb-9 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(250px,1fr))]">
+      <div className="mb-9 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr))]">
         {SUPPORT_TIERS.map((tier) => (
           <div
             key={tier.name}

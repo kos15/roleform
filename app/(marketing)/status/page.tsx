@@ -32,7 +32,7 @@ export default async function StatusPage() {
         <div className={degraded ? "[animation:breathe_2.6s_ease-in-out_infinite]" : undefined}>
           <BrandMark size={76} />
         </div>
-        <div className="min-w-[260px] flex-1">
+        <div className="min-w-[min(260px,100%)] flex-1">
           <div className="card-kicker mb-2">
             {degraded
               ? `Partial outage · ${degradedStages.length} of ${STAGES.length} stages degraded`
@@ -83,7 +83,7 @@ export default async function StatusPage() {
 
       <div className="mb-5 flex flex-wrap gap-4">
         {parked ? (
-          <div className="min-w-[280px] flex-1 basis-80 rounded-[var(--radius-lg)] border border-[var(--color-sage-200)] bg-[var(--color-sage-100)] p-5">
+          <div className="min-w-[min(280px,100%)] flex-1 basis-80 rounded-[var(--radius-lg)] border border-[var(--color-sage-200)] bg-[var(--color-sage-100)] p-5">
             <div className="mb-3 text-[11px] uppercase tracking-[0.09em] text-[var(--color-sage-800)]">
               Your run is parked, not lost
             </div>
@@ -112,7 +112,7 @@ export default async function StatusPage() {
             </Link>
           </div>
         ) : (
-          <div className="min-w-[280px] flex-1 basis-80 rounded-[var(--radius-lg)] border border-[var(--color-line)] p-5">
+          <div className="min-w-[min(280px,100%)] flex-1 basis-80 rounded-[var(--radius-lg)] border border-[var(--color-line)] p-5">
             <div className="mb-3 text-[11px] uppercase tracking-[0.09em] text-[var(--color-text-muted)]">
               Your runs
             </div>
@@ -134,7 +134,7 @@ export default async function StatusPage() {
         <Link href="/contact" className="btn btn-ghost no-underline">
           Tell us something is wrong
         </Link>
-        <span className="min-w-[200px] flex-1 text-xs text-[var(--color-text-muted)]">
+        <span className="min-w-[min(200px,100%)] flex-1 text-xs text-[var(--color-text-muted)]">
           Coverage, questions and course matches already written for a posting stay readable while
           a later stage catches up.
         </span>

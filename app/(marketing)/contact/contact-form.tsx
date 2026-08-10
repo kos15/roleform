@@ -41,7 +41,7 @@ export function ContactForm({
 
   return (
     <form action={action} className="flex flex-col gap-3.5">
-      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
+      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))]">
         <Field label="Your name">
           <Input name="name" defaultValue={defaultName} required maxLength={120} />
         </Field>

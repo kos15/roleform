@@ -117,7 +117,7 @@ export default async function LearningTab({
                   send you to a link we haven&rsquo;t checked.
                 </p>
               ) : (
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(248px,100%),1fr))]">
                   {courses.map((course) => (
                     <a
                       key={course.id}

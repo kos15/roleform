@@ -26,11 +26,11 @@ export default async function ContactPage() {
       </PageIntro>
 
       <div className="flex flex-wrap items-start gap-6">
-        <section className="min-w-[290px] flex-1 basis-[400px] rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[clamp(1.25rem,3vw,1.625rem)]">
+        <section className="min-w-[min(290px,100%)] flex-1 basis-[400px] rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[clamp(1.25rem,3vw,1.625rem)]">
           <ContactForm defaultName={defaultName} defaultEmail={defaultEmail} />
         </section>
 
-        <aside className="flex min-w-[250px] max-w-[330px] flex-1 basis-[260px] flex-col gap-3.5">
+        <aside className="flex min-w-[min(250px,100%)] max-w-[330px] flex-1 basis-[260px] flex-col gap-3.5">
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] p-[1.125rem]">
             <div className="mb-3 text-[11px] uppercase tracking-[0.09em] text-[var(--color-text-muted)]">
               Direct

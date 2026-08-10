@@ -30,7 +30,7 @@ export default function PricingPage() {
         actually consumed, at about {formatCount(RUN_ESTIMATE)} for a full run.
       </PageIntro>
 
-      <div className="mb-10 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
+      <div className="mb-10 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))]">
         {PLANS.map((plan) => (
           <div
             key={plan.id}
@@ -101,7 +101,7 @@ export default function PricingPage() {
           the last week of a cycle is not a partial purchase, because anything unspent carries into
           the next one. The plan allowance itself does not carry; only these do.
         </p>
-        <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(15rem,1fr))]">
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(15rem,100%),1fr))]">
           {TOPUPS.map((topup) => (
             <div
               key={topup.id}
@@ -161,7 +161,7 @@ export default function PricingPage() {
         <Link href="/support" className="btn btn-ghost no-underline">
           Support us instead
         </Link>
-        <span className="min-w-[220px] flex-1 text-xs text-[var(--color-text-muted)]">
+        <span className="min-w-[min(220px,100%)] flex-1 text-xs text-[var(--color-text-muted)]">
           Prices in INR, inclusive of tax. Cancel from your profile at any time.
         </span>
       </div>

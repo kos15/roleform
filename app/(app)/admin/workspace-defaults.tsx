@@ -55,7 +55,7 @@ export function WorkspaceDefaultsPanel({ defaults }: { defaults: Record<QuotaKey
         </p>
       </div>
 
-      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
         {QUOTAS.map((quota) => (
           <div
             key={quota.key}

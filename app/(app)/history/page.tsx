@@ -33,44 +33,46 @@ export default async function HistoryPage() {
     <section>
       <h1 className="mb-6">History</h1>
       <Card className="p-0">
-        <table className="table">
-          <thead>
-            <tr>
-              <th scope="col">Role</th>
-              <th scope="col">Company</th>
-              <th scope="col">Match</th>
-              <th scope="col">Status</th>
-              <th scope="col">Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td>
-                  <Link href={`/analysis/${row.id}`} className="font-semibold text-accent-body">
-                    {row.title ?? "Untitled posting"}
-                  </Link>
-                </td>
-                <td>{row.company ?? "—"}</td>
-                <td>{row.score ? Number(row.score).toFixed(0) : "—"}</td>
-                <td>
-                  <Tag
-                    tone={row.status === "ready" ? "sage" : row.status === "failed" ? "accent" : "muted"}
-                  >
-                    {STATUS_LABEL[row.status]}
-                  </Tag>
-                </td>
-                <td className="text-[var(--color-text-muted)]">
-                  {row.createdAt.toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </td>
+        <div className="table-scroll">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">Role</th>
+                <th scope="col">Company</th>
+                <th scope="col">Match</th>
+                <th scope="col">Status</th>
+                <th scope="col">Date</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    <Link href={`/analysis/${row.id}`} className="font-semibold text-accent-body">
+                      {row.title ?? "Untitled posting"}
+                    </Link>
+                  </td>
+                  <td>{row.company ?? "—"}</td>
+                  <td>{row.score ? Number(row.score).toFixed(0) : "—"}</td>
+                  <td>
+                    <Tag
+                      tone={row.status === "ready" ? "sage" : row.status === "failed" ? "accent" : "muted"}
+                    >
+                      {STATUS_LABEL[row.status]}
+                    </Tag>
+                  </td>
+                  <td className="text-[var(--color-text-muted)]">
+                    {row.createdAt.toLocaleDateString("en-GB", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
     </section>
   );

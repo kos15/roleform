@@ -23,7 +23,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           <Brand />
         </Link>
 
-        <nav aria-label="Main" className="hidden flex-wrap items-center gap-4 text-sm sm:flex">
+        <nav aria-label="Main" className="nav-links text-sm">
           <Link href="/how-it-works" className="text-[var(--color-text-muted)]">
             How it works
           </Link>

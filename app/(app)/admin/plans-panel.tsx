@@ -39,7 +39,7 @@ export function PlansPanel({ rollup }: { rollup: PlanRollup[] }) {
         </Link>
       </div>
 
-      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
+      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))]">
         {rollup.map(({ plan, members, overridden }) => (
           <div
             key={plan.id}

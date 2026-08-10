@@ -52,10 +52,14 @@ export default async function AnalyzePage() {
       {/* The aside carries the corpus and the contract; the posting goes in the
           left column. Keeping them side by side is the point — you can see what
           we'll be drawing on while you paste the thing we'll draw against. */}
-      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <JdInput />
+      <div className="flex flex-wrap items-start gap-7">
+        {/* min-w-0 because a flex child defaults to min-width:auto, and the
+            textarea inside would otherwise set the column's floor. */}
+        <div className="min-w-0 flex-[1_1_30rem]">
+          <JdInput />
+        </div>
 
-        <aside className="flex flex-col gap-4">
+        <aside className="flex min-w-0 flex-[0_1_22rem] flex-col gap-4">
           {/* The profile card: filename · Parsed · N yrs · N skills (F1). */}
           <Card flat>
             <p className="card-kicker mb-3 text-[var(--color-accent-700)]">Your profile</p>

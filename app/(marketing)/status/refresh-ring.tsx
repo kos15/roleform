@@ -36,7 +36,7 @@ export function RefreshRing() {
   const swept = ((PERIOD - left) / PERIOD) * CIRCUMFERENCE;
 
   return (
-    <div className="flex min-w-[250px] flex-1 basis-60 items-center gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] p-5">
+    <div className="flex min-w-[min(250px,100%)] flex-1 basis-60 items-center gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] p-5">
       <div className="relative h-[78px] w-[78px] flex-none">
         <svg width="78" height="78" viewBox="0 0 78 78" aria-hidden>
           <circle

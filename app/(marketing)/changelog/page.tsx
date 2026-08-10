@@ -38,7 +38,7 @@ export default function ChangelogPage() {
               <Tag tone={TONE[release.kind]}>{release.kind}</Tag>
             </div>
 
-            <div className="flex min-w-[220px] flex-1 basis-[300px] flex-col gap-2.5">
+            <div className="flex min-w-[min(220px,100%)] flex-1 basis-[300px] flex-col gap-2.5">
               {release.items.map((item) => (
                 <Bullet key={item}>{item}</Bullet>
               ))}

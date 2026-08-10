@@ -57,26 +57,30 @@ export default async function PreviewPage({
   const violations = atsViolations(template.structuralFlags);
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_21rem]">
-      <PreviewSurface
-        model={model}
-        template={template}
-        pairs={tailored.map((t) => ({
-          original: t.originalText,
-          rewritten: t.rewrittenText,
-          transform: t.transform,
-        }))}
-        actions={
-          <div className="flex flex-wrap items-center gap-3">
-            <Link href={`/analysis/${id}/resumes`} className="btn btn-ghost btn-sm">
-              <ArrowLeft className="lucide h-4 w-4" /> All six drafts
-            </Link>
-            <DownloadButtons draftId={draft.id} />
-          </div>
-        }
-      />
+    <div className="flex flex-wrap items-start gap-8">
+      {/* The paper has its own intrinsic width; min-w-0 keeps it from setting
+          the column floor and pushing the aside off the line. */}
+      <div className="min-w-0 flex-[1_1_32rem]">
+        <PreviewSurface
+          model={model}
+          template={template}
+          pairs={tailored.map((t) => ({
+            original: t.originalText,
+            rewritten: t.rewrittenText,
+            transform: t.transform,
+          }))}
+          actions={
+            <div className="flex flex-wrap items-center gap-3">
+              <Link href={`/analysis/${id}/resumes`} className="btn btn-ghost btn-sm">
+                <ArrowLeft className="lucide h-4 w-4" /> All six drafts
+              </Link>
+              <DownloadButtons draftId={draft.id} />
+            </div>
+          }
+        />
+      </div>
 
-      <aside className="min-w-0 space-y-5">
+      <aside className="min-w-0 flex-[0_1_21rem] space-y-5">
         <div>
           <h3 className="mb-1">{template.name}</h3>
           <p className="mb-3 text-sm text-[var(--color-text-muted)]">{template.blurb}</p>

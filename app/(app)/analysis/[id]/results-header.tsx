@@ -94,7 +94,7 @@ export function ResultsHeader({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
         <Bucket
           title="Strong match"
           tone="sage"

@@ -128,7 +128,7 @@ export function ProfileEditor({
 
   return (
     <div className="flex flex-wrap items-start gap-6">
-      <div className="flex min-w-[300px] flex-1 basis-[560px] flex-col gap-4">
+      <div className="flex min-w-[min(300px,100%)] flex-1 basis-[560px] flex-col gap-4">
         <IdentitySection
           resume={resume}
           patch={patch}
@@ -298,7 +298,7 @@ export function ProfileEditor({
 
                   {open ? (
                     <div className="rise-in px-4 pb-4">
-                      <div className="mb-3.5 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
+                      <div className="mb-3.5 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr))]">
                         <Labelled label="Title">
                           <Input
                             value={work.position}
@@ -407,7 +407,7 @@ export function ProfileEditor({
 
         {/* items-start so a card with nothing in it stays the height of its
             content instead of stretching to match a full neighbour. */}
-        <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
+        <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
           <Section title="Education" compact>
             {resume.education.length === 0 ? (
               <Empty>Nothing here yet.</Empty>
@@ -517,7 +517,7 @@ export function ProfileEditor({
 
       {/* ------------------------------------------------------------ aside */}
 
-      <aside className="flex min-w-[262px] max-w-[330px] flex-1 basis-[280px] flex-col gap-4">
+      <aside className="flex min-w-[min(262px,100%)] max-w-[330px] flex-1 basis-[280px] flex-col gap-4">
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-5 text-center">
           <StrengthRing score={strength.score} />
           <p className="text-left text-[0.8rem] leading-relaxed text-[var(--color-text-muted)]">
@@ -628,7 +628,7 @@ function IdentitySection({
         </Link>
       </div>
 
-      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
+      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))]">
         <Labelled label="Full name">
           <Input value={basics.name} onChange={(e) => setBasics({ name: e.target.value })} />
         </Labelled>

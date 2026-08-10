@@ -41,7 +41,7 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
         <DownloadAll analysisId={id} />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(238px,100%),1fr))]">
         {drafts.map((draft) => {
           const template = templateById(draft.templateId);
           if (!template) return null;

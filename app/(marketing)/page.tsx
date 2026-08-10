@@ -39,7 +39,7 @@ export default function MarketingPage() {
         </Show>
       </div>
 
-      <div className="mt-24 grid gap-5 md:grid-cols-3">
+      <div className="mt-24 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(15rem,100%),1fr))]">
         {[
           {
             icon: FileText,

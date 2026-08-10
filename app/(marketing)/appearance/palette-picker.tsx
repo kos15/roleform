@@ -82,7 +82,7 @@ export function PalettePicker() {
         </div>
       </div>
 
-      <div className="mb-8 grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(290px,1fr))]">
+      <div className="mb-8 grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr))]">
         {PALETTES.map((p, i) => {
           const active = p.id === palette;
           return (
@@ -153,7 +153,7 @@ export function PalettePicker() {
       </div>
 
       <div className="flex flex-wrap items-stretch gap-[18px]">
-        <div className="min-w-[280px] flex-[1_1_330px] rounded-[30px] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[22px]">
+        <div className="min-w-[min(280px,100%)] flex-[1_1_330px] rounded-[30px] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[22px]">
           <h2 className="mb-1.5 text-[22px]">How a palette is built</h2>
           <p className="mb-4 text-[13px] leading-[1.6] text-[var(--color-text-muted)]">
             Each one sets four colours. The nine-step neutral, accent and second-accent ramps are
@@ -175,7 +175,7 @@ export function PalettePicker() {
           </ul>
         </div>
 
-        <div className="min-w-[270px] flex-[1_1_300px] rounded-[30px] border border-dashed border-[var(--color-accent-400)] p-[22px]">
+        <div className="min-w-[min(270px,100%)] flex-[1_1_300px] rounded-[30px] border border-dashed border-[var(--color-accent-400)] p-[22px]">
           <h2 className="mb-1.5 text-[22px]">What doesn&rsquo;t change</h2>
           <p className="mb-3.5 text-[13px] leading-[1.6] text-[var(--color-text-muted)]">
             The résumé itself. Every template stays black on white, because it is going into someone

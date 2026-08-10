@@ -56,7 +56,7 @@ export function HomeSkeleton() {
         <Skeleton className="mt-6 h-10 w-44 rounded-[var(--radius-pill)]" />
       </div>
 
-      <div className="mt-24 grid gap-5 md:grid-cols-3">
+      <div className="mt-24 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(15rem,100%),1fr))]">
         {[0, 1, 2].map((i) => (
           <Card key={i} className="space-y-3">
             <Skeleton className="mb-4 h-6 w-6" />
@@ -116,7 +116,7 @@ export function LearningSkeleton() {
               <Skeleton className="h-6 w-24 rounded-[var(--radius-pill)]" />
             </div>
             <Skeleton className="h-4 w-full max-w-[46rem]" />
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(248px,100%),1fr))]">
               <Skeleton className="h-28 rounded-[var(--radius-md)]" />
               <Skeleton className="h-28 rounded-[var(--radius-md)]" />
             </div>
@@ -131,7 +131,7 @@ export function ResumesSkeleton() {
   return (
     <section>
       <Header />
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(238px,100%),1fr))]">
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <Card key={i} className="space-y-3">
             <Skeleton className="h-6 w-36" />
@@ -150,8 +150,8 @@ export function ResumesSkeleton() {
 
 export function PreviewSkeleton() {
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
-      <div className="space-y-4">
+    <div className="flex flex-wrap items-start gap-8">
+      <div className="min-w-0 flex-[1_1_32rem] space-y-4">
         <Skeleton className="h-9 w-64 rounded-[var(--radius-pill)]" />
         <Card className="space-y-3">
           {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
@@ -159,7 +159,7 @@ export function PreviewSkeleton() {
           ))}
         </Card>
       </div>
-      <aside className="space-y-5">
+      <aside className="min-w-0 flex-[0_1_21rem] space-y-5">
         <Card className="space-y-3">
           <Skeleton className="h-6 w-32" />
           <Skeleton className="h-4 w-full" />
@@ -196,7 +196,7 @@ export function AdminSkeleton() {
         </div>
       </div>
 
-      <div className="mb-6 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
+      <div className="mb-6 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr))]">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
@@ -210,7 +210,7 @@ export function AdminSkeleton() {
       </div>
 
       <div className="flex flex-wrap items-start gap-6">
-        <div className="min-w-[300px] flex-1 basis-[520px] space-y-3">
+        <div className="min-w-[min(300px,100%)] flex-1 basis-[520px] space-y-3">
           <Skeleton className="h-6 w-28" />
           <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
             {[0, 1, 2, 3].map((i) => (
@@ -228,7 +228,7 @@ export function AdminSkeleton() {
             ))}
           </div>
         </div>
-        <aside className="min-w-[290px] max-w-[440px] flex-1 basis-[330px]">
+        <aside className="min-w-[min(290px,100%)] max-w-[440px] flex-1 basis-[330px]">
           <Card className="space-y-4">
             <div className="flex items-center gap-3">
               <Skeleton className="h-[42px] w-[42px] shrink-0 rounded-[var(--radius-pill)]" />
@@ -259,7 +259,7 @@ export function AdminSkeleton() {
           </div>
           <Skeleton className="h-9 w-44 rounded-[var(--radius-pill)]" />
         </div>
-        <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
+        <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))]">
           {[0, 1].map((i) => (
             <div
               key={i}
@@ -289,8 +289,8 @@ export function AnalyzeSkeleton() {
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-3/4" />
       </div>
-      <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="space-y-4">
+      <div className="flex flex-wrap items-start gap-7">
+        <div className="min-w-0 flex-[1_1_30rem] space-y-4">
           <Skeleton className="h-10 w-56 rounded-[var(--radius-pill)]" />
           <Skeleton className="h-[16.5rem] w-full rounded-[var(--radius-lg)]" />
           <div className="flex justify-end gap-2">
@@ -298,7 +298,7 @@ export function AnalyzeSkeleton() {
             <Skeleton className="h-9 w-36 rounded-[var(--radius-pill)]" />
           </div>
         </div>
-        <aside className="space-y-4">
+        <aside className="min-w-0 flex-[0_1_22rem] space-y-4">
           <Card className="space-y-3">
             <Skeleton className="h-3 w-24" />
             <div className="flex items-center gap-3">
@@ -346,7 +346,7 @@ export function ProfileSkeleton() {
     <div>
       <PageIntroSkeleton />
       <div className="flex flex-wrap items-start gap-6">
-        <div className="min-w-[300px] flex-1 basis-[560px] space-y-4">
+        <div className="min-w-[min(300px,100%)] flex-1 basis-[560px] space-y-4">
           {[0, 1, 2].map((i) => (
             <Card key={i} className="space-y-3">
               <Skeleton className="h-6 w-44" />
@@ -356,7 +356,7 @@ export function ProfileSkeleton() {
             </Card>
           ))}
         </div>
-        <aside className="min-w-[262px] max-w-[330px] flex-1 basis-[280px] space-y-4">
+        <aside className="min-w-[min(262px,100%)] max-w-[330px] flex-1 basis-[280px] space-y-4">
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-5">
             <Skeleton className="mx-auto mb-3.5 h-[132px] w-[132px] rounded-[var(--radius-pill)]" />
             <Skeleton className="h-3 w-full" />
@@ -410,7 +410,7 @@ export function AnalysisSkeleton() {
             </div>
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(15rem,100%),1fr))]">
           {[0, 1, 2].map((i) => (
             <Card key={i} className="space-y-2.5">
               <Skeleton className="h-6 w-36" />
@@ -465,7 +465,7 @@ export function ChangelogSkeleton() {
               <Skeleton className="h-3 w-24" />
               <Skeleton className="h-6 w-20 rounded-[var(--radius-pill)]" />
             </div>
-            <div className="min-w-[220px] flex-1 basis-[300px] space-y-2.5">
+            <div className="min-w-[min(220px,100%)] flex-1 basis-[300px] space-y-2.5">
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-5/6" />
               <Skeleton className="h-4 w-4/6" />
@@ -482,7 +482,7 @@ export function StatusSkeleton() {
     <div className="mx-auto w-full max-w-[860px] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.75rem,5vw,3.75rem)] pb-16">
       <div className="mb-7 flex flex-wrap items-center gap-6">
         <Skeleton className="h-[76px] w-[76px] shrink-0 rounded-[var(--radius-pill)]" />
-        <div className="min-w-[260px] flex-1 space-y-2.5">
+        <div className="min-w-[min(260px,100%)] flex-1 space-y-2.5">
           <Skeleton className="h-3 w-44" />
           <Skeleton className="h-8 w-72" />
           <Skeleton className="h-4 w-full" />
@@ -504,8 +504,8 @@ export function StatusSkeleton() {
         ))}
       </div>
       <div className="flex flex-wrap gap-4">
-        <Skeleton className="h-36 min-w-[280px] flex-1 basis-80 rounded-[var(--radius-lg)]" />
-        <Skeleton className="h-36 min-w-[250px] flex-1 basis-60 rounded-[var(--radius-lg)]" />
+        <Skeleton className="h-36 min-w-[min(280px,100%)] flex-1 basis-80 rounded-[var(--radius-lg)]" />
+        <Skeleton className="h-36 min-w-[min(250px,100%)] flex-1 basis-60 rounded-[var(--radius-lg)]" />
       </div>
     </div>
   );
@@ -515,7 +515,7 @@ export function SupportSkeleton() {
   return (
     <div className="mx-auto w-full max-w-[1000px] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.75rem,5vw,3.5rem)] pb-16">
       <PageIntroSkeleton />
-      <div className="mb-9 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(250px,1fr))]">
+      <div className="mb-9 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr))]">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
@@ -549,8 +549,8 @@ export function ContactSkeleton() {
     <div className="mx-auto w-full max-w-[1000px] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.75rem,5vw,3.5rem)] pb-16">
       <PageIntroSkeleton />
       <div className="flex flex-wrap items-start gap-6">
-        <section className="min-w-[290px] flex-1 basis-[400px] space-y-3.5 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[clamp(1.25rem,3vw,1.625rem)]">
-          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(180px,1fr))]">
+        <section className="min-w-[min(290px,100%)] flex-1 basis-[400px] space-y-3.5 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[clamp(1.25rem,3vw,1.625rem)]">
+          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))]">
             <Skeleton className="h-16 rounded-[var(--radius-lg)]" />
             <Skeleton className="h-16 rounded-[var(--radius-lg)]" />
           </div>
@@ -558,7 +558,7 @@ export function ContactSkeleton() {
           <Skeleton className="h-40 w-full rounded-[var(--radius-lg)]" />
           <Skeleton className="h-9 w-36 rounded-[var(--radius-pill)]" />
         </section>
-        <aside className="min-w-[250px] max-w-[330px] flex-1 basis-[260px] space-y-3.5">
+        <aside className="min-w-[min(250px,100%)] max-w-[330px] flex-1 basis-[260px] space-y-3.5">
           <Skeleton className="h-44 rounded-[var(--radius-lg)]" />
           <Skeleton className="h-36 rounded-[var(--radius-lg)]" />
         </aside>
@@ -602,7 +602,7 @@ export function PricingSkeleton() {
   return (
     <div className="mx-auto w-full max-w-[1000px] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.75rem,5vw,3.5rem)] pb-16">
       <PageIntroSkeleton />
-      <div className="mb-10 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
+      <div className="mb-10 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))]">
         {[0, 1].map((i) => (
           <div
             key={i}
@@ -649,7 +649,7 @@ export function AppearanceSkeleton() {
       <div className="mb-7 flex justify-end">
         <Skeleton className="h-10 w-40 rounded-[var(--radius-pill)]" />
       </div>
-      <div className="mb-8 grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(290px,1fr))]">
+      <div className="mb-8 grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr))]">
         {[0, 1, 2, 3, 4, 5].map((i) => (
           <div
             key={i}

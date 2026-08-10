@@ -108,7 +108,7 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
           : ""}
       </p>
 
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(17rem,100%),1fr))]">
         <div>
           <p className="eyebrow mb-2.5">What things cost</p>
           <ul className="flex list-none flex-col gap-1.5 p-0 text-sm">

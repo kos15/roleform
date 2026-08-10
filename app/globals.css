@@ -325,10 +325,32 @@ h3 { font-size: 1.3rem; }
   z-index: 30;
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  /* Wraps rather than overflows. The header carries a brand, five links and
+     four controls; on a phone that is wider than the screen, and a sticky bar
+     that scrolls sideways takes the whole page with it. Row gap is tighter
+     than column gap so a wrapped second row reads as one bar, not two. */
+  flex-wrap: wrap;
+  gap: 0.6rem 1.25rem;
   padding: 0.8rem clamp(1rem, 4vw, 2.5rem);
   background: var(--color-bg);
   border-bottom: 1px solid var(--color-line);
+}
+
+/* The link group inside the header. `flex: 0 1 20rem` is the whole responsive
+   rule: line-breaking measures the 20rem flex basis, so the group drops to its
+   own row as soon as less than that is free, and shrinks to fit once there.
+   No breakpoint — it responds to the space it actually has, which is how every
+   grid in the design works too.
+   Grow is 0 on purpose: with grow 1 the group would absorb the free space that
+   the brand's `mr-auto` uses to push the controls right, and the desktop header
+   would silently relayout. */
+.nav-links {
+  display: flex;
+  flex: 0 1 20rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  min-width: 0;
 }
 
 /* ---------------------------------------------------------------------------
@@ -460,6 +482,19 @@ textarea.input { border-radius: var(--radius-md); resize: vertical; }
   font-variant-numeric: tabular-nums;
   opacity: 0.6;
 }
+
+/* A table is the one layout that genuinely cannot reflow — five columns of
+   related values stop meaning anything stacked. So it scrolls inside its own
+   box rather than widening the page: the row keeps its shape, and only the
+   table moves. `max-width: 100%` matters as much as the overflow, because a
+   grid or flex child defaults to min-width:auto and would otherwise be sized
+   by the table instead of the other way round. */
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.table-scroll > .table { min-width: 34rem; }
 
 .table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .table th {

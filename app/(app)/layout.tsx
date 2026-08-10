@@ -37,7 +37,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Brand />
         </Link>
 
-        <nav aria-label="Main" className="flex flex-wrap items-center gap-4 text-sm">
+        <nav aria-label="Main" className="nav-links text-sm">
           {/* "New analysis" rather than "Analyze": from anywhere inside a finished
               analysis this link discards it and starts another, and the verb
               alone didn't say so. */}

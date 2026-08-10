@@ -108,7 +108,7 @@ export function ReviewScreen({
 
       <Card>
         <h3 className="mb-4">You</h3>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr))]">
           <Input
             aria-label="Full name"
             placeholder="Full name"
@@ -146,7 +146,7 @@ export function ReviewScreen({
 
       {resume.work.map((work, wi) => (
         <Card key={wi}>
-          <div className="mb-3 grid gap-3 md:grid-cols-2">
+          <div className="mb-3 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr))]">
             <Input
               aria-label="Position"
               placeholder="Position"

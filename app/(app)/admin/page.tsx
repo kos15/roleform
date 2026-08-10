@@ -139,7 +139,7 @@ export default async function AdminPage({
         <InboxPanel messages={messages} mailConfigured={isMailConfigured()} />
       ) : null}
 
-      <div className="mb-6 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
+      <div className="mb-6 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr))]">
         {stats.map((stat) => {
           const pct = stat.of && stat.of > 0 ? Math.min(100, (stat.value / stat.of) * 100) : 0;
           return (
