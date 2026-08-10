@@ -25,9 +25,15 @@ export function ContactForm({
           ✓
         </div>
         <h3 className="mb-2">Filed — we&rsquo;ll reply to {state.email}</h3>
+        {/* Two sentences, because they are two different facts. The receipt
+            either reached that address or it did not, and telling someone to
+            check an inbox we never sent to is the small lie this product
+            doesn't tell. Either way the message itself is filed — that part
+            is written before any mail is attempted. */}
         <p className="text-[0.95rem] leading-[1.65] text-[var(--color-text-muted)]">
-          Usually within a working day, and always from a person&rsquo;s address rather than
-          no-reply.
+          {state.receipted
+            ? "A copy is already in your inbox. A reply usually follows within a working day, always from a person's address rather than no-reply."
+            : "We couldn't put a copy in your inbox, but the message is filed and a person reads it — usually within a working day."}
         </p>
       </div>
     );

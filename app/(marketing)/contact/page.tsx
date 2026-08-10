@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { currentUser } from "@clerk/nextjs/server";
 import { PageIntro } from "@/components/page-intro";
+import { CATALOG_EMAIL, PRIVACY_EMAIL, SUPPORT_EMAIL } from "@/lib/mail/addresses";
 import { ContactForm } from "./contact-form";
 
 export const metadata: Metadata = {
@@ -35,17 +36,20 @@ export default async function ContactPage() {
               Direct
             </div>
             <div className="flex flex-col gap-2.5 text-[0.85rem]">
+              {/* Configuration, not copy (lib/mail/addresses.ts) — a deployment
+                  that routes support somewhere else should not have to edit a
+                  page to say so. */}
               <div>
                 <div className="font-semibold">Support</div>
-                <a href="mailto:hello@roleform.app">hello@roleform.app</a>
+                <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
               </div>
               <div>
                 <div className="font-semibold">Privacy and deletion</div>
-                <a href="mailto:privacy@roleform.app">privacy@roleform.app</a>
+                <a href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a>
               </div>
               <div>
                 <div className="font-semibold">Catalog corrections</div>
-                <a href="mailto:catalog@roleform.app">catalog@roleform.app</a>
+                <a href={`mailto:${CATALOG_EMAIL}`}>{CATALOG_EMAIL}</a>
               </div>
             </div>
           </div>

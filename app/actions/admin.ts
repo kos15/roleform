@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { currentRole } from "@/lib/admin/role";
 import { clampCap, QUOTAS } from "@/lib/domain/quotas";
+import { deliver } from "@/lib/mail/deliver";
+import { SUPPORT_EMAIL } from "@/lib/mail/addresses";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 /**
@@ -137,20 +139,123 @@ export async function requestAdminAccess(): Promise<Result<null>> {
   // Asking twice is not an escalation. Treat a repeat as the same request.
   if (existing && Date.now() - existing.createdAt.getTime() < 24 * 3600 * 1000) return ok(null);
 
-  await db.contactMessage.create({
+  const row = await db.contactMessage.create({
     data: {
       clerkUserId: user.value,
       // N7: the subject id is not an address, and this table is never joined to
       // a profile. The admins resolve who it is through Clerk, as they do in
       // the panel itself.
       name: "A workspace member",
-      email: "noreply@roleform.app",
+      // A placeholder, and the CHECK requires a non-empty one. On a domain we
+      // actually hold, so an accidental reply bounces honestly rather than
+      // leaving for a stranger's mail server.
+      email: `noreply@${SUPPORT_EMAIL.split("@")[1] ?? "localhost"}`,
       subject: ACCESS_SUBJECT,
       body: `A member requested the workspace.generation.manage permission. Clerk subject: ${user.value}`,
     },
   });
 
+  // Mailed like any other support message, which is what makes the comment
+  // above true rather than aspirational. No receipt: the address on this row is
+  // a placeholder, not somewhere a person reads — the requester already has the
+  // panel's own confirmation.
+  await deliver(
+    {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      subject: row.subject,
+      body: row.body,
+      clerkUserId: row.clerkUserId,
+    },
+    { receipt: false },
+  );
+
   return ok(null);
 }
 
 const ACCESS_SUBJECT = "Admin access request";
+
+/* ------------------------------------------------------------ support inbox */
+
+const IdSchema = z.uuid();
+
+/**
+ * Mark a message answered, or put it back (F16).
+ *
+ * The handled flag carries the admin's subject beside it, enforced by a CHECK
+ * (the `contact_messages_handled_pair` constraint): a message marked answered
+ * with nobody's name on it is one two people each assume the other took.
+ */
+export async function setContactHandled(id: string, handled: boolean): Promise<Result<null>> {
+  const admin = await requireAdmin();
+  if (!admin.ok) return admin;
+
+  if (!IdSchema.safeParse(id).success) {
+    return err(appError("invalid_input", "That isn't a message we hold."));
+  }
+
+  const updated = await db.contactMessage.updateMany({
+    where: { id },
+    data: handled
+      ? { handledAt: new Date(), handledBy: admin.value }
+      : { handledAt: null, handledBy: null },
+  });
+
+  if (updated.count === 0) return err(appError("not_found", "That message is no longer here."));
+
+  revalidatePath("/admin");
+  return ok(null);
+}
+
+/**
+ * Send a filed message again (F16).
+ *
+ * For the rows the mail provider refused, and for every row filed while mail
+ * was switched off — the inbox is how those get out once it is switched on. The
+ * message text comes from the row, never from the caller, which is what keeps
+ * this from being a way to post arbitrary mail through our domain.
+ */
+export async function retryContactDelivery(id: string): Promise<Result<null>> {
+  const admin = await requireAdmin();
+  if (!admin.ok) return admin;
+
+  if (!IdSchema.safeParse(id).success) {
+    return err(appError("invalid_input", "That isn't a message we hold."));
+  }
+
+  const row = await db.contactMessage.findUnique({ where: { id } });
+  if (!row) return err(appError("not_found", "That message is no longer here."));
+
+  // The receipt is a one-time courtesy at submit. Re-sending it days later
+  // would tell the sender something arrived twice when nothing did.
+  const outcome = await deliver(
+    {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      subject: row.subject,
+      body: row.body,
+      clerkUserId: row.clerkUserId,
+    },
+    { receipt: false },
+  );
+
+  revalidatePath("/admin");
+
+  if (outcome.notification === "disabled") {
+    return err(
+      appError(
+        "misconfigured",
+        "Outbound mail isn't configured on this deployment — set RESEND_API_KEY, CONTACT_FROM and CONTACT_TO, then try again.",
+      ),
+    );
+  }
+  if (outcome.notification !== "sent") {
+    return err(
+      appError("upstream_failed", outcome.error ?? "The mail provider refused that message."),
+    );
+  }
+
+  return ok(null);
+}

@@ -180,6 +180,19 @@ enum UserRole {
   @@map("user_role")
 }
 
+/// Where one outbound mail got to (F16). Four states because "we never tried"
+/// and "we tried and it bounced" are different facts to an admin reading the
+/// inbox: `disabled` means this deployment has no mail keys, so the row is the
+/// only record there was ever going to be.
+enum MailDelivery {
+  pending
+  sent
+  failed
+  disabled
+
+  @@map("mail_delivery")
+}
+
 /* ------------------------------------------------------------------ users */
 
 /// clerkUserId is TEXT, not uuid — Clerk subjects are strings (§5.3).
@@ -249,7 +262,26 @@ model ContactMessage {
   body        String
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
+  /// The mail to us. The row is written first and this is written after, so a
+  /// send that fails loses nothing — the message is already filed and the
+  /// inbox shows it as undelivered rather than pretending it arrived.
+  notification   MailDelivery @default(pending)
+  /// The receipt to the sender. Tracked separately because the two fail for
+  /// different reasons: ours is a provider problem, theirs is usually a typo
+  /// in the address, and only one of those is worth chasing.
+  receipt        MailDelivery @default(pending)
+  notifiedAt     DateTime?    @map("notified_at") @db.Timestamptz
+  /// The provider's own words, truncated. Never logged (N7) — it names the
+  /// recipient, and this row is the only place that address belongs.
+  deliveryError  String?      @map("delivery_error")
+
+  /// Answered, by whom. Both or neither — CHECKed in the migration, because a
+  /// handled flag with nobody's name on it is a queue nobody owns.
+  handledAt DateTime? @map("handled_at") @db.Timestamptz
+  handledBy String?   @map("handled_by")
+
   @@index([createdAt], map: "contact_messages_created_idx")
+  @@index([handledAt], map: "contact_messages_handled_idx")
   @@map("contact_messages")
 }
 
@@ -345,6 +377,7 @@ model Analysis {
   status         AnalysisStatus @default(parsing)
   stageState     Json           @default("{}") @map("stage_state")
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+
 
   profile            MasterProfile       @relation(fields: [profileId], references: [id], onDelete: Restrict)
   jdRequirements     JdRequirement[]

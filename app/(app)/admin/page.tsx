@@ -8,8 +8,11 @@ import { workspaceDefaults } from "@/lib/admin/defaults";
 import { currentRole, listAdmins } from "@/lib/admin/role";
 import { cycleStart } from "@/lib/domain/quotas";
 import { adminKicker } from "@/lib/workspace";
+import { inboxCounts, listContactMessages } from "@/lib/admin/inbox";
+import { isMailConfigured } from "@/lib/mail/config";
 import { AccessDenied } from "./access-denied";
 import { AdminPanel } from "./admin-panel";
+import { InboxPanel } from "./inbox-panel";
 import { PlansPanel } from "./plans-panel";
 import { rollUpPlans } from "@/lib/admin/plans";
 import { WorkspaceDefaultsPanel } from "./workspace-defaults";
@@ -47,6 +50,7 @@ export default async function AdminPage({
   // against yourself would be a lie in the admins' inbox.
   const previewing = role === "admin" && view === "member";
   const showDefaults = panel === "defaults";
+  const showInbox = panel === "inbox";
   if (role !== "admin" || previewing) {
     const [admins, used] = await Promise.all([
       listAdmins(),
@@ -68,10 +72,15 @@ export default async function AdminPage({
 
   // The defaults read is an upsert (it seeds its own row), so it is issued only
   // when the panel is actually open rather than writing on every page view.
-  const [members, stats, defaults] = await Promise.all([
+  // The counts are two cheap COUNTs and they decide what the header says, so
+  // they are read on every admin view. The messages themselves — other people's
+  // words — are read only when the panel is actually open.
+  const [members, stats, defaults, counts, messages] = await Promise.all([
     listMembers(),
     workspaceStats(),
     showDefaults ? workspaceDefaults() : Promise.resolve(null),
+    inboxCounts(),
+    showInbox ? listContactMessages() : Promise.resolve(null),
   ]);
 
   return (
@@ -86,6 +95,17 @@ export default async function AdminPage({
             provider; we hold only a hash, and this panel never reads a member&rsquo;s profile,
             résumés or postings.
           </p>
+          {/* Said here rather than only inside the panel: a message that never
+              reached an inbox is invisible everywhere else, so the one page an
+              admin does open has to volunteer it. */}
+          {counts.undelivered > 0 ? (
+            <p className="mt-2 text-[0.85rem] text-[var(--color-accent-700)]">
+              {counts.undelivered === 1
+                ? "One support message was filed but never emailed to us."
+                : `${counts.undelivered} support messages were filed but never emailed to us.`}{" "}
+              <Link href="/admin?panel=inbox">Read them in the inbox</Link>.
+            </p>
+          ) : null}
         </div>
 
         {/* Both are links rather than buttons: each is a different view of this
@@ -101,10 +121,23 @@ export default async function AdminPage({
           >
             Workspace defaults
           </Link>
+          {/* The count is on the button because an unread support message is
+              the one thing on this page that is waiting on a person. */}
+          <Link
+            href={showInbox ? "/admin" : "/admin?panel=inbox"}
+            className="btn btn-secondary btn-sm no-underline"
+            aria-expanded={showInbox}
+          >
+            Support inbox
+            {counts.unhandled > 0 ? ` · ${counts.unhandled}` : ""}
+          </Link>
         </div>
       </div>
 
       {showDefaults && defaults ? <WorkspaceDefaultsPanel defaults={defaults} /> : null}
+      {showInbox && messages ? (
+        <InboxPanel messages={messages} mailConfigured={isMailConfigured()} />
+      ) : null}
 
       <div className="mb-6 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(210px,1fr))]">
         {stats.map((stat) => {

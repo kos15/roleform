@@ -4,7 +4,8 @@ import { z } from "zod";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
-import { appError, err, ok, type Result } from "@/lib/domain/types";
+import { deliver } from "@/lib/mail/deliver";
+import { SUPPORT_EMAIL } from "@/lib/mail/addresses";
 
 /**
  * Support mail (F16).
@@ -15,9 +16,16 @@ import { appError, err, ok, type Result } from "@/lib/domain/types";
  * one plus a runtime check), and the CHECK constraint behind it refuses a
  * message nobody could answer.
  *
- * We store rather than send. There is no mail provider wired in, and a form
- * that says "sent" while dropping the message on the floor would be worse than
- * no form. The row is what a person reads.
+ * **Store first, then send.** The row is the durable record and the mail is a
+ * convenience on top of it. A provider outage therefore costs us a notification,
+ * never a message: the row is already written, the admin inbox still shows it,
+ * and the row carries why the send failed.
+ *
+ * What the sender is told tracks what actually happened. "We'll reply to you"
+ * when the receipt went out; "it's filed" when mail isn't configured or the
+ * provider refused. A form that says "sent" while dropping the message on the
+ * floor would be worse than no form — and so would one that claims an email we
+ * know never left.
  */
 
 const ContactSchema = z.object({
@@ -32,6 +40,12 @@ export interface ContactState {
   message?: string;
   /** Echoed back so the confirmation can name the address we'll reply to. */
   email?: string;
+  /**
+   * Whether a receipt actually reached that address. The confirmation says one
+   * thing or the other; it never says "check your inbox" on a message we
+   * couldn't send.
+   */
+  receipted?: boolean;
 }
 
 export async function sendContactMessage(
@@ -58,40 +72,33 @@ export async function sendContactMessage(
   if (!limited.allowed) {
     return {
       status: "error",
-      message: `That's several messages in a row. Try again in ${limited.retryAfterSeconds}s, or write to hello@roleform.app.`,
+      message: `That's several messages in a row. Try again in ${limited.retryAfterSeconds}s, or write to ${SUPPORT_EMAIL}.`,
     };
   }
 
-  const result = await store(userId, parsed.data);
-  if (!result.ok) return { status: "error", message: result.error.message };
-
-  return { status: "sent", email: parsed.data.email };
-}
-
-async function store(
-  clerkUserId: string | null,
-  data: z.infer<typeof ContactSchema>,
-): Promise<Result<null>> {
+  let row: { id: string };
   try {
-    await db.contactMessage.create({
+    row = await db.contactMessage.create({
       data: {
-        clerkUserId,
-        name: data.name,
-        email: data.email,
-        subject: data.subject,
-        body: data.body,
+        clerkUserId: userId,
+        name: parsed.data.name,
+        email: parsed.data.email,
+        subject: parsed.data.subject,
+        body: parsed.data.body,
       },
+      select: { id: true },
     });
-    return ok(null);
   } catch {
     // N7: the message body is the most sensitive thing on this page and it is
     // never what failed — so the log gets nothing, and the user gets the one
     // route that works when we're broken.
-    return err(
-      appError(
-        "storage_failed",
-        "We couldn't file that message. Write to hello@roleform.app and it will reach the same two people.",
-      ),
-    );
+    return {
+      status: "error",
+      message: `We couldn't file that message. Write to ${SUPPORT_EMAIL} and it will reach the same two people.`,
+    };
   }
+
+  const delivery = await deliver({ ...parsed.data, id: row.id, clerkUserId: userId });
+
+  return { status: "sent", email: parsed.data.email, receipted: delivery.receipt === "sent" };
 }
