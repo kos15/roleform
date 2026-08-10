@@ -1,11 +1,13 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { currentRole } from "@/lib/admin/role";
-import { clampCap, QUOTAS } from "@/lib/domain/quotas";
+import { clampCap, QUOTAS, QUOTA_BY_KEY } from "@/lib/domain/quotas";
+import { formatCount } from "@/lib/domain/tokens";
 import { deliver } from "@/lib/mail/deliver";
 import { SUPPORT_EMAIL } from "@/lib/mail/addresses";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
@@ -39,14 +41,17 @@ export async function requireAdmin(): Promise<Result<string>> {
   return ok(user.value);
 }
 
+const CapsShape = z.object({
+  tokens: z.number().int(),
+  analyses: z.number().int(),
+  resumes: z.number().int(),
+  answers: z.number().int(),
+  courses: z.number().int(),
+});
+
 const CapsSchema = z.object({
   clerkUserId: z.string().min(1),
-  caps: z.object({
-    analyses: z.number().int(),
-    resumes: z.number().int(),
-    answers: z.number().int(),
-    courses: z.number().int(),
-  }),
+  caps: CapsShape,
   suspended: z.boolean(),
 });
 
@@ -81,12 +86,7 @@ export async function updateMemberCaps(input: CapsInput): Promise<Result<null>> 
   return ok(null);
 }
 
-const DefaultsSchema = z.object({
-  analyses: z.number().int(),
-  resumes: z.number().int(),
-  answers: z.number().int(),
-  courses: z.number().int(),
-});
+const DefaultsSchema = CapsShape;
 
 export type DefaultsInput = z.infer<typeof DefaultsSchema>;
 
@@ -175,6 +175,64 @@ export async function requestAdminAccess(): Promise<Result<null>> {
 }
 
 const ACCESS_SUBJECT = "Admin access request";
+
+/* ------------------------------------------------------------- token grants */
+
+
+/** The same ceiling the cap carries. A grant is not a way around the bound. */
+const MAX_GRANT = QUOTA_BY_KEY.tokens.max;
+
+const GrantSchema = z.object({
+  clerkUserId: z.string().min(1),
+  tokens: z.number().int().positive().max(MAX_GRANT),
+});
+
+export type GrantInput = z.infer<typeof GrantSchema>;
+
+/**
+ * Give a member a one-off top-up (F19).
+ *
+ * Deliberately NOT a cap change. Raising `cap_tokens` would move the number
+ * this member inherits every cycle from here on, which is a different decision
+ * with a different blast radius — an admin unblocking someone today should not
+ * have to also decide what they get next month.
+ *
+ * Written as a `token_grants` row with an `admin:<uuid>` reference, alongside
+ * the rows the payment webhook writes. One table, so "where did these tokens
+ * come from" has one answer, and the UNIQUE reference means a double-click is a
+ * conflict rather than a double grant.
+ */
+export async function grantTokens(input: GrantInput): Promise<Result<{ tokens: number }>> {
+  const admin = await requireAdmin();
+  if (!admin.ok) return admin;
+
+  const parsed = GrantSchema.safeParse(input);
+  if (!parsed.success) {
+    return err(
+      appError("invalid_input", `A grant has to be between 1 and ${formatCount(MAX_GRANT)} tokens.`),
+    );
+  }
+
+  const target = await db.user.findUnique({
+    where: { clerkUserId: parsed.data.clerkUserId },
+    select: { clerkUserId: true },
+  });
+  if (!target) return err(appError("not_found", "That member is no longer in this workspace."));
+
+  await db.tokenGrant.create({
+    data: {
+      clerkUserId: parsed.data.clerkUserId,
+      tokens: parsed.data.tokens,
+      source: "admin",
+      reference: `admin:${randomUUID()}`,
+      grantedBy: admin.value,
+    },
+  });
+
+  revalidatePath("/admin");
+  return ok({ tokens: parsed.data.tokens });
+}
+
 
 /* ------------------------------------------------------------ support inbox */
 

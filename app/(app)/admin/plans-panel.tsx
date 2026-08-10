@@ -66,7 +66,7 @@ export function PlansPanel({ rollup }: { rollup: PlanRollup[] }) {
                 <div key={quota.key} className="flex items-baseline justify-between gap-3 text-xs">
                   <dt className="text-[var(--color-text-muted)]">{quota.label}</dt>
                   <dd className="font-semibold tabular-nums">
-                    {displayCap(plan.caps[quota.key])}
+                    {displayCap(quota.key, plan.caps[quota.key])}
                     <span className="ml-1 font-normal text-[var(--color-text-muted)]">
                       {quota.unit}
                     </span>

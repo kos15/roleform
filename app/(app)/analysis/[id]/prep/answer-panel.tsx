@@ -4,6 +4,8 @@ import { useEffect, useState, useTransition } from "react";
 import { BookOpen, CornerDownRight, ExternalLink, Sparkles } from "lucide-react";
 import { draftAnswer } from "@/app/actions/prep";
 import { Button, ErrorRegion, Skeleton, Tag } from "@/components/ui";
+import { TokenWallDialog } from "@/components/token-wall";
+import type { TokenWall } from "@/lib/domain/tokens";
 import type { AnswerView } from "./types";
 
 /**
@@ -36,6 +38,7 @@ export function AnswerPanel({
 }) {
   const [answer, setAnswer] = useState<AnswerView | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [wall, setWall] = useState<TokenWall | null>(null);
   const [pending, startTransition] = useTransition();
 
   const load = () => {
@@ -45,6 +48,11 @@ export function AnswerPanel({
       if (result.ok) {
         setAnswer(result.value);
         onDrafted(questionId);
+      } else if (result.error.code === "token_wall" && result.error.wall) {
+        // The meter, not a failure. The framework and the source bullets above
+        // this panel stay exactly where they are — a drafted answer is the only
+        // part of the Prep tab that costs anything (F19).
+        setWall(result.error.wall);
       } else {
         setError(result.error.message);
       }
@@ -61,6 +69,17 @@ export function AnswerPanel({
   if (!answer) {
     return (
       <div className="border-t border-[var(--color-line)] pt-4">
+        {wall ? (
+          <TokenWallDialog
+            wall={wall}
+            onClose={() => setWall(null)}
+            onResume={() => {
+              setWall(null);
+              load();
+            }}
+            resumeLabel="Draft the answer"
+          />
+        ) : null}
         {error ? <ErrorRegion title="That draft didn't come back">{error}</ErrorRegion> : null}
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <Button variant="secondary" size="sm" onClick={load} disabled={pending} busy={pending}>

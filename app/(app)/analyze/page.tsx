@@ -2,12 +2,16 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { FileText } from "lucide-react";
 import { getProfileWithDocument } from "@/lib/db/queries/profile";
+import { queuedRuns } from "@/lib/db/queries/tokens";
 import { Card, EmptyState } from "@/components/ui";
 import { JdInput } from "./jd-input";
+import { QueuedRuns } from "./queued-runs";
 
 export default async function AnalyzePage() {
   const { userId } = await auth();
   const profile = userId ? await getProfileWithDocument(userId) : null;
+  // Almost always empty, and a partial index makes it cheap when it is (F19).
+  const queued = userId ? await queuedRuns(userId) : [];
 
   if (!profile) {
     return (
@@ -36,6 +40,14 @@ export default async function AnalyzePage() {
           exposes. Nothing is invented — every bullet traces back to something you wrote.
         </p>
       </div>
+
+      <QueuedRuns
+        runs={queued.map((run) => ({
+          id: run.id,
+          label: run.label,
+          queued: run.queuedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+        }))}
+      />
 
       {/* The aside carries the corpus and the contract; the posting goes in the
           left column. Keeping them side by side is the point — you can see what

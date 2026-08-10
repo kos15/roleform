@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { checkAnswerAllowance, requireUser } from "@/lib/auth";
+import { checkAnswerAllowance, checkTokenAllowance, requireUser } from "@/lib/auth";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { generateAnswer } from "@/lib/ai/answer";
 import {
@@ -63,6 +63,12 @@ export async function draftAnswer(questionId: string): Promise<Result<AnswerView
   // rather than a limit.
   const allowance = await checkAnswerAllowance(user.value);
   if (!allowance.ok) return allowance;
+
+  // The meter (F19), after the cap and for the same reason: an answer already
+  // drafted stays readable at any balance. A draft that cannot be afforded is
+  // refused before the call, not abandoned half-written.
+  const tokens = await checkTokenAllowance(user.value, "answer");
+  if (!tokens.ok) return tokens;
 
   const [analysis, profile] = await Promise.all([
     getAnalysis(user.value, question.analysisId),

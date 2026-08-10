@@ -10,6 +10,11 @@
 //        added by hand to the generated migration SQL — see
 //        prisma/migrations/*_init/migration.sql and CLAUDE.md §13.
 //
+//        Both were written with `array_length(x, 1) > 0`, which is NULL on an
+//        empty array, so both passed every row until
+//        20260810010000_repair_fabrication_checks. A hand-written CHECK is
+//        only a guarantee once something has watched it reject.
+//
 // Model and column names are @@map / @map'd to match the snake_case table and
 // column names lib/db/policies.sql already references, so RLS policies never
 // need to change when the ORM does.
@@ -166,6 +171,7 @@ enum ExportFormat {
 enum PlanTier {
   free
   pro
+  ultra
 
   @@map("plan")
 }
@@ -178,6 +184,16 @@ enum UserRole {
   admin
 
   @@map("user_role")
+}
+
+/// Where a top-up came from (F19). Two values because they answer different
+/// questions in the admin panel: a purchase is revenue, a grant is a decision
+/// somebody made and should be able to point at.
+enum TokenGrantSource {
+  purchase
+  admin
+
+  @@map("token_grant_source")
 }
 
 /// Where one outbound mail got to (F16). Four states because "we never tried"
@@ -220,7 +236,49 @@ model User {
   capAnswers  Int @default(40) @map("cap_answers") // per cycle
   capCourses  Int @default(4) @map("cap_courses") // per gap
 
+  /// The token allowance for one cycle (F19). The meter the other four caps
+  /// cannot be: an analysis of a 400-word posting and one of a six-page
+  /// posting are both "1" to capAnalyses, and they are not the same work.
+  ///
+  /// There is deliberately no `tokens_used` column beside it. Usage is SUMmed
+  /// from `ai_runs`, which already records the real input and output tokens of
+  /// every call — so a run that dies half-way costs exactly what it burned,
+  /// and no crash between two writes can drift a balance that isn't stored.
+  capTokens Int @default(60000) @map("cap_tokens") // per cycle
+
+  tokenGrants TokenGrant[]
+
   @@map("users")
+}
+
+/// A one-off top-up: tokens bought or granted, outside the cycle allowance.
+///
+/// A row per grant rather than a running total on `users`, for the same reason
+/// usage is SUMmed from `ai_runs` rather than decremented: a stored balance is
+/// a number two writes can disagree about, and this one is written by a public
+/// webhook the provider will redeliver on any non-2xx.
+///
+/// `reference` is what makes that safe — the payment id for a purchase, so the
+/// UNIQUE index turns a redelivered webhook into a conflict instead of a second
+/// credit. Idempotency as a constraint, not as a remembered check (§11).
+///
+/// Top-ups never expire. That is the only thing distinguishing them from a cap:
+/// unspent tokens survive the cycle turnover, which is what /pricing promises.
+model TokenGrant {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String          @map("clerk_user_id")
+  tokens      Int
+  source      TokenGrantSource
+  /// Payment id, or `admin:<uuid>` for a hand grant. Unique, always.
+  reference   String          @unique
+  /// The admin who granted it. Null on a purchase — nobody granted that.
+  grantedBy   String?         @map("granted_by")
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [clerkUserId], references: [clerkUserId], onDelete: Cascade)
+
+  @@index([clerkUserId], map: "token_grants_user_idx")
+  @@map("token_grants")
 }
 
 /// The caps a NEW account is created with (F15).
@@ -240,6 +298,7 @@ model WorkspaceSettings {
   /// `settings` row we have to remember not to duplicate.
   id String @id @default("workspace")
 
+  capTokens   Int @default(60000) @map("cap_tokens")
   capAnalyses Int @default(40) @map("cap_analyses")
   capResumes  Int @default(6) @map("cap_resumes")
   capAnswers  Int @default(40) @map("cap_answers")
@@ -378,6 +437,17 @@ model Analysis {
   stageState     Json           @default("{}") @map("stage_state")
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
 
+  /// Filed against a token wall, waiting for the cycle to turn over (F19).
+  ///
+  /// The posting is already stored on this row — that is the whole point: the
+  /// member does not have to find it again. A queued run is an ordinary
+  /// `parsing` analysis that nothing has started yet, so the resume path is
+  /// the one lib/status/parked.ts already walks, and there is no worker, no
+  /// cron and no second execution path to keep honest (CLAUDE.md §8).
+  ///
+  /// Cleared when the run finally starts. Null on every analysis that was
+  /// never blocked, which is almost all of them.
+  queuedAt DateTime? @map("queued_at") @db.Timestamptz
 
   profile            MasterProfile       @relation(fields: [profileId], references: [id], onDelete: Restrict)
   jdRequirements     JdRequirement[]
@@ -432,8 +502,12 @@ model CoverageItem {
 
   @@index([analysisId], map: "coverage_items_analysis_idx")
   @@map("coverage_items")
-  // CHECK (status <> 'evidenced' OR array_length(evidence_bullet_ids,1) > 0)
+  // CHECK (status <> 'evidenced' OR cardinality(evidence_bullet_ids) > 0)
   // added by hand in the migration SQL — see the header comment.
+  //
+  // `cardinality`, NOT `array_length(x, 1)`: array_length returns NULL for an
+  // empty array, so the original guard evaluated to NULL and a CHECK only
+  // rejects on FALSE. It was inert from M1 until the repair migration.
 }
 
 /* --------------------------------------------------------------- templates */
@@ -521,8 +595,11 @@ model InterviewQuestion {
 
   @@index([analysisId], map: "interview_questions_analysis_idx")
   @@map("interview_questions")
-  // ★ FABRICATION GUARD #2 — CHECK (type = 'gap' OR array_length(evidence_bullet_ids,1) > 0)
-  // added by hand in the migration SQL — see the header comment.
+  // ★ FABRICATION GUARD #2 — CHECK (type = 'gap' OR cardinality(evidence_bullet_ids) > 0)
+  // added by hand in the migration SQL — see the header comment. `cardinality`
+  // rather than `array_length(x, 1)` for the reason spelled out on
+  // CoverageItem: the latter is NULL on an empty array, and a NULL CHECK
+  // passes. This guard did nothing at all until the repair migration.
 }
 
 /* ------------------------------------------------- worked answers (F7.2) */

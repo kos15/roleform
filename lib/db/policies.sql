@@ -32,7 +32,8 @@ declare
     'question_answers',
     'skill_gaps',
     'exports',
-    'ai_runs'
+    'ai_runs',
+    'token_grants'
   ];
   key_column text;
 begin

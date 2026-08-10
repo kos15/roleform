@@ -3,13 +3,14 @@ import Link from "next/link";
 import { PageIntro, Bullet } from "@/components/page-intro";
 import { Tag } from "@/components/ui";
 import { displayCap } from "@/lib/domain/quotas";
-import { PLANS, PLAN_ROWS, PRICING_REFUSALS } from "@/lib/content/pricing";
-import { ProCheckoutButton } from "./checkout-button";
+import { PLANS, PLAN_ROWS, PRICING_REFUSALS, TOPUPS } from "@/lib/content/pricing";
+import { RUN_ESTIMATE, formatCount } from "@/lib/domain/tokens";
+import { CheckoutButton } from "@/components/checkout-button";
 
 export const metadata: Metadata = {
   title: "Pricing · Roleform",
   description:
-    "Two plans, priced on how much you run rather than on which features you're allowed. Nothing behind the paywall changes what the product will say about you.",
+    "Three plans, metered in tokens rather than in features. Nothing behind the paywall changes what the product will say about you.",
 };
 
 /**
@@ -23,9 +24,10 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   return (
     <div className="mx-auto w-full max-w-[1000px] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.75rem,5vw,3.5rem)] pb-16">
-      <PageIntro kicker="Pricing" title="Priced on how much you run, not on what you're allowed to see">
-        Both plans use the same pipeline, the same six templates and the same fabrication boundary.
-        What differs is volume — how many postings, how many drafts, how many worked answers.
+      <PageIntro kicker="Pricing" title="Pay for the runs, not for the seat">
+        Every plan does the same four-stage analysis with the same fabrication boundary. What
+        changes is how much of it you can do — metered in tokens, measured from what the models
+        actually consumed, at about {formatCount(RUN_ESTIMATE)} for a full run.
       </PageIntro>
 
       <div className="mb-10 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
@@ -55,15 +57,15 @@ export default function PricingPage() {
               {plan.tagline}
             </p>
 
-            {/* The four numbers, in the plan's own card as well as in the table
-                below — someone comparing two columns should not have to hold a
-                row heading in their head to read one. */}
+            {/* The five numbers, in the plan's own card as well as in the table
+                below — someone comparing three columns should not have to hold
+                a row heading in their head to read one. */}
             <dl className="flex flex-col gap-2 border-t border-[var(--color-line)] pt-3.5">
               {PLAN_ROWS.map((row) => (
                 <div key={row.key} className="flex items-baseline justify-between gap-3 text-[0.85rem]">
                   <dt className="text-[var(--color-text-muted)]">{row.label}</dt>
                   <dd className="font-semibold tabular-nums">
-                    {displayCap(plan.caps[row.key])}
+                    {displayCap(row.key, plan.caps[row.key])}
                     <span className="ml-1 text-xs font-normal text-[var(--color-text-muted)]">
                       {row.unit}
                     </span>
@@ -72,8 +74,14 @@ export default function PricingPage() {
               ))}
             </dl>
 
-            {plan.id === "pro" ? (
-              <ProCheckoutButton label={plan.cta} />
+            {plan.pricePaise > 0 ? (
+              <CheckoutButton
+                purchase={{ kind: "plan", id: plan.id }}
+                label={plan.cta}
+                description={`Roleform — ${plan.name}, one month`}
+                variant={plan.featured ? "primary" : "secondary"}
+                className="w-full"
+              />
             ) : (
               <Link href="/onboarding" className="btn btn-secondary w-full no-underline">
                 {plan.cta}
@@ -82,6 +90,34 @@ export default function PricingPage() {
           </div>
         ))}
       </div>
+
+      {/* Top-ups sit between the plans and the caps table on purpose: they are
+          the answer to "what if I run out in week three", and that question is
+          asked while looking at the columns above, not after reading them. */}
+      <section className="mb-9 rounded-[var(--radius-lg)] border border-[var(--color-line)] p-[clamp(1.25rem,3vw,1.625rem)]">
+        <h3 className="mb-1.5">If you run out mid-cycle</h3>
+        <p className="mb-5 max-w-[56ch] text-[0.85rem] leading-relaxed text-[var(--color-text-muted)]">
+          One-off packs, on any paid plan. They never renew and they never expire — a pack bought in
+          the last week of a cycle is not a partial purchase, because anything unspent carries into
+          the next one. The plan allowance itself does not carry; only these do.
+        </p>
+        <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(15rem,1fr))]">
+          {TOPUPS.map((topup) => (
+            <div
+              key={topup.id}
+              className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] px-4 py-3.5"
+            >
+              <div>
+                <div className="font-semibold tabular-nums">{formatCount(topup.tokens)} tokens</div>
+                <div className="text-xs text-[var(--color-text-muted)]">{topup.note}</div>
+              </div>
+              <span className="font-[family-name:var(--font-heading)] text-[1.25rem]">
+                {topup.price}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="mb-9 rounded-[var(--radius-lg)] border border-[var(--color-line)] p-[clamp(1.25rem,3vw,1.625rem)]">
         <h3 className="mb-1.5">What happens when you reach one</h3>

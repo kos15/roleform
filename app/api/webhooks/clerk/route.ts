@@ -55,6 +55,12 @@ export async function POST(request: Request) {
       create: {
         clerkUserId,
         emailHash: hashEmail(email),
+        // The cycle anchor (F15, F19). Without it every read of `cycleStart`
+        // falls back to `now`, usage counts from this instant, and no cap
+        // binds — the meter and the four caps become decorative. Written once,
+        // at creation, and never moved: it is a fixed point the 30-day windows
+        // are laid out around, not a date a scheduler has to maintain.
+        quotaResetsAt: new Date(),
         capAnalyses: defaults.analyses,
         capResumes: defaults.resumes,
         capAnswers: defaults.answers,

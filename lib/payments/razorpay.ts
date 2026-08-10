@@ -46,14 +46,19 @@ export interface RazorpayOrder {
 /**
  * Create an order to hand to the checkout widget.
  *
- * `notes.clerk_user_id` is how the webhook finds the account to upgrade. It is
+ * `notes.clerk_user_id` is how the webhook finds the account to credit. It is
  * an opaque subject, never an address (N7) — the same thing the access-request
  * path already carries for the same reason.
+ *
+ * The rest of `notes` says WHAT was bought, because the webhook has nothing
+ * else to go on: a payment for ₹99 and a payment for ₹499 arrive through the
+ * same endpoint, and inferring the purchase from the amount would mean a price
+ * change silently granting the wrong thing.
  */
 export async function createOrder(args: {
   amountPaise: number;
   clerkUserId: string;
-  planId: string;
+  notes: Record<string, string>;
 }): Promise<Result<RazorpayOrder>> {
   const creds = credentials();
   if (!creds.ok) return creds;
@@ -71,7 +76,7 @@ export async function createOrder(args: {
       body: JSON.stringify({
         amount: args.amountPaise,
         currency: "INR",
-        notes: { clerk_user_id: args.clerkUserId, plan: args.planId },
+        notes: { clerk_user_id: args.clerkUserId, ...args.notes },
       }),
     });
   } catch {

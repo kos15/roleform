@@ -10,6 +10,7 @@ import {
 import { Button, EmptyState } from "@/components/ui";
 import { PageIntro } from "@/components/page-intro";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
+import { TokenPanel } from "./token-panel";
 import { ProfileEditor } from "./profile-editor";
 import { DeleteAccount } from "./delete-account";
 
@@ -68,6 +69,8 @@ export default async function ProfilePage() {
         sourceFilename={loaded.document?.filename ?? null}
         updatedAt={loaded.profile.updatedAt.toISOString()}
       />
+
+      <TokenPanel clerkUserId={userId} />
 
       <div className="mt-8 max-w-3xl">
         <DeleteAccount />

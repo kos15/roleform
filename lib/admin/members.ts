@@ -3,7 +3,9 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { initialsOf, roleFromMetadata, type Role } from "@/lib/admin/role";
 import { cycleStart, type QuotaKey } from "@/lib/domain/quotas";
-import type { PlanId } from "@/lib/content/pricing";
+import { formatTokens } from "@/lib/domain/tokens";
+import { grantedTokens } from "@/lib/db/queries/tokens";
+import { planById, type PlanId } from "@/lib/content/pricing";
 
 /**
  * The member list behind the admin panel (F15).
@@ -25,8 +27,11 @@ import type { PlanId } from "@/lib/content/pricing";
  * shared window. `analyses` and `answers` accumulate across a billing cycle;
  * `resumes` and `courses` are per-run facts, so they report the last run. A
  * cycle total under a per-run cap would be a number that can only mislead.
+ *
+ * `tokens` is the cycle SUM over `ai_runs` — measured, not counted (F19).
  */
 export interface MemberUsage {
+  tokens: number;
   analyses: number;
   resumes: number;
   answers: number;
@@ -48,6 +53,8 @@ export interface Member {
   joined: string;
   caps: Record<QuotaKey, number>;
   used: MemberUsage;
+  /** One-off tokens granted or bought, all time. Outside the cap. */
+  topupTokens: number;
 }
 
 export async function listMembers(): Promise<Member[]> {
@@ -59,6 +66,7 @@ export async function listMembers(): Promise<Member[]> {
       suspended: true,
       createdAt: true,
       quotaResetsAt: true,
+      capTokens: true,
       capAnalyses: true,
       capResumes: true,
       capAnswers: true,
@@ -68,9 +76,13 @@ export async function listMembers(): Promise<Member[]> {
 
   if (rows.length === 0) return [];
 
-  const usage = await Promise.all(
-    rows.map((row) => usageFor(row.clerkUserId, cycleStart(row.quotaResetsAt))),
-  );
+  const [usage, topups] = await Promise.all([
+    Promise.all(rows.map((row) => usageFor(row.clerkUserId, cycleStart(row.quotaResetsAt)))),
+    // Granted, not unspent: the panel is answering "what has this member been
+    // given", which is the number an admin deciding whether to grant more
+    // actually needs. What is LEFT of it is the member's own header pill.
+    Promise.all(rows.map((row) => grantedTokens(row.clerkUserId))),
+  ]);
 
   const directory = await resolveIdentities(rows.map((r) => r.clerkUserId));
 
@@ -82,8 +94,8 @@ export async function listMembers(): Promise<Member[]> {
       name,
       email: person?.email ?? "—",
       initials: initialsOf(name),
-      planId: row.plan === "pro" ? "pro" : "free",
-      plan: row.plan === "pro" ? "Pro" : "Free",
+      planId: row.plan,
+      plan: planById(row.plan).name,
       // From Clerk, not from the mirrored column: the mirror only refreshes
       // when a person visits, and a panel that shows a stale role is worse
       // than one that costs a directory read.
@@ -91,12 +103,14 @@ export async function listMembers(): Promise<Member[]> {
       suspended: row.suspended,
       joined: row.createdAt.toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
       caps: {
+        tokens: row.capTokens,
         analyses: row.capAnalyses,
         resumes: row.capResumes,
         answers: row.capAnswers,
         courses: row.capCourses,
       },
       used: usage[i],
+      topupTokens: topups[i],
     };
   });
 }
@@ -108,7 +122,11 @@ async function usageFor(clerkUserId: string, since: Date): Promise<MemberUsage> 
     select: { id: true },
   });
 
-  const [analyses, answers, resumes, courses] = await Promise.all([
+  const [tokens, analyses, answers, resumes, courses] = await Promise.all([
+    db.aiRun.aggregate({
+      where: { clerkUserId, createdAt: { gte: since } },
+      _sum: { inputTokens: true, outputTokens: true },
+    }),
     db.analysis.count({ where: { clerkUserId, createdAt: { gte: since } } }),
     db.questionAnswer.count({ where: { clerkUserId, createdAt: { gte: since } } }),
     lastRun
@@ -122,7 +140,13 @@ async function usageFor(clerkUserId: string, since: Date): Promise<MemberUsage> 
       : Promise.resolve(0),
   ]);
 
-  return { analyses, resumes, answers, courses };
+  return {
+    tokens: (tokens._sum.inputTokens ?? 0) + (tokens._sum.outputTokens ?? 0),
+    analyses,
+    resumes,
+    answers,
+    courses,
+  };
 }
 
 interface Identity {
@@ -162,10 +186,12 @@ export interface WorkspaceStat {
   /** The pooled ceiling this counts against, where one exists. */
   of: number | null;
   sub: string;
+  /** Six figures read as noise on a stat tile. */
+  abbreviate?: boolean;
 }
 
 /**
- * The three numbers above the member list.
+ * The four numbers above the member list.
  *
  * Pooled totals over a rolling 30 days, against the sum of everyone's caps.
  * The pool is descriptive, not enforced — nothing refuses a run because the
@@ -175,14 +201,29 @@ export interface WorkspaceStat {
 export async function workspaceStats(): Promise<WorkspaceStat[]> {
   const since = cycleStart(null);
 
-  const [analyses, resumes, answers, caps] = await Promise.all([
+  const [tokens, analyses, resumes, answers, caps] = await Promise.all([
+    db.aiRun.aggregate({
+      where: { createdAt: { gte: since } },
+      _sum: { inputTokens: true, outputTokens: true },
+    }),
     db.analysis.count({ where: { createdAt: { gte: since } } }),
     db.resumeDraft.count({ where: { createdAt: { gte: since } } }),
     db.questionAnswer.count({ where: { createdAt: { gte: since } } }),
-    db.user.aggregate({ _sum: { capAnalyses: true, capAnswers: true } }),
+    db.user.aggregate({ _sum: { capTokens: true, capAnalyses: true, capAnswers: true } }),
   ]);
 
+  const tokensDrawn = (tokens._sum.inputTokens ?? 0) + (tokens._sum.outputTokens ?? 0);
+
   return [
+    {
+      // First, because it is the only one of these that measures cost rather
+      // than count — and the only one an outage shows up in.
+      label: "Tokens drawn",
+      value: tokensDrawn,
+      of: caps._sum.capTokens ?? 0,
+      sub: `of ${formatTokens(caps._sum.capTokens ?? 0)} pooled`,
+      abbreviate: true,
+    },
     {
       label: "Analyses this cycle",
       value: analyses,

@@ -2,6 +2,7 @@ import Link from "next/link";
 // Clerk v7 replaced <SignedIn>/<SignedOut> with <Show when="signed-in" | "signed-out">.
 import { Show, SignInButton } from "@clerk/nextjs";
 import { Brand } from "@/components/brand";
+import { AppearanceLink } from "@/components/appearance-link";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteFooter } from "@/components/site-footer";
 import { Button } from "@/components/ui";
@@ -37,6 +38,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
           </Link>
         </nav>
 
+        <AppearanceLink />
         <ThemeToggle />
 
         <Show when="signed-out">

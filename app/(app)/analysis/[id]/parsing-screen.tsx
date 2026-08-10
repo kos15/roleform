@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { Check, CircleDashed, Loader2, TriangleAlert } from "lucide-react";
 import { Button, ErrorRegion } from "@/components/ui";
 import { StageFigure } from "@/components/stage-figure";
+import { TokenWallDialog } from "@/components/token-wall";
 import { STAGES, type StageKey, type StageState, type StageUpdate } from "@/lib/pipeline/stages";
+import type { AppError } from "@/lib/domain/types";
+import type { TokenWall } from "@/lib/domain/tokens";
 
 /**
  * F3 — the parsing screen.
@@ -39,6 +42,12 @@ export function ParsingScreen({
   const [failed, setFailed] = useState<string | null>(
     initialStatus === "failed" ? (note ?? "This analysis didn't finish.") : null,
   );
+  const [wall, setWall] = useState<TokenWall | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+  // Bumped to ask the pipeline again after a top-up. The ref guard stops the
+  // effect firing twice per attempt; this is what makes a second attempt a
+  // different attempt rather than a re-render.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (started.current || initialStatus === "failed") return;
@@ -51,6 +60,21 @@ export function ParsingScreen({
         method: "POST",
         signal: controller.signal,
       });
+
+      // 402: the run never started, so this is not a stage that failed. The
+      // pipeline refuses before stage one rather than half-running (F19), and
+      // the dialog is what the member gets instead of a progress bar that
+      // stops at 0%.
+      if (response.status === 402) {
+        const body = (await response.json()) as { error?: AppError };
+        if (body.error?.wall) {
+          setWall(body.error.wall);
+          // Another attempt is a legitimate thing to want after topping up.
+          started.current = false;
+          return;
+        }
+      }
+
       if (!response.body) {
         setFailed("We couldn't start the analysis.");
         return;
@@ -85,7 +109,42 @@ export function ParsingScreen({
     })().catch(() => setFailed("The connection dropped partway through."));
 
     return () => controller.abort();
-  }, [analysisId, initialStatus, router]);
+  }, [analysisId, initialStatus, router, attempt]);
+
+  if (wall) {
+    return (
+      <>
+        {/* Dismissing the dialog leaves the page behind it, which still says
+            what happened. A refusal you can only read once is a refusal you
+            have to remember, and this one has a number in it. */}
+        {dismissed ? null : (
+          <TokenWallDialog
+            wall={wall}
+            onClose={() => setDismissed(true)}
+            onResume={() => {
+              setWall(null);
+              setDismissed(false);
+              setAttempt((n) => n + 1);
+            }}
+            resumeLabel="Start the analysis"
+          />
+        )}
+        <div className="max-w-2xl space-y-4">
+          <h1 className="text-4xl">This run is waiting on your allowance</h1>
+          <p className="text-[var(--color-text-muted)]">
+            The posting is stored — nothing has been read, matched or rewritten, and nothing has
+            been charged. It will be here when the balance is.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => setDismissed(false)}>Show my options</Button>
+            <Button variant="secondary" onClick={() => router.push("/analyze")}>
+              Back to the analyse screen
+            </Button>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   if (failed) {
     return (

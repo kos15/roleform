@@ -3,19 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, ErrorRegion } from "@/components/ui";
-import { startProCheckout } from "@/app/actions/checkout";
+import { startPlanCheckout, startTopupCheckout } from "@/app/actions/checkout";
+import type { PlanId } from "@/lib/content/pricing";
 
 /**
- * The Pro button (F17).
+ * The pay button (F17, F19).
  *
  * The provider's widget is loaded on FIRST CLICK, not on page load. A pricing
  * page that pulls in a third-party payment script to be read is a page that
  * hands a tracker to everyone who was only comparing numbers — and the script
  * is useless until someone actually intends to pay.
  *
- * The order is created server-side (app/actions/checkout.ts) and the plan is
- * granted server-side (the webhook). This component can do neither, which is
- * the point: everything it touches is already public.
+ * The order is created server-side (app/actions/checkout.ts) and the plan or
+ * the tokens are granted server-side (the webhook). This component can do
+ * neither, which is the point: everything it touches is already public.
  */
 declare global {
   interface Window {
@@ -37,7 +38,31 @@ function loadWidget(): Promise<boolean> {
   });
 }
 
-export function ProCheckoutButton({ label }: { label: string }) {
+export type Purchase =
+  | { kind: "plan"; id: PlanId | string }
+  | { kind: "topup"; id: string };
+
+export function CheckoutButton({
+  purchase,
+  label,
+  description,
+  variant = "primary",
+  className,
+  onPurchased,
+}: {
+  purchase: Purchase;
+  label: string;
+  /** Shown inside the provider's window. Never carries a subject or address. */
+  description: string;
+  variant?: "primary" | "secondary";
+  className?: string;
+  /**
+   * The provider's window closed on a successful payment. NOT a confirmation
+   * that anything was granted — the webhook does that, and the caller's copy
+   * must say so. Omitted on /pricing, where the redirect is the feedback.
+   */
+  onPurchased?: () => void;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +71,11 @@ export function ProCheckoutButton({ label }: { label: string }) {
     setBusy(true);
     setError(null);
 
-    const order = await startProCheckout();
+    const order =
+      purchase.kind === "plan"
+        ? await startPlanCheckout(purchase.id as PlanId)
+        : await startTopupCheckout(purchase.id);
+
     if (!order.ok) {
       // Signed out is the ordinary case on a public page, not a failure worth
       // an error region — send them to sign in and bring them back here.
@@ -71,14 +100,15 @@ export function ProCheckoutButton({ label }: { label: string }) {
       amount: order.value.amount,
       currency: order.value.currency,
       name: "Roleform",
-      description: "Pro — one month",
+      description,
       // Payment is confirmed by the webhook, never here. This handler only
       // refreshes so the new caps are visible; a client that granted the plan
       // would grant it to anyone who could call it.
       handler: () => {
         setBusy(false);
         router.refresh();
-        router.push("/profile");
+        if (onPurchased) onPurchased();
+        else router.push("/profile");
       },
       modal: { ondismiss: () => setBusy(false) },
     }).open();
@@ -86,7 +116,13 @@ export function ProCheckoutButton({ label }: { label: string }) {
 
   return (
     <div className="space-y-2">
-      <Button onClick={pay} disabled={busy} busy={busy} className="w-full">
+      <Button
+        onClick={pay}
+        disabled={busy}
+        busy={busy}
+        variant={variant}
+        className={className}
+      >
         {busy ? "Opening…" : label}
       </Button>
       {error ? <ErrorRegion title="That didn't open">{error}</ErrorRegion> : null}

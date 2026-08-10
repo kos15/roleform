@@ -3,6 +3,9 @@ import { Suspense } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import { Brand } from "@/components/brand";
+import { AppearanceLink } from "@/components/appearance-link";
+import { TokenPill } from "@/components/token-pill";
+import { LowBalanceBanner } from "@/components/low-balance-banner";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteFooter } from "@/components/site-footer";
 import { currentRole } from "@/lib/admin/role";
@@ -56,6 +59,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Link>
         </nav>
 
+        {/* Two aggregate queries. Suspended for the same reason as the role
+            chip below: awaiting it in the layout would hold the first paint of
+            every signed-in page behind the token meter. */}
+        <Suspense fallback={null}>
+          <TokenPill />
+        </Suspense>
+
+        <AppearanceLink />
         <ThemeToggle />
 
         <div className="flex flex-none items-center gap-2">
@@ -70,6 +81,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <UserButton />
         </div>
       </header>
+
+      {/* Under the header rather than inside a page: it is about the account,
+          not about whatever surface you happen to be on, and it says its piece
+          once per cycle (F19). */}
+      <div className="px-6">
+        <Suspense fallback={null}>
+          <LowBalanceBanner />
+        </Suspense>
+      </div>
 
       <main className="mx-auto w-full max-w-6xl px-6 py-10">{children}</main>
 

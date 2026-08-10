@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateMemberCaps } from "@/app/actions/admin";
+import { grantTokens, updateMemberCaps } from "@/app/actions/admin";
 import { Button, ErrorRegion, Tag } from "@/components/ui";
 import { clampCap, displayCap, QUOTAS, type QuotaKey } from "@/lib/domain/quotas";
+import { formatCount, formatTokens } from "@/lib/domain/tokens";
 import type { Member } from "@/lib/admin/members";
 
 /**
@@ -13,6 +14,10 @@ import type { Member } from "@/lib/admin/members";
  * written on a click of + or −, because a cap that saves as you scrub it means
  * a member gets refused mid-drag by a number the admin was passing through.
  */
+/** The three amounts an admin actually reaches for. Bigger than these is a cap
+ *  change, which is the control directly above this one. */
+const GRANTS = [50_000, 100_000, 300_000];
+
 export function AdminPanel({ members }: { members: Member[] }) {
   const [selectedId, setSelectedId] = useState(members[0]?.clerkUserId ?? "");
   const selected = members.find((m) => m.clerkUserId === selectedId) ?? members[0];
@@ -23,6 +28,13 @@ export function AdminPanel({ members }: { members: Member[] }) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // Grants are their own transaction, not part of the caps draft: a top-up is
+  // applied the moment it is clicked and cannot be un-clicked by navigating
+  // away, so batching it behind Save would misrepresent when it takes effect.
+  const [granting, setGranting] = useState(false);
+  const [granted, setGranted] = useState<number | null>(null);
+  const [grantError, setGrantError] = useState<string | null>(null);
 
   if (!selected) {
     return (
@@ -51,6 +63,18 @@ export function AdminPanel({ members }: { members: Member[] }) {
     setDraft({
       ...draft,
       caps: { ...draft.caps, [key]: clampCap(key, draft.caps[key] + delta) },
+    });
+  }
+
+  function grant(tokens: number) {
+    setGrantError(null);
+    setGranted(null);
+    setGranting(true);
+    startTransition(async () => {
+      const result = await grantTokens({ clerkUserId: selected.clerkUserId, tokens });
+      setGranting(false);
+      if (!result.ok) setGrantError(result.error.message);
+      else setGranted(result.value.tokens);
     });
   }
 
@@ -187,7 +211,7 @@ export function AdminPanel({ members }: { members: Member[] }) {
                         −
                       </StepButton>
                       <span className="min-w-[38px] text-center text-sm font-bold tabular-nums">
-                        {displayCap(value)}
+                        {displayCap(quota.key, value)}
                       </span>
                       <StepButton
                         label={`Raise ${quota.label}`}
@@ -201,7 +225,9 @@ export function AdminPanel({ members }: { members: Member[] }) {
 
                   <div className="mb-1.5 flex justify-between gap-2.5 text-[11.5px] text-[var(--color-text-muted)]">
                     <span>
-                      {cyclic ? `${used} used this cycle` : `${used} on the last run`}
+                      {cyclic
+                        ? `${quota.abbreviate ? formatTokens(used) : used} used this cycle`
+                        : `${used} on the last run`}
                     </span>
                     <span>{quota.unit}</span>
                   </div>
@@ -221,6 +247,46 @@ export function AdminPanel({ members }: { members: Member[] }) {
                       At the cap. New runs are refused with this member&rsquo;s name on the
                       message, not a generic error.
                     </p>
+                  ) : null}
+
+                  {/* Sits under the token row because it is the same subject and
+                      a different decision: a grant unblocks this cycle, a cap
+                      change moves what they inherit every cycle from here on. */}
+                  {quota.key === "tokens" ? (
+                    <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-sage-200)] bg-[var(--color-sage-100)] px-3.5 py-3">
+                      <div className="mb-1 text-[0.8rem] font-semibold text-[var(--color-sage-800)]">
+                        Grant a one-off top-up
+                      </div>
+                      <p className="mb-2.5 text-xs leading-snug text-[var(--color-sage-800)]">
+                        {selected.topupTokens > 0
+                          ? `${formatCount(selected.topupTokens)} already granted or bought. `
+                          : ""}
+                        Adds tokens now, without changing the cap this member inherits next cycle.
+                        Unspent tokens carry over.
+                      </p>
+                      {grantError ? (
+                        <p className="mb-2 text-xs text-accent-body">{grantError}</p>
+                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        {GRANTS.map((amount) => (
+                          <Button
+                            key={amount}
+                            size="sm"
+                            variant="secondary"
+                            disabled={granting}
+                            busy={granting}
+                            onClick={() => grant(amount)}
+                          >
+                            +{formatTokens(amount)}
+                          </Button>
+                        ))}
+                      </div>
+                      {granted ? (
+                        <p className="mt-2 text-xs text-[var(--color-sage-800)]">
+                          {formatCount(granted)} granted. It is spendable immediately.
+                        </p>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
               );

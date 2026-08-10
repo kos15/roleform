@@ -70,63 +70,120 @@
 }
 
 /* ---------------------------------------------------------------------------
-   organic — dark theme
+   organic — palettes (F18, N9)
 
-   The same roles at the same steps, re-derived on a dark ground rather than a
-   second palette: every ramp keeps its direction (100 = the tinted-fill end,
-   900 = the text-on-tint end), so nothing that reads a token has to know which
-   theme it is in. That is the whole reason this is a var override and not a
-   `dark:` variant sprinkled through the components.
+   The block above is the Ember light palette written out longhand, because
+   Tailwind's `@theme` needs literal values to generate `bg-accent-100` and
+   friends at build time. What follows is where those values actually come
+   from at runtime.
 
-   Selector is `html[data-theme]` on purpose — Tailwind emits the light values
-   into `:root`, which has the same specificity as a bare attribute selector,
-   and source order between the two is a build detail we shouldn't depend on.
+   **A palette sets four colours.** Ground, ink, accent, second accent — per
+   mode, and nothing else. Every other token is mixed from those four in the
+   single `[data-palette]` block below, in perceptual space (oklab), so a
+   palette cannot drift internally: it can only be a different four values.
+   Six palettes × two modes × 54 ramp steps would be 648 hexes nobody can keep
+   in step, and the first one that drifts is a contrast bug shipped to a
+   stranger.
+
+   Every ramp keeps its direction in both modes — 100 is the tinted-fill end,
+   900 is the text-on-tint end — because it is mixed toward the ground at the
+   bottom and toward the ink at the top, and both of those swap with the mode
+   on their own. Nothing reading a token has to know which theme it is in, and
+   there is no `dark:` variant anywhere in the components.
+
+   Selectors are element-agnostic — `[data-palette]`, not `html[data-palette]`
+   — so a card in the picker can preview a palette it is not sitting in, by
+   carrying the two attributes itself. That is also why this cascade is safe
+   against Tailwind: `@theme` emits into `@layer theme`, and unlayered rules
+   beat every layer regardless of specificity, so these win without depending
+   on source order. `[data-palette][data-theme="dark"]` then beats the light
+   bases on specificity in the usual way.
+
+   The four bases per palette live in lib/design/palettes.ts as well — that is
+   the module the picker reads. These two lists are the same six palettes; the
+   TS one carries the names and the copy, this one carries the paint.
 --------------------------------------------------------------------------- */
 
-html[data-theme="dark"] {
-  --color-bg: #191512;
-  --color-bg-raised: #241f19;
-  --color-bg-sunken: #2b2620;
-  --color-text: #f4ead9;
-  --color-text-muted: #968b78;
-  --color-line: color-mix(in srgb, #f4ead9 18%, transparent);
+[data-palette="ember"]   { --color-bg: #f5ead8; --color-text: #201e1d; --color-accent-base: #c67139; --color-accent-2-base: #7a8a5e; }
+[data-palette="ink"]     { --color-bg: #f0f1f5; --color-text: #1b1d26; --color-accent-base: #4b53c9; --color-accent-2-base: #1f8f86; }
+[data-palette="harbour"] { --color-bg: #e8eef1; --color-text: #10222b; --color-accent-base: #0f7391; --color-accent-2-base: #d4654a; }
+[data-palette="orchard"] { --color-bg: #eef2e8; --color-text: #1f2418; --color-accent-base: #8a3f6b; --color-accent-2-base: #a8811f; }
+[data-palette="dusk"]    { --color-bg: #eae8f5; --color-text: #221b2b; --color-accent-base: #6d4bb8; --color-accent-2-base: #c4577b; }
+[data-palette="pine"]    { --color-bg: #e9f0ea; --color-text: #14201a; --color-accent-base: #2f6b4a; --color-accent-2-base: #b3811a; }
 
-  --color-accent-100: #2c1a10;
-  --color-accent-200: #402515;
-  --color-accent-300: #5a341c;
-  --color-accent-400: #8a5029;
-  --color-accent-500: #d67f48;
-  --color-accent-600: #ec9760;
-  --color-accent-700: #ffc6a5;
-  --color-accent-800: #ffe1d0;
-  --color-accent-900: #fff2eb;
+[data-palette="ember"][data-theme="dark"]   { --color-bg: #191512; --color-text: #f4ead9; --color-accent-base: #e08a52; --color-accent-2-base: #9fb27f; }
+[data-palette="ink"][data-theme="dark"]     { --color-bg: #12141c; --color-text: #e6e8f2; --color-accent-base: #7d84ee; --color-accent-2-base: #45b8ad; }
+[data-palette="harbour"][data-theme="dark"] { --color-bg: #0d1a21; --color-text: #e2eef3; --color-accent-base: #3aa6c4; --color-accent-2-base: #f0876a; }
+[data-palette="orchard"][data-theme="dark"] { --color-bg: #151a12; --color-text: #eaf0e2; --color-accent-base: #cd77a6; --color-accent-2-base: #dcb44e; }
+[data-palette="dusk"][data-theme="dark"]    { --color-bg: #16111d; --color-text: #eee6f5; --color-accent-base: #a58af0; --color-accent-2-base: #ef8aa9; }
+[data-palette="pine"][data-theme="dark"]    { --color-bg: #0f1712; --color-text: #e4efe7; --color-accent-base: #57a97c; --color-accent-2-base: #dfae4a; }
 
-  --color-sage-100: #1d2115;
-  --color-sage-200: #282e1c;
-  --color-sage-300: #37402a;
-  --color-sage-400: #4f5b3b;
-  --color-sage-500: #8fa073;
-  --color-sage-600: #a6b78a;
-  --color-sage-700: #ccdbb2;
-  --color-sage-800: #e1eecc;
-  --color-sage-900: #f0fae1;
+/* The derivation. One block, both modes, every palette. */
+[data-palette] {
+  /* Surfaces and rules — steps along the ground→ink axis. In light they sit
+     just under the ground, in dark just over it, which is what "raised" has
+     always meant on each. */
+  --color-bg-raised: color-mix(in oklab, var(--color-text) 4%, var(--color-bg));
+  --color-bg-sunken: color-mix(in oklab, var(--color-text) 9%, var(--color-bg));
+  --color-line: color-mix(in oklab, var(--color-text) 17%, var(--color-bg));
+  --color-text-muted: color-mix(in oklab, var(--color-text) 60%, var(--color-bg));
 
-  --color-warn-100: #2e2412;
-  --color-warn-200: #4a3a1c;
-  --color-warn-500: #d8a94a;
-  --color-warn-700: #f0d495;
-  --color-danger-100: #2e1712;
-  --color-danger-200: #4a251c;
-  --color-danger-500: #d9755b;
-  --color-danger-700: #f2b6a4;
+  /* Accent ramp. 100–400 mix toward the ground (tinted fills, hovers, borders),
+     500 IS the accent, 600–900 mix toward the ink (text on those tints). */
+  --color-accent-100: color-mix(in oklab, var(--color-accent-base) 13%, var(--color-bg));
+  --color-accent-200: color-mix(in oklab, var(--color-accent-base) 24%, var(--color-bg));
+  --color-accent-300: color-mix(in oklab, var(--color-accent-base) 38%, var(--color-bg));
+  --color-accent-400: color-mix(in oklab, var(--color-accent-base) 62%, var(--color-bg));
+  --color-accent-500: var(--color-accent-base);
+  --color-accent-600: color-mix(in oklab, var(--color-accent-base) 84%, var(--color-text));
+  --color-accent-700: color-mix(in oklab, var(--color-accent-base) 62%, var(--color-text));
+  --color-accent-800: color-mix(in oklab, var(--color-accent-base) 44%, var(--color-text));
+  --color-accent-900: color-mix(in oklab, var(--color-accent-base) 28%, var(--color-text));
+
+  /* Second accent. Still named `sage` because that is what every component
+     already reads and a rename would be a rename, not a feature — in Ink it is
+     teal, in Harbour coral, in Pine mustard. */
+  --color-sage-100: color-mix(in oklab, var(--color-accent-2-base) 13%, var(--color-bg));
+  --color-sage-200: color-mix(in oklab, var(--color-accent-2-base) 24%, var(--color-bg));
+  --color-sage-300: color-mix(in oklab, var(--color-accent-2-base) 38%, var(--color-bg));
+  --color-sage-400: color-mix(in oklab, var(--color-accent-2-base) 62%, var(--color-bg));
+  --color-sage-500: var(--color-accent-2-base);
+  --color-sage-600: color-mix(in oklab, var(--color-accent-2-base) 84%, var(--color-text));
+  --color-sage-700: color-mix(in oklab, var(--color-accent-2-base) 62%, var(--color-text));
+  --color-sage-800: color-mix(in oklab, var(--color-accent-2-base) 44%, var(--color-text));
+  --color-sage-900: color-mix(in oklab, var(--color-accent-2-base) 28%, var(--color-text));
+
+  /* Warn and danger keep their own hue in every palette, and only their tints
+     are mixed onto the ground. A caution that turned violet in Dusk would be a
+     palette overriding a meaning, which is the one thing a palette must not do. */
+  --color-warn-base: #b8892a;
+  --color-danger-base: #b4462f;
+  --color-warn-100: color-mix(in oklab, var(--color-warn-base) 16%, var(--color-bg));
+  --color-warn-200: color-mix(in oklab, var(--color-warn-base) 30%, var(--color-bg));
+  --color-warn-500: var(--color-warn-base);
+  --color-warn-700: color-mix(in oklab, var(--color-warn-base) 58%, var(--color-text));
+  --color-danger-100: color-mix(in oklab, var(--color-danger-base) 16%, var(--color-bg));
+  --color-danger-200: color-mix(in oklab, var(--color-danger-base) 30%, var(--color-bg));
+  --color-danger-500: var(--color-danger-base);
+  --color-danger-700: color-mix(in oklab, var(--color-danger-base) 58%, var(--color-text));
+
+  /* Ink on an accent fill. White beats the ground on every light palette we
+     ship — Ember's cream on terracotta is 3.4:1, white is 3.6:1 — so this is
+     one of the few places the mix isn't the answer. */
+  --color-on-accent: #ffffff;
+}
+
+[data-palette][data-theme="dark"] {
+  /* The dark accents are lighter than the ground, so the ink on them inverts. */
+  --color-on-accent: color-mix(in oklab, var(--color-bg) 88%, #000000);
+  --color-warn-base: #d8a94a;
+  --color-danger-base: #d9755b;
 
   /* On a dark ground the shadow is ambient darkness plus the hairline edge the
      raised surfaces already carry — the light-theme ink tint disappears. */
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
   --shadow-md: 0 3px 12px rgb(0 0 0 / 0.55);
   --shadow-lg: 0 14px 36px rgb(0 0 0 / 0.6);
-
-  --color-on-accent: #241f19;
 }
 
 /* The ground and the ink cross-fade; nothing else in the app transitions colour,

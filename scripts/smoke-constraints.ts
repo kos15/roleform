@@ -43,15 +43,36 @@ async function main() {
   );
 
   /* ------------------------------ 2. N2 — evidence, or explicitly a gap */
+
+  // Seeds the parent chain first, so the CHECK is what rejects this and not the
+  // foreign key on analysis_id. Without the seed this case passes on a 23503
+  // whether or not N2's CHECK exists at all — a guard that proves the FK works
+  // and quietly says nothing about the constraint it is named after. Every
+  // statement here runs in a transaction that is always rolled back.
+  const SEED_ANALYSIS = `
+    insert into users (clerk_user_id, email_hash) values ('smoke-user', 'x');
+    insert into master_profiles (id, clerk_user_id, resume_json)
+      values ('00000000-0000-4000-8000-00000000beef', 'smoke-user', '{}'::jsonb);
+    insert into analyses
+      (id, clerk_user_id, profile_id, jd_source, raw_text, content_hash)
+      values ('00000000-0000-4000-8000-00000000cafe', 'smoke-user',
+              '00000000-0000-4000-8000-00000000beef', 'paste', 'x', 'smoke-n2');`;
+
   results.push(
-    await expectRejection(sql, {
-      name: "non-gap interview_question with no evidence",
-      rule: "N2",
-      statement: `insert into interview_questions
-        (clerk_user_id, analysis_id, ordinal, type, text, why_they_ask, frame, evidence_bullet_ids)
-        values ('smoke-user', gen_random_uuid(), 0, 'behavioral', 'Tell me about a time…',
-                'because', array['a','b','c'], '{}'::uuid[])`,
-    }),
+    await expectRejection(
+      sql,
+      {
+        name: "non-gap interview_question with no evidence",
+        rule: "N2",
+        statement: `${SEED_ANALYSIS}
+          insert into interview_questions
+          (clerk_user_id, analysis_id, ordinal, type, text, why_they_ask, frame, evidence_bullet_ids)
+          values ('smoke-user', '00000000-0000-4000-8000-00000000cafe', 0, 'behavioral',
+                  'Tell me about a time…', 'because', array['a','b','c'], '{}'::uuid[])`,
+      },
+      // 23514 check_violation. Anything else means the row never reached N2.
+      "23514",
+    ),
   );
 
   /* --------------------------- 2b. the same row typed 'gap' must be allowed */
@@ -61,18 +82,126 @@ async function main() {
       {
         name: "gap question with no evidence (must be ALLOWED by the CHECK)",
         rule: "N2",
+        // Deliberately NOT seeded: the parent is a random uuid, so the foreign
+        // key is what should stop this. If the CHECK fires first the constraint
+        // is over-tight and gap questions cannot be stored at all — which is
+        // why the expected SQLSTATE below is the FK's and not the CHECK's.
         statement: `insert into interview_questions
           (clerk_user_id, analysis_id, ordinal, type, text, why_they_ask, frame, evidence_bullet_ids)
           values ('smoke-user', gen_random_uuid(), 0, 'gap', 'How would you pick up Kafka?',
                   'because', array['a','b','c'], '{}'::uuid[])`,
       },
-      // Expect the FK on analysis_id to fail, NOT the CHECK. If the CHECK fires
-      // here, it is over-tight and gap questions cannot be stored at all.
       "23503",
     ),
   );
 
-  /* ------------------------------------------ 3. N10 — RLS denies strangers */
+  /* ------------------ 2c. N4 — an 'evidenced' verdict that has no evidence */
+
+  // The sibling of the guard above, and inert for exactly the same reason until
+  // the repair migration. It had no case here at all, which is how it survived
+  // a milestone gate: an untested constraint and a missing constraint look
+  // identical from the outside.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "coverage_item 'evidenced' with no evidence",
+        rule: "N4",
+        statement: `${SEED_ANALYSIS}
+          insert into jd_requirements
+            (id, clerk_user_id, analysis_id, kind, text, necessity, evidence_quote)
+            values ('00000000-0000-4000-8000-00000000feed', 'smoke-user',
+                    '00000000-0000-4000-8000-00000000cafe', 'hard_skill', 'React',
+                    'required', 'React');
+          insert into coverage_items
+            (clerk_user_id, analysis_id, requirement_id, status, evidence_bullet_ids, rationale)
+            values ('smoke-user', '00000000-0000-4000-8000-00000000cafe',
+                    '00000000-0000-4000-8000-00000000feed', 'evidenced', '{}'::uuid[], 'because')`,
+      },
+      "23514",
+    ),
+  );
+
+  /* ------------------------------- 3. F19 — the token meter's own guarantees */
+
+  // These four seed their own parent rows first. Every statement here runs in a
+  // transaction that is always rolled back, so the seed never survives — and
+  // without it a foreign key would fire before the constraint under test,
+  // leaving a PASS that proves only that the FK works.
+  const SEED_USER = `insert into users (clerk_user_id, email_hash) values ('smoke-user', 'x');`;
+
+  // A grant of zero tokens is a row that says nothing; a negative one is a
+  // clawback we have no product for, and it would quietly make a balance
+  // smaller than /pricing says it is.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "token_grant of zero tokens",
+        rule: "F19",
+        statement: `${SEED_USER}
+          insert into token_grants (clerk_user_id, tokens, source, reference)
+          values ('smoke-user', 0, 'admin', 'smoke:zero')`,
+      },
+      "23514",
+    ),
+  );
+
+  // THE idempotency guarantee. Razorpay redelivers a webhook on any non-2xx,
+  // and this index is the only thing standing between that and a second credit.
+  // Pinned to unique_violation on purpose: any other rejection would mean the
+  // statement never reached the index, and a PASS would be telling us the
+  // duplicate is impossible when it isn't.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "two grants sharing one payment reference",
+        rule: "F19",
+        statement: `${SEED_USER}
+          insert into token_grants (clerk_user_id, tokens, source, reference)
+          values ('smoke-user', 1, 'purchase', 'smoke:dup'),
+                 ('smoke-user', 1, 'purchase', 'smoke:dup')`,
+      },
+      "23505",
+    ),
+  );
+
+  // A queued run that has already finished would be re-run by the resume path
+  // and charged for twice.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "analysis queued while already ready",
+        rule: "F19",
+        statement: `${SEED_USER}
+          insert into master_profiles (id, clerk_user_id, resume_json)
+          values ('00000000-0000-4000-8000-00000000dead', 'smoke-user', '{}'::jsonb);
+          insert into analyses
+            (clerk_user_id, profile_id, jd_source, raw_text, content_hash, status, queued_at)
+          values ('smoke-user', '00000000-0000-4000-8000-00000000dead',
+                  'paste', 'x', 'smoke', 'ready', now())`,
+      },
+      "23514",
+    ),
+  );
+
+  // The cap is bounded by the same range the admin panel clamps to.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "cap_tokens above the published ceiling",
+        rule: "F19",
+        statement: `insert into users (clerk_user_id, email_hash, cap_tokens)
+          values ('smoke-user-cap', 'x', 4000001)`,
+      },
+      "23514",
+    ),
+  );
+
+  /* ------------------------------------------ 4. N10 — RLS denies strangers */
   results.push(await rlsCheck());
 
   await sql.end();

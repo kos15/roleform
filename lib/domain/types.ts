@@ -4,6 +4,8 @@
  * This module is PURE. It imports nothing from db, ai, supabase or next.
  */
 
+import type { TokenWall } from "./tokens";
+
 export type Necessity = "required" | "preferred" | "implied";
 export type CoverageStatus = "evidenced" | "partial" | "absent";
 export type RequirementKind =
@@ -52,6 +54,12 @@ export type AppErrorCode =
   | "not_found"
   | "invalid_input"
   | "quota_exhausted"
+  /**
+   * The token meter is empty (F19). Distinct from `quota_exhausted` because it
+   * is the one refusal with somewhere to go: the error carries a `wall`, and
+   * the UI opens the dialog rather than printing the message inline.
+   */
+  | "token_wall"
   | "extraction_failed"
   | "no_text_layer"
   | "encrypted_pdf"
@@ -70,6 +78,13 @@ export interface AppError {
   /** User-facing. Must never contain résumé or JD text (N7). */
   message: string;
   detail?: string;
+  /**
+   * Set only on `token_wall` (F19). Carries the balance, the shortfall, the
+   * reset date and every exit — so the dialog is rendered from the same value
+   * the enforcement raised, and cannot describe a different wall than the one
+   * that stopped the run.
+   */
+  wall?: TokenWall;
 }
 
 export type Result<T, E = AppError> = { ok: true; value: T } | { ok: false; error: E };

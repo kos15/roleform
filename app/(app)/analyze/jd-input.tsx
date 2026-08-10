@@ -4,8 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FileUp } from "lucide-react";
 import { Button, ErrorRegion, Textarea } from "@/components/ui";
+import { TokenWallDialog } from "@/components/token-wall";
 import { createAnalysis } from "@/app/actions/analysis";
 import { SAMPLE_JD } from "@/lib/sample-jd";
+import type { TokenWall } from "@/lib/domain/tokens";
 
 /**
  * F2 — JD input. Segmented control: Upload file / Paste text.
@@ -21,34 +23,64 @@ export function JdInput() {
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [wall, setWall] = useState<TokenWall | null>(null);
 
   const devAffordances = process.env.NEXT_PUBLIC_DEV_AFFORDANCES === "true";
   const canSubmit = mode === "paste" ? text.trim().length >= 120 : file !== null;
+
+  /** Rebuilt on each attempt — the file is read fresh, so this can't be cached. */
+  async function payload(queue: boolean) {
+    return mode === "paste"
+      ? { source: "paste" as const, text, queue }
+      : {
+          source: "upload" as const,
+          filename: file!.name,
+          fileBase64: Buffer.from(await file!.arrayBuffer()).toString("base64"),
+          queue,
+        };
+  }
 
   async function submit() {
     setError(null);
     setBusy(true);
 
-    const input =
-      mode === "paste"
-        ? { source: "paste" as const, text }
-        : {
-            source: "upload" as const,
-            filename: file!.name,
-            fileBase64: Buffer.from(await file!.arrayBuffer()).toString("base64"),
-          };
-
-    const result = await createAnalysis(input);
+    const result = await createAnalysis(await payload(false));
     if (!result.ok) {
-      setError(result.error.message);
+      // The meter is the one refusal with somewhere to go, so it opens the
+      // dialog instead of printing a sentence into the error region (F19).
+      if (result.error.code === "token_wall" && result.error.wall) {
+        setWall(result.error.wall);
+      } else {
+        setError(result.error.message);
+      }
       setBusy(false);
       return;
     }
     router.push(`/analysis/${result.value.analysisId}`);
   }
 
+  /**
+   * "Park it" from inside the wall. Sends the same posting again with the queue
+   * flag; the server re-checks the balance and only parks it if the wall is
+   * still real. Throwing is what tells the dialog to say so.
+   */
+  async function park() {
+    const result = await createAnalysis(await payload(true));
+    if (!result.ok) throw new Error(result.error.message);
+    router.refresh();
+  }
+
   return (
     <div className="space-y-4">
+      {wall ? (
+        <TokenWallDialog
+          wall={wall}
+          onClose={() => setWall(null)}
+          onQueue={wall.canQueue ? park : undefined}
+          onResume={submit}
+          resumeLabel="Analyse the posting"
+        />
+      ) : null}
       <div className="seg" role="tablist" aria-label="Job description input method">
         <button
           role="tab"

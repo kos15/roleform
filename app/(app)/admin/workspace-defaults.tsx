@@ -78,7 +78,7 @@ export function WorkspaceDefaultsPanel({ defaults }: { defaults: Record<QuotaKey
                   −
                 </StepButton>
                 <span className="min-w-[38px] text-center text-sm font-bold tabular-nums">
-                  {displayCap(draft[quota.key])}
+                  {displayCap(quota.key, draft[quota.key])}
                 </span>
                 <StepButton
                   label={`Raise the default ${quota.label}`}

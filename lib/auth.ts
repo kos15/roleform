@@ -5,6 +5,18 @@ import { db } from "@/lib/db";
 import { listAdmins } from "@/lib/admin/members";
 import { workspaceDefaults } from "@/lib/admin/defaults";
 import { cycleStart } from "@/lib/domain/quotas";
+import { accountTokens } from "@/lib/db/queries/tokens";
+import {
+  SPEND,
+  TOKEN_STAGES,
+  formatCount,
+  formatResetDate,
+  formatResetIn,
+  shortfall,
+  type SpendKind,
+  type TokenWall,
+} from "@/lib/domain/tokens";
+import { canBuyTopup, planAbove, planById, TOPUPS, type PlanId } from "@/lib/content/pricing";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 /** N7: the address itself is never stored, only enough to de-duplicate. */
@@ -38,6 +50,13 @@ export async function provisionUser(clerkUserId: string): Promise<void> {
     create: {
       clerkUserId,
       emailHash: hashEmail(email),
+      // The cycle anchor (F15, F19). Without it every read of `cycleStart`
+      // falls back to `now`, usage counts from this instant, and no cap
+      // binds — the meter and the four caps become decorative. Written once,
+      // at creation, and never moved: it is a fixed point the 30-day windows
+      // are laid out around, not a date a scheduler has to maintain.
+      quotaResetsAt: new Date(),
+      capTokens: defaults.tokens,
       capAnalyses: defaults.analyses,
       capResumes: defaults.resumes,
       capAnswers: defaults.answers,
@@ -45,6 +64,96 @@ export async function provisionUser(clerkUserId: string): Promise<void> {
     },
     update: {},
   });
+}
+
+/**
+ * The token meter, checked before the work starts (F19).
+ *
+ * **Before, not during.** A run that stops half-way has still spent everything
+ * it burned getting there, and charging for a résumé nobody received is the
+ * one failure mode this whole feature is meant to prevent. So the estimate is
+ * compared to the balance up front, and a run we cannot afford to finish is
+ * never begun. That is what the pricing page's refusal list promises, and this
+ * function is where the promise is kept.
+ *
+ * A refusal carries the whole wall — balance, shortfall, reset date, and every
+ * exit including the free one. The caller opens a dialog with it rather than
+ * printing a sentence, because "you have run out" with no way forward is the
+ * generic failure with extra steps. Success carries nothing: the balance is not
+ * the caller's business, and returning it would invite a second opinion about
+ * whether the run can go ahead.
+ *
+ * Suspension is checked by the per-action allowance functions below, not here:
+ * a suspended account has not run out of tokens, and offering it a top-up
+ * would sell someone a fix for a problem they don't have.
+ */
+export async function checkTokenAllowance(
+  clerkUserId: string,
+  kind: SpendKind,
+): Promise<Result<null>> {
+  const account = await accountTokens(clerkUserId);
+  if (!account) return err(appError("not_found", "We couldn't find your account."));
+
+  const short = shortfall(account.balance, kind);
+
+  // The wall is built only on the refusal path. It costs a plan read and the
+  // whole offer list, and this function sits in front of every analysis and
+  // every drafted answer — paying for a dialog the common case never opens
+  // would be a query per run to describe something that didn't happen.
+  if (short === 0) return ok(null);
+
+  const wall = await buildWall(clerkUserId, kind, account, short);
+  const spend = SPEND[kind];
+  return err({
+    code: "token_wall",
+    message:
+      account.balance.total === 0
+        ? `Your token allowance is set to zero${await askWhom()}.`
+        : `${spend.noun} needs about ${formatCount(spend.estimate)} tokens and you have ${formatCount(account.balance.left)}. Your cycle resets on ${wall.resetDate}.`,
+    wall,
+  });
+}
+
+async function buildWall(
+  clerkUserId: string,
+  kind: SpendKind,
+  account: NonNullable<Awaited<ReturnType<typeof accountTokens>>>,
+  short: number,
+): Promise<TokenWall> {
+  const row = await db.user.findUnique({ where: { clerkUserId }, select: { plan: true } });
+  const planId = (row?.plan ?? "free") as PlanId;
+  const up = planAbove(planId);
+
+  return {
+    kind,
+    estimate: SPEND[kind].estimate,
+    shortfall: short,
+    balance: account.balance,
+    planName: planById(planId).name,
+    stages: TOKEN_STAGES,
+    resetDate: formatResetDate(account.resetsAt),
+    resetIn: formatResetIn(account.resetsAt),
+    // Only an analysis carries a stored posting to come back to.
+    canQueue: kind === "analysis",
+    upgrade: up
+      ? {
+          id: up.id,
+          name: up.name,
+          price: up.price,
+          tokens: up.caps.tokens,
+          note: `${formatCount(up.caps.tokens)} tokens a cycle instead of ${formatCount(account.balance.allowance)}, available the moment you switch.`,
+        }
+      : null,
+    topups: canBuyTopup(planId)
+      ? TOPUPS.map((t) => ({
+          id: t.id,
+          name: `${formatCount(t.tokens)} tokens`,
+          price: t.price,
+          tokens: t.tokens,
+          note: `${t.note}. One-off — nothing renews, and anything unspent carries into the next cycle.`,
+        }))
+      : [],
+  };
 }
 
 /**

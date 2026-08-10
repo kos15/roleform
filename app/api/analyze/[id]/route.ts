@@ -1,6 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { runAnalysis } from "@/lib/pipeline/run-analysis";
 import { getAnalysis } from "@/lib/db/queries/analysis";
+import { checkTokenAllowance } from "@/lib/auth";
+import { db } from "@/lib/db";
 import type { StageUpdate } from "@/lib/pipeline/stages";
 
 /**
@@ -32,6 +34,32 @@ export async function POST(
       `${JSON.stringify({ stage: "preparing", state: "done", progressPct: 100 } satisfies StageUpdate)}\n`,
       { headers: STREAM_HEADERS },
     );
+  }
+
+  // The meter, at the door the pipeline actually runs through (F19).
+  //
+  // `createAnalysis` already checked it, and this checks it again — not out of
+  // caution, but because they guard different things. That one decides whether
+  // a posting gets filed at all; this one is what a parked run, a reloaded tab
+  // and a retried request all have to pass, and it is the only check between a
+  // `parsing` row and four billed model calls.
+  //
+  // 402 with the wall as JSON rather than an NDJSON stage failure: this is not
+  // a stage that broke, it is a run that never started, and the client opens
+  // the dialog rather than printing "a stage failed".
+  const tokens = await checkTokenAllowance(userId, "analysis");
+  if (!tokens.ok) {
+    return Response.json({ error: tokens.error }, { status: 402 });
+  }
+
+  // Starting clears the parked stamp: from here the run is a run like any
+  // other, and a queue entry that outlived its own start would keep offering
+  // to begin something already underway.
+  if (analysis.queuedAt) {
+    await db.analysis.updateMany({
+      where: { id, clerkUserId: userId },
+      data: { queuedAt: null },
+    });
   }
 
   const encoder = new TextEncoder();

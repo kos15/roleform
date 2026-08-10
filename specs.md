@@ -168,9 +168,14 @@ workspace_settings                     -- F15. Operator config, not user data. O
 
 contact_messages                       -- F13. The one table whose subject may be NULL:
   id, clerk_user_id text NULL, name, email, subject, body, created_at
+  notification, receipt mail_delivery   -- pending | sent | failed | disabled
+  notified_at timestamptz NULL, delivery_error text NULL
+  handled_at timestamptz NULL, handled_by text NULL
   -- the contact page is public, so a signed-out sender has no subject to key on.
   -- Those rows are written over the Prisma connection and read by the service
   -- role only; through the anon client the rule is own-rows as everywhere else.
+  -- CHECK (handled_at IS NULL) = (handled_by IS NULL)  -- answered has an owner
+  -- CHECK notification <> 'sent' OR notified_at IS NOT NULL  -- sent has a date
 
 master_profiles
   id, clerk_user_id, resume_json (jsonb), schema_version,
@@ -259,18 +264,29 @@ exports
   id, clerk_user_id, draft_id, format enum('pdf','docx','zip'),
   storage_path, bytes, created_at
 
-ai_runs
+ai_runs                                -- ALSO the token meter's source of truth (F19)
   id, clerk_user_id, analysis_id, purpose, model, prompt_version,
   input_tokens, output_tokens, latency_ms, schema_valid bool, retry_count, created_at
+
+token_grants                           -- one-off top-ups: bought, or granted by an admin (F19)
+  id, clerk_user_id, tokens int CHECK (> 0),
+  source enum('purchase','admin'),
+  reference text UNIQUE,               -- payment id, or admin:<uuid>. THE idempotency guarantee.
+  granted_by text, created_at
 ```
+
+`users` also carries `cap_tokens` (CHECK 0..4,000,000) and `analyses` carries `queued_at`
+(CHECK: null, or a status that is not `ready`). There is deliberately no `tokens_used` and no
+`topup_tokens` column — both balances are SUMs over rows that exist (F19).
 
 **Invariants**
 
 1. `tailored_bullets.source_bullet_id` is `NOT NULL`, `ON DELETE RESTRICT`. A bullet without provenance cannot exist. N1, enforced by Postgres rather than by a prompt.
-2. `interview_questions` CHECK enforces N2: evidence, or explicitly a gap question.
+2. `interview_questions` CHECK enforces N2: evidence, or explicitly a gap question. Written with `cardinality()`, **not** `array_length(x, 1)` — the latter is NULL on an empty array and a CHECK only rejects on FALSE, so both hand-written guards were inert from M1 until `20260810010000_repair_fabrication_checks`. They were passing the smoke test on a foreign-key rejection the test had not earned; the cases now pin the CHECK's own SQLSTATE (23514).
 3. `experience_bullets` is written only by user action and by the reviewed onboarding import.
 4. `original_text` is snapshotted, so editing the master profile never silently rewrites past analyses.
 5. RLS is enabled on every table carrying `clerk_user_id`. `templates`, `skills` and `courses` are reference data with public read and no write policy for authenticated users.
+6. `token_grants.reference` is UNIQUE. A public webhook that grants tokens is redelivered on any non-2xx, and this is what makes a second delivery a conflict rather than a second credit — idempotency as a constraint, not as a remembered check (F19).
 
 ### 6.3 Storage layout
 
@@ -331,7 +347,8 @@ deterministic, reproducible and explainable line by line.
 ### F0 — Shell and theme
 
 Sticky header on the ground (not a raised surface): brand mark, `New analysis · History · Profile ·
-Admin · Status`, theme switch, role label, Clerk user button.
+Admin · Status`, the token balance pill (F19), the appearance link (F18), theme switch, role label,
+Clerk user button.
 
 `Admin` is shown to every member, not only to admins. A link that quietly isn't there teaches nobody
 anything; a 403 that names the missing permission and the people who hold it (F15) is the more useful
@@ -343,15 +360,17 @@ Contact`) and Support us — over a rule carrying `Terms · Privacy · Changelog
 is live: it renders only when a stage is actually degraded, from the same aggregate F14 reads. A
 decorative pulse next to the word "Status" would be the exact lie that page exists to prevent.
 
-**Theme.** Light and dark, switched by `data-theme` on the html element. Dark is the same roles at the
-same ramp steps re-derived on a dark ground — a variable override in `globals.css`, never a `dark:`
-variant in components, so anything reading a token is theme-agnostic by construction (N9). Ramps keep
-their direction in both themes: `100` is always the tinted-fill end, `900` always the text-on-tint end.
+**Theme.** Light and dark, switched by `data-theme` on the html element, *within* whichever palette
+`data-palette` names (F18). Dark is the same roles at the same ramp steps re-derived on a dark ground
+— a variable override in `globals.css`, never a `dark:` variant in components, so anything reading a
+token is theme-agnostic by construction (N9). Ramps keep their direction in both themes: `100` is
+always the tinted-fill end, `900` always the text-on-tint end.
 
 - `--color-on-accent` carries the ink that sits *on* the accent. It has to invert: white on the
   lighter dark-mode accent is ~2:1.
-- Preference is stored in `localStorage` and resolved by a synchronous script in `<head>`. No stored
-  preference falls through to `prefers-color-scheme`, not to light.
+- Preference is stored in `localStorage` and resolved by a synchronous script in `<head>`, alongside
+  the palette. No stored theme falls through to `prefers-color-scheme`, not to light; no stored
+  palette falls through to Ember.
 - Only the ground and the ink cross-fade. Nothing else transitions colour, so the switch reads as one
   movement.
 
@@ -636,15 +655,36 @@ keep: when §3's fabrication boundary moves, "What we can't tell you" moves in t
 
 ### F13 — Contact
 
-Public form → Zod → `contact_messages`. Stored, not sent: there is no mail provider wired in, and a
-form that says "sent" while dropping the message would be worse than no form. The confirmation says
-*filed*, and names the address we will reply to.
+Public form → Zod → `contact_messages` → mail. **Stored first, then sent**, and the order is the
+design: the row is the durable record and the mail is a convenience on top of it, so a provider
+outage costs a notification and never a message.
+
+Two messages go out per submission. The **notification** to `CONTACT_TO` carries the sender's own
+subject and sets `Reply-To` to the sender, so replying just works. The **receipt** to the sender
+quotes their message back — the one thing a receipt has to prove is that we hold the words they
+typed — and points `Reply-To` at the support address, never no-reply.
+
+Provider: Resend, over `fetch`, in `lib/mail/send.ts`. No SDK, for the reason Razorpay has none
+(CLAUDE.md §8). Swapping providers is that one file.
+
+**Unset is a supported state.** With no mail keys the form still files everything, the rows read
+`disabled`, and the confirmation says so rather than claiming an email. What the sender is told
+always tracks what happened: *"a copy is already in your inbox"* only when the receipt was accepted.
 
 Prefill comes from Clerk when there is a session — never from us. We hold a hash of the address (N7)
-precisely so we cannot read one back.
+precisely so we cannot read one back. Nothing about a message is ever logged (N7); a failed send's
+reason is stored on its own row, where only an admin sees it.
+
+**The support inbox** (`/admin?panel=inbox`, admin only) is the read path for the rows: every
+message, whether it was mailed or not, with a resend for the ones that weren't and a handled flag
+that carries the admin's subject beside it. It is what makes "stored, not lost" true rather than
+aspirational — an undelivered message is announced on the admin header, because it exists nowhere
+else. Admin access requests (F15) are filed and mailed the same way, with no receipt: the address on
+that row is a placeholder, not a person.
 
 **Acceptance:** a message under 20 characters is refused with a reason; six in an hour is refused with
-the direct address; the row survives with `clerk_user_id` null for a signed-out sender.
+the direct address; the row survives with `clerk_user_id` null for a signed-out sender; with mail
+misconfigured the row is still written and the confirmation does not claim an email was sent.
 
 ### F14 — Status
 
@@ -763,17 +803,25 @@ problem.
 
 ### F17 — Pricing
 
-Two plans, `free` and `pro` (₹400/month), matching the `PlanTier` enum. **A plan IS its four caps.**
-Each row of the comparison table is a `QuotaKey` and the number beside it is the number enforced at
-that cap's own seam (F15) — there is no prose describing a limit in words, because a sentence and a
-constraint drift and the sentence is the one people read before paying.
+Three plans, `free`, `pro` (₹499/month) and `ultra` (₹1,299/month), matching the `PlanTier` enum.
+**A plan IS its five caps.** Each row of the comparison table is a `QuotaKey` and the number beside
+it is the number enforced at that cap's own seam (F15, F19) — there is no prose describing a limit
+in words, because a sentence and a constraint drift and the sentence is the one people read before
+paying.
 
-| | Free | Pro |
-|---|---|---|
-| JD analyses | 10 / month | 40 / month |
-| Résumés rendered | 2 / analysis | 6 / analysis |
-| Full answer drafts | Off | 40 / month |
-| Course matches | 2 / gap | 4 / gap |
+| | Free | Pro | Ultra |
+|---|---|---|---|
+| Token allowance | 60,000 / month | 800,000 / month | 3,000,000 / month |
+| JD analyses | 3 / month | 40 / month | 150 / month |
+| Résumés rendered | 2 / analysis | 6 / analysis | 6 / analysis |
+| Full answer drafts | 3 / month | 40 / month | 200 / month |
+| Course matches | 2 / gap | 4 / gap | 6 / gap |
+
+**One-off top-ups** (₹99 / 100,000 and ₹249 / 300,000) on paid plans only. They never renew and
+never expire — the plan allowance does not carry across a cycle, an unspent top-up does, which is
+the only thing that distinguishes the two. A pack that expired at the turnover would be a cap with
+worse terms sold at a higher price. Free cannot buy them, enforced in the action and not only in
+the UI: "you can top up forever" is how a free tier stops being a free tier.
 
 The free row is also what `workspaceDefaults()` **seeds** a fresh install with, so a new account
 really does start on the numbers the page publishes. Seeded once — an admin who raises a default
@@ -799,6 +847,12 @@ Upgrading writes the Pro row's four caps onto the account alongside `plan`, beca
 page IS those numbers. Unset keys are a supported state: the button says payments aren't switched on
 rather than failing into a blank window.
 
+**A top-up credits `token_grants`, keyed on the payment id.** The reference column is UNIQUE, so a
+webhook Razorpay redelivers (it will, on any non-2xx, for a day) hits the index rather than the
+balance — idempotency as a constraint rather than as a check somebody has to remember to write
+(§12). `notes.kind` says what was bought; inferring it from the amount would mean a price change
+silently granting the wrong thing.
+
 **The same two plans appear at the foot of the admin panel** (the design's "Plans & coupons" strip),
 read from the same `PLANS` table `/pricing` renders — so the panel cannot quote an operator a cap the
 public page does not sell. Nothing there is editable: caps are changed per member in the panel above
@@ -817,6 +871,130 @@ order amount is computed — not as a page.
 displayed price and the charged amount come from one constant; a signed-out visitor clicking Go Pro
 is sent to sign in and returned to `/pricing`, not shown an error; every cap printed in the admin
 plan strip equals the one on `/pricing` for that plan.
+
+### F18 — Appearance: six palettes
+
+`/appearance`, public (a palette is a browser preference, not account state, and someone struggling
+to read `/privacy` in the dark should be able to fix the contrast without first creating an account).
+
+**A palette is four colours** — ground, ink, accent, second accent, per mode. Nothing else. The
+nine-step neutral, accent and second-accent ramps, the surfaces, the dividers and the shadows are
+all mixed from those four in `app/globals.css`, in oklab. Six palettes × two modes × 54 ramp steps
+would be 648 hexes nobody can hold in step, and the first one that drifts is a contrast bug shipped
+to a stranger. Four values each, derived identically, means a palette **cannot be internally
+inconsistent** — it can only be a different four values (N9).
+
+| id | Ground | Accent | Second accent |
+|---|---|---|---|
+| `ember` | cream | terracotta | sage |
+| `ink` | cool paper | indigo | teal |
+| `harbour` | chalky blue-grey | deep cyan | coral |
+| `orchard` | green-ivory | plum | old gold |
+| `dusk` | lavender | violet | rose |
+| `pine` | cold green | forest | mustard |
+
+Every ramp keeps its direction in both modes — 100 is the tinted-fill end, 900 the text-on-tint end
+— because the low steps mix toward the ground and the high steps toward the ink, and both of those
+swap with the mode on their own. Nothing that reads a token has to know which theme it is in, and
+there is no `dark:` variant anywhere in the components.
+
+**Warn and danger keep their own hue in every palette**; only their tints are mixed onto the ground.
+A caution that turned violet in Dusk would be a palette overriding a meaning, which is the one thing
+a palette must not do.
+
+Selectors are element-agnostic (`[data-palette]`, not `html[data-palette]`) so each card in the
+picker is genuinely painted in the palette it is offering rather than approximating it. Tailwind
+emits `@theme` into `@layer theme`; unlayered rules beat every layer, so the derivation wins without
+depending on source order.
+
+Both `data-theme` and `data-palette` are set by the bootstrap script in `app/layout.tsx` before
+first paint. The wrong palette flashing is louder than the wrong mode, so it cannot wait for an
+effect. No stored theme falls through to the OS setting; no stored palette falls through to Ember.
+
+**The résumé templates are exempt.** They stay black on white in every palette, because they are the
+user's document going into a stranger's ATS and printer (§9, F9). The picker says so, with a swatch
+that is deliberately hard-coded — painting *that* from tokens would make it a lie.
+
+**Acceptance:** switching palette repaints the mark, the coverage buckets, the meters and every tag
+without a reload; a rendered PDF is byte-identical across palettes; `--color-text-muted` on the
+ground clears 4.5:1 in all twelve palette/mode combinations.
+
+### F19 — The token meter
+
+The fifth cap, and the only one that measures what a run *costs* rather than how many of them there
+were. An analysis of a 400-word posting and one of a six-page posting are both "1" to `capAnalyses`,
+and they are not the same work.
+
+**Nothing is stored.** `users.cap_tokens` is a cap; everything else is measured — usage as a SUM
+over `ai_runs` (which has recorded real input and output tokens since M1), top-ups as a SUM over
+`token_grants`. There is no counter to decrement, so no crash between two writes can drift the
+balance, and a run that dies half-way costs exactly the tokens it burned. Same rule that removed the
+analyses refund path in M7.
+
+**Estimates exist for one job: the pre-flight check.** ~20,000 for a full run (3,600 reading / 4,800
+matching / 8,400 rewriting / 3,200 preparing) and 1,600 for a drafted answer. A run we cannot afford
+to finish is never begun — stopping half-way still spends what it burned, and charging for a résumé
+nobody received is the failure this feature exists to prevent. The UI says "about".
+
+**The carry rule.** A cycle draws from the plan allowance first and only then from top-ups, so the
+pool is touched only by the amount a cycle went *over*. Past overruns are computed by bucketing
+`ai_runs` into 30-day windows in one grouped query — measured, like everything else here, rather
+than tracked in a `topup_spent` column two writes could disagree about. Past cycles are settled
+against the *current* cap (D9): we keep no history of cap changes, and inventing one would be a
+bigger lie than the approximation, which errs toward leaving the member more tokens.
+
+**The wall.** One dialog, three exits, free one first:
+
+1. **Park it** — the posting is stored with `analyses.queued_at` set and waits on `/analyze` with a
+   button. It does **not** start itself. There is no worker and no cron (§8), so promising an email
+   from a scheduler we do not run would be a promise that cannot happen; the dialog says so in those
+   words. Re-checked on start: being queued never bypasses the wall.
+2. **Top up once** — a pack, on paid plans (F17).
+3. **Move up a plan** — derived from the `PLANS` order, absent on the top tier.
+
+Nothing upgrades itself and nothing part-runs an analysis to fit the balance. The refusal carries
+the whole wall as a value (`TokenWall`) on the `token_wall` error, so the dialog is rendered from
+the same object the enforcement raised and cannot describe a different wall than the one that
+stopped the run.
+
+**Two enforcement seams, guarding different things.** `createAnalysis` decides whether a posting is
+filed at all; `POST /api/analyze/[id]` is what a parked run, a reloaded tab and a retried request
+all have to pass, and is the only check between a `parsing` row and four billed model calls. It
+answers 402 with the wall as JSON — this is not a stage that broke, it is a run that never started.
+
+**The header pill** shows the balance on every signed-in page, so the meter is visible before it
+matters. It goes accent once, at under two runs left, and stays there — chrome that cries wolf every
+few runs is chrome nobody reads. `/profile` carries the paragraph behind it: the estimates and what
+each analysis in this cycle *actually* drew, side by side.
+
+**One interruption, once per cycle.** At under two runs left a banner says so under the header and
+is then dismissible for that cycle, keyed on the reset date in `localStorage`. The pill is the
+permanent display; this is the single moment we interrupt. A banner that returned on every page load
+would teach the member to close it without reading, which is worse than never having warned them.
+The server half decides whether it is warranted and the client half whether it has already been
+shown, so the balance itself never reaches the browser as data.
+
+**The cycle anchor.** `users.quota_resets_at` is a fixed point the 30-day windows are laid out
+around, written once at provisioning and never moved — there is no scheduler to move it (§8).
+`cycleStart` therefore walks in **both** directions from it: back when the anchor is a future reset
+date recorded by hand, forward when it is a signup date months ago. Only walking back was the
+original behaviour, and combined with an anchor that was never written it meant every read fell
+through to `now` — so usage was counted from that instant, the F15 caps read zero-used and never
+bound, and the meter would both have failed to fire and (through the carry rule) treated every
+historical `ai_run` as a past cycle that had eaten the top-up pool. The F19 migration backfills the
+column from `created_at`.
+
+**Admins** get the token cap in the same per-member panel as the other four, plus a one-off grant
+that is deliberately **not** a cap change — unblocking someone today should not also decide what
+they inherit next month. Grants land in `token_grants` alongside purchases, so "where did these
+tokens come from" has one answer.
+
+**Acceptance:** `cycleStart` puts `now` inside `[start, start + 30d)` for any anchor, past or
+future; a member with 4,000 tokens left clicking Analyse gets the dialog and no `analyses`
+row; parking that posting creates one row with `queued_at` set and no model call; a redelivered
+top-up webhook credits nothing twice; the balance shown equals `SUM(input+output)` over the cycle's
+`ai_runs`, checked by hand once at the gate.
+
 
 ## 10. AI layer
 
@@ -898,7 +1076,9 @@ commitProfile(draft)                  → { profileId, bulletCount, yearsExperie
 updateProfile(patch)                  → ResumeJson
 replaceResume(file)                   → upload → review → commit
 
-createAnalysis(input)                 → { analysisId }        // streamed pipeline
+createAnalysis(input)                 → { analysisId, queued } // streamed pipeline; `queue` parks it (F19)
+startQueuedAnalysis(analysisId)       → { id }               // F19, re-checks the meter
+discardQueuedAnalysis(analysisId)     → null                 // F19
 getAnalysis(analysisId)               → full result tree
 regenerateTab(analysisId, tab)        → partial re-run, one surface
 updateTailoredBullet(bulletId, text)  → TailoredBullet
@@ -911,8 +1091,11 @@ POST /api/webhooks/clerk              → user lifecycle
 sendContactMessage(prev, formData)    → ContactState        // F13, public — no session
 updateMemberCaps({ clerkUserId, caps, suspended })          // F15, re-reads role server-side
 updateWorkspaceDefaults(caps)                               // F15, new accounts only — never an existing row
-startProCheckout()                          → RazorpayOrder // F17, amount read server-side
-POST /api/webhooks/razorpay                    (route)      // F17, the ONLY place users.plan is raised
+startPlanCheckout(planId)                   → RazorpayOrder // F17, amount read server-side
+startTopupCheckout(topupId)                 → RazorpayOrder // F19, refused on Free server-side
+grantTokens({ clerkUserId, tokens })        → { tokens }    // F19, admin one-off — NOT a cap change
+POST /api/webhooks/razorpay                    (route)      // F17/F19, the ONLY place users.plan is raised
+                                                            //   or token_grants written from a purchase
 requestAdminAccess()                  → files a support message
 ```
 
@@ -925,7 +1108,9 @@ requestAdminAccess()                  → files a support message
 | D3 | Mock interview practice | Defer. Big surface, different product | Post-v1 |
 | D4 | Course catalog scale | ~150 curated entries covering the top 40 skills, manual | If gap coverage drops below 80% |
 | D5 | Embedding-based matching | Candidate generation only; never status assignment | Only if alias maintenance becomes the bottleneck |
-| D6 | Pricing | Free tier by analyses per month, not feature gating | Before launch |
+| D6 | Pricing | Three tiers metered in tokens, not feature gating | Settled at F19 |
+| D8 | A scheduler for queued runs | No. A parked run waits on `/analyze` with a button | If parked runs routinely go unstarted for days |
+| D9 | Per-cycle cap history | No. The top-up carry rule uses the current cap for past cycles | If an admin's cap change is ever disputed over a top-up |
 | D7 | Adding automated tests | Add if the same bug is fixed twice | A second regression |
 
 ## 16. What would make this fail
@@ -935,4 +1120,5 @@ requestAdminAccess()                  → files a support message
 3. **Generic interview questions.** "Tell me about a time you failed" for any posting is worthless. Questions must be visibly derived from *this* posting and *this* profile, or the tab is decoration.
 4. **A stale or hallucinated course catalog.** One dead link and the Learning tab is never trusted again.
 5. **The score drifting into an "ATS score".** The honest coverage number is the differentiator.
-6. **A missing RLS policy.** With light testing and multi-tenant résumé data, one table shipped without RLS is the highest-severity failure available. Every new table gets a policy in the same migration — no exceptions.
+6. **A token meter that disagrees with the bill.** The balance is measured from `ai_runs`, never stored, so it cannot drift — but the carry rule for top-ups approximates past cycles with the *current* cap (D9). If cap changes become frequent, that approximation becomes a number a member can argue with.
+7. **A missing RLS policy.** With light testing and multi-tenant résumé data, one table shipped without RLS is the highest-severity failure available. Every new table gets a policy in the same migration — no exceptions.

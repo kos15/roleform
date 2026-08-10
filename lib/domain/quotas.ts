@@ -8,26 +8,49 @@
  *
  * The bounds here are mirrored by CHECK constraints on `users` — the migration
  * is the enforcement, this is the vocabulary (CLAUDE.md §11).
+ *
+ * `tokens` (F19) joined the list last and sits first, because it is the only
+ * one of the five that measures what a run actually costs rather than how many
+ * of them there were. The other four still exist: they fail at different seams
+ * and say different things, and folding them into one credit balance would
+ * bring back exactly the generic refusal F15 was built to remove.
  */
 
-export type QuotaKey = "analyses" | "resumes" | "answers" | "courses";
+import { formatTokens } from "./tokens";
+
+export type QuotaKey = "tokens" | "analyses" | "resumes" | "answers" | "courses";
 
 export type QuotaPeriod = "cycle" | "analysis" | "gap";
 
 export interface QuotaDefinition {
   key: QuotaKey;
   /** Column on `users`. */
-  column: "capAnalyses" | "capResumes" | "capAnswers" | "capCourses";
+  column: "capTokens" | "capAnalyses" | "capResumes" | "capAnswers" | "capCourses";
   label: string;
   unit: string;
   period: QuotaPeriod;
   step: number;
   min: number;
   max: number;
+  /** Six figures read as noise at full length. "800K" everywhere but the wall. */
+  abbreviate?: boolean;
   description: string;
 }
 
 export const QUOTAS: QuotaDefinition[] = [
+  {
+    key: "tokens",
+    column: "capTokens",
+    label: "Token allowance",
+    unit: "per month",
+    period: "cycle",
+    step: 50_000,
+    min: 0,
+    max: 4_000_000,
+    abbreviate: true,
+    description:
+      "The real meter. Every stage of every run draws from it, measured from what the models actually consumed. When it empties the member is offered a wait, a top-up or a plan — never a silent failure.",
+  },
   {
     key: "analyses",
     column: "capAnalyses",
@@ -89,21 +112,70 @@ export function clampCap(key: QuotaKey, value: number): number {
   return Math.min(def.max, Math.max(def.min, Math.round(value)));
 }
 
-/** 0 is a real setting, and it reads as a word rather than a number. */
-export function displayCap(value: number): string {
-  return value === 0 ? "Off" : String(value);
+/**
+ * 0 is a real setting, and it reads as a word rather than a number.
+ *
+ * Takes the key as well as the value because the token allowance is six digits
+ * and every other cap is one or two: "800,000" beside "6" makes the column
+ * about the token row, so that one abbreviates. The wall and the ledger — the
+ * two places a member might check our arithmetic — use `formatCount` instead
+ * and print it in full.
+ */
+export function displayCap(key: QuotaKey, value: number): string {
+  if (value === 0) return "Off";
+  if (!QUOTA_BY_KEY[key].abbreviate) return String(value);
+  return formatTokens(value);
 }
 
 /**
- * The billing cycle is a rolling 30 days from the account's reset date, or from
- * now backwards when no reset has been recorded. Calendar months would make a
- * cap mean something different in February.
+ * The billing cycle is a rolling 30 days. Calendar months would make a cap mean
+ * something different in February.
+ *
+ * Also the bucket width the token carry rule uses to work out how much of each
+ * past cycle overran its allowance (lib/db/queries/tokens.ts). Exported so
+ * there is one number rather than a 30 in a SQL string that nobody greps for.
  */
 export const CYCLE_DAYS = 30;
 
+/**
+ * The start of the cycle running now, from the account's anchor.
+ *
+ * **Walks in both directions on purpose.** `users.quota_resets_at` is a fixed
+ * point the cycles are laid out around — it is not maintained by a scheduler,
+ * because there isn't one (CLAUDE.md §8) — so it can be in the past (an anchor
+ * set at signup, which is what `provisionUser` writes) or in the future (a
+ * reset date recorded by hand). Only walking back handles the second case, and
+ * the first is now the common one: an account created 90 days ago would
+ * otherwise report a cycle that started at signup and a usage total covering
+ * its whole life.
+ *
+ * A null anchor still falls through to `now`, but that is a defensive fallback
+ * rather than the normal path — a null anchor means usage counts from this
+ * instant, so every cap reads zero-used and nothing binds. `provisionUser`
+ * writes the anchor, and the F19 migration backfills the rows that predate it.
+ */
 export function cycleStart(quotaResetsAt: Date | null, now: Date = new Date()): Date {
-  const anchor = quotaResetsAt ?? now;
-  const start = new Date(anchor);
+  const start = new Date(quotaResetsAt ?? now);
   while (start > now) start.setDate(start.getDate() - CYCLE_DAYS);
+  // Roll forward to the window `now` is actually in.
+  for (;;) {
+    const next = new Date(start);
+    next.setDate(next.getDate() + CYCLE_DAYS);
+    if (next > now) break;
+    start.setTime(next.getTime());
+  }
   return start;
+}
+
+/**
+ * When the allowance refills — the date every token refusal names (F19).
+ *
+ * Derived from `cycleStart` rather than walked separately: two dates that are
+ * meant to be one cycle apart eventually aren't, and this one goes in front of
+ * a member who is being told to wait for it.
+ */
+export function cycleEnd(quotaResetsAt: Date | null, now: Date = new Date()): Date {
+  const end = cycleStart(quotaResetsAt, now);
+  end.setDate(end.getDate() + CYCLE_DAYS);
+  return end;
 }

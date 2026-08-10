@@ -35,7 +35,11 @@ const BAND_END: Record<StageKey, number> = {
 
 export async function parkedRun(clerkUserId: string): Promise<ParkedRun | null> {
   const analysis = await db.analysis.findFirst({
-    where: { clerkUserId, status: "parsing" },
+    // `queuedAt: null` matters: a run filed against the token wall (F19) is
+    // also `parsing`, but it has never started. Without this the status page
+    // would report it as a run that stopped part-way at 0%, and offer to
+    // resume something that has nothing to resume from.
+    where: { clerkUserId, status: "parsing", queuedAt: null },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
