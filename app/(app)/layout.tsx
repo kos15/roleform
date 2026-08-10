@@ -8,6 +8,8 @@ import { TokenPill } from "@/components/token-pill";
 import { LowBalanceBanner } from "@/components/low-balance-banner";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteFooter } from "@/components/site-footer";
+import { MobileTabBar } from "@/components/mobile-tabbar";
+import { SheetAccount } from "@/components/sheet-account";
 import { currentRole } from "@/lib/admin/role";
 
 /**
@@ -23,13 +25,18 @@ async function RoleChip() {
 
   const role = await currentRole(userId);
   return (
-    <span className="hidden text-xs text-[var(--color-text-muted)] sm:inline">
+    <span className="wide-only hidden text-xs text-[var(--color-text-muted)] sm:inline">
       {role === "admin" ? "Admin" : "Member"}
     </span>
   );
 }
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  // Only decides whether the sheet lists Admin. /admin enforces it on its own —
+  // this is the difference between a door that 403s and no door.
+  const { userId } = await auth();
+  const isAdmin = userId ? (await currentRole(userId)) === "admin" : false;
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="nav">
@@ -37,7 +44,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Brand />
         </Link>
 
-        <nav aria-label="Main" className="nav-links text-sm">
+        {/* Below 860px these five move to the bottom bar and the sheet, which
+            is where a thumb is. See `.tabbar` in globals.css. */}
+        <nav aria-label="Main" className="nav-links wide-only text-sm">
           {/* "New analysis" rather than "Analyze": from anywhere inside a finished
               analysis this link discards it and starts another, and the verb
               alone didn't say so. */}
@@ -66,9 +75,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <TokenPill />
         </Suspense>
 
-        <AppearanceLink />
+        {/* The palette lives one row down in the sheet at this width, with its
+            name spelled out — a second unlabelled circle beside the mode toggle
+            is the wrong thing to keep when space runs out. */}
+        <span className="wide-only contents">
+          <AppearanceLink />
+        </span>
         <ThemeToggle />
 
+        {/* UserButton stays at every width on purpose, unlike the role chip:
+            it is the only way out of the session. */}
         <div className="flex flex-none items-center gap-2">
           {/* Suspended for the same reason as the footer's status dot: this
               chip costs a Clerk read, and a layout that awaits resolves before
@@ -94,6 +110,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="mx-auto w-full max-w-6xl px-6 py-10">{children}</main>
 
       <SiteFooter />
+
+      <MobileTabBar
+        isAdmin={isAdmin}
+        account={
+          <Suspense fallback={null}>
+            <SheetAccount />
+          </Suspense>
+        }
+      />
     </div>
   );
 }

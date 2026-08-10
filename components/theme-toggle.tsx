@@ -17,7 +17,7 @@ const STORAGE_KEY = "roleform-theme";
 
 type Theme = "light" | "dark";
 
-export function ThemeToggle() {
+export function ThemeToggle({ withLabel }: { withLabel?: boolean } = {}) {
   const [theme, setTheme] = useState<Theme | null>(null);
 
   useEffect(() => {
@@ -37,6 +37,30 @@ export function ThemeToggle() {
   }
 
   const label = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
+  const icon =
+    theme === null ? null : theme === "dark" ? (
+      <Sun className="lucide h-4 w-4" />
+    ) : (
+      <Moon className="lucide h-4 w-4" />
+    );
+
+  // Same control, two shapes. In the sheet there is room to say which way the
+  // switch goes, and a 40px circle in a list of labelled rows reads as a bug.
+  if (withLabel) {
+    return (
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={label}
+        className="flex h-10 flex-none items-center gap-2 rounded-[var(--radius-pill)] border border-[var(--color-line)] px-4 text-[var(--color-text)] transition-colors hover:bg-[var(--color-accent-100)]"
+      >
+        {icon}
+        <span className="text-[13px] font-semibold">
+          {theme === null ? "" : theme === "dark" ? "Light" : "Dark"}
+        </span>
+      </button>
+    );
+  }
 
   return (
     <button
@@ -44,13 +68,9 @@ export function ThemeToggle() {
       onClick={toggle}
       title={label}
       aria-label={label}
-      className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[var(--radius-pill)] border border-[var(--color-line)] text-[var(--color-text)] transition-colors hover:bg-[var(--color-accent-100)]"
+      className="hdr-btn flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[var(--radius-pill)] border border-[var(--color-line)] text-[var(--color-text)] transition-colors hover:bg-[var(--color-accent-100)]"
     >
-      {theme === null ? null : theme === "dark" ? (
-        <Sun className="lucide h-4 w-4" />
-      ) : (
-        <Moon className="lucide h-4 w-4" />
-      )}
+      {icon}
     </button>
   );
 }
