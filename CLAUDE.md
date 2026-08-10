@@ -111,7 +111,7 @@ Creative templates will honestly read `Low`. That is correct. Do not tune the ru
 | Auth | **Clerk** | Native Supabase third-party integration (§7). |
 | Database | **Supabase Postgres** | Accessed through Prisma, via `@prisma/adapter-pg`. RLS on every user table. |
 | File storage | **Supabase Storage** | Buckets: `resumes` (private), `exports` (private, signed URLs). |
-| DNS / domain | **AWS Route 53**, domain `koustubh.org` | App at `roleform.koustubh.org`, `CNAME` → Vercel. |
+| DNS / domain | **Cloudflare DNS**, domain `koustubh.org` | App at `roleform.koustubh.org`, `CNAME` → Vercel. Resend's DKIM/SPF live under that name (`resend._domainkey.roleform`, `send.roleform`) and resolve fine — a CNAME only excludes records at its own node. |
 | CDN | **Vercel's own edge** for the app · **CloudFront** in front of the `exports` bucket | See below. |
 
 **On CloudFront — read this before wiring it.** Do **not** proxy the Vercel app through CloudFront.
