@@ -13,7 +13,7 @@ export const PROMPT_VERSIONS = {
   tailorSummary: "tailor-summary@1",
   generateQuestions: "interview-questions@2",
   answerQuestion: "question-answer@1",
-  describeGaps: "skill-gaps@1",
+  synthesisePlan: "learning-plan@1",
 } as const;
 
 const LAW = `Roleform's law, stated in the product's own copy: "Nothing is invented —
@@ -120,15 +120,49 @@ Other rules:
 - keyConcepts are plain names of ideas — "consistent hashing", "idempotency keys". Never a URL, never a course title, never a book. Links come from a curated catalog you have no access to.
 - For a gap question: the sections still teach the subject honestly, resumeHooks is empty or names only the nearest adjacent thing the candidate genuinely did, and nothing anywhere claims experience they do not have.`,
 
-  describeGaps: `You write one honest line about the distance between a candidate's evidenced
-level and the level a posting asks for.
+
+  /**
+   * S6 — the learning engine's single large-model call (agent.md I5).
+   *
+   * Every line here is billed on every run, forever, so nothing is here that a
+   * validator enforces better. There is no "do not invent a URL" instruction,
+   * because the schema has nowhere to put one and OUT-1 checks the ids against
+   * the database regardless of what the model was asked. There is no politeness
+   * and no role preamble.
+   *
+   * Static content only — the gap list and the resource metadata arrive in the
+   * variable block below the cache boundary (agent.md §6).
+   */
+  synthesisePlan: `You write a focused learning plan for a candidate preparing for one specific role.
 
 ${LAW}
 
-You are told which skills are gaps — you do not choose them, and you never
-suggest the candidate claim one. Judge userLevel only from the bullets provided;
-"none" is the correct answer when nothing supports the skill. Name the nearest
-adjacent thing the candidate genuinely does have, when there is one.
+Everything you are given is ALREADY DECIDED. The gaps are ranked, the resources
+are selected, the sequence is solved. Do not re-rank, re-select, add, remove or
+reorder anything. Your job is the framing around it, and nothing else.
 
-You never produce a URL or name a course. Courses come from a curated catalog.`,
+Per gap:
+- jdQuote is copied verbatim from the posting text you were given. Copy it; do
+  not paraphrase it, and do not quote a requirement you were not given.
+- whyItMatters connects the skill to what this role does day to day, grounded in
+  that quote.
+- unlocksBulletDraft is how the candidate's EXISTING bullet could be truthfully
+  rewritten once the material is done. Phrase it prospectively — "once you have
+  built this, that bullet becomes…". Never as something they can claim today.
+  Reuse their own vocabulary rather than importing yours.
+- Each resource note says why THIS entry point, given what they already know,
+  using the summary you were given. Never describe content you were not given.
+
+Then: opening leads with what already matches the role before what does not.
+sequenceNote explains the order you were handed.
+
+Constraints:
+- Reference resources by id only.
+- Never state or imply anything about the candidate's chances, their
+  competitiveness, or how they compare to other applicants.
+- Never describe a gap as a weakness, a deficiency, a red flag or a problem.
+  Gaps are specific, learnable, and named.
+- Use the evidence label you were given exactly. If it says "partial", do not
+  write as though it were strong.
+- Plain, direct sentences. No motivational filler, no exclamation marks.`,
 } as const;

@@ -14,6 +14,9 @@ import "./env";
 import { db } from "../lib/db";
 import { SKILLS } from "../lib/catalog/skills";
 import { COURSES } from "../lib/catalog/courses";
+import { assertTaxonomy, NODES } from "../lib/catalog/taxonomy";
+import { levelOf, primacyOf, qualityOf, summaryFor, tagsFor, typeOf } from "../lib/catalog/quality";
+import { checkLiveness } from "../lib/catalog/liveness";
 import { TEMPLATES } from "../lib/render/templates";
 import { rateAts } from "../lib/render/ats-rules";
 
@@ -44,21 +47,67 @@ async function main() {
   }
 
   /* ---------------------------------------------------------------- skills */
+  //
+  // The taxonomy is checked BEFORE anything is written. A broken tree that
+  // reaches the database makes `depth` and `parent_id` silently wrong, and
+  // every severity score computed from them silently wrong with them — the
+  // exact failure mode a project with no test suite (CLAUDE.md §11) has no
+  // other way to catch.
+  const taxonomyProblems = assertTaxonomy();
+  if (taxonomyProblems.length > 0) {
+    console.error(`\nTaxonomy is not a valid forest (fix lib/catalog/taxonomy.ts):`);
+    for (const problem of taxonomyProblems) console.error(`  - ${problem}`);
+    process.exit(1);
+  }
+
+  // Pass 1 — every node, without its parent. Parents are set in pass 2 because
+  // a child can be declared before the row its parent_id points at exists.
   for (const skill of SKILLS) {
+    const node = NODES.get(skill.name)!;
     await db.skill.upsert({
       where: { name: skill.name },
-      create: { name: skill.name, category: skill.category, aliases: skill.aliases },
-      update: { category: skill.category, aliases: skill.aliases },
+      create: {
+        name: skill.name,
+        category: skill.category,
+        aliases: skill.aliases,
+        slug: node.slug,
+        roadmapPath: node.roadmap,
+        depth: node.depth,
+        volatility: node.volatility,
+      },
+      update: {
+        category: skill.category,
+        aliases: skill.aliases,
+        slug: node.slug,
+        roadmapPath: node.roadmap,
+        depth: node.depth,
+        volatility: node.volatility,
+      },
     });
   }
+
   const skillRows = await db.skill.findMany();
   const skillIdByName = new Map(skillRows.map((s) => [s.name, s.id]));
-  console.log(`skills: ${skillRows.length}`);
+
+  // Pass 2 — the tree.
+  let parented = 0;
+  for (const skill of SKILLS) {
+    const node = NODES.get(skill.name)!;
+    const parentId = node.parent ? (skillIdByName.get(node.parent) ?? null) : null;
+    await db.skill.update({ where: { name: skill.name }, data: { parentId } });
+    if (parentId) parented++;
+  }
+
+  const roots = SKILLS.length - parented;
+  const deepest = Math.max(...[...NODES.values()].map((n) => n.depth));
+  console.log(`skills: ${skillRows.length} (${roots} roots, depth ${deepest})`);
 
   /* --------------------------------------------------------------- courses */
   const today = new Date();
   let seeded = 0;
+  let links = 0;
   const dead: string[] = [];
+  const blocked: string[] = [];
   const unknownSkills = new Set<string>();
 
   for (const course of COURSES) {
@@ -70,14 +119,30 @@ async function main() {
     if (skillIds.some((id) => !id)) continue;
 
     if (!skipLinkCheck) {
-      const alive = await urlResolves(course.url);
-      if (!alive) {
+      // Three outcomes, not two (lib/catalog/liveness.ts). A 403 from a
+      // bot-walled host is not evidence that a tutorial was deleted, and
+      // treating it as such was silently shrinking the catalog.
+      const liveness = await checkLiveness(course.url);
+      if (liveness === "dead") {
         dead.push(`${course.provider} — ${course.title} → ${course.url}`);
         continue;
       }
+      if (liveness === "blocked") {
+        blocked.push(`${course.provider} — ${course.title} → ${course.url}`);
+      }
     }
 
-    await db.course.upsert({
+    // The learning engine's resource columns, all computed (lib/catalog/quality)
+    // rather than authored: a hand-set quality score is a hand-set bundle
+    // ranking, and the whole point of the score is that it can be argued with.
+    const resource = {
+      type: typeOf(course),
+      qualityScore: qualityOf(course).toFixed(3),
+      tags: tagsFor(course),
+      status: "active" as const,
+    };
+
+    const row = await db.course.upsert({
       where: { url: course.url },
       create: {
         provider: course.provider,
@@ -91,6 +156,7 @@ async function main() {
         isFree: course.isFree,
         skillIds: skillIds as string[],
         verifiedAt: today,
+        ...resource,
       },
       update: {
         provider: course.provider,
@@ -103,20 +169,60 @@ async function main() {
         isFree: course.isFree,
         skillIds: skillIds as string[],
         verifiedAt: today,
+        ...resource,
       },
+      select: { id: true },
     });
+
+    // The (resource, skill) join the bundle builder reads — RLE spec §3.
+    //
+    // `entryLabel` / `entryUrl` stay null for catalog entries, and that is
+    // honest rather than pending: a timestamp we did not derive from a real
+    // transcript would be a made-up number pointing into someone else's video.
+    // The columns exist and the whole path renders them, so the day the ingest
+    // pipeline (spec §3, planning.md Phase 3) produces real ones, nothing
+    // downstream changes.
+    for (const skillName of course.skills) {
+      const skillId = skillIdByName.get(skillName)!;
+      // `skills[0]` is what the course TEACHES; the rest are what it is useful
+      // to. Collapsing that distinction is what put the Redux tutorial at the
+      // top of React's own bundle — see lib/catalog/quality.ts.
+      const primacy = primacyOf(course, skillName);
+      const payload = {
+        level: levelOf(course),
+        confidence: primacy.confidence.toFixed(3),
+        isPrimary: primacy.isPrimary,
+        summary: summaryFor(course, skillName),
+      };
+      await db.courseSkill.upsert({
+        where: { courseId_skillId: { courseId: row.id, skillId } },
+        create: { courseId: row.id, skillId, ...payload },
+        update: payload,
+      });
+      links++;
+    }
+
     seeded++;
   }
 
-  console.log(`\ncourses seeded: ${seeded} / ${COURSES.length}`);
+  console.log(`\ncourses seeded: ${seeded} / ${COURSES.length} (${links} skill links)`);
+  console.log(`run \`pnpm bundles:rebuild\` next — bundles are what the Learning tab reads.`);
 
   if (unknownSkills.size > 0) {
     console.error(`\nSkill names not in the canon (fix lib/catalog/courses.ts):`);
     for (const name of unknownSkills) console.error(`  - ${name}`);
   }
 
+  if (blocked.length > 0) {
+    console.log(
+      `\n${blocked.length} URL(s) refused the check (403/429/timeout) and WERE seeded.\n` +
+        `The host blocked us, not the world — open each once in a browser to confirm:`,
+    );
+    for (const line of blocked) console.log(`  - ${line}`);
+  }
+
   if (dead.length > 0) {
-    console.error(`\n${dead.length} URL(s) did not resolve and were NOT seeded:`);
+    console.error(`\n${dead.length} URL(s) returned 404/410 and were NOT seeded:`);
     for (const line of dead) console.error(`  - ${line}`);
     console.error(
       `\nFix or remove them in lib/catalog/courses.ts. A dead link is the one failure\n` +
@@ -138,26 +244,6 @@ async function main() {
 
   await db.$disconnect();
   if (dead.length > 0 || unknownSkills.size > 0) process.exit(1);
-}
-
-async function urlResolves(url: string): Promise<boolean> {
-  for (const method of ["HEAD", "GET"] as const) {
-    try {
-      const response = await fetch(url, {
-        method,
-        redirect: "follow",
-        signal: AbortSignal.timeout(15_000),
-        headers: { "User-Agent": "Roleform-catalog-check/1.0" },
-      });
-      if (response.ok) return true;
-      // Some hosts reject HEAD but serve GET fine.
-      if (method === "HEAD" && (response.status === 403 || response.status === 405)) continue;
-      return false;
-    } catch {
-      if (method === "GET") return false;
-    }
-  }
-  return false;
 }
 
 main().catch((e) => {

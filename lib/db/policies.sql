@@ -31,6 +31,8 @@ declare
     'interview_questions',
     'question_answers',
     'skill_gaps',
+    'learning_plans',
+    'learning_steps',
     'exports',
     'ai_runs',
     'token_grants'
@@ -76,7 +78,9 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['templates', 'skills', 'courses'] loop
+  foreach t in array array[
+    'templates', 'skills', 'courses', 'course_skills', 'skill_bundles'
+  ] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('drop policy if exists "public read" on public.%I', t);
     execute format(
@@ -96,6 +100,30 @@ end $$;
 alter table public.workspace_settings enable row level security;
 alter table public.workspace_settings force row level security;
 drop policy if exists "public read" on public.workspace_settings;
+
+-- ------------------------------------------------- learning engine internals
+-- unresolved_terms and corpus_gaps are the corpus growth loop (RLE spec §4,
+-- §9). Neither carries a clerk_user_id, and that is deliberate rather than an
+-- omission: the term is public content from a job board, and the PAIRING of a
+-- term with a person is what would be sensitive. Not storing the pairing is
+-- stronger than protecting it.
+--
+-- They are written by the app over the Prisma connection (which bypasses RLS)
+-- and read only by the operator. RLS on with NO policy is therefore the rule,
+-- not an oversight — the same shape workspace_settings uses above. Every table
+-- gets RLS (N10); these two have nothing an anon or authenticated request has
+-- any business reading.
+
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['unresolved_terms', 'corpus_gaps'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('alter table public.%I force row level security', t);
+    execute format('drop policy if exists "public read" on public.%I', t);
+  end loop;
+end $$;
 
 -- --------------------------------------------------------------- storage RLS
 -- Path prefix must match the requesting subject (specs §6.3):

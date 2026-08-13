@@ -166,25 +166,6 @@ export function parseAnswerRow(row: {
   };
 }
 
-export async function getGaps(clerkUserId: string, analysisId: string) {
-  const rows = await db.skillGap.findMany({
-    where: { clerkUserId, analysisId },
-    include: { skill: { select: { name: true } } },
-    // F8: ordered by how often the posting mentions them — the honest proxy for
-    // what the employer cares about, and it comes free from JD analysis.
-    orderBy: { mentionCount: "desc" },
-  });
-  return rows.map((r) => ({
-    id: r.id,
-    skillId: r.skillId,
-    skillName: r.skill.name,
-    userLevel: r.userLevel,
-    requiredLevel: r.requiredLevel,
-    mentionCount: r.mentionCount,
-    note: r.note,
-  }));
-}
-
 export async function getProfileById(clerkUserId: string, profileId: string) {
   return db.masterProfile.findFirst({ where: { clerkUserId, id: profileId } });
 }

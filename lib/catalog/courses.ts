@@ -9,6 +9,16 @@
  * specs §16.4 says destroys the Learning tab's credibility in one click.
  * `pnpm check:links` re-runs the same check quarterly against what's already in.
  *
+ * ── ★ Skill order is load-bearing ───────────────────────────────────────────
+ * `skills[0]` is what the entry TEACHES. Everything after it is what the entry
+ * is USEFUL TO. `["Redux", "React"]` means a Redux tutorial React people want,
+ * not a React tutorial.
+ *
+ * The course matcher (match.ts) treats the list as flat and is right to — it
+ * answers "show me courses for React". The learning engine reads the order,
+ * because it answers "what should I study to close a React gap", and those are
+ * different questions. Put the taught skill first on every new entry.
+ *
  * ── Selection rules ─────────────────────────────────────────────────────────
  * Free-first. Official vendor documentation and roadmap.sh tracks preferred,
  * because they outlive individual creators' channels. Paid entries only where
@@ -885,8 +895,10 @@ export const COURSES: CourseDef[] = [
   },
   {
     provider: "scikit-learn",
-    title: "scikit-learn Tutorials",
-    url: "https://scikit-learn.org/stable/tutorial/index.html",
+    // /stable/tutorial/index.html now 404s; the same material lives at
+    // getting_started. Verified 200 before this edit.
+    title: "scikit-learn — Getting Started",
+    url: "https://scikit-learn.org/stable/getting_started.html",
     priceLabel: "Free",
     lengthLabel: "~6 hrs",
     lengthMinutes: 360,

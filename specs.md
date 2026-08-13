@@ -246,19 +246,71 @@ question_answers                       -- worked answers, drafted on demand (F7.
   -- resume_hooks[].bulletId is validated against experience_bullets in the AI
   -- layer and again on read; a hook that loses its bullet is dropped, not shown.
 
-skills                                 -- canonical vocabulary. Public read.
-  id, name, category, aliases text[]
+skills                                 -- canonical vocabulary AND the taxonomy spine. Public read.
+  id, name, category, aliases text[],
+  slug UNIQUE, roadmap_path, parent_id → skills, depth int,
+  volatility enum('low','medium','high')
+  -- parent_id/depth are what make precomputation possible (F8). Set only by
+  -- the seed script from lib/catalog/taxonomy.ts, never by hand.
 
-skill_gaps
-  id, clerk_user_id, analysis_id, skill_id → skills
+skill_gaps                             -- one ranked gap. The unit F8 renders.
+  id, clerk_user_id, analysis_id, skill_id → skills, requirement_id → jd_requirements
   user_level     enum('none','exposure','working','strong')
   required_level enum('exposure','working','strong','expert')
-  mention_count int, note text
+  mention_count int, note text, ordinal int
+  severity        numeric(5,2)  CHECK 0..100
+  importance      numeric(4,3)  CHECK 0..1
+  evidence_credit numeric(4,3)  CHECK 0..1
+  evidence_bucket enum('strong','partial','none')
+  target_level    enum('intro','working','deep')
+  jd_quote, why_it_matters text
+  unlocks_bullet_id   → experience_bullets  ON DELETE RESTRICT
+  unlocks_bullet_draft text
+  answers_question_id → interview_questions
+  fallback_url, fallback_label           CHECK (both null or both set)
+
+learning_plans                         -- the solved sequence + S6's narrative
+  id, clerk_user_id, analysis_id UNIQUE → analyses,
+  opening, sequence_note, budget_min int null, total_min int,
+  fallback_count int, resolution_rate numeric(4,3), ai_run_id → ai_runs null
+
+learning_steps                         -- one resource, one gap, one plan slot
+  id, clerk_user_id, plan_id → learning_plans, gap_id → skill_gaps,
+  course_id → courses ON DELETE RESTRICT,
+  ordinal int, starts_at_min int, duration_min int  CHECK (>=0, >=0, >0)
+  entry_label, entry_url, note text
+  unlocks_bullet_id   uuid → experience_bullets ON DELETE RESTRICT
+  answers_question_id uuid → interview_questions
+  -- Nullable. Set only by the deterministic binder, which returns null rather
+  -- than something plausible. The guard that matters is on skill_gaps: a
+  -- staged rewrite cannot exist without the bullet it rewrites (OUT-2).
 
 courses                                -- CURATED catalog. Public read. Never model-generated.
   id, provider, title, url, price_label, length_label,
   level enum('beginner','intermediate','advanced'), mark text,
-  skill_ids uuid[], is_free bool, verified_at date
+  skill_ids uuid[], is_free bool, verified_at date,
+  type enum('course','video','doc','repo','roadmap'), author,
+  published_at date, quality_score numeric(4,3), tags text[],
+  status enum('active','stale','dead','quarantined'), corpus_version int
+
+course_skills                          -- the join, built at ingest. The entry point lives here.
+  course_id, skill_id, level, confidence, is_primary,
+  entry_label, entry_url, summary       -- summary is the ONLY chunk-derived
+  PRIMARY KEY (course_id, skill_id)     -- text that ever reaches a model (I2)
+
+skill_bundles                          -- the precomputed answer cache
+  skill_id, level, ranked_course_ids uuid[], entry_points jsonb,
+  corpus_version, refreshed_at
+  PRIMARY KEY (skill_id, level)         -- request-time retrieval is THIS lookup
+
+unresolved_terms                       -- corpus growth: terms the resolver couldn't place
+  id, normalised UNIQUE, term, seen_count, first_seen_at, last_seen_at
+  -- No clerk_user_id, deliberately. The term is public content from a job
+  -- board; the pairing with a person is what would be sensitive.
+
+corpus_gaps                            -- ranked by count, this IS the ingestion backlog
+  skill_id, level, count, last_seen_at
+  PRIMARY KEY (skill_id, level)
 
 exports
   id, clerk_user_id, draft_id, format enum('pdf','docx','zip'),
@@ -285,7 +337,8 @@ token_grants                           -- one-off top-ups: bought, or granted by
 2. `interview_questions` CHECK enforces N2: evidence, or explicitly a gap question. Written with `cardinality()`, **not** `array_length(x, 1)` — the latter is NULL on an empty array and a CHECK only rejects on FALSE, so both hand-written guards were inert from M1 until `20260810010000_repair_fabrication_checks`. They were passing the smoke test on a foreign-key rejection the test had not earned; the cases now pin the CHECK's own SQLSTATE (23514).
 3. `experience_bullets` is written only by user action and by the reviewed onboarding import.
 4. `original_text` is snapshotted, so editing the master profile never silently rewrites past analyses.
-5. RLS is enabled on every table carrying `clerk_user_id`. `templates`, `skills` and `courses` are reference data with public read and no write policy for authenticated users.
+5. RLS is enabled on every table carrying `clerk_user_id`. `templates`, `skills`, `courses`, `course_skills` and `skill_bundles` are reference data with public read and no write policy for authenticated users. `unresolved_terms` and `corpus_gaps` have RLS enabled with **no policy at all** — they carry no user id and nothing an anon or authenticated request has any business reading.
+7. `skill_gaps` CHECK: `unlocks_bullet_draft` cannot exist without `unlocks_bullet_id`. A staged rewrite always names the bullet it rewrites — OUT-2 as a constraint rather than a validator. The bindings themselves are nullable; the binder returns null rather than guessing, so an absent binding is honest and a false one is unreachable.
 6. `token_grants.reference` is UNIQUE. A public webhook that grants tokens is redelivered on any non-2xx, and this is what makes a second delivery a conflict rather than a second credit — idempotency as a constraint, not as a remembered check (F19).
 
 ### 6.3 Storage layout
@@ -329,13 +382,16 @@ PER ANALYSIS (Step 1 of 3)
   ② coverage        → coverage_items + score          [PURE, no LLM]
   ③ tailor          → 6 × resume_drafts + tailored_bullets
   ④ interview       → 10 × interview_questions
-  ⑤ gaps + courses  → skill_gaps + deterministic course match
+  ⑤ learning        → skill_gaps + learning_plans + learning_steps
+                      (S3 resolve → S4 score → S5 bundle lookup → S5b select
+                       → S5c bind → S5.5 knapsack → S6 ONE call → S7 validate)
 
 RESULTS
   score header + 3 buckets
   ├─ Resumes   6 drafts · Compare two · Download all
   ├─ Prep      12 questions · family tabs · expandable · worked answer on demand
-  └─ Learning  4 gaps by mention_count · 2 courses each
+  └─ Learning  ≤7 gaps by severity · ≤3 resources each · time-budgeted plan
+               each resource bound to a bullet it unlocks and a question it answers
   → Preview [template] → diff · Still not evidenced · See courses → Learning
 ```
 
@@ -522,27 +578,110 @@ Twelve extra calls on every analysis would buy latency for a surface most users 
 `keyConcepts` are plain concept names, never links. Course links come from the curated catalog by the
 same deterministic matcher the Learning tab uses (N8).
 
-### F8 — Tab 3: Learning
+### F8 — Tab 3: Learning (the Learning Engine)
 
-"Four requirements your resume can't yet evidence, **ordered by how often the posting mentions
-them**." Mention count is the honest proxy for what the employer cares about, and it comes free from
-JD analysis.
+Rebuilt against `learning recommendation engine/` — spec, agent, guardrails, rag-strategy and
+prompts. The tab is no longer "gaps with two course cards beside them"; it is a **ranked,
+evidence-anchored, time-budgeted plan**.
 
-Per gap: skill, level tag, note, `Mentioned N×`, and two course cards (provider mark, title, price,
-length, level, **View course**).
+**What the user gets.** The literal request is "recommend learning material for the gaps." The real
+goal is: *let the candidate walk into this specific interview able to truthfully claim something they
+could not claim yesterday.* So every recommended resource is bound to three things, and shows all
+three:
 
-`You` vs `Required` is drawn rather than described: one track, a filled bar for the level the profile
-evidences and a tick for the level the posting asks for. The two enums differ (`none…strong` against
-`exposure…expert`) but measure the same quantity, so `lib/domain/levels.ts` puts them on one five-rung
-ordinal scale. It is a position on that scale, not a percentage of skill.
+1. **The gap it closes** — a canonical skill the posting requires and the profile can't evidence.
+2. **The résumé bullet it unlocks** — the bullet that becomes truthfully rewritable *after* the
+   learning. Staged prospectively, never as a claim available today. This is CLAUDE.md §3 applied to
+   the Learning tab.
+3. **The interview question it answers** — an existing row from the Prep tab.
 
-**Course catalog (N8).** Curated, version-controlled in `lib/catalog/courses.ts`, seeded into the
-`courses` table. Never model-generated. Seed sources: **roadmap.sh** tracks per domain, official free
-tutorials and vendor academies, hand-verified free video courses; paid options only where no credible
-free path exists, clearly labelled. Each row carries `verified_at`; a quarterly link-check is a real
-maintenance cost, accepted rather than pretending live generation is cheaper.
+**The bar sits on false bindings, not absent ones.** Spec §1's literal rule — a resource bound to
+fewer than all three is not shown — was built first as `NOT NULL` columns on `learning_steps`.
+Measured end to end against a real profile it withheld vetted material for **5 of 6 gaps**: the
+corpus had good Kubernetes and GraphQL resources and the rule hid them, because no bullet and no
+question happened to bind.
 
-Matching is deterministic: skill overlap → level fit → free-first → shortest.
+A card offering two vetted Kubernetes resources and claiming nothing about the candidate's history
+claims nothing false. A card claiming the wrong bullet does. So the bindings are nullable, and the
+guarantee moved to the state that is actually dangerous: `skill_gaps` carries
+`CHECK (unlocks_bullet_draft IS NULL OR unlocks_bullet_id IS NOT NULL)` — a staged rewrite with no
+source bullet is unrepresentable, which is guardrails.md OUT-2 as a database fact. Bindings are set
+only by the deterministic binder, which returns null rather than something plausible.
+
+**The pipeline.** Eight stages, exactly one billable model call:
+
+| Stage | What | Cost |
+|---|---|---|
+| S3 · resolve | free text → canonical skill, 4 tiers, no LLM (`lib/domain/resolve.ts`) | 0 tokens |
+| S4 · score | `importance × (1 − evidence) × 100` (`lib/domain/severity.ts`) | 0 tokens |
+| S5 · retrieve | `skill_bundles` primary-key lookup (`lib/learning/bundles.ts`) | 0 tokens |
+| S5b · select | deterministic personalisation (`lib/domain/selection.ts`) | 0 tokens |
+| S5c · bind | gap → bullet, gap → question (`lib/domain/binding.ts`) | 0 tokens |
+| S5.5 · plan | knapsack over durations (`lib/domain/plan.ts`) | 0 tokens |
+| S6 · synthesise | narrative + staged bullets (`lib/ai/synthesise-plan.ts`) | ONE strong call |
+| S7 · validate | OUT-1 link resolution (`lib/learning/validate.ts`) | 0 tokens |
+
+The spine: **every expensive operation happens once at ingest, never at query time.** Retrieval,
+ranking and diversity enforcement run in `pnpm bundles:rebuild`, once per `(skill, level)`, and are
+read by every user forever. A change that moves work from ingest-time to request-time needs a written
+justification — request-time work is billed on every run, ingest-time work is amortised across all
+users.
+
+**S6 never receives chunk text.** It gets resource *metadata* — title, author, duration, entry point,
+and a one-line precomputed summary. This is the single largest token saving in the design: passing
+retrieved passages is what makes naive RAG expensive, and here it would buy nothing, because the
+synthesiser's job is framing, not summarising.
+
+**The score.** `severity` is `importance × (1 − evidence) × 100`, deterministic and reproducible.
+`importance = w_section × w_modality × w_repetition × w_position × w_depth`, read off `kind`,
+`necessity`, `mention_count`, list position and taxonomy depth. `evidence` grades the profile's
+strongest claim on the same node or within two taxonomy hops. Both are stored, so a plan does not
+silently re-rank when an unrelated bullet is edited.
+
+Hard cap of **seven gaps**. It is a cost control — it bounds S6's input — and better product: seven
+gaps is a plan, twenty is a demoralising audit.
+
+**The taxonomy** (`lib/catalog/taxonomy.ts`) turns the flat skill canon into a tree with
+`parent_id`, `depth`, a roadmap.sh path and a volatility rating. It is the join key that makes
+precomputation possible, and it is *ingested*, never fetched at request time.
+
+**Time budget.** The user picks "2 hrs / 6 hrs / a weekend / no limit" and the plan re-solves —
+a pure knapsack over durations with prerequisites ordered first. No model call, no second charge,
+because the expensive part already happened.
+
+**When the corpus has nothing** (spec §9): emit the roadmap.sh node link and nothing else. No live
+web search, no YouTube lookup. Every fallback is logged to `corpus_gaps`, which ranked by demand
+*is* the ingestion backlog. The fallback path is a feature, not a degradation.
+
+`You` vs `Required` is still drawn rather than described: one track, a filled bar for the level the
+profile evidences and a tick for the level the posting asks for. Both marks now come from the same
+deterministic evidence value as the prose beside them, so the meter and the sentence cannot disagree
+(guardrails OUT-5).
+
+**Corpus (N8).** Curated, version-controlled in `lib/catalog/courses.ts`, seeded into `courses` with
+type, author, quality score and status; `course_skills` carries the per-skill entry point and
+summary. Never model-generated. `pnpm check:links` sweeps course URLs *and* roadmap fallback targets
+— a dead fallback is a 404 in front of a job-hunter exactly as a dead course is.
+
+**Guardrails** (`lib/domain/guardrails.ts`), each code and not prompt:
+
+| Rule | What it stops |
+|---|---|
+| IN-4 | PII redacted before bullet text reaches the synthesiser |
+| IN-5 | Injection scan on JD text; output containment is the real defence |
+| IN-6 | A discriminatory requirement never becomes a gap; flagged once, neutrally |
+| OUT-1 | Every resource id resolves to a live row; the schema has no URL field |
+| OUT-2 | Every staged bullet traces to a real bullet and is phrased prospectively |
+| OUT-4 | Every `why_it_matters` is grounded in a verbatim JD span |
+| OUT-5 | The narrative uses the evidence bucket it was given |
+| OUT-6 | No odds, no comparison to other candidates, no "deficiency" |
+
+**Not built, and why.** The spec's pgvector/embedding tier of the resolver, hybrid search with RRF,
+cross-encoder reranking, amortised HyDE, and the YouTube/PDF/repo ingest pipeline all need a chunk
+corpus and ingest infrastructure this repo does not have (planning.md Phase 3). Candidate generation
+in the bundle builder is the taxonomy join instead; the roll-up, diversity and freeze steps are
+implemented as specified. When the corpus exists, only `candidatesFor()` in
+`scripts/rebuild-bundles.ts` changes.
 
 ### F9 — Export
 
@@ -1004,14 +1143,15 @@ top-up webhook credits nothing twice; the balance shown equals `SUM(input+output
 | JD analysis | `analyzeJd` | `JdAnalysisSchema` | mid | 2 |
 | Tailoring | `tailorBullets` | `TailoredBulletsSchema` | strong | 1, then fail open to original |
 | Interview questions | `generateQuestions` | `InterviewQuestionsSchema` | strong | 1 |
-| Gap notes | `describeGaps` | `SkillGapsSchema` | mid | 1 |
+| Learning plan | `synthesisePlan` | `LearningPlanSchema` | strong | 1, then degrade to no narrative |
 
 - Every call uses `generateObject` with a Zod schema. The schema is the contract; the prompt is documentation for the model. Schema changes bump `prompt_version`.
 - Provider-agnostic — swapping providers is one import change, which is why the SDK was chosen over calling a provider API directly.
 - Every call writes an `ai_runs` row. Cost and schema-failure rate observable from day one.
 - Low temperature for extraction, moderate for tailoring and question phrasing.
 - **Never send the JD and the full profile in one tailoring call.** Scoping to one bullet plus its target requirement measurably reduces cross-contamination between roles.
-- Course selection is **not** an LLM call (N8).
+- Course selection is **not** an LLM call (N8). Neither is gap ranking, skill resolution, level assignment or scheduling — all four are pure functions in `lib/domain/`.
+- The learning engine makes **exactly one** model call per run. Adding a second needs a written justification: it would be billed on every run, forever.
 
 **Given light testing, schemas carry more weight than usual.** Prefer narrow schemas, enums over
 strings, required over optional. A schema that can't express a wrong answer is worth more than a test
@@ -1044,11 +1184,18 @@ making a wrong state unrepresentable over remembering to check for it.
 
 | Check | Gate | Why it survives |
 |---|---|---|
-| Constraint smoke test — one bad insert per guard (N1, N2, RLS) | M1 | Confirms the safety net is actually connected. Five minutes, once. |
+| Constraint smoke test — one bad insert per guard: N1, N2, N4, F19 ×4, RLS, plus the learning engine's OUT-2 / step-duration / fallback-completeness / severity-range guards. 13 cases. | M1 | Confirms the safety net is actually connected. Five minutes, once. |
 | Fabrication eval — 30 bullets vs postings demanding absent skills | M4 | This is the product's entire promise. Unverified, we ship a claim we never checked. |
 | DOCX round-trip — export, re-import, compare | M6 | Parsability is invisible until a user is rejected because of it. |
 
 Everything else is verified by looking: render the PDF and open it, click the flow.
+
+**The learning engine's own pure functions are the exception the operating manual allows**
+(`agent.md` §4): the resolver and the deterministic scorers get checked as they are written, because
+they are pure, the checks are three lines each, and every number the user sees downstream depends on
+them being right. The fuzzy-match threshold in `lib/domain/resolve.ts` was set from a measured
+separation between real typos and real non-canonical terms, and the measurement is recorded in the
+comment beside it — a threshold chosen by feel is a threshold nobody can re-derive.
 
 ## 13. Error and edge cases
 

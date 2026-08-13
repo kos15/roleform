@@ -36,7 +36,9 @@ analysis as much as to résumé bullets.
 | N5 | A template's `ATS` badge is computed from structural rules (§5), never hand-assigned. | Creative templates genuinely parse worse. The badge is how we ship them honestly. |
 | N6 | All LLM output crosses the boundary through a Zod schema via `generateObject`. Never `JSON.parse` a raw completion. | Wrong states unrepresentable. |
 | N7 | No PII in logs, traces, or error reports. | Résumés are the most sensitive document most users own. |
-| N8 | Course recommendations come from a curated catalog. Never a model-generated URL. | A hallucinated course link destroys the Learning tab's credibility in one click. |
+| N8 | Course recommendations come from a curated catalog. Never a model-generated URL. The learning plan's Zod schema has no URL field at all, so the model has nowhere to put one; the serialiser reads every URL from the database. | A hallucinated course link destroys the Learning tab's credibility in one click. |
+| N11 | A `SkillGap` may carry `unlocksBulletDraft` only when `unlocksBulletId` is set (CHECK). Bindings are written **only** by the deterministic binder in `lib/domain/binding.ts`, which returns null rather than reaching for something plausible — never by a model. | A staged rewrite with no source bullet is a claim about a bullet the user never wrote. This was first built as `NOT NULL` bindings on `LearningStep`; measured end to end that withheld vetted material for 5 of 6 gaps while guarding against the wrong thing. The risk is a **false** binding, not an absent one. |
+| N12 | The learning engine makes exactly **one** model call per run, and no LLM call in any stage that is a pure function or a DB read. Its retrieval is a primary-key lookup against precomputed bundles, never a search. | Request-time work is billed on every run forever; ingest-time work is amortised across all users. Moving work the wrong way across that line is the one change that breaks the cost model silently. |
 | N9 | Every color, font, radius and shadow comes from the `organic` DS tokens. Never hard-code a hex or a px the tokens carry. | The DS readme requires it. |
 | N10 | Every table carrying user data has RLS enabled with a policy keyed on the Clerk subject. Server-side scoping is not a substitute. | We test lightly (§11) — structural guarantees carry the load instead. |
 
@@ -211,12 +213,18 @@ app/
   api/                       webhooks only (Clerk)
 lib/
   domain/                    PURE. coverage · scoring · ats-rating · ordering · diff
+                             + the learning engine's pure half:
+                             resolve · severity · selection · plan · binding · guardrails
   ai/
     schemas/                 Zod — the LLM contract lives HERE, not in prompts
     prompts/                 versioned templates
     extract-profile.ts · analyze-jd.ts · tailor.ts · interview.ts
   catalog/
-    skills.ts · courses.ts · match.ts
+    skills.ts · courses.ts · match.ts · taxonomy.ts · quality.ts
+  learning/                  SERVER. the engine's I/O half:
+    bundles.ts               precomputed retrieval — a PK lookup, never a search
+    build-plan.ts            the S3→S7 request path. ONE model call.
+    validate.ts              OUT-1: every resource id resolves to a live row
   render/
     ats-rules.ts · pdf/ · docx/ · zip.ts
   supabase/
@@ -278,7 +286,10 @@ That's the standard.
 - Server Actions by default; route handlers only for webhooks and streaming.
 - Zod at every boundary. Types inferred from schemas, never written alongside them.
 - `prisma/schema.prisma` is the truth; migrations are generated (`prisma migrate dev`), never hand-authored — except the two CHECK constraints (N1/N2 have no Prisma schema equivalent), which are added by hand to the migration SQL once and never touched again. RLS policies live in `lib/db/policies.sql`, in the repo, applied by script (`pnpm db:policies`) — never clicked into the Supabase dashboard.
-- Fixed vocabulary — do not introduce synonyms: `MasterProfile`, `ExperienceBullet`, `Analysis`, `ResumeDraft`, `TailoredBullet`, `InterviewQuestion`, `QuestionAnswer`, `SkillGap`, `Course`.
+- Fixed vocabulary — do not introduce synonyms: `MasterProfile`, `ExperienceBullet`, `Analysis`, `ResumeDraft`, `TailoredBullet`, `InterviewQuestion`, `QuestionAnswer`, `SkillGap`, `Course`, `CourseSkill`, `SkillBundle`, `LearningPlan`, `LearningStep`, `UnresolvedTerm`, `CorpusGap`.
+  Note in particular: the learning engine's spec calls a catalogued thing a *resource*; in this repo
+  it is a **`Course`**. There is one table, not two — a parallel `Resource` model would be exactly
+  the synonym this rule exists to prevent.
 - Typed `Result<T, AppError>` in domain and AI layers. Exceptions only for genuinely exceptional states.
 
 ## 14. Working style

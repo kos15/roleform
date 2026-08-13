@@ -148,6 +148,10 @@ export function QuestionList({
             return (
               <Accordion.Item key={q.id} value={q.id} asChild>
                 <Card
+                  // Anchor target for the Learning tab's "the question it
+                  // answers" link (RLE spec §1). The proof-of-learning loop is
+                  // only worth binding if the user can actually walk it.
+                  id={`q-${q.id}`}
                   className={
                     isOpen ? "border-[var(--color-accent-200)] shadow-[var(--shadow-md)]" : undefined
                   }

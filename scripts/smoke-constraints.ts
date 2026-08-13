@@ -8,7 +8,10 @@
  *
  *   1. tailored_bullets with a null source_bullet_id            → N1
  *   2. a non-gap interview_question with empty evidence         → N2
- *   3. a cross-user SELECT under RLS                            → N10
+ *   3. a staged rewrite with no source bullet                    → OUT-2
+ *   4. a skill_gap with half a roadmap fallback                 → RLE §9
+ *   5. a severity outside 0–100                                 → RLE §5/§6
+ *   6. a cross-user SELECT under RLS                            → N10
  *
  * Guards 1 and 2 run against the database connection. Guard 3 MUST run through
  * an anon Supabase client, because the Prisma connection uses database
@@ -201,7 +204,103 @@ async function main() {
     ),
   );
 
-  /* ------------------------------------------ 4. N10 — RLS denies strangers */
+  /* ----------------- 3. OUT-2 — a staged rewrite needs a bullet to rewrite */
+
+  // This replaced the NOT NULL bindings on learning_steps (migration
+  // 20260813000000_bindings_nullable). Those guarded against a MISSING binding,
+  // which is merely unhelpful; this guards against a rewrite of a bullet the
+  // user never wrote, which is the product's entire promise (CLAUDE.md §3).
+  //
+  // guardrails.md OUT-2: "every staged bullet carries a source_span pointing
+  // into the stored resume. No span → rejected, no exceptions."
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "skill_gap staging a rewrite with no source bullet",
+        rule: "OUT-2",
+        statement: `${SEED_ANALYSIS}
+          insert into skills (id, name, category)
+            values ('00000000-0000-4000-8000-0000000000ac', 'SmokeSkill3', 'practice');
+          insert into skill_gaps
+            (clerk_user_id, analysis_id, skill_id, user_level, required_level, note,
+             unlocks_bullet_id, unlocks_bullet_draft)
+          values ('smoke-user', '00000000-0000-4000-8000-00000000cafe',
+                  '00000000-0000-4000-8000-0000000000ac', 'none', 'working', 'x',
+                  null, 'Once you have done this, that bullet becomes something better.')`,
+      },
+      "23514",
+    ),
+  );
+
+  /* ------------------------- 3b. RLE §10 — every step occupies real time */
+
+  // A step with no duration cannot be scheduled, and a knapsack that packed one
+  // would report a total the user's own arithmetic disagrees with.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "learning_step of zero minutes",
+        rule: "RLE §10",
+        statement: `insert into learning_steps
+          (clerk_user_id, plan_id, gap_id, course_id, ordinal, starts_at_min,
+           duration_min, unlocks_bullet_id, answers_question_id)
+          values ('smoke-user', gen_random_uuid(), gen_random_uuid(), gen_random_uuid(),
+                  0, 0, 0, null, null)`,
+      },
+      "23514",
+    ),
+  );
+
+  /* ------------------ 4. RLE §9 — a fallback is a link AND an explanation */
+
+  // Half a fallback renders a bare link with nothing saying why, which is the
+  // unexplained-link failure N8 exists to prevent.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "skill_gap with a fallback URL and no label",
+        rule: "RLE §9",
+        statement: `${SEED_ANALYSIS}
+          insert into skills (id, name, category)
+            values ('00000000-0000-4000-8000-0000000000aa', 'SmokeSkill', 'practice');
+          insert into skill_gaps
+            (clerk_user_id, analysis_id, skill_id, user_level, required_level, note,
+             fallback_url, fallback_label)
+          values ('smoke-user', '00000000-0000-4000-8000-00000000cafe',
+                  '00000000-0000-4000-8000-0000000000aa', 'none', 'working', 'x',
+                  'https://roadmap.sh/react', null)`,
+      },
+      "23514",
+    ),
+  );
+
+  /* ---------------- 5. RLE §5/§6 — severity is a percentage, or it is a bug */
+
+  // severity = importance × (1 − evidence) × 100, every input clamped 0–1 in
+  // lib/domain/severity.ts. A value outside the range means the pure function
+  // was bypassed, and this is the only layer that can notice.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "skill_gap with a severity above 100",
+        rule: "RLE §5",
+        statement: `${SEED_ANALYSIS}
+          insert into skills (id, name, category)
+            values ('00000000-0000-4000-8000-0000000000ab', 'SmokeSkill2', 'practice');
+          insert into skill_gaps
+            (clerk_user_id, analysis_id, skill_id, user_level, required_level, note, severity)
+          values ('smoke-user', '00000000-0000-4000-8000-00000000cafe',
+                  '00000000-0000-4000-8000-0000000000ab', 'none', 'working', 'x', 140.0)`,
+      },
+      "23514",
+    ),
+  );
+
+  /* ------------------------------------------ 6. N10 — RLS denies strangers */
   results.push(await rlsCheck());
 
   await sql.end();

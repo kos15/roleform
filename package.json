@@ -15,13 +15,15 @@
     "script": "tsx --tsconfig tsconfig.scripts.json",
     "db:policies": "pnpm script scripts/apply-policies.ts",
     "seed:catalog": "pnpm script scripts/seed-catalog.ts",
+    "bundles:rebuild": "pnpm script scripts/rebuild-bundles.ts",
     "grant:admin": "pnpm script scripts/grant-admin.ts",
     "check:constraints": "pnpm script scripts/smoke-constraints.ts",
     "check:coverage": "pnpm script scripts/coverage-fixtures.ts",
     "check:fabrication": "pnpm script scripts/fabrication-eval.ts",
     "check:roundtrip": "pnpm script scripts/docx-roundtrip.ts",
     "render:samples": "pnpm script scripts/render-samples.ts",
-    "check:links": "pnpm script scripts/link-check.ts"
+    "check:links": "pnpm script scripts/link-check.ts",
+    "check:corpus": "pnpm script scripts/corpus-health.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.20",

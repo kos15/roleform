@@ -32,7 +32,9 @@ datasource db {
   provider = "postgresql"
 }
 
-/* ------------------------------------------------------------------ enums */
+/**
+ * ------------------------------------------------------------------ enums
+ */
 
 enum ExtractionStatus {
   pending
@@ -160,6 +162,71 @@ enum CourseLevel {
   @@map("course_level")
 }
 
+/**
+ * ---------------------------------------------- learning engine (RLE spec)
+ */
+
+/// How fast material on a skill goes stale (RLE spec §7).
+///
+/// Drives the recency floor, which is a HARD drop rather than a penalty: a
+/// brilliant 2019 Kubernetes talk teaches a Kubernetes that no longer exists,
+/// and quality score is not allowed to argue with that.
+enum SkillVolatility {
+  low
+  medium
+  high
+
+  @@map("skill_volatility")
+}
+
+/// What a catalogued resource IS. Drives format fit in the selector (§7) and
+/// the shape of its entry point (§8): a video gets a timestamp, a doc gets a
+/// page, a repo gets a file path and the SHA it was verified at.
+enum ResourceType {
+  course
+  video
+  doc
+  repo
+  roadmap
+
+  @@map("resource_type")
+}
+
+/// Corpus health, per resource (guardrails.md OUT-7 and "Corpus guardrails").
+///
+/// `quarantined` exists so a failed ingest is recorded rather than silently
+/// dropped — silent drops make corpus coverage unknowable.
+enum ResourceStatus {
+  active
+  stale
+  dead
+  quarantined
+
+  @@map("resource_status")
+}
+
+/// Depth a resource teaches a skill to, and the depth a posting asks for
+/// (RLE spec §3). Deliberately three values, not five: the bundle key is
+/// (skill, level), and every extra value multiplies the precompute.
+enum SkillLevel {
+  intro
+  working
+  deep
+
+  @@map("skill_level")
+}
+
+/// The §6 evidence bucket, stored so the narrative and the meter cannot
+/// disagree. The synthesiser receives this label — never the freedom to pick
+/// one (guardrails.md OUT-5).
+enum EvidenceBucket {
+  strong
+  partial
+  none
+
+  @@map("evidence_bucket")
+}
+
 enum ExportFormat {
   pdf
   docx
@@ -209,7 +276,9 @@ enum MailDelivery {
   @@map("mail_delivery")
 }
 
-/* ------------------------------------------------------------------ users */
+/**
+ * ------------------------------------------------------------------ users
+ */
 
 /// clerkUserId is TEXT, not uuid — Clerk subjects are strings (§5.3).
 model User {
@@ -265,15 +334,15 @@ model User {
 /// Top-ups never expire. That is the only thing distinguishing them from a cap:
 /// unspent tokens survive the cycle turnover, which is what /pricing promises.
 model TokenGrant {
-  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clerkUserId String          @map("clerk_user_id")
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String           @map("clerk_user_id")
   tokens      Int
   source      TokenGrantSource
   /// Payment id, or `admin:<uuid>` for a hand grant. Unique, always.
-  reference   String          @unique
+  reference   String           @unique
   /// The admin who granted it. Null on a purchase — nobody granted that.
-  grantedBy   String?         @map("granted_by")
-  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  grantedBy   String?          @map("granted_by")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
 
   user User @relation(fields: [clerkUserId], references: [clerkUserId], onDelete: Cascade)
 
@@ -324,15 +393,15 @@ model ContactMessage {
   /// The mail to us. The row is written first and this is written after, so a
   /// send that fails loses nothing — the message is already filed and the
   /// inbox shows it as undelivered rather than pretending it arrived.
-  notification   MailDelivery @default(pending)
+  notification  MailDelivery @default(pending)
   /// The receipt to the sender. Tracked separately because the two fail for
   /// different reasons: ours is a provider problem, theirs is usually a typo
   /// in the address, and only one of those is worth chasing.
-  receipt        MailDelivery @default(pending)
-  notifiedAt     DateTime?    @map("notified_at") @db.Timestamptz
+  receipt       MailDelivery @default(pending)
+  notifiedAt    DateTime?    @map("notified_at") @db.Timestamptz
   /// The provider's own words, truncated. Never logged (N7) — it names the
   /// recipient, and this row is the only place that address belongs.
-  deliveryError  String?      @map("delivery_error")
+  deliveryError String?      @map("delivery_error")
 
   /// Answered, by whom. Both or neither — CHECKed in the migration, because a
   /// handled flag with nobody's name on it is a queue nobody owns.
@@ -344,7 +413,9 @@ model ContactMessage {
   @@map("contact_messages")
 }
 
-/* -------------------------------------------------------- source documents */
+/**
+ * -------------------------------------------------------- source documents
+ */
 
 model SourceDocument {
   id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -364,7 +435,9 @@ model SourceDocument {
   @@map("source_documents")
 }
 
-/* --------------------------------------------------------- master profiles */
+/**
+ * --------------------------------------------------------- master profiles
+ */
 
 model MasterProfile {
   id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -384,7 +457,9 @@ model MasterProfile {
   @@map("master_profiles")
 }
 
-/* ------------------------------------------------------- experience bullets */
+/**
+ * ------------------------------------------------------- experience bullets
+ */
 
 /// The evidence table. Written only by user action / reviewed import (N3).
 model ExperienceBullet {
@@ -409,13 +484,18 @@ model ExperienceBullet {
 
   profile         MasterProfile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   tailoredBullets TailoredBullet[]
+  /// Plans that stage a rewrite of this bullet (RLE §1). Restrict, like N1.
+  stagedGaps      SkillGap[]
+  learningSteps   LearningStep[]
 
   @@index([profileId], map: "experience_bullets_profile_idx")
   @@index([clerkUserId], map: "experience_bullets_user_idx")
   @@map("experience_bullets")
 }
 
-/* --------------------------------------------------------------- analyses */
+/**
+ * --------------------------------------------------------------- analyses
+ */
 
 model Analysis {
   id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -455,6 +535,7 @@ model Analysis {
   resumeDrafts       ResumeDraft[]
   interviewQuestions InterviewQuestion[]
   skillGaps          SkillGap[]
+  learningPlan       LearningPlan?
   exports            Export[]
 
   // F2: identical JD text reuses the prior analysis — no second charge.
@@ -463,7 +544,9 @@ model Analysis {
   @@map("analyses")
 }
 
-/* -------------------------------------------------------- jd requirements */
+/**
+ * -------------------------------------------------------- jd requirements
+ */
 
 model JdRequirement {
   id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -481,12 +564,15 @@ model JdRequirement {
   coverageItems      CoverageItem[]
   tailoredBullets    TailoredBullet[]
   interviewQuestions InterviewQuestion[]
+  skillGaps          SkillGap[]
 
   @@index([analysisId], map: "jd_requirements_analysis_idx")
   @@map("jd_requirements")
 }
 
-/* --------------------------------------------------------- coverage items */
+/**
+ * --------------------------------------------------------- coverage items
+ */
 
 model CoverageItem {
   id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -499,18 +585,20 @@ model CoverageItem {
 
   analysis    Analysis      @relation(fields: [analysisId], references: [id], onDelete: Cascade)
   requirement JdRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
-
-  @@index([analysisId], map: "coverage_items_analysis_idx")
-  @@map("coverage_items")
   // CHECK (status <> 'evidenced' OR cardinality(evidence_bullet_ids) > 0)
   // added by hand in the migration SQL — see the header comment.
   //
   // `cardinality`, NOT `array_length(x, 1)`: array_length returns NULL for an
   // empty array, so the original guard evaluated to NULL and a CHECK only
   // rejects on FALSE. It was inert from M1 until the repair migration.
+
+  @@index([analysisId], map: "coverage_items_analysis_idx")
+  @@map("coverage_items")
 }
 
-/* --------------------------------------------------------------- templates */
+/**
+ * --------------------------------------------------------------- templates
+ */
 
 /// Seeded reference data. Public read, no RLS.
 model Template {
@@ -526,7 +614,9 @@ model Template {
   @@map("templates")
 }
 
-/* ----------------------------------------------------------- resume drafts */
+/**
+ * ----------------------------------------------------------- resume drafts
+ */
 
 model ResumeDraft {
   id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -550,7 +640,9 @@ model ResumeDraft {
   @@map("resume_drafts")
 }
 
-/* --------------------------------------------------- tailored bullets (N1) */
+/**
+ * --------------------------------------------------- tailored bullets (N1)
+ */
 
 model TailoredBullet {
   id                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -574,7 +666,9 @@ model TailoredBullet {
   @@map("tailored_bullets")
 }
 
-/* ----------------------------------------------- interview questions (N2) */
+/**
+ * ----------------------------------------------- interview questions (N2)
+ */
 
 model InterviewQuestion {
   id                  String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -592,17 +686,22 @@ model InterviewQuestion {
   analysis          Analysis        @relation(fields: [analysisId], references: [id], onDelete: Cascade)
   sourceRequirement JdRequirement?  @relation(fields: [sourceRequirementId], references: [id], onDelete: SetNull)
   answer            QuestionAnswer?
-
-  @@index([analysisId], map: "interview_questions_analysis_idx")
-  @@map("interview_questions")
+  /// Gaps whose material makes this question answerable (RLE §1).
+  boundGaps         SkillGap[]
+  learningSteps     LearningStep[]
   // ★ FABRICATION GUARD #2 — CHECK (type = 'gap' OR cardinality(evidence_bullet_ids) > 0)
   // added by hand in the migration SQL — see the header comment. `cardinality`
   // rather than `array_length(x, 1)` for the reason spelled out on
   // CoverageItem: the latter is NULL on an empty array, and a NULL CHECK
   // passes. This guard did nothing at all until the repair migration.
+
+  @@index([analysisId], map: "interview_questions_analysis_idx")
+  @@map("interview_questions")
 }
 
-/* ------------------------------------------------- worked answers (F7.2) */
+/**
+ * ------------------------------------------------- worked answers (F7.2)
+ */
 
 /// A full worked answer for one question, drafted on demand by the mid tier.
 ///
@@ -639,24 +738,116 @@ model QuestionAnswer {
   @@map("question_answers")
 }
 
-/* ------------------------------------------------------------------ skills */
+/**
+ * ------------------------------------------------------------------ skills
+ */
 
-/// Canonical vocabulary. Public read.
+/// Canonical vocabulary, and the taxonomy spine of the learning engine.
+/// Public read.
+///
+/// RLE spec §0: "the roadmap.sh skill taxonomy is the join key that makes
+/// precomputation possible." `parentId` / `depth` / `roadmapPath` are what turn
+/// this from a flat alias table into that join key — they let the engine walk
+/// two hops to grade adjacent evidence (§6), weight leaf nodes above roots (§5),
+/// and fall back to a roadmap link when the corpus has nothing (§9).
+///
+/// `roadmapPath` is INGESTED, never fetched at request time. A third-party call
+/// in the request path adds latency, a failure mode and a rate limit to every
+/// run, for data that changes monthly at most (§4).
 model Skill {
-  id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name     String   @unique
-  category String
-  aliases  String[] @default([])
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String          @unique
+  category    String
+  aliases     String[]        @default([])
+  /// URL-safe, stable, derived from `name`. The public identifier for a node.
+  slug        String?         @unique
+  /// roadmap.sh slug this node is documented at, e.g. 'react'. Null where
+  /// roadmap.sh has no honest home for the topic — we would rather show no
+  /// fallback than a link that lands on something unrelated.
+  roadmapPath String?         @map("roadmap_path")
+  parentId    String?         @map("parent_id") @db.Uuid
+  /// 0 for a root. Derived from the parent chain by the seed script, never set
+  /// by hand — a hand-set depth that disagrees with `parentId` would silently
+  /// skew every importance score computed from it.
+  depth       Int             @default(0)
+  volatility  SkillVolatility @default(medium)
+
+  parent   Skill?  @relation("SkillTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Skill[] @relation("SkillTree")
 
   jdRequirements JdRequirement[]
   skillGaps      SkillGap[]
+  courseSkills   CourseSkill[]
+  bundles        SkillBundle[]
+  corpusGaps     CorpusGap[]
 
   @@index([name], map: "skills_name_idx")
+  @@index([parentId], map: "skills_parent_idx")
   @@map("skills")
 }
 
-/* -------------------------------------------------------------- skill gaps */
+/**
+ * ------------------------------------------------------------ corpus growth
+ */
 
+/// A term a real posting used that the resolver could not place (RLE spec §4,
+/// tier 4). Public-facing consequence: it is excluded from gap analysis, so the
+/// failure mode is a gap we don't mention, never a gap we invent.
+///
+/// This table is the taxonomy's growth mechanism. Ranked by `seenCount` it says
+/// exactly which alias or node to add next, derived from the market rather than
+/// from a curator guessing. Carries no user id and no analysis id: the term is
+/// public content, the pairing with a person is not.
+model UnresolvedTerm {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Normalised form — the deduplication key.
+  normalised  String   @unique
+  /// Surface form as the posting wrote it. Kept because an unresolved term is
+  /// only useful for corpus growth if we kept its wording.
+  term        String
+  seenCount   Int      @default(1) @map("seen_count")
+  firstSeenAt DateTime @default(now()) @map("first_seen_at") @db.Timestamptz
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at") @db.Timestamptz
+
+  @@index([seenCount(sort: Desc)], map: "unresolved_terms_demand_idx")
+  @@map("unresolved_terms")
+}
+
+/// A (skill, level) pair a real run needed and the corpus could not serve
+/// (RLE spec §9). Ranked by `count` this table IS the ingestion backlog.
+///
+/// The fallback path is a product feature, not a degradation: it tells us what
+/// to index next, ranked by demand we actually observed.
+model CorpusGap {
+  skillId    String     @map("skill_id") @db.Uuid
+  level      SkillLevel
+  count      Int        @default(1)
+  lastSeenAt DateTime   @default(now()) @map("last_seen_at") @db.Timestamptz
+
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([skillId, level])
+  @@index([count(sort: Desc)], map: "corpus_gaps_demand_idx")
+  @@map("corpus_gaps")
+}
+
+/**
+ * -------------------------------------------------------------- skill gaps
+ */
+
+/// One ranked gap. The unit the Learning tab renders and the plan is built from.
+///
+/// The RLE fields below were added onto this model rather than into a parallel
+/// `LearningGap`, because two tables both meaning "a thing this posting wants
+/// that your profile can't evidence" is exactly the synonym CLAUDE.md §13
+/// forbids — and every existing reader (admin counts, profile strength) would
+/// then be counting the wrong one.
+///
+/// `severity`, `importance` and `evidenceCredit` are stored, not recomputed on
+/// read: they are the output of a pure function over inputs that can change
+/// underneath them (the profile is editable), and a gap list that silently
+/// re-ranks when the user edits an unrelated bullet would make the plan they
+/// printed last week disagree with the plan on screen.
 model SkillGap {
   id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   clerkUserId   String        @map("clerk_user_id")
@@ -667,16 +858,186 @@ model SkillGap {
   mentionCount  Int           @default(1) @map("mention_count")
   note          String
 
-  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
-  skill    Skill    @relation(fields: [skillId], references: [id], onDelete: Restrict)
+  /**
+   * -------------------------------------------------- RLE spec §5/§6/§1
+   */
+
+  /// Rank in the plan. 0 is the gap most worth closing.
+  ordinal        Int            @default(0)
+  /// importance × (1 − evidence) × 100. Deterministic (lib/domain/severity.ts).
+  severity       Decimal        @default(0) @db.Decimal(5, 2)
+  /// w_section × w_modality × w_repetition × w_position × w_depth, clamped 0–1.
+  importance     Decimal        @default(0) @db.Decimal(4, 3)
+  /// The §6 credit, 0–1. Stored beside its bucket so the meter and the prose
+  /// are generated from the same number and cannot disagree (OUT-5).
+  evidenceCredit Decimal        @default(0) @map("evidence_credit") @db.Decimal(4, 3)
+  evidenceBucket EvidenceBucket @default(none) @map("evidence_bucket")
+  /// The depth the posting asks this skill to, in bundle terms.
+  targetLevel    SkillLevel     @default(working) @map("target_level")
+
+  /// The requirement this gap came from. Nullable only because a gap can
+  /// outlive a re-analysis; on write it is always set.
+  requirementId String? @map("requirement_id") @db.Uuid
+  /// The verbatim JD span `whyItMatters` is grounded in (OUT-4). Empty string
+  /// when the run degraded before synthesis.
+  jdQuote       String  @default("") @map("jd_quote")
+  /// One sentence from S6 connecting the skill to the day-to-day of the role.
+  whyItMatters  String  @default("") @map("why_it_matters")
+
+  /**
+   * --------------------------------- the proof-of-learning loop (§1)
+   */
+
+  /// The bullet that becomes truthfully rewritable once this gap is closed.
+  ///
+  /// onDelete: Restrict, exactly as N1 does for TailoredBullet: a bullet a plan
+  /// cites cannot be deleted without taking the plan's provenance with it. The
+  /// profile editor retires bullets rather than deleting them, so this restricts
+  /// nothing a user can actually do.
+  unlocksBulletId    String? @map("unlocks_bullet_id") @db.Uuid
+  /// The prospective rewrite. Never a claim the candidate can make today —
+  /// checked by guardrails.md OUT-2 before it is written (lib/domain/guardrails).
+  unlocksBulletDraft String? @map("unlocks_bullet_draft")
+  /// The interview question this gap's material lets them answer.
+  answersQuestionId  String? @map("answers_question_id") @db.Uuid
+
+  /**
+   * ------------------------------------------------ §9 corpus fallback
+   */
+
+  /// Set only when the bundle was empty. Mutually exclusive with having steps:
+  /// a gap either has vetted material or it has the roadmap, never both.
+  fallbackUrl   String? @map("fallback_url")
+  fallbackLabel String? @map("fallback_label")
+
+  analysis        Analysis           @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  skill           Skill              @relation(fields: [skillId], references: [id], onDelete: Restrict)
+  requirement     JdRequirement?     @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  unlocksBullet   ExperienceBullet?  @relation(fields: [unlocksBulletId], references: [id], onDelete: Restrict)
+  answersQuestion InterviewQuestion? @relation(fields: [answersQuestionId], references: [id], onDelete: SetNull)
+  steps           LearningStep[]
 
   @@index([analysisId], map: "skill_gaps_analysis_idx")
+  @@index([unlocksBulletId], map: "skill_gaps_unlocks_bullet_idx")
   @@map("skill_gaps")
 }
 
-/* ----------------------------------------------------------------- courses */
+/**
+ * --------------------------------------------------------- learning plans
+ */
+
+/// The run-level narrative and the budget it was solved against (RLE spec §10).
+///
+/// One row per analysis. It is the container for the SOLVED sequence, which is
+/// deterministic (lib/domain/plan.ts) — not for the model's output, which only
+/// fills `opening` and `sequenceNote`.
+///
+/// That split is what makes agent.md §7's degradation ladder work. When S6
+/// fails, the row is still written with both narrative fields empty: the user
+/// gets "gaps and resources, no narrative", which is level 2 and still
+/// genuinely useful, rather than losing a plan the knapsack had already solved.
+model LearningPlan {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId    String   @map("clerk_user_id")
+  analysisId     String   @unique @map("analysis_id") @db.Uuid
+  /// Two sentences: what already matches, then what the gaps are.
+  opening        String
+  /// Why the order is what it is. The order itself was solved, not written.
+  sequenceNote   String   @map("sequence_note")
+  /// The budget the knapsack was solved against, in minutes. Null when the
+  /// user set none and the plan is simply everything, in order.
+  budgetMin      Int?     @map("budget_min")
+  /// Total duration of the sequenced steps. Stored so the header can't drift
+  /// from the sum of what is rendered beneath it.
+  totalMin       Int      @default(0) @map("total_min")
+  /// How many gaps fell through to a roadmap link. The §9 metric, per run.
+  fallbackCount  Int      @default(0) @map("fallback_count")
+  /// Fraction of extracted terms the resolver placed. Below 0.90 the taxonomy
+  /// is drifting behind the market (§4) — recorded per run so the trend is
+  /// readable without re-running anything.
+  resolutionRate Decimal  @default(1) @map("resolution_rate") @db.Decimal(4, 3)
+  aiRunId        String?  @map("ai_run_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  analysis Analysis       @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  aiRun    AiRun?         @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+  steps    LearningStep[]
+
+  @@map("learning_plans")
+}
+
+/// One resource, bound to one gap, at one position in the sequence.
+///
+/// ── The precision bar, and where it actually lives ──────────────────────────
+/// RLE spec §1 says "a resource that cannot be bound to all three is not shown"
+/// — the gap it closes, the résumé bullet it unlocks, the interview question it
+/// answers. That was first built as two NOT NULL columns here.
+///
+/// Measured against a real profile, it withheld vetted material for 5 of 6 gaps.
+/// The corpus had good Kubernetes and GraphQL resources; the bar hid them
+/// because no bullet and no question happened to bind. That is a bad trade, and
+/// the reason is worth stating precisely: **the risk the bar was built to stop
+/// is a FALSE binding, not an absent one.** A card that says "here are two
+/// vetted Kubernetes resources" and claims nothing about the candidate's résumé
+/// makes no false claim at all. A card that claims the wrong bullet does.
+///
+/// So the bindings are nullable, and the guarantee moved to where the risk is:
+///
+///   · they are set ONLY by the deterministic binder (lib/domain/binding.ts),
+///     which returns null rather than something arbitrary — never by a model;
+///   · when present they are real foreign keys, which is what makes them
+///     checkable at all;
+///   · `SkillGap.unlocks_bullet_draft` carries a CHECK that it cannot exist
+///     without `unlocks_bullet_id`. THAT is the fabrication guard that matters:
+///     a staged rewrite with no source bullet is exactly the state guardrails.md
+///     OUT-2 forbids, and it is now unrepresentable.
+model LearningStep {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String @map("clerk_user_id")
+  planId      String @map("plan_id") @db.Uuid
+  gapId       String @map("gap_id") @db.Uuid
+  courseId    String @map("course_id") @db.Uuid
+
+  /// Position in the solved sequence, 0-based. Prerequisites come first.
+  ordinal     Int
+  /// Minutes elapsed in the plan before this step starts. Solved, not narrated.
+  startsAtMin Int @map("starts_at_min")
+  durationMin Int @map("duration_min")
+
+  /// The precise entry point, copied from CourseSkill at plan time so the plan
+  /// still reads correctly after a bundle rebuild moves it (§8).
+  entryLabel String? @map("entry_label")
+  entryUrl   String? @map("entry_url")
+  /// One sentence from S6 on why this entry point, given what they already
+  /// know. Built from the precomputed summary — S6 never saw chunk text (I2).
+  note       String  @default("")
+
+  /// Null when the binder found nothing honest to point at. Never a guess.
+  unlocksBulletId   String? @map("unlocks_bullet_id") @db.Uuid
+  answersQuestionId String? @map("answers_question_id") @db.Uuid
+
+  plan            LearningPlan       @relation(fields: [planId], references: [id], onDelete: Cascade)
+  gap             SkillGap           @relation(fields: [gapId], references: [id], onDelete: Cascade)
+  course          Course             @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  unlocksBullet   ExperienceBullet?  @relation(fields: [unlocksBulletId], references: [id], onDelete: Restrict)
+  answersQuestion InterviewQuestion? @relation(fields: [answersQuestionId], references: [id], onDelete: Cascade)
+
+  @@index([planId, ordinal], map: "learning_steps_plan_idx")
+  @@index([gapId], map: "learning_steps_gap_idx")
+  @@map("learning_steps")
+}
+
+/**
+ * ----------------------------------------------------------------- courses
+ */
 
 /// CURATED catalog (N8). Public read. Never model-generated.
+///
+/// This is also the learning engine's `resources` table. It is not a second
+/// one: CLAUDE.md §13 fixes `Course` as the vocabulary for "a vetted thing we
+/// can send someone to", and introducing `Resource` alongside it would be the
+/// synonym that rule exists to prevent. The RLE columns below are what the spec
+/// calls a resource row — type, author, quality, liveness — sitting on it.
 model Course {
   id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   provider      String
@@ -686,15 +1047,95 @@ model Course {
   lengthLabel   String      @map("length_label")
   level         CourseLevel
   mark          String
+  /// Denormalised skill ids, kept for the deterministic course matcher that
+  /// predates the engine (lib/catalog/match.ts). `CourseSkill` is the richer
+  /// join the engine reads — this stays because two readers want two shapes.
   skillIds      String[]    @default([]) @map("skill_ids") @db.Uuid
   isFree        Boolean     @map("is_free")
   lengthMinutes Int         @map("length_minutes")
   verifiedAt    DateTime    @map("verified_at") @db.Date
 
+  /**
+   * --------------------------------------------------- RLE spec §3, §7
+   */
+
+  type          ResourceType   @default(course)
+  /// Creator or channel. Drives the diversity rule — max two per author in one
+  /// bundle, so a single prolific creator cannot monopolise a skill.
+  author        String?
+  /// Publication date, where the source carries one. Feeds the recency floor.
+  publishedAt   DateTime?      @map("published_at") @db.Date
+  /// Computed at ingest from authority, recency and completeness. Never a model
+  /// judgement, and never hand-tuned to flatter a favourite (§3).
+  qualityScore  Decimal        @default(0.5) @map("quality_score") @db.Decimal(4, 3)
+  status        ResourceStatus @default(active)
+  /// Free-form tags the stack filter reads: 'typescript', 'python', 'v2'.
+  tags          String[]       @default([])
+  /// Bumped by the ingest run that last touched this row. Lets a bundle say
+  /// which corpus it was built from.
+  corpusVersion Int            @default(1) @map("corpus_version")
+
+  courseSkills CourseSkill[]
+  steps        LearningStep[]
+
+  @@index([status], map: "courses_status_idx")
   @@map("courses")
 }
 
-/* ----------------------------------------------------------------- exports */
+/// The join, built at ingest — RLE spec §3's `resource_skills`.
+///
+/// This is where the precision play lives (§8). `entryLabel` / `entryUrl` are
+/// the difference between "watch minutes 14:20–26:05 of this" and "watch this
+/// eight-hour course", and they are computed once at bundle-build time and
+/// stored, never derived at request time.
+///
+/// `summary` is the mechanism behind invariant I2: it is the ONLY chunk-derived
+/// text that ever reaches a user-facing model. Generated once at ingest, so the
+/// synthesiser gets meaning without ever receiving the content itself.
+model CourseSkill {
+  courseId   String     @map("course_id") @db.Uuid
+  skillId    String     @map("skill_id") @db.Uuid
+  level      SkillLevel
+  confidence Decimal    @default(1) @db.Decimal(4, 3)
+  isPrimary  Boolean    @default(false) @map("is_primary")
+  entryLabel String?    @map("entry_label")
+  entryUrl   String?    @map("entry_url")
+  summary    String?
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  skill  Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([courseId, skillId])
+  @@index([skillId, level, confidence(sort: Desc)], map: "course_skills_lookup_idx")
+  @@map("course_skills")
+}
+
+/// The precomputed answer cache — the reason request-time retrieval costs
+/// nothing (RLE spec §3, §7, rag-strategy.md §7).
+///
+/// One row per (skill, level). Built by `pnpm bundles:rebuild`, read by every
+/// user forever. If a change ever adds a search, an embedding call or a rerank
+/// to the request path, it violates invariant I1 and needs a written
+/// justification — not a patch.
+model SkillBundle {
+  skillId         String     @map("skill_id") @db.Uuid
+  level           SkillLevel
+  /// Top five, diversity-enforced, in rank order.
+  rankedCourseIds String[]   @default([]) @map("ranked_course_ids") @db.Uuid
+  /// { courseId: { entryLabel, entryUrl, summary } } — frozen at build time.
+  entryPoints     Json       @default("{}") @map("entry_points")
+  corpusVersion   Int        @default(1) @map("corpus_version")
+  refreshedAt     DateTime   @default(now()) @map("refreshed_at") @db.Timestamptz
+
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([skillId, level])
+  @@map("skill_bundles")
+}
+
+/**
+ * ----------------------------------------------------------------- exports
+ */
 
 model Export {
   id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -713,7 +1154,9 @@ model Export {
   @@map("exports")
 }
 
-/* ----------------------------------------------------------------- ai runs */
+/**
+ * ----------------------------------------------------------------- ai runs
+ */
 
 model AiRun {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -731,6 +1174,7 @@ model AiRun {
 
   tailoredBullets TailoredBullet[]
   questionAnswers QuestionAnswer[]
+  learningPlans   LearningPlan[]
 
   @@index([clerkUserId, createdAt], map: "ai_runs_user_created_idx")
   @@map("ai_runs")

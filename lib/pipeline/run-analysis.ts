@@ -3,11 +3,11 @@ import { db } from "@/lib/db";
 import { analyzeJd } from "@/lib/ai/analyze-jd";
 import { tailorBullet, tailorSummary, type TailoredResult } from "@/lib/ai/tailor";
 import { generateQuestions } from "@/lib/ai/interview";
-import { describeGaps } from "@/lib/ai/gaps";
+import { buildLearningPlan } from "@/lib/learning/build-plan";
 import { computeCoverage, scoreAnalysis } from "@/lib/domain/coverage";
 import { orderSkills, rankBullets } from "@/lib/domain/ordering";
 import { summariseChanges } from "@/lib/domain/diff";
-import { canonicalSkill, skillsIn } from "@/lib/catalog/skills";
+import { canonicalSkill } from "@/lib/catalog/skills";
 import { TEMPLATES, ratingFor, type TemplateDef } from "@/lib/render/templates";
 import { buildRenderModel, type RenderModel } from "@/lib/render/model";
 import { renderFitted } from "@/lib/render/pdf";
@@ -256,15 +256,31 @@ export async function runAnalysis(args: {
 
   let learningDegraded = false;
   try {
-    await writeGaps({
+    // The Learning Engine, S3–S7 (lib/learning/build-plan.ts). One large-model
+    // call; everything else is a pure function or a primary-key read against
+    // the precomputed bundles.
+    //
+    // It runs AFTER writeQuestions on purpose: the proof-of-learning loop binds
+    // every recommended resource to an interview question, and a question that
+    // doesn't exist yet cannot be bound to. When Prep degrades, gaps still get
+    // written — they just fall through to roadmap fallbacks rather than steps,
+    // which is the honest consequence rather than a silent one.
+    const learning = await buildLearningPlan({
       clerkUserId,
       analysisId,
       jobTitle: meta.title,
       requirements,
       coverage,
       bullets,
+      profileSkillNames,
       skillIdByName,
+      // No budget on the analysis run. The knapsack is pure and re-solvable in
+      // milliseconds, so the Learning tab re-plans against whatever budget the
+      // user picks without spending a token or touching the model (spec §10).
+      budgetMin: null,
+      rawJdText: analysis.rawText,
     });
+    learningDegraded = learning.narrativeDegraded;
   } catch (e) {
     learningDegraded = true;
     logStageFailure("learning", e);
@@ -303,7 +319,28 @@ async function fail(analysisId: string, message: string) {
 
 /** N7: log the stage and the error shape, never the document. */
 function logStageFailure(stage: string, e: unknown) {
-  console.error(`[pipeline] stage=${stage} error=${e instanceof Error ? e.name : "unknown"}`);
+  // The error NAME alone is not enough to act on. A stage that fails with
+  // "PrismaClientKnownRequestError" and nothing else costs a diagnostic cycle
+  // to find out which constraint rejected what — this line used to say exactly
+  // that, and it did.
+  //
+  // A Prisma error code and a constraint name are our own schema identifiers,
+  // never user content, so adding them keeps N7 intact while making the log
+  // answer the question you actually have when you read it.
+  const parts = [`stage=${stage}`, `error=${e instanceof Error ? e.name : "unknown"}`];
+
+  if (e && typeof e === "object") {
+    const record = e as Record<string, unknown>;
+    if ("code" in record) parts.push(`code=${String(record.code)}`);
+
+    const meta = record.meta;
+    if (meta && typeof meta === "object") {
+      const constraint = (meta as Record<string, unknown>).constraint;
+      if (typeof constraint === "string") parts.push(`constraint=${constraint}`);
+    }
+  }
+
+  console.error(`[pipeline] ${parts.join(" ")}`);
 }
 
 async function resolveSkillIds(names: string[]): Promise<Map<string, string>> {
@@ -484,68 +521,3 @@ async function writeQuestions(args: {
   if (rows.length > 0) await db.interviewQuestion.createMany({ data: rows });
 }
 
-async function writeGaps(args: {
-  clerkUserId: string;
-  analysisId: string;
-  jobTitle: string;
-  requirements: DomainRequirement[];
-  coverage: Array<{ requirementId: string; status: string }>;
-  bullets: DomainBullet[];
-  skillIdByName: Map<string, string>;
-}) {
-  const statusById = new Map(args.coverage.map((c) => [c.requirementId, c.status]));
-
-  // Gaps come from the PURE coverage pass, ordered by mention_count. The model
-  // never chooses what the user is missing.
-  const gapRequirements = args.requirements
-    .filter((r) => statusById.get(r.id) !== "evidenced")
-    .filter((r) => r.skillName && args.skillIdByName.has(r.skillName))
-    .sort((a, b) => b.mentionCount - a.mentionCount);
-
-  const seen = new Set<string>();
-  const unique = gapRequirements.filter((r) => {
-    if (seen.has(r.skillName!)) return false;
-    seen.add(r.skillName!);
-    return true;
-  });
-
-  // specs §13: fewer than 4 gaps shows what exists. Never pad the tab.
-  if (unique.length === 0) return;
-
-  const described = await describeGaps({
-    clerkUserId: args.clerkUserId,
-    analysisId: args.analysisId,
-    jobTitle: args.jobTitle,
-    gaps: unique.map((r) => ({
-      skillName: r.skillName!,
-      requirementText: r.text,
-      mentionCount: r.mentionCount,
-    })),
-    bullets: args.bullets,
-  });
-
-  const noteBySkill = new Map(
-    described.ok ? described.value.gaps.map((g) => [g.skillName, g]) : [],
-  );
-
-  const rows = unique.map((r) => {
-    const described = noteBySkill.get(r.skillName!);
-    return {
-      clerkUserId: args.clerkUserId,
-      analysisId: args.analysisId,
-      skillId: args.skillIdByName.get(r.skillName!)!,
-      userLevel: described?.userLevel ?? inferUserLevel(r.skillName!, args.bullets),
-      requiredLevel: described?.requiredLevel ?? ("working" as const),
-      mentionCount: r.mentionCount,
-      note: described?.note ?? `The posting asks for ${r.skillName}; your profile doesn't evidence it yet.`,
-    };
-  });
-
-  await db.skillGap.createMany({ data: rows });
-}
-
-/** Fallback when the gap-notes call fails — the tab still works without prose. */
-function inferUserLevel(skillName: string, bullets: DomainBullet[]): "none" | "exposure" {
-  const mentioned = bullets.some((b) => skillsIn(b.text).includes(skillName));
-  return mentioned ? "exposure" : "none";
-}
