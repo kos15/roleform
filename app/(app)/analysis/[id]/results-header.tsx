@@ -51,46 +51,48 @@ export function ResultsHeader({
         Analysis complete · {analysis.jdSource === "upload" ? (analysis.jdFilename ?? "uploaded file") : "pasted text"}
       </p>
 
-      <div className="mb-6 flex flex-wrap items-start gap-8">
-        <div className="flex items-center gap-5">
-          <svg width="120" height="120" viewBox="0 0 120 120" role="img" aria-label={`${analysis.score.toFixed(0)} percent of this posting's requirements are evidenced by your profile`}>
-            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--color-bg-sunken)" strokeWidth="12" />
-            <circle
-              cx="60"
-              cy="60"
-              r="52"
-              fill="none"
-              stroke="var(--color-accent-500)"
-              strokeWidth="12"
-              strokeLinecap="round"
-              strokeDasharray={scoreDash(analysis.score, CIRCUMFERENCE)}
-              transform="rotate(-90 60 60)"
-            />
-            <text
-              x="60"
-              y="57"
-              textAnchor="middle"
-              fontSize="28"
-              fontFamily="var(--font-heading)"
-              fill="var(--color-text)"
-            >
-              {analysis.score.toFixed(0)}
-            </text>
-            <text x="60" y="76" textAnchor="middle" fontSize="12" fill="var(--color-text-muted)">
-              match
-            </text>
-          </svg>
+      {/* One wrapping row, not a nested rigid one: the ring keeps its 120px and
+          the verdict takes a 280px basis, so on a phone the text drops to its
+          own line instead of squeezing the ring to a coin beside three-line
+          title. Matches the design's own `flex:none` / `min-width:280px`. */}
+      <div className="mb-6 flex flex-wrap items-center gap-6">
+        <svg width="120" height="120" viewBox="0 0 120 120" className="flex-none" role="img" aria-label={`${analysis.score.toFixed(0)} percent of this posting's requirements are evidenced by your profile`}>
+          <circle cx="60" cy="60" r="52" fill="none" stroke="var(--color-bg-sunken)" strokeWidth="12" />
+          <circle
+            cx="60"
+            cy="60"
+            r="52"
+            fill="none"
+            stroke="var(--color-accent-500)"
+            strokeWidth="12"
+            strokeLinecap="round"
+            strokeDasharray={scoreDash(analysis.score, CIRCUMFERENCE)}
+            transform="rotate(-90 60 60)"
+          />
+          <text
+            x="60"
+            y="57"
+            textAnchor="middle"
+            fontSize="28"
+            fontFamily="var(--font-heading)"
+            fill="var(--color-text)"
+          >
+            {analysis.score.toFixed(0)}
+          </text>
+          <text x="60" y="76" textAnchor="middle" fontSize="12" fill="var(--color-text-muted)">
+            match
+          </text>
+        </svg>
 
-          <div className="max-w-sm">
-            <h1 className="mb-1 text-3xl">{analysis.title ?? "This role"}</h1>
-            <p className="mb-3 text-[var(--color-text-muted)]">
-              {[analysis.company, analysis.location, analysis.seniority, analysis.employmentType]
-                .filter((v) => v && v !== "unstated")
-                .join(" · ")}
-            </p>
-            <p className="font-semibold">{analysis.scoreVerdict}</p>
-            <p className="text-[var(--color-text-muted)]">{analysis.scoreNote}</p>
-          </div>
+        <div className="min-w-[min(280px,100%)] flex-1">
+          <h1 className="mb-1 text-3xl">{analysis.title ?? "This role"}</h1>
+          <p className="mb-3 text-[var(--color-text-muted)]">
+            {[analysis.company, analysis.location, analysis.seniority, analysis.employmentType]
+              .filter((v) => v && v !== "unstated")
+              .join(" · ")}
+          </p>
+          <p className="font-semibold">{analysis.scoreVerdict}</p>
+          <p className="max-w-[56ch] text-[var(--color-text-muted)]">{analysis.scoreNote}</p>
         </div>
       </div>
 

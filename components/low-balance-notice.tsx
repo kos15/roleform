@@ -64,7 +64,11 @@ export function LowBalanceNotice({
         background: "var(--color-accent-100)",
       }}
     >
-      <p className="min-w-0 flex-1 text-sm leading-relaxed text-[var(--color-accent-800)]">
+      {/* Basis, not `flex-1`. With a zero basis the sentence shrinks instead of
+          wrapping the row, and on a phone it ends up a 70px column twelve lines
+          tall beside a button that refuses to shrink. 250px is the design's own
+          basis for this banner. */}
+      <p className="min-w-0 flex-[1_1_250px] text-sm leading-relaxed text-[var(--color-accent-800)]">
         <strong className="font-semibold">
           {empty
             ? "You're out of tokens for this cycle."

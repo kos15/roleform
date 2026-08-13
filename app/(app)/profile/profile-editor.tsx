@@ -612,11 +612,14 @@ function IdentitySection({
 
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[clamp(1.125rem,3vw,1.5rem)]">
-      <div className="mb-5 flex items-center gap-4">
+      {/* The design's identity row is avatar + text; ours carries a third
+          element, and without a basis on the text it was the text that gave way
+          — 130px of column beside a button that won't shrink. It wraps now. */}
+      <div className="mb-5 flex flex-wrap items-center gap-4">
         <span className="grid h-[60px] w-[60px] flex-none place-items-center rounded-[var(--radius-pill)] bg-[var(--color-sage-600)] font-[family-name:var(--font-heading)] text-[1.375rem] text-[var(--color-bg)]">
           {initialsOf(basics.name)}
         </span>
-        <div className="min-w-0">
+        <div className="min-w-[min(15rem,100%)] flex-1">
           <h3 className="mb-1">Identity &amp; contact</h3>
           <p className="text-xs text-[var(--color-text-muted)]">
             {sourceFilename ? `Parsed from ${sourceFilename}` : "Entered by hand"} · {bulletCount}{" "}

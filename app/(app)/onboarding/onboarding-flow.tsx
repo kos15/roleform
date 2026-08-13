@@ -136,7 +136,9 @@ export function OnboardingFlow() {
         </div>
         We show you what we read, next to what you uploaded. Nothing enters your profile until
         you confirm it.
-        <div className="mt-3 flex gap-2">
+        {/* Two pills of `nowrap` text: without wrapping they push the whole
+            onboarding page into a sideways scroll on any phone. */}
+        <div className="mt-3 flex flex-wrap gap-2">
           <Tag tone="muted">No training on your documents</Tag>
           <Tag tone="muted">Delete removes the file too</Tag>
         </div>
