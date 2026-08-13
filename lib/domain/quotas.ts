@@ -16,6 +16,7 @@
  * bring back exactly the generic refusal F15 was built to remove.
  */
 
+import { UNCAPPED } from "./entitlements";
 import { formatTokens } from "./tokens";
 
 export type QuotaKey = "tokens" | "analyses" | "resumes" | "answers" | "courses";
@@ -71,9 +72,9 @@ export const QUOTAS: QuotaDefinition[] = [
     period: "analysis",
     step: 1,
     min: 0,
-    max: 6,
+    max: 11,
     description:
-      "How many of the six templates render on each run. Below six we render the highest-ATS ones first.",
+      "How many of the eleven templates render on each run. Below eleven we render the highest-ATS ones first.",
   },
   {
     key: "answers",
@@ -122,6 +123,9 @@ export function clampCap(key: QuotaKey, value: number): number {
  * and print it in full.
  */
 export function displayCap(key: QuotaKey, value: number): string {
+  // An admin's ceiling is not a number (lib/domain/entitlements.ts), and
+  // formatting Infinity as "∞" or "1.8e308" are both worse than the word.
+  if (value === UNCAPPED) return "Unlimited";
   if (value === 0) return "Off";
   if (!QUOTA_BY_KEY[key].abbreviate) return String(value);
   return formatTokens(value);

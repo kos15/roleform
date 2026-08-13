@@ -8,6 +8,7 @@ import { computeCoverage, scoreAnalysis } from "@/lib/domain/coverage";
 import { orderSkills, rankBullets } from "@/lib/domain/ordering";
 import { summariseChanges } from "@/lib/domain/diff";
 import { canonicalSkill } from "@/lib/catalog/skills";
+import { isUncapped } from "@/lib/domain/entitlements";
 import { TEMPLATES, ratingFor, type TemplateDef } from "@/lib/render/templates";
 import { buildRenderModel, type RenderModel } from "@/lib/render/model";
 import { renderFitted } from "@/lib/render/pdf";
@@ -52,10 +53,15 @@ export async function runAnalysis(args: {
   // Read once, at the top: the caps that apply are the ones in force when the
   // run started. An admin lowering a cap mid-run does not truncate a run that
   // is already paying for itself (F15).
-  const caps = (await db.user.findUnique({
+  const account = (await db.user.findUnique({
     where: { clerkUserId },
-    select: { capResumes: true },
-  })) ?? { capResumes: TEMPLATES.length };
+    select: { capResumes: true, role: true },
+  })) ?? { capResumes: TEMPLATES.length, role: "member" as const };
+
+  // Admins render every template (lib/domain/entitlements.ts). `templatesFor`
+  // takes a count rather than Infinity, because it slices an array — so the
+  // uncapped value here is the only honest finite number: all of them.
+  const capResumes = isUncapped(account.role) ? TEMPLATES.length : account.capResumes;
 
   // specs §13: a profile with zero bullets blocks analysis. The tool has
   // nothing to work from, and saying so beats inventing something.
@@ -212,7 +218,7 @@ export async function runAnalysis(args: {
 
     await writeDrafts({
       clerkUserId,
-      capResumes: caps.capResumes,
+      capResumes,
       analysisId,
       resume,
       requirements,

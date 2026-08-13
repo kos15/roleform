@@ -6,8 +6,14 @@ import { bindBullet, bindQuestion } from "@/lib/domain/binding";
 import { PROTECTED_NOTICE, scanForInjection, scanProtected } from "@/lib/domain/guardrails";
 import { solvePlan, type PlannableStep } from "@/lib/domain/plan";
 import { resolveTerms, resolutionRate } from "@/lib/domain/resolve";
-import { fallbackFor, selectResources, type BundledResource } from "@/lib/domain/selection";
+import {
+  fallbackFor,
+  selectResources,
+  MAX_RESOURCES_PER_GAP,
+  type BundledResource,
+} from "@/lib/domain/selection";
 import { MAX_GAPS, rankGaps, type ScoredGap } from "@/lib/domain/severity";
+import { isUncapped } from "@/lib/domain/entitlements";
 import { synthesisePlan, type SynthesisGap } from "@/lib/ai/synthesise-plan";
 import type {
   DomainBullet,
@@ -162,6 +168,22 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
     })),
   );
 
+  // The per-gap course cap (F15). It bounds the LIST, never the gap itself: a
+  // gap is shown whether or not it has material beside it, at any cap including
+  // zero — that is the promise the admin panel makes.
+  //
+  // This read was lost when the tab was rebuilt as the learning engine, so the
+  // cap was being written at provisioning and never consulted. Admins are
+  // uncapped, which here means the engine's own ceiling of three per gap.
+  const account = await db.user.findUnique({
+    where: { clerkUserId: args.clerkUserId },
+    select: { capCourses: true, role: true },
+  });
+  const perGap =
+    !account || isUncapped(account.role)
+      ? MAX_RESOURCES_PER_GAP
+      : Math.min(MAX_RESOURCES_PER_GAP, account.capCourses);
+
   const questions = await db.interviewQuestion.findMany({
     where: { clerkUserId: args.clerkUserId, analysisId: args.analysisId },
     select: { id: true, text: true, type: true, sourceRequirementId: true },
@@ -192,12 +214,16 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
     const node = nodeFor(gap.skillName);
 
     const bundle = bundles.get(key(skillId, level)) ?? [];
-    const selected = selectResources(bundle, {
-      severity: gap.severity,
-      volatility: node?.volatility ?? "medium",
-      profileSkillNames: args.profileSkillNames,
-      minutesAvailable: args.budgetMin,
-    });
+    const selected = selectResources(
+      bundle,
+      {
+        severity: gap.severity,
+        volatility: node?.volatility ?? "medium",
+        profileSkillNames: args.profileSkillNames,
+        minutesAvailable: args.budgetMin,
+      },
+      perGap,
+    );
 
     // ★ The proof-of-learning loop (spec §1) — offered, not gated on.
     //

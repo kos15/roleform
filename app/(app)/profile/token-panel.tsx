@@ -11,6 +11,7 @@ import {
   formatResetIn,
 } from "@/lib/domain/tokens";
 import { planById } from "@/lib/content/pricing";
+import { isUncapped } from "@/lib/domain/entitlements";
 import { Tag } from "@/components/ui";
 
 /**
@@ -32,9 +33,16 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
   const { balance } = account;
   const user = await db.user.findUnique({
     where: { clerkUserId },
-    select: { plan: true, quotaResetsAt: true },
+    select: { plan: true, quotaResetsAt: true, role: true },
   });
   const plan = planById(user?.plan ?? "free");
+
+  // An uncapped account has a usage number and no ceiling, so every reading
+  // built from `total` — "left of", the bar, "runs left at today's rate" — is
+  // measuring against a limit that will not be enforced. Showing the drawn
+  // figure alone is the honest version, and it is still the number that
+  // matters: uncapped is not unmeasured (lib/domain/entitlements.ts).
+  const uncapped = isUncapped(user?.role ?? "member");
 
   // What each analysis in this cycle actually cost. Grouped in the database:
   // one row per analysis rather than one query per analysis.
@@ -75,38 +83,58 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
         <div>
           <p className="card-kicker mb-2">Token allowance</p>
           <h3 className="mb-1">
-            {formatCount(balance.left)} left of {formatCount(balance.total)}
+            {uncapped
+              ? `${formatCount(balance.used)} drawn this cycle`
+              : `${formatCount(balance.left)} left of ${formatCount(balance.total)}`}
           </h3>
           <p className="text-sm text-[var(--color-text-muted)]">
-            {plan.name} · resets {formatResetDate(account.resetsAt)},{" "}
-            {formatResetIn(account.resetsAt)} · about {balance.runsLeft}{" "}
-            {balance.runsLeft === 1 ? "run" : "runs"} at today&rsquo;s rate
+            {uncapped ? (
+              <>
+                Admin · no allowance ceiling · still measured on every run, and counted in the
+                workspace totals
+              </>
+            ) : (
+              <>
+                {plan.name} · resets {formatResetDate(account.resetsAt)},{" "}
+                {formatResetIn(account.resetsAt)} · about {balance.runsLeft}{" "}
+                {balance.runsLeft === 1 ? "run" : "runs"} at today&rsquo;s rate
+              </>
+            )}
           </p>
         </div>
-        {balance.low ? (
+        {uncapped ? (
+          <Tag tone="sage">Unlimited</Tag>
+        ) : balance.low ? (
           <Tag tone="accent">{balance.empty ? "Not enough for a run" : "Running low"}</Tag>
         ) : (
           <Tag tone="sage">Healthy</Tag>
         )}
       </div>
 
-      <div
-        className="mb-2 flex h-2.5 overflow-hidden rounded-[var(--radius-pill)]"
-        style={{ background: "var(--color-bg-sunken)" }}
-      >
-        <span
-          style={{
-            width: `${((balance.used / (balance.total || 1)) * 100).toFixed(1)}%`,
-            background: balance.low ? "var(--color-accent-500)" : "var(--color-sage-500)",
-          }}
-        />
-      </div>
-      <p className="mb-6 text-xs text-[var(--color-text-muted)]">
-        {formatCount(balance.used)} drawn this cycle
-        {balance.topups > 0
-          ? ` · ${formatCount(balance.topups)} of that allowance is unspent top-up, which carries over`
-          : ""}
-      </p>
+      {/* No bar without a ceiling — a progress bar against a limit nothing
+          enforces is a picture of a number that means nothing. */}
+      {uncapped ? null : (
+        <>
+          <div
+            className="mb-2 flex h-2.5 overflow-hidden rounded-[var(--radius-pill)]"
+            style={{ background: "var(--color-bg-sunken)" }}
+          >
+            <span
+              style={{
+                width: `${((balance.used / (balance.total || 1)) * 100).toFixed(1)}%`,
+                background: balance.low ? "var(--color-accent-500)" : "var(--color-sage-500)",
+              }}
+            />
+          </div>
+          <p className="mb-6 text-xs text-[var(--color-text-muted)]">
+            {formatCount(balance.used)} drawn this cycle
+            {balance.topups > 0
+              ? ` · ${formatCount(balance.topups)} of that allowance is unspent top-up, which carries over`
+              : ""}
+          </p>
+        </>
+      )}
+      {uncapped ? <div className="mb-6" /> : null}
 
       <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(17rem,100%),1fr))]">
         <div>

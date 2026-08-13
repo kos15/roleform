@@ -184,6 +184,19 @@ export function AdminPanel({ members }: { members: Member[] }) {
             </div>
           </div>
 
+          {/* The caps below stay editable for an admin — the role can be
+              removed in Clerk, and the stored numbers are what they fall back
+              to when it is. But while the role is held, none of them bind, and
+              a panel that showed a ceiling nothing enforces would be the same
+              lie as a progress bar with no limit behind it. */}
+          {selected.role === "admin" ? (
+            <p className="mb-4 rounded-[var(--radius-md)] bg-[var(--color-accent-100)] px-3.5 py-2.5 text-xs leading-relaxed text-[var(--color-accent-800)]">
+              This member holds the admin role, so none of these caps are enforced — every run is
+              still measured and still counted in the workspace totals. The values below are what
+              they return to if the role is removed in Clerk.
+            </p>
+          ) : null}
+
           <div className="flex flex-col gap-4">
             {QUOTAS.map((quota) => {
               const value = draft.caps[quota.key];

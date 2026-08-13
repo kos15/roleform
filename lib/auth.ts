@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { listAdmins } from "@/lib/admin/members";
 import { workspaceDefaults } from "@/lib/admin/defaults";
 import { cycleStart } from "@/lib/domain/quotas";
+import { UNCAPPED, isUncapped, withinCap } from "@/lib/domain/entitlements";
 import { accountTokens } from "@/lib/db/queries/tokens";
 import {
   SPEND,
@@ -91,6 +92,15 @@ export async function checkTokenAllowance(
   clerkUserId: string,
   kind: SpendKind,
 ): Promise<Result<null>> {
+  // Admins are uncapped (lib/domain/entitlements.ts). Checked before the
+  // balance is read, because the balance is an aggregate over `ai_runs` and
+  // there is no point paying for a number nothing is going to compare against.
+  //
+  // The run still writes its `ai_runs` rows, so the spend remains visible in
+  // the dashboard and the ledger — uncapped, not unmeasured.
+  const row = await db.user.findUnique({ where: { clerkUserId }, select: { role: true } });
+  if (row && isUncapped(row.role)) return ok(null);
+
   const account = await accountTokens(clerkUserId);
   if (!account) return err(appError("not_found", "We couldn't find your account."));
 
@@ -188,7 +198,7 @@ export async function checkAnalysisAllowance(
 ): Promise<Result<{ used: number; cap: number }>> {
   let row = await db.user.findUnique({
     where: { clerkUserId },
-    select: { capAnalyses: true, suspended: true, quotaResetsAt: true },
+    select: { capAnalyses: true, suspended: true, quotaResetsAt: true, role: true },
   });
 
   // A signed-in subject with no row means the webhook hasn't landed. Provision
@@ -197,7 +207,7 @@ export async function checkAnalysisAllowance(
     await provisionUser(clerkUserId);
     row = await db.user.findUnique({
       where: { clerkUserId },
-      select: { capAnalyses: true, suspended: true, quotaResetsAt: true },
+      select: { capAnalyses: true, suspended: true, quotaResetsAt: true, role: true },
     });
   }
 
@@ -216,7 +226,9 @@ export async function checkAnalysisAllowance(
     where: { clerkUserId, createdAt: { gte: cycleStart(row.quotaResetsAt) } },
   });
 
-  if (used >= row.capAnalyses) {
+  // Suspension is checked above and is NOT bypassed for an uncapped account:
+  // it is a deliberate block, not a ceiling (lib/domain/entitlements.ts).
+  if (!withinCap(row.role, row.capAnalyses, used)) {
     return err(
       appError(
         "quota_exhausted",
@@ -227,7 +239,7 @@ export async function checkAnalysisAllowance(
     );
   }
 
-  return ok({ used, cap: row.capAnalyses });
+  return ok({ used, cap: isUncapped(row.role) ? UNCAPPED : row.capAnalyses });
 }
 
 /**
@@ -243,7 +255,7 @@ export async function checkAnswerAllowance(
 ): Promise<Result<{ used: number; cap: number }>> {
   const row = await db.user.findUnique({
     where: { clerkUserId },
-    select: { capAnswers: true, suspended: true, quotaResetsAt: true },
+    select: { capAnswers: true, suspended: true, quotaResetsAt: true, role: true },
   });
   if (!row) return err(appError("not_found", "We couldn't find your account."));
 
@@ -260,7 +272,7 @@ export async function checkAnswerAllowance(
     where: { clerkUserId, createdAt: { gte: cycleStart(row.quotaResetsAt) } },
   });
 
-  if (used >= row.capAnswers) {
+  if (!withinCap(row.role, row.capAnswers, used)) {
     return err(
       appError(
         "quota_exhausted",
@@ -271,7 +283,7 @@ export async function checkAnswerAllowance(
     );
   }
 
-  return ok({ used, cap: row.capAnswers });
+  return ok({ used, cap: isUncapped(row.role) ? UNCAPPED : row.capAnswers });
 }
 
 /**

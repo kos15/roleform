@@ -48,6 +48,8 @@ export type TemplateLayout =
   | "meter";
 export type AtsRating = "High" | "Medium" | "Low";
 export type Transform = "verbatim" | "rephrase" | "requantify" | "omit";
+/** Mirrored from Clerk's publicMetadata; see lib/admin/role.ts. */
+export type Role = "member" | "admin";
 
 export interface DomainRequirement {
   id: string;
