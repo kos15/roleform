@@ -234,7 +234,7 @@ export async function workspaceStats(): Promise<WorkspaceStat[]> {
       label: "Résumés rendered",
       value: resumes,
       of: null,
-      sub: "across six templates",
+      sub: "across eleven templates",
     },
     {
       label: "Answers drafted",

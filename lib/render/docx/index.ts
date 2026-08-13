@@ -255,10 +255,21 @@ export async function renderDocx(model: RenderModel, templateId: string): Promis
   const template = templateById(templateId);
   if (!template) throw new Error(`unknown template: ${templateId}`);
 
-  const children =
-    template.kind === "classic"
-      ? singleColumnBody(model)
-      : twoColumnBody(model, template.id === "margin-note");
+  // ★ The structural flag is the dispatch, not the family name.
+  //
+  // `singleColumnBody` is the flag the ATS badge is computed from (N5). Driving
+  // the DOCX off the same flag means the document literally has the structure
+  // its badge claims — a template rated Medium *for* being two-column cannot
+  // quietly export as one column, and a High template cannot quietly export as
+  // a table. Adding a family can no longer desynchronise the two, because
+  // there is nothing family-shaped left to forget to update.
+  //
+  // Which side the rail sits on is a layout detail; only Margin Note puts it
+  // right, and the timeline and hanging layouts put their narrow column left
+  // like everything else.
+  const children = template.structuralFlags.singleColumnBody
+    ? singleColumnBody(model)
+    : twoColumnBody(model, template.rail === "right");
 
   const doc = new Document({
     creator: model.name,

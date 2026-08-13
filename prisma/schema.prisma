@@ -97,10 +97,17 @@ enum CoverageStatus {
   @@map("coverage_status")
 }
 
+/// Eight families since v2.7. The five added then are not recolours — each is a
+/// different construction with its own honest ATS rating and its own reason.
 enum TemplateKind {
   classic
   sidebar
   creative
+  banner
+  timeline
+  modular
+  editorial
+  infographic
 
   @@map("template_kind")
 }
@@ -301,7 +308,7 @@ model User {
   /// 0 means off, and "off" is a legitimate setting — hence the >= 0 CHECKs
   /// added by hand in the migration rather than a nullable column.
   capAnalyses Int @default(40) @map("cap_analyses") // per cycle
-  capResumes  Int @default(6) @map("cap_resumes") // per analysis, of six templates
+  capResumes  Int @default(11) @map("cap_resumes") // per analysis, of eleven templates
   capAnswers  Int @default(40) @map("cap_answers") // per cycle
   capCourses  Int @default(4) @map("cap_courses") // per gap
 
@@ -369,7 +376,7 @@ model WorkspaceSettings {
 
   capTokens   Int @default(60000) @map("cap_tokens")
   capAnalyses Int @default(40) @map("cap_analyses")
-  capResumes  Int @default(6) @map("cap_resumes")
+  capResumes  Int @default(11) @map("cap_resumes")
   capAnswers  Int @default(40) @map("cap_answers")
   capCourses  Int @default(4) @map("cap_courses")
 

@@ -96,6 +96,11 @@ export default async function PreviewPage({
               was computed from (N5) — never a hand-written justification, which
               would be free to drift away from the badge beside it. */}
           <div className="mt-3 text-xs text-[var(--color-text-muted)]">
+            {/* The sentence version, in the template's own terms. It cannot
+                contradict the list below it: `assertTemplates()` checks the
+                violation count it claims against the flags, and the seed script
+                refuses to write a template where the two disagree. */}
+            <p className="mb-2">{template.atsWhy}</p>
             {violations.length === 0 ? (
               <p>All five structural rules met, so it rates High.</p>
             ) : (

@@ -15,9 +15,9 @@ import type { DomainBullet, DomainRequirement, Result, Transform } from "@/lib/d
  * substitute for it.
  *
  * Cost decision: each bullet is tailored ONCE against its best-matching
- * requirement, and all six drafts reuse that tailored set with different
- * ordering and omission. Six independent rewrites of the same bullet would
- * multiply spend by six and produce six subtly different versions of one fact —
+ * requirement, and all eleven drafts reuse that tailored set with different
+ * ordering and omission. Eleven independent rewrites of the same bullet would
+ * multiply spend by eleven and produce eleven subtly different versions of one fact —
  * which is exactly the drift the spine exists to prevent.
  *
  * Three layers stand between the model and the database:

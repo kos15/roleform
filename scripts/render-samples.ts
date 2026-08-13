@@ -1,5 +1,5 @@
 /**
- * Renders all six templates to PDF and DOCX from a fixed model, into
+ * Renders all eleven templates to PDF and DOCX from a fixed model, into
  * `.samples/`. No database, no API keys, no auth.
  *
  * This is the "verify at each seam by looking" step (CLAUDE.md §14): render the
@@ -14,7 +14,8 @@ import { join } from "node:path";
 import { renderPdf } from "../lib/render/pdf";
 import { renderDocx } from "../lib/render/docx";
 import { TEMPLATES } from "../lib/render/templates";
-import { rateAts } from "../lib/render/ats-rules";
+import { atsViolations, rateAts } from "../lib/render/ats-rules";
+import { assertTemplates } from "../lib/render/templates";
 import type { RenderModel } from "../lib/render/model";
 
 const MODEL: RenderModel = {
@@ -86,6 +87,14 @@ async function main() {
   const outDir = join(process.cwd(), ".samples");
   mkdirSync(outDir, { recursive: true });
 
+  // The prose beside a badge has to agree with the flags behind it.
+  const problems = assertTemplates();
+  if (problems.length > 0) {
+    console.error("Template definitions are inconsistent:");
+    for (const problem of problems) console.error(`  - ${problem}`);
+    process.exit(1);
+  }
+
   for (const template of TEMPLATES) {
     const startedPdf = Date.now();
     const pdf = await renderPdf(MODEL, template.id);
@@ -99,7 +108,8 @@ async function main() {
     writeFileSync(join(outDir, `${template.id}.docx`), docx);
 
     console.log(
-      `${template.name.padEnd(14)} ATS ${rateAts(template.structuralFlags).padEnd(6)} ` +
+      `${template.name.padEnd(14)} ${template.layout.padEnd(9)} ATS ${rateAts(template.structuralFlags).padEnd(6)} ` +
+        `${atsViolations(template.structuralFlags).length}v  ` +
         `pdf ${String(pdfMs).padStart(4)}ms ${(pdf.byteLength / 1024).toFixed(0).padStart(4)}kB  ` +
         `docx ${String(docxMs).padStart(4)}ms ${(docx.byteLength / 1024).toFixed(0).padStart(4)}kB`,
     );
@@ -108,7 +118,7 @@ async function main() {
   console.log(`\nWritten to ${outDir}`);
   console.log(
     "Open each PDF, select all, and confirm every character highlights (M6.8).\n" +
-      "Then print all six on paper — that is the artifact a human actually judges.",
+      "Then print all eleven on paper — that is the artifact a human actually judges.",
   );
 }
 

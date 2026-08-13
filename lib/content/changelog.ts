@@ -18,6 +18,26 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: "2.7",
+    date: "13 August 2026",
+    kind: "Feature",
+    items: [
+      "Five new templates — Keystone, Throughline, Blueprint, Marque and Beacon — none of them a recolour of an existing one. Eleven in total.",
+      "Each new layout carries its own honest ATS rating and the reason behind it, same as the first six. Keystone is the interesting one: it is the most designed template in the set and still rates High, because its masthead is decoration and every fact in it is repeated as body text underneath.",
+      "Beacon draws proficiency bars and writes the level in words beside them. The bars still cost it a rating — a length is not something a parser can read — but you do not lose the content as well.",
+    ],
+  },
+  {
+    version: "2.6",
+    date: "12 August 2026",
+    kind: "Feature",
+    items: [
+      "The Learning tab is now a ranked, time-budgeted plan rather than a list of courses. Every resource is shown with the gap it closes, and — where we can honestly tie one — the résumé bullet it unlocks and the interview question it answers.",
+      "Gap ranking, skill resolution and scheduling are deterministic: the same profile against the same posting produces the same plan twice.",
+      "Where the catalog has nothing vetted for a skill, you get the roadmap for it and we log what was missing. That list is how we decide what to add next.",
+    ],
+  },
+  {
     version: "2.4",
     date: "30 July 2026",
     kind: "Feature",

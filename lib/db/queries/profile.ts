@@ -43,7 +43,7 @@ export async function getBullets(clerkUserId: string, profileId: string) {
  * line has a source. This is what makes the profile's "never used as evidence"
  * label worth reading: it is a measurement, not an encouragement.
  *
- * **Counted per ANALYSIS, not per row.** One run renders the bullet into six
+ * **Counted per ANALYSIS, not per row.** One run renders the bullet into eleven
  * templates, so a naive row count says "used 6×" for a bullet used once, and
  * the number climbs six at a time for work the person did once. The label says
  * "used as evidence N×"; N has to be the number of postings it answered.

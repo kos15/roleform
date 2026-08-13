@@ -143,7 +143,7 @@ function makeStyles(d: Density, serif = false) {
       justifyContent: "center",
       marginTop: 6 * g,
     },
-    contactItem: { fontSize: 8.8 * f, lineHeight: 1.3, color: QUIET, marginHorizontal: 6 },
+    contactItem: { fontSize: 8.8 * f, lineHeight: 1.3, color: QUIET, marginRight: 12 },
     /** 2pt in the template's accent — the classic family's one graphic move. */
     headerRule: { borderBottomWidth: 2, marginTop: 10 * g },
 
@@ -279,10 +279,129 @@ function makeStyles(d: Density, serif = false) {
     asideText: { fontSize: 8.6 * f, lineHeight: 1.45 },
     asideItem: { marginBottom: 6 * g },
     listItem: { marginBottom: 1.5 * g },
+
+    /* ── banner (Keystone) ──────────────────────────────────────────────────
+       A masthead that is decoration ONLY. Everything it shows is repeated as
+       body text below it, which is why the template still rates High: the band
+       carries no information the parser would lose by ignoring it. */
+    mast: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 14 * g,
+      paddingVertical: 16 * g,
+      paddingHorizontal: 18 * g,
+      marginBottom: 16 * g,
+      borderRadius: 4,
+    },
+    monogram: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    monogramText: { fontSize: 15 * f, lineHeight: 1.1, fontFamily: BOLD, color: PAPER },
+    mastName: { fontSize: 19 * f, lineHeight: 1.15, fontFamily: BOLD, color: PAPER },
+    mastHeadline: { fontSize: 9 * f, lineHeight: 1.35, color: "rgba(255,255,255,0.9)", marginTop: 2 * g },
+
+    /* ── timeline (Throughline) ─────────────────────────────────────────────
+       A dated left column against a ruled spine. The spine is a border, not a
+       table, but the dates genuinely sit in their own column — which is the one
+       violation the badge reports. */
+    timelineRow: { flexDirection: "row", marginBottom: 9 * g },
+    timelineDates: {
+      width: "22%",
+      paddingRight: 10 * g,
+      fontSize: 8.2 * f,
+      lineHeight: 1.4,
+      color: QUIET,
+      textAlign: "right",
+    },
+    timelineBody: { flex: 1, paddingLeft: 12 * g, borderLeftWidth: 1 },
+    /**
+     * `roleTitle` without the `flex: 1`.
+     *
+     * That flex exists for `roleHeader`, which is a ROW — the title flexes
+     * against the dates beside it. Reused inside this column it expands to fill
+     * the block's height instead, and the employer line then prints on top of
+     * the role title. Which is exactly what the first render did.
+     */
+    timelineTitle: { fontSize: 10.2 * f, lineHeight: 1.25, fontFamily: BOLD },
+
+    /* ── modular (Blueprint) ────────────────────────────────────────────────
+       Bordered panels on a grid. Two violations, and both are real: a panel
+       grid reads as a table, and the tiled skills panel loses reading order. */
+    panel: {
+      borderWidth: 1,
+      borderColor: RULE,
+      borderRadius: 3,
+      padding: 11 * g,
+      marginBottom: 9 * g,
+    },
+    panelLabel: {
+      fontSize: 7.4 * f,
+      lineHeight: 1.3,
+      fontFamily: BOLD,
+      letterSpacing: 0.9,
+      textTransform: "uppercase",
+      marginBottom: 6 * g,
+    },
+    panelGrid: { flexDirection: "row", gap: 9 * g },
+    panelHalf: { flex: 1 },
+    tileRow: { flexDirection: "row", flexWrap: "wrap", gap: 4 * g },
+    tile: {
+      borderWidth: 1,
+      borderColor: RULE,
+      borderRadius: 2,
+      paddingVertical: 2.5 * g,
+      paddingHorizontal: 6 * g,
+    },
+
+    /* ── hanging (Marque) ───────────────────────────────────────────────────
+       Section labels hung in the left margin. No colour anywhere — the whole
+       argument of the template is that it does not need any. */
+    hangingName: { fontSize: 30 * f, lineHeight: 1.06, fontFamily: BOLD, letterSpacing: -0.8 },
+    hangingRow: { flexDirection: "row", marginBottom: 13 * g },
+    hangingLabel: {
+      width: "24%",
+      paddingRight: 12 * g,
+      fontSize: 7.6 * f,
+      lineHeight: 1.35,
+      fontFamily: BOLD,
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      color: QUIET,
+    },
+    hangingBody: { flex: 1 },
+
+    /* ── meter (Beacon) ─────────────────────────────────────────────────────
+       Reversed-out header and skill bars. Three violations, and the third is
+       the interesting one: bar length carries the proficiency, so the level is
+       information a parser cannot read.
+
+       The bar is drawn AND the level is written beside it. That does not undo
+       the violation — the badge still says Low — but a user who ships this
+       should not also lose the words. */
+    darkHead: { backgroundColor: INK, padding: 18 * g, marginBottom: 14 * g },
+    darkName: { fontSize: 20 * f, lineHeight: 1.15, fontFamily: BOLD, color: PAPER },
+    darkHeadline: { fontSize: 9 * f, lineHeight: 1.35, color: "rgba(255,255,255,0.86)", marginTop: 3 * g },
+    darkContact: { fontSize: 8 * f, lineHeight: 1.4, color: "rgba(255,255,255,0.72)", marginTop: 6 * g },
+    meterRow: { flexDirection: "row", alignItems: "center", gap: 8 * g, marginBottom: 4 * g },
+    meterLabel: { width: "38%", fontSize: 8.4 * f, lineHeight: 1.4 },
+    meterTrack: { flex: 1, height: 4, borderRadius: 2, backgroundColor: RULE },
+    meterFill: { height: 4, borderRadius: 2 },
+    meterValue: { width: 46, fontSize: 7.6 * f, lineHeight: 1.4, color: QUIET, textAlign: "right" },
   });
 }
 
 /* ── shared pieces ───────────────────────────────────────────────────────── */
+
+interface DocProps {
+  st: Styles;
+  model: RenderModel;
+  template: TemplateDef;
+}
+
 
 function Bullets({ st, items, accent }: { st: Styles; items: string[]; accent?: string }) {
   return (
@@ -707,6 +826,439 @@ function CreativeDoc({
   );
 }
 
+
+/* ------------------------------------------------------- added in v2.7 ---- */
+
+/** Contact repeated as body text, in one place, for every layout that needs it. */
+function ContactLine({
+  st,
+  model,
+  align = "center",
+}: {
+  st: Styles;
+  model: RenderModel;
+  /** `contactRow` centres by default, which is right under a centred name and
+   *  wrong under a left-aligned masthead. */
+  align?: "center" | "flex-start";
+}) {
+  return (
+    <View style={[st.contactRow, { justifyContent: align }]}>
+      {model.contactParts.map((part) => (
+        <Text key={part} style={st.contactItem}>
+          {part}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
+/** Every section below the header, in the standard order, as plain blocks. */
+function StandardSections({
+  st,
+  model,
+  accent,
+  ruled = true,
+}: {
+  st: Styles;
+  model: RenderModel;
+  accent?: string;
+  ruled?: boolean;
+}) {
+  return (
+    <>
+      {model.summary ? (
+        <Section st={st} title={SECTION_HEADINGS[0]} ruled={ruled}>
+          <Text>{model.summary}</Text>
+        </Section>
+      ) : null}
+      {model.roles.length > 0 ? (
+        <Section st={st} title={SECTION_HEADINGS[1]} ruled={ruled}>
+          <RoleList st={st} model={model} accent={accent} withEmployerInTitle />
+        </Section>
+      ) : null}
+      {model.projects.length > 0 ? (
+        <Section st={st} title={SECTION_HEADINGS[2]} ruled={ruled}>
+          <ProjectList st={st} model={model} accent={accent} />
+        </Section>
+      ) : null}
+      {model.skills.length > 0 ? (
+        <Section st={st} title={SECTION_HEADINGS[4]} ruled={ruled}>
+          <Text>{model.skills.join(" · ")}</Text>
+        </Section>
+      ) : null}
+      {model.education.length > 0 ? (
+        <Section st={st} title={SECTION_HEADINGS[3]} ruled={ruled}>
+          {model.education.map((e, i) => (
+            <View key={i} style={st.roleHeader}>
+              <Text style={st.roleTitle}>{educationLine(e)}</Text>
+              <Text style={st.roleDates}>{e.dates}</Text>
+            </View>
+          ))}
+        </Section>
+      ) : null}
+      {model.certifications.length > 0 ? (
+        <Section st={st} title={SECTION_HEADINGS[5]} ruled={ruled}>
+          <Text>{model.certifications.join(" · ")}</Text>
+        </Section>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Keystone — a tinted masthead over one plain column.
+ *
+ * The template that proves the ATS rules are structural rather than aesthetic:
+ * it is the most designed thing in the set and still rates High, because the
+ * band is decoration and every fact it shows is repeated as body text beneath.
+ * Ignore the band entirely and the document loses nothing.
+ */
+function BannerDoc({ st, model, template }: DocProps) {
+  const accent = template.accent;
+  const initials = model.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+
+  return (
+    <Document title={`${model.name} — ${template.name}`} author={model.name}>
+      <Page size="A4" style={st.page}>
+        <View style={[st.mast, { backgroundColor: accent }]}>
+          <View style={[st.monogram, { backgroundColor: "rgba(255,255,255,0.18)" }]}>
+            <Text style={st.monogramText}>{initials}</Text>
+          </View>
+          <View>
+            <Text style={st.mastName}>{model.name}</Text>
+            {model.headline ? <Text style={st.mastHeadline}>{model.headline}</Text> : null}
+          </View>
+        </View>
+
+        {/* The repeat that keeps the rating honest. */}
+        <ContactLine st={st} model={model} align="flex-start" />
+        <View style={[st.headerRule, { borderBottomColor: accent }]} />
+
+        <StandardSections st={st} model={model} accent={accent} />
+      </Page>
+    </Document>
+  );
+}
+
+/**
+ * Throughline — dates down a left margin against a ruled spine.
+ *
+ * Nine years read as one continuous line rather than five disconnected blocks.
+ * The cost is the one violation the badge reports: the dates are their own
+ * column, and some parsers will detach them from the role beside them.
+ */
+function TimelineDoc({ st, model, template }: DocProps) {
+  const accent = template.accent;
+
+  return (
+    <Document title={`${model.name} — ${template.name}`} author={model.name}>
+      <Page size="A4" style={st.page}>
+        <View style={st.centred}>
+          <Text style={st.nameLarge}>{model.name}</Text>
+          {model.headline ? <Text style={st.headlineCaps}>{model.headline}</Text> : null}
+          <ContactLine st={st} model={model} />
+        </View>
+        <View style={[st.headerRule, { borderBottomColor: accent }]} />
+
+        {model.summary ? (
+          <Section st={st} title={SECTION_HEADINGS[0]} ruled={false}>
+            <Text>{model.summary}</Text>
+          </Section>
+        ) : null}
+
+        {model.roles.length > 0 ? (
+          <Section st={st} title={SECTION_HEADINGS[1]}>
+            {model.roles.map((role, i) => (
+              <View key={i} style={st.timelineRow} wrap={false}>
+                <Text style={st.timelineDates}>{role.dates}</Text>
+                <View style={[st.timelineBody, { borderLeftColor: accent }]}>
+                  <Text style={st.timelineTitle}>{role.position}</Text>
+                  <Text style={st.roleMeta}>
+                    {[role.employer, role.location].filter(Boolean).join(" · ")}
+                  </Text>
+                  <View style={st.roleBullets}>
+                    <Bullets st={st} items={role.bullets} accent={accent} />
+                  </View>
+                </View>
+              </View>
+            ))}
+          </Section>
+        ) : null}
+
+        {model.projects.length > 0 ? (
+          <Section st={st} title={SECTION_HEADINGS[2]}>
+            {model.projects.map((project, i) => (
+              <View key={i} style={st.timelineRow} wrap={false}>
+                <Text style={st.timelineDates}>{project.dates ?? ""}</Text>
+                <View style={[st.timelineBody, { borderLeftColor: accent }]}>
+                  <Text style={st.timelineTitle}>{project.name}</Text>
+                  <View style={st.roleBullets}>
+                    <Bullets st={st} items={project.bullets} accent={accent} />
+                  </View>
+                </View>
+              </View>
+            ))}
+          </Section>
+        ) : null}
+
+        {model.education.length > 0 ? (
+          <Section st={st} title={SECTION_HEADINGS[3]}>
+            {model.education.map((e, i) => (
+              <View key={i} style={st.timelineRow}>
+                <Text style={st.timelineDates}>{e.dates}</Text>
+                <View style={[st.timelineBody, { borderLeftColor: accent }]}>
+                  <Text style={st.timelineTitle}>{educationLine(e)}</Text>
+                </View>
+              </View>
+            ))}
+          </Section>
+        ) : null}
+
+        {model.skills.length > 0 ? (
+          <Section st={st} title={SECTION_HEADINGS[4]}>
+            <Text>{model.skills.join(" · ")}</Text>
+          </Section>
+        ) : null}
+
+        {model.certifications.length > 0 ? (
+          <Section st={st} title={SECTION_HEADINGS[5]}>
+            <Text>{model.certifications.join(" · ")}</Text>
+          </Section>
+        ) : null}
+      </Page>
+    </Document>
+  );
+}
+
+/**
+ * Blueprint — every section a bordered panel on a grid.
+ *
+ * Scannable in seconds by a person; awkward for a parser, and the badge says so.
+ * Two violations: the panel grid reads as a table, and the tiled skills panel
+ * loses its reading order.
+ */
+function ModularDoc({ st, model, template }: DocProps) {
+  const accent = template.accent;
+
+  return (
+    <Document title={`${model.name} — ${template.name}`} author={model.name}>
+      <Page size="A4" style={st.page}>
+        <View style={[st.panel, { borderColor: accent }]}>
+          <Text style={st.nameLarge}>{model.name}</Text>
+          {model.headline ? <Text style={st.headlineCaps}>{model.headline}</Text> : null}
+          <ContactLine st={st} model={model} align="flex-start" />
+        </View>
+
+        {model.summary ? (
+          <View style={st.panel}>
+            <Text style={[st.panelLabel, { color: accent }]}>{SECTION_HEADINGS[0]}</Text>
+            <Text>{model.summary}</Text>
+          </View>
+        ) : null}
+
+        {model.roles.length > 0 ? (
+          <View style={st.panel}>
+            <Text style={[st.panelLabel, { color: accent }]}>{SECTION_HEADINGS[1]}</Text>
+            <RoleList st={st} model={model} accent={accent} withEmployerInTitle />
+          </View>
+        ) : null}
+
+        {model.projects.length > 0 ? (
+          <View style={st.panel}>
+            <Text style={[st.panelLabel, { color: accent }]}>{SECTION_HEADINGS[2]}</Text>
+            <ProjectList st={st} model={model} accent={accent} />
+          </View>
+        ) : null}
+
+        {/* The grid that costs the second violation. */}
+        <View style={st.panelGrid}>
+          {model.skills.length > 0 ? (
+            <View style={[st.panel, st.panelHalf]}>
+              <Text style={[st.panelLabel, { color: accent }]}>{SECTION_HEADINGS[4]}</Text>
+              <View style={st.tileRow}>
+                {model.skills.map((skill, i) => (
+                  <View key={i} style={st.tile}>
+                    <Text>{skill}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {model.education.length > 0 || model.certifications.length > 0 ? (
+            <View style={[st.panel, st.panelHalf]}>
+              <Text style={[st.panelLabel, { color: accent }]}>
+                {model.education.length > 0 ? SECTION_HEADINGS[3] : SECTION_HEADINGS[5]}
+              </Text>
+              {model.education.map((e, i) => (
+                <View key={i} style={st.eduItem}>
+                  <Text style={st.timelineTitle}>{educationLine(e)}</Text>
+                  {e.dates ? <Text style={st.roleMeta}>{e.dates}</Text> : null}
+                </View>
+              ))}
+              {model.certifications.length > 0 ? (
+                <Text style={{ marginTop: 4 }}>{model.certifications.join(" · ")}</Text>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
+/**
+ * Marque — oversized name, section labels hung in the left margin, no colour.
+ *
+ * The quietest template in the set and deliberately the only one with no hue:
+ * `accent` is the body ink. One violation — the hanging labels make a
+ * two-column grid — and nothing else.
+ */
+function HangingDoc({ st, model, template }: DocProps) {
+  const row = (label: string, children: React.ReactNode, key: string) => (
+    <View key={key} style={st.hangingRow} wrap={false}>
+      <Text style={st.hangingLabel}>{label}</Text>
+      <View style={st.hangingBody}>{children}</View>
+    </View>
+  );
+
+  return (
+    <Document title={`${model.name} — ${template.name}`} author={model.name}>
+      <Page size="A4" style={st.page}>
+        <Text style={st.hangingName}>{model.name}</Text>
+        {model.headline ? <Text style={st.headlineCaps}>{model.headline}</Text> : null}
+        <ContactLine st={st} model={model} align="flex-start" />
+        <View style={[st.headerRule, { borderBottomColor: RULE }]} />
+
+        {model.summary ? row(SECTION_HEADINGS[0], <Text>{model.summary}</Text>, "sum") : null}
+        {model.roles.length > 0
+          ? row(SECTION_HEADINGS[1], <RoleList st={st} model={model} withEmployerInTitle />, "exp")
+          : null}
+        {model.projects.length > 0
+          ? row(SECTION_HEADINGS[2], <ProjectList st={st} model={model} />, "prj")
+          : null}
+        {model.skills.length > 0
+          ? row(SECTION_HEADINGS[4], <Text>{model.skills.join(" · ")}</Text>, "skl")
+          : null}
+        {model.education.length > 0
+          ? row(
+              SECTION_HEADINGS[3],
+              <>
+                {model.education.map((e, i) => (
+                  <View key={i} style={st.roleHeader}>
+                    <Text style={st.roleTitle}>{educationLine(e)}</Text>
+                    <Text style={st.roleDates}>{e.dates}</Text>
+                  </View>
+                ))}
+              </>,
+              "edu",
+            )
+          : null}
+        {model.certifications.length > 0
+          ? row(SECTION_HEADINGS[5], <Text>{model.certifications.join(" · ")}</Text>, "crt")
+          : null}
+      </Page>
+    </Document>
+  );
+}
+
+/**
+ * Beacon — a dark masthead and proficiency bars.
+ *
+ * The most persuasive template to a person and the least legible to software.
+ * Three violations, and the third is worth naming: the bar length carries the
+ * proficiency, which is information no parser reads.
+ *
+ * The level is therefore ALSO written in words beside every bar. That does not
+ * undo the violation and the badge still reads Low — but a user who chooses
+ * this template should not silently lose the content as well as the rating.
+ */
+function MeterDoc({ st, model, template }: DocProps) {
+  const accent = template.accent;
+
+  // Rank, not skill. The ordering is already the posting's (lib/domain/ordering),
+  // so position in the list is the only thing the bar can honestly encode — and
+  // the word beside it says exactly that rather than implying a measured level.
+  const total = Math.max(1, model.skills.length);
+
+  return (
+    <Document title={`${model.name} — ${template.name}`} author={model.name}>
+      <Page size="A4" style={st.pageBleed}>
+        <View style={st.darkHead}>
+          <Text style={st.darkName}>{model.name}</Text>
+          {model.headline ? <Text style={st.darkHeadline}>{model.headline}</Text> : null}
+          <Text style={st.darkContact}>{model.contactParts.join("  ·  ")}</Text>
+        </View>
+
+        <View style={{ paddingHorizontal: 34, paddingBottom: 30 }}>
+          {model.summary ? (
+            <Section st={st} title={SECTION_HEADINGS[0]} ruled={false}>
+              <Text>{model.summary}</Text>
+            </Section>
+          ) : null}
+
+          {model.roles.length > 0 ? (
+            <Section st={st} title={SECTION_HEADINGS[1]}>
+              <RoleList st={st} model={model} accent={accent} withEmployerInTitle />
+            </Section>
+          ) : null}
+
+          {model.projects.length > 0 ? (
+            <Section st={st} title={SECTION_HEADINGS[2]}>
+              <ProjectList st={st} model={model} accent={accent} />
+            </Section>
+          ) : null}
+
+          {model.skills.length > 0 ? (
+            <Section st={st} title={SECTION_HEADINGS[4]}>
+              {model.skills.map((skill, i) => {
+                const share = 1 - (i / total) * 0.55;
+                return (
+                  <View key={i} style={st.meterRow} wrap={false}>
+                    <Text style={st.meterLabel}>{skill}</Text>
+                    <View style={st.meterTrack}>
+                      <View
+                        style={[
+                          st.meterFill,
+                          { width: `${Math.round(share * 100)}%`, backgroundColor: accent },
+                        ]}
+                      />
+                    </View>
+                    {/* The words the bar cannot say. */}
+                    <Text style={st.meterValue}>{i < total / 2 ? "Core" : "Working"}</Text>
+                  </View>
+                );
+              })}
+            </Section>
+          ) : null}
+
+          {model.education.length > 0 ? (
+            <Section st={st} title={SECTION_HEADINGS[3]}>
+              {model.education.map((e, i) => (
+                <View key={i} style={st.roleHeader}>
+                  <Text style={st.roleTitle}>{educationLine(e)}</Text>
+                  <Text style={st.roleDates}>{e.dates}</Text>
+                </View>
+              ))}
+            </Section>
+          ) : null}
+
+          {model.certifications.length > 0 ? (
+            <Section st={st} title={SECTION_HEADINGS[5]}>
+              <Text>{model.certifications.join(" · ")}</Text>
+            </Section>
+          ) : null}
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
 export function ResumeDocument({
   model,
   templateId,
@@ -720,11 +1272,30 @@ export function ResumeDocument({
   if (!template) throw new Error(`unknown template: ${templateId}`);
   // Broadsheet is the one template whose typeface is part of its identity, so the
   // stylesheet is built for it rather than patched at the usage site.
-  const st = makeStyles(density, template.id === "broadsheet");
-  if (template.kind === "classic")
-    return <ClassicDoc st={st} model={model} template={template} />;
-  if (template.kind === "sidebar") return <SidebarDoc st={st} model={model} template={template} />;
-  return <CreativeDoc st={st} model={model} template={template} />;
+  // Serif is a property of the template, not of the family: Broadsheet and
+  // Throughline both set one, and they are in different families.
+  const st = makeStyles(density, template.fontStack.includes("Times"));
+
+  // Dispatch on `layout`, never on `kind`. A family can be renamed on the shelf
+  // without touching a renderer, and two families can share a construction.
+  switch (template.layout) {
+    case "classic":
+      return <ClassicDoc st={st} model={model} template={template} />;
+    case "sidebar":
+      return <SidebarDoc st={st} model={model} template={template} />;
+    case "creative":
+      return <CreativeDoc st={st} model={model} template={template} />;
+    case "banner":
+      return <BannerDoc st={st} model={model} template={template} />;
+    case "timeline":
+      return <TimelineDoc st={st} model={model} template={template} />;
+    case "modular":
+      return <ModularDoc st={st} model={model} template={template} />;
+    case "hanging":
+      return <HangingDoc st={st} model={model} template={template} />;
+    case "meter":
+      return <MeterDoc st={st} model={model} template={template} />;
+  }
 }
 
 /**

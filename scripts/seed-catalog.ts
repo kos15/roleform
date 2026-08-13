@@ -17,13 +17,24 @@ import { COURSES } from "../lib/catalog/courses";
 import { assertTaxonomy, NODES } from "../lib/catalog/taxonomy";
 import { levelOf, primacyOf, qualityOf, summaryFor, tagsFor, typeOf } from "../lib/catalog/quality";
 import { checkLiveness } from "../lib/catalog/liveness";
-import { TEMPLATES } from "../lib/render/templates";
+import { assertTemplates, TEMPLATES } from "../lib/render/templates";
 import { rateAts } from "../lib/render/ats-rules";
 
 const skipLinkCheck = process.argv.includes("--skip-link-check");
 
 async function main() {
   /* ------------------------------------------------------------- templates */
+  //
+  // The rating is computed (N5), but `atsWhy` is prose beside it, and prose
+  // drifts. A template whose sentence claims one violation under a Low badge
+  // has told the user two different things. Checked before anything is written.
+  const templateProblems = assertTemplates();
+  if (templateProblems.length > 0) {
+    console.error("Template definitions are inconsistent:");
+    for (const problem of templateProblems) console.error(`  - ${problem}`);
+    process.exit(1);
+  }
+
   for (const template of TEMPLATES) {
     await db.template.upsert({
       where: { id: template.id },

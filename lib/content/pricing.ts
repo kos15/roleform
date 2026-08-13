@@ -51,8 +51,8 @@ export const PLANS: Plan[] = [
     pricePaise: 49_900,
     unit: "per month",
     tagline:
-      "For an actual search — several postings a week, all six templates, and a worked answer for every question rather than a framework.",
-    caps: { tokens: 800_000, analyses: 40, resumes: 6, answers: 40, courses: 4 },
+      "For an actual search — several postings a week, all eleven templates, and a worked answer for every question rather than a framework.",
+    caps: { tokens: 800_000, analyses: 40, resumes: 11, answers: 40, courses: 4 },
     cta: "Go Pro",
     featured: true,
   },
@@ -64,7 +64,7 @@ export const PLANS: Plan[] = [
     unit: "per month",
     tagline:
       "For coaches and career centres running many searches at once, where the meter is the thing that actually binds.",
-    caps: { tokens: 3_000_000, analyses: 150, resumes: 6, answers: 200, courses: 6 },
+    caps: { tokens: 3_000_000, analyses: 150, resumes: 11, answers: 200, courses: 6 },
     cta: "Go Ultra",
   },
 ];
@@ -154,7 +154,7 @@ export interface PlanRow {
 const NOTES: Record<QuotaKey, string> = {
   tokens: `Measured from what the models actually consumed — a full run is about ${formatCount(RUN_ESTIMATE)}. When it empties we stop before the first stage rather than half-run an analysis and bill you for it.`,
   analyses: "Analyses you have already run stay readable at any cap.",
-  resumes: "Below six is fewer drafts, never worse ones — highest-ATS first.",
+  resumes: "Below eleven is fewer drafts, never worse ones — highest-ATS first.",
   answers: "Every question keeps its framework and its source bullets, at every cap including zero.",
   courses: "The gap is always shown, with or without a course beside it.",
 };

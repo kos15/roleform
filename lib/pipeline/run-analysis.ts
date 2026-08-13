@@ -24,7 +24,7 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
  *   ② coverage       → coverage_items + score            [PURE, no LLM]
  *   ③ tailor         → 6 × resume_drafts + tailored_bullets
  *   ④ interview      → 10 × interview_questions
- *   ⑤ gaps + courses → skill_gaps + deterministic match
+ *   ⑤ learning        → skill_gaps + learning_plan + learning_steps
  *
  * Degradation rule (specs §11): a failure on one surface degrades THAT tab and
  * nothing else. A failed Prep generation must never lose the résumés — so
@@ -354,16 +354,17 @@ async function resolveSkillIds(names: string[]): Promise<Map<string, string>> {
 }
 
 /**
- * Six drafts from ONE tailored set (M4.4).
+ * Eleven drafts from ONE tailored set (M4.4).
  *
- * The drafts differ in template and in ordering, not in claims — six independent
- * rewrites of the same fact would produce six subtly different versions of the
+ * The drafts differ in template and in ordering, not in claims — eleven
+ * independent rewrites of the same fact would produce eleven subtly different
+ * versions of the
  * user's history, which is exactly what the spine exists to prevent.
  */
 /**
  * Which templates render, under this member's `capResumes` (F15).
  *
- * Below six we render the highest-ATS ones first, because a member who only
+ * Below eleven we render the highest-ATS ones first, because a member who only
  * gets three drafts should get the three most likely to survive a parser — not
  * the three that happened to be first in the array. Ties keep declaration
  * order, so the choice is stable between runs.
@@ -380,7 +381,7 @@ function templatesFor(cap: number): TemplateDef[] {
 
 async function writeDrafts(args: {
   clerkUserId: string;
-  /** 0–6. Set per member in the admin panel; six by default. */
+  /** 0–11. Set per member in the admin panel; eleven by default. */
   capResumes: number;
   analysisId: string;
   resume: StoredResume;

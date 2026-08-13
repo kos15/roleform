@@ -17,7 +17,35 @@ export type RequirementKind =
   | "responsibility";
 export type UserLevel = "none" | "exposure" | "working" | "strong";
 export type RequiredLevel = "exposure" | "working" | "strong" | "expert";
-export type TemplateKind = "classic" | "sidebar" | "creative";
+/**
+ * The template families (CLAUDE.md §5). Eight, not three, since v2.7 added five
+ * templates that are genuinely different documents rather than recolours.
+ *
+ * `kind` is the family a user browses by. `TemplateLayout` below is what the
+ * renderers dispatch on — they are 1:1 today except that `editorial` renders as
+ * `hanging` and `infographic` as `meter`, because those name the shelf and the
+ * construction respectively.
+ */
+export type TemplateKind =
+  | "classic"
+  | "sidebar"
+  | "creative"
+  | "banner"
+  | "timeline"
+  | "modular"
+  | "editorial"
+  | "infographic";
+
+/** What the PDF, DOCX and preview renderers switch on. */
+export type TemplateLayout =
+  | "classic"
+  | "sidebar"
+  | "creative"
+  | "banner"
+  | "timeline"
+  | "modular"
+  | "hanging"
+  | "meter";
 export type AtsRating = "High" | "Medium" | "Low";
 export type Transform = "verbatim" | "rephrase" | "requantify" | "omit";
 
