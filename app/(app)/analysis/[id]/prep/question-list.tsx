@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import * as Accordion from "@radix-ui/react-accordion";
 import { ChevronDown, CircleCheck } from "lucide-react";
 import { Card, Tag } from "@/components/ui";
@@ -95,6 +95,26 @@ export function QuestionList({
   // Seeded from the server, then extended in place — drafting an answer should
   // flip its badge immediately rather than waiting for a navigation.
   const [answered, setAnswered] = useState(() => new Set(answeredIds));
+
+  // Arriving from the Learning tab's "the question it answers" (#q-<id>).
+  //
+  // The anchor alone only ever scrolled to a collapsed card — and if the reader
+  // had left a family tab selected, to nothing at all. The loop is only worth
+  // binding if the user can walk it, so landing on the link opens the question
+  // it points at, on the tab that can show it.
+  useEffect(() => {
+    const id = window.location.hash.replace(/^#q-/, "");
+    if (!id || id === window.location.hash) return;
+    if (!questions.some((q) => q.id === id)) return;
+
+    setTabKey("all");
+    setOpen((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    // After the state above has painted the open panel, so the scroll lands on
+    // the answer rather than on the header it used to sit under.
+    requestAnimationFrame(() => {
+      document.getElementById(`q-${id}`)?.scrollIntoView({ block: "center" });
+    });
+  }, [questions]);
 
   const markAnswered = useCallback((id: string) => {
     setAnswered((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));

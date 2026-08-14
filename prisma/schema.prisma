@@ -529,7 +529,7 @@ model Analysis {
   /// The posting is already stored on this row — that is the whole point: the
   /// member does not have to find it again. A queued run is an ordinary
   /// `parsing` analysis that nothing has started yet, so the resume path is
-  /// the one lib/status/parked.ts already walks, and there is no worker, no
+  /// the one lib/status/stalled.ts already walks, and there is no worker, no
   /// cron and no second execution path to keep honest (CLAUDE.md §8).
   ///
   /// Cleared when the run finally starts. Null on every analysis that was

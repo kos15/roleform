@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { TEMPLATES } from "@/lib/render/templates";
 
 /**
- * Six chips rather than a select.
+ * One chip per draft, rather than a select.
  *
  * The whole point of this screen is comparing layouts, and a closed select hides
- * five of the six behind a click. At six fixed options the chips also read as a
+ * every option but one behind a click. Laid out as chips they also read as a
  * set — you can see how many drafts exist without opening anything.
  */
 export function TemplateSwitcher({

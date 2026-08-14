@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { ArrowRight, ExternalLink, MessageCircleQuestion, PenLine, Play } from "lucide-react";
+import { getAnalysis } from "@/lib/db/queries/analysis";
 import { getLearningPlan } from "@/lib/db/queries/learning";
 import { formatMinutes } from "@/lib/domain/plan";
 import { levelPosition } from "@/lib/domain/levels";
@@ -45,7 +46,14 @@ export default async function LearningTab({
   if (!userId) redirect("/");
 
   const budgetMin = parseBudget(budget);
-  const plan = await getLearningPlan(userId, id, budgetMin);
+  // Same guard as the other two tabs: until the run is `ready` the layout draws
+  // no header and no tab bar, so this page would be an orphan.
+  const [analysis, plan] = await Promise.all([
+    getAnalysis(userId, id),
+    getLearningPlan(userId, id, budgetMin),
+  ]);
+  if (!analysis) redirect("/history");
+  if (analysis.status !== "ready") redirect(`/analysis/${id}`);
 
   if (!plan) {
     return (
@@ -57,8 +65,24 @@ export default async function LearningTab({
   }
 
   // Deep-link target from the preview's "See courses for these" (F6).
-  const wanted = skillFilter ? new Set(skillFilter.split(",").map((s) => s.trim())) : null;
-  const shown = wanted ? plan.gaps.filter((g) => wanted.has(g.skillName)) : plan.gaps;
+  //
+  // The preview sends `skillName ?? the requirement's own text`, so half of what
+  // arrives here is a whole sentence that will never match a gap's skill name.
+  // Matching is case-insensitive for the half that can match, and a filter that
+  // matches nothing falls back to the whole plan with a line saying so —
+  // filtering a page down to zero and leaving no way back was a dead end that
+  // looked like an empty product.
+  const wanted = skillFilter
+    ? new Set(
+        skillFilter
+          .split(",")
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean),
+      )
+    : null;
+  const matched = wanted ? plan.gaps.filter((g) => wanted.has(g.skillName.toLowerCase())) : null;
+  const filtered = matched !== null && matched.length > 0;
+  const shown = filtered ? matched! : plan.gaps;
   const scheduled = shown.flatMap((g) => g.steps.filter((s) => !s.deferred));
 
   return (
@@ -72,8 +96,21 @@ export default async function LearningTab({
           {plan.opening ||
             "Ordered by how much of this posting each one unlocks. Where we can tie one to a " +
               "bullet on your résumé or a question you're likely to be asked, we show that too."}
-          {wanted ? " Filtered to the skills you came here for." : ""}
+          {filtered ? " Filtered to the skills you came here for." : ""}
+          {wanted && !filtered
+            ? " Nothing in the plan matched the skills you came from, so this is all of it."
+            : ""}
         </p>
+        {filtered ? (
+          <Link
+            // Keeps the budget: clearing the skills filter shouldn't also throw
+            // away how much time the reader said they have.
+            href={`/analysis/${id}/learning${budgetMin ? `?budget=${budgetMin}` : ""}`}
+            className="mt-2 inline-block text-sm text-accent-body"
+          >
+            Show every gap
+          </Link>
+        ) : null}
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-3">

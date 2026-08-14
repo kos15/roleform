@@ -17,6 +17,20 @@ export async function getProfile(clerkUserId: string) {
   });
 }
 
+/**
+ * Whether there is a corpus at all — an id, never the résumé JSON.
+ *
+ * The landing page asks this to decide where its one button points, and
+ * `getProfile` would drag a whole stored résumé across for a boolean.
+ */
+export async function hasProfile(clerkUserId: string): Promise<boolean> {
+  const row = await db.masterProfile.findFirst({
+    where: { clerkUserId },
+    select: { id: true },
+  });
+  return row !== null;
+}
+
 export async function getProfileWithDocument(clerkUserId: string) {
   const profile = await getProfile(clerkUserId);
   if (!profile) return null;

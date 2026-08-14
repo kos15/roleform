@@ -33,11 +33,20 @@ export default async function PreviewPage({
     getDrafts(userId, id),
   ]);
   if (!analysis) redirect("/history");
+  // Same guard as the three tabs: nothing to preview until the run is finished.
+  if (analysis.status !== "ready") redirect(`/analysis/${id}`);
 
   const draft = drafts.find((d) => d.templateId === templateId);
   const template = templateById(templateId);
   if (!draft || !template) {
-    return <EmptyState title="That draft doesn't exist for this analysis." />;
+    return (
+      <EmptyState title="That draft doesn't exist for this analysis.">
+        <Link href={`/analysis/${id}/resumes`} className="text-accent-body">
+          Back to the drafts that do
+        </Link>
+        .
+      </EmptyState>
+    );
   }
 
   const tailored = await getTailoredBullets(userId, draft.id);
@@ -71,8 +80,11 @@ export default async function PreviewPage({
           }))}
           actions={
             <div className="flex flex-wrap items-center gap-3">
+              {/* The count is read off the drafts that exist, not written into
+                  the copy: it is `capResumes` per member (F15), so any fixed
+                  number here is wrong for somebody. */}
               <Link href={`/analysis/${id}/resumes`} className="btn btn-ghost btn-sm">
-                <ArrowLeft className="lucide h-4 w-4" /> All six drafts
+                <ArrowLeft className="lucide h-4 w-4" /> All {drafts.length} drafts
               </Link>
               <DownloadButtons draftId={draft.id} />
             </div>

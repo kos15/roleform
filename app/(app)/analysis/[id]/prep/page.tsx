@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { getAnswers, getBulletTexts, getQuestions } from "@/lib/db/queries/analysis";
+import { getAnalysis, getAnswers, getBulletTexts, getQuestions } from "@/lib/db/queries/analysis";
 import { EmptyState } from "@/components/ui";
 import { QuestionList } from "./question-list";
 import type { QuestionType } from "./types";
@@ -23,11 +23,21 @@ export default async function PrepTab({ params }: { params: Promise<{ id: string
   const { userId } = await auth();
   if (!userId) redirect("/");
 
-  const questions = await getQuestions(userId, id);
+  // Same guard as the other two tabs: until the run is `ready` the layout draws
+  // no header and no tab bar, so this page would be an orphan.
+  const [analysis, questions] = await Promise.all([
+    getAnalysis(userId, id),
+    getQuestions(userId, id),
+  ]);
+  if (!analysis) redirect("/history");
+  if (analysis.status !== "ready") redirect(`/analysis/${id}`);
+
   if (questions.length === 0) {
     return (
       <EmptyState title="Prep didn't generate for this posting">
-        Your résumés and match are unaffected. You can re-run just this tab from History.
+        Your résumés and match are unaffected — a failure on one surface never takes the rest of
+        the analysis with it. There is no way to re-run this tab on its own; running the posting
+        again is a fresh analysis, and it is charged like one.
       </EmptyState>
     );
   }

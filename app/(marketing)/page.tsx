@@ -1,10 +1,18 @@
 import Link from "next/link";
 // Clerk v7 replaced <SignedIn>/<SignedOut> with <Show when="signed-in" | "signed-out">.
 import { Show, SignInButton } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
 import { ArrowRight, FileText, MessageSquareQuote, GraduationCap } from "lucide-react";
+import { hasProfile } from "@/lib/db/queries/profile";
+import { TEMPLATES } from "@/lib/render/templates";
 import { Button, Card, Tag } from "@/components/ui";
 
-export default function MarketingPage() {
+export default async function MarketingPage() {
+  // A member who already imported a résumé is not here to import one again.
+  // The button they get is the one for where they actually are.
+  const { userId } = await auth();
+  const returning = userId ? await hasProfile(userId) : false;
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-20">
       {/* Left-aligned and asymmetric — whitespace on the right (CLAUDE.md §9). */}
@@ -12,7 +20,10 @@ export default function MarketingPage() {
         <Tag tone="accent" className="mb-6">
           One profile · every posting
         </Tag>
-        <h1 className="mb-6">One résumé in. Six tailored out.</h1>
+        {/* The catalog size, read from the catalog. A member's own run returns
+            as many as their cap allows (F15); this is the default and the most
+            anyone gets. */}
+        <h1 className="mb-6">One résumé in. {TEMPLATES.length} tailored out.</h1>
         <p className="mb-4 max-w-xl text-lg">
           Roleform reads a job posting, works out how much of it your own experience can
           evidence, and rewrites your résumé to say so in the posting&rsquo;s language.
@@ -31,9 +42,10 @@ export default function MarketingPage() {
           </SignInButton>
         </Show>
         <Show when="signed-in">
-          <Link href="/onboarding">
+          <Link href={returning ? "/analyze" : "/onboarding"}>
             <Button>
-              Import your résumé <ArrowRight className="lucide h-4 w-4" />
+              {returning ? "Analyse a posting" : "Import your résumé"}{" "}
+              <ArrowRight className="lucide h-4 w-4" />
             </Button>
           </Link>
         </Show>
@@ -43,7 +55,7 @@ export default function MarketingPage() {
         {[
           {
             icon: FileText,
-            title: "Six drafts, same evidence",
+            title: `${TEMPLATES.length} drafts, same evidence`,
             body: "Classic, sidebar and creative templates. Each carries an honestly computed ATS rating — the creative ones rate Low, because they are.",
           },
           {

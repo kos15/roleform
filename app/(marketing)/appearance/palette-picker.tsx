@@ -194,7 +194,7 @@ export function PalettePicker() {
               <span className="h-0.5 w-[60%] rounded-sm bg-[#b9b3aa]" />
             </div>
             <p className="m-0 text-[12.5px] leading-[1.55] text-[#4a453d]">
-              Six templates, unchanged by the palette. The preview chrome around them follows your
+              Every template, unchanged by the palette. The preview chrome around them follows your
               theme; the page inside it doesn&rsquo;t.
             </p>
           </div>

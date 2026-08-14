@@ -1,6 +1,6 @@
 # Roleform
 
-One résumé in, six tailored out — plus the questions this posting suggests and the gaps it
+One résumé in, eleven tailored out — plus the questions this posting suggests and the gaps it
 exposes. **Nothing is invented**: bullets are reordered, reworded and re-weighted, and every
 generated bullet carries a foreign key to the user's own words.
 
@@ -67,7 +67,7 @@ milestone, at the gate. These are the commands behind it.
 | `pnpm check:fabrication` | ★ Fabrication eval — 30 bullets vs postings demanding absent skills | M4 gate |
 | `pnpm check:roundtrip` | ★ DOCX round-trip — render, re-import, compare (bar: 95%) | M6 gate |
 | `pnpm check:coverage` | Score fixtures, by hand, written down. Pure — no DB, no keys | anytime |
-| `pnpm render:samples` | Renders all six templates to `.samples/`. Open them | anytime |
+| `pnpm render:samples` | Renders all eleven templates to `.samples/`. Open them | anytime |
 | `pnpm check:links` | Catalog link check, refreshes `verified_at` | quarterly |
 
 The three ★ checks are the ones that survive the light-testing policy, because each catches a
@@ -82,7 +82,7 @@ failure that would otherwise be expensive and silent.
 
 ```
 pnpm check:coverage    PASS   all fixtures, including the hand-computed 61.11
-pnpm check:roundtrip   PASS   100% field recovery on all six templates
+pnpm check:roundtrip   PASS   100% field recovery on all eleven templates
 pnpm render:samples    PASS   PDFs render in 34–123 ms, full text layer, ATS High/High/Medium/Medium/Low/Low
 pnpm build             PASS   clean; service-role client and DB adapter absent from every client chunk
 pnpm check:constraints PASS   4/4 guards, against the live Supabase project — N1, N2, N10 all confirmed

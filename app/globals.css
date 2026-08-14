@@ -521,6 +521,77 @@ h3 { font-size: 1.3rem; }
 }
 
 /* ---------------------------------------------------------------------------
+   The walkthrough
+
+   A spotlight and a card, over the real surface rather than a screenshot of it.
+   The scrim is painted by the spotlight's own outer shadow, which is why the
+   layer itself is transparent and click-through: everything except the card
+   stays inert, so the tour can never swallow a click it didn't earn.
+
+   Both elements are positioned in viewport space by the component, which
+   re-measures on scroll and resize.
+--------------------------------------------------------------------------- */
+
+.tour-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+}
+
+.tour-spot {
+  position: absolute;
+  border: 2px solid var(--color-accent-500);
+  /* The 9999px ring IS the scrim — one element, so the hole can never drift
+     away from the thing it is cut around. */
+  box-shadow:
+    0 0 0 9999px var(--color-scrim),
+    0 0 0 6px var(--color-accent-200);
+  transition:
+    top 340ms var(--ease-out-quint),
+    left 340ms var(--ease-out-quint),
+    width 340ms var(--ease-out-quint),
+    height 340ms var(--ease-out-quint);
+}
+
+.tour-tip {
+  position: absolute;
+  pointer-events: auto;
+  padding: 20px 22px 18px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  transition:
+    top 340ms var(--ease-out-quint),
+    left 340ms var(--ease-out-quint);
+  animation: pop-in 260ms var(--ease-out-quint) both;
+}
+.tour-tip:focus-visible {
+  outline: 2px solid var(--color-accent-500);
+  outline-offset: 2px;
+}
+
+/* Progress, without a number to read. The current step is a bar, the rest are
+   dots — the same trick the step counter beside it uses, in less space. */
+.tour-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  /* The line tone rather than the sunken ground: on a dark palette a 6px dot in
+     the ground's own family is invisible, and then the row says nothing. */
+  background: var(--color-line);
+  transition:
+    width 300ms var(--ease-out-quint),
+    background-color 300ms ease;
+}
+.tour-dot[data-active="true"] {
+  width: 18px;
+  background: var(--color-accent-500);
+}
+
+/* ---------------------------------------------------------------------------
    Tab bar — the three analysis surfaces
 
    Distinct from `.seg` on purpose. `.seg` is a filter inside one surface (the
@@ -886,6 +957,13 @@ textarea.input { border-radius: var(--radius-md); resize: vertical; }
 
   .sheet-scrim,
   .sheet { animation: none; opacity: 1; transform: none; }
+
+  /* The spotlight jumps rather than glides, and the card arrives at rest. The
+     tour still works — it just stops sliding a rectangle across the screen. */
+  .tour-spot,
+  .tour-tip,
+  .tour-dot { transition: none; }
+  .tour-tip { animation: none; opacity: 1; transform: none; }
 
   /* The figures animate per-element with delays set in JSX, so the reset has to
      reach inside them rather than name each class. */

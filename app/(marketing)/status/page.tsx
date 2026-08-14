@@ -4,13 +4,13 @@ import { auth } from "@clerk/nextjs/server";
 import { BrandMark } from "@/components/brand";
 import { Tag } from "@/components/ui";
 import { anyDegraded, pipelineHealth } from "@/lib/status/health";
-import { parkedRun } from "@/lib/status/parked";
+import { stalledRun } from "@/lib/status/stalled";
 import { STAGES } from "@/lib/pipeline/stages";
 import { RefreshRing } from "./refresh-ring";
 
 export const metadata: Metadata = {
   title: "Status · Roleform",
-  description: "Per-stage health for the four-stage pipeline, and whether your run is parked.",
+  description: "Per-stage health for the four-stage pipeline, and whether your run stopped part-way.",
 };
 
 /** Health is a live read; a cached status page is a contradiction. */
@@ -18,9 +18,9 @@ export const dynamic = "force-dynamic";
 
 export default async function StatusPage() {
   const { userId } = await auth();
-  const [stages, parked] = await Promise.all([
+  const [stages, stalled] = await Promise.all([
     pipelineHealth(),
-    userId ? parkedRun(userId) : Promise.resolve(null),
+    userId ? stalledRun(userId) : Promise.resolve(null),
   ]);
 
   const degraded = anyDegraded(stages);
@@ -82,30 +82,33 @@ export default async function StatusPage() {
       </div>
 
       <div className="mb-5 flex flex-wrap gap-4">
-        {parked ? (
+        {stalled ? (
           <div className="min-w-[min(280px,100%)] flex-1 basis-80 rounded-[var(--radius-lg)] border border-[var(--color-sage-200)] bg-[var(--color-sage-100)] p-5">
+            {/* Deliberately not "parked": that word means a posting filed
+                against your allowance, which has cost nothing and started
+                nothing. This one started. */}
             <div className="mb-3 text-[11px] uppercase tracking-[0.09em] text-[var(--color-sage-800)]">
-              Your run is parked, not lost
+              Your run stopped part-way, not lost
             </div>
             <p className="mb-3.5 text-[0.85rem] leading-relaxed text-[var(--color-sage-900)]">
-              {parked.label} — stopped part-way through stage {parked.stageIndex + 1}. It picks up
-              at &ldquo;{STAGES[parked.stageIndex].label.toLowerCase()}&rdquo; rather than starting
+              {stalled.label} — stopped part-way through stage {stalled.stageIndex + 1}. It picks up
+              at &ldquo;{STAGES[stalled.stageIndex].label.toLowerCase()}&rdquo; rather than starting
               over, and the posting is already parsed.
             </p>
             <div className="h-2 overflow-hidden rounded-[var(--radius-pill)] bg-[var(--color-bg)]">
               <div
                 className="h-full rounded-[var(--radius-pill)] bg-[var(--color-sage-600)]"
-                style={{ width: `${parked.progressPct}%` }}
+                style={{ width: `${stalled.progressPct}%` }}
               />
             </div>
             <div className="mt-1.5 flex justify-between text-[11.5px] text-[var(--color-sage-800)]">
               <span>
-                Stage {parked.stageIndex + 1} of {STAGES.length}
+                Stage {stalled.stageIndex + 1} of {STAGES.length}
               </span>
-              <span>{parked.progressPct}%</span>
+              <span>{stalled.progressPct}%</span>
             </div>
             <Link
-              href={`/analysis/${parked.id}`}
+              href={`/analysis/${stalled.id}`}
               className="btn btn-secondary btn-sm mt-3.5 no-underline"
             >
               Open it

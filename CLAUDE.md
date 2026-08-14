@@ -10,7 +10,7 @@
 
 **Roleform** takes a job description and a stored résumé profile and returns three things:
 
-1. **Six tailored résumés** across ATS-safe, sidebar and creative templates
+1. **Up to eleven tailored résumés** across ATS-safe, sidebar and creative families — how many is `capResumes` per member (§5, F15), eleven by default
 2. **Likely interview questions** with answer frameworks
 3. **Skill gaps and the courses that close them**
 
@@ -88,9 +88,15 @@ N4 to be broken — push back.
 
 ## 5. ATS rating on templates
 
-Six templates across three families — `classic` (single-column), `sidebar` (two-column), `creative`.
-Two-column layouts parse worse in real systems; the badge exists so the user chooses knowingly
-instead of being sold a false promise.
+Eleven templates across eight families — `classic` (single-column), `sidebar` (two-column),
+`creative`, `banner`, `timeline`, `modular`, `editorial`, `infographic`. Two-column layouts parse
+worse in real systems; the badge exists so the user chooses knowingly instead of being sold a false
+promise.
+
+**Never write the count into UI copy.** How many drafts a run returns is `capResumes` per member
+(0–11, eleven by default), so any fixed number in a heading is wrong for somebody. Results surfaces
+count the drafts they were handed; the analyse screen reads `draftsPerRun`; both clamp through
+`lib/domain/entitlements.draftCount`, which the pipeline uses too.
 
 Computed in `lib/render/ats-rules.ts` from structural facts, not opinion:
 

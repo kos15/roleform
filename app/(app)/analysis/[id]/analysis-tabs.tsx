@@ -45,10 +45,15 @@ export function AnalysisTabs({
   ];
 
   return (
-    <div className="tab-bar" role="tablist" aria-label="Analysis sections">
+    <div className="tab-bar" data-tour="tabs" role="tablist" aria-label="Analysis sections">
       {tabs.map((tab) => {
         const href = `/analysis/${analysisId}/${tab.slug}`;
-        const selected = pathname === href;
+        // A preview is a résumé opened, not a fourth place to be. Matching only
+        // the exact path left every tab unselected there, so the bar said you
+        // were nowhere.
+        const selected =
+          pathname === href ||
+          (tab.slug === "resumes" && pathname.startsWith(`/analysis/${analysisId}/preview/`));
         return (
           <Link key={tab.slug} href={href} role="tab" aria-selected={selected} tabIndex={0}>
             <TabButton label={tab.label} count={tab.count} selected={selected} />

@@ -23,7 +23,7 @@ const figtree = Figtree({
 export const metadata: Metadata = {
   title: "Roleform",
   description:
-    "Six tailored résumés, the questions you'll be asked, and the gaps to close — from your own experience. Nothing is invented.",
+    "Eleven tailored résumés, the questions you'll be asked, and the gaps to close — from your own experience. Nothing is invented.",
 };
 
 /**

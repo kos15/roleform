@@ -1,14 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { getDrafts } from "@/lib/db/queries/analysis";
+import { getAnalysis, getDrafts } from "@/lib/db/queries/analysis";
 import { templateById } from "@/lib/render/templates";
 import { AtsBadge, Card, EmptyState, Tag } from "@/components/ui";
 import { TemplateThumb } from "@/components/template-thumb";
 import { DownloadAll } from "./download-all";
 
 /**
- * F5 — Tab 1: "Six drafts, same evidence".
+ * F5 — Tab 1: "N drafts, same evidence".
+ *
+ * The heading counts the drafts that exist rather than naming a number. How
+ * many render is `capResumes` per member (F15, 0–11), so "six" was wrong for
+ * everyone the moment the catalog grew past it.
  *
  * The ATS badge on each card is computed (N5). A creative template reads Low
  * here and that is correct — the badge is how we ship them honestly.
@@ -18,7 +22,13 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
   const { userId } = await auth();
   if (!userId) redirect("/");
 
-  const drafts = await getDrafts(userId, id);
+  // A tab of a run that isn't finished renders without the header or the tab
+  // bar — the layout only draws those for a `ready` analysis — which left a
+  // page with no score, no tabs and no way back. The run's own screen is the
+  // right place to be until there is something to tab between.
+  const [analysis, drafts] = await Promise.all([getAnalysis(userId, id), getDrafts(userId, id)]);
+  if (!analysis) redirect("/history");
+  if (analysis.status !== "ready") redirect(`/analysis/${id}`);
 
   if (drafts.length === 0) {
     return (
@@ -35,13 +45,18 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
     <section>
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2>Six drafts, same evidence</h2>
+          <h2>
+            {drafts.length} draft{drafts.length === 1 ? "" : "s"}, same evidence
+          </h2>
           {summary ? <p className="mt-1 text-[var(--color-text-muted)]">{summary}</p> : null}
         </div>
         <DownloadAll analysisId={id} />
       </div>
 
-      <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(238px,100%),1fr))]">
+      <div
+        data-tour="shelf"
+        className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(238px,100%),1fr))]"
+      >
         {drafts.map((draft) => {
           const template = templateById(draft.templateId);
           if (!template) return null;

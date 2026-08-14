@@ -71,7 +71,10 @@ export function JdInput() {
   }
 
   return (
-    <div className="space-y-4">
+    // The walkthrough points at the whole block rather than one mode's control:
+    // which of the two is showing is the member's choice, and a spotlight that
+    // moved when they switched tabs would be pointing at the tab, not the task.
+    <div className="space-y-4" data-tour="jd">
       {wall ? (
         <TokenWallDialog
           wall={wall}

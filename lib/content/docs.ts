@@ -58,7 +58,7 @@ export const DOCS: Record<DocSlug, Doc> = {
       {
         heading: "03 · Rewriting your résumé",
         body: [
-          "Your bullets are reordered, reworded and re-weighted against the posting, then rendered into six templates. Every generated line keeps a key back to the bullet you wrote.",
+          "Your bullets are reordered, reworded and re-weighted against the posting, then rendered into every template your plan allows — eleven by default. Every generated line keeps a key back to the bullet you wrote.",
         ],
         list: [
           "Won't invent a job, a number, a date or a tool",

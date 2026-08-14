@@ -58,7 +58,7 @@ export default async function HistoryPage() {
                     <Tag
                       tone={row.status === "ready" ? "sage" : row.status === "failed" ? "accent" : "muted"}
                     >
-                      {STATUS_LABEL[row.status]}
+                      {row.queuedAt ? "Parked" : STATUS_LABEL[row.status]}
                     </Tag>
                   </td>
                   <td className="text-[var(--color-text-muted)]">

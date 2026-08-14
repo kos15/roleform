@@ -38,7 +38,7 @@ and re-weighted."* Everything below is that sentence, enforced.
 - Onboarding: import a résumé (PDF/DOCX/TXT, ≤5 MB) → structured Master Profile, user-reviewed
 - Per-analysis: JD via paste **or** file upload → posting metadata + requirements
 - Coverage: Strong match / Partial evidence / Not evidenced, plus the match score (§6)
-- **Tab 1 — Resumes:** six tailored drafts across three template families, evidence-bound, with per-draft diff, preview, Compare two, Download all
+- **Tab 1 — Resumes:** up to eleven tailored drafts across eight template families, evidence-bound, with per-draft diff, preview, Compare two, Download all
 - **Tab 2 — Prep:** twelve likely interview questions, four flagged most likely, tabbed by family (technical and system design get their own), each with why they ask, a three-point answer framework, the profile evidence to pull from, and a full worked answer on demand
 - **Tab 3 — Learning:** skill gaps ordered by posting mention count, each with your level vs required, and two curated courses
 - History of past analyses
@@ -116,6 +116,14 @@ Consequences that propagate through the schema:
 - The integration supplies the `"role": "authenticated"` claim. Requests lacking it are anonymous and RLS denies them.
 - The service-role key never reaches the client; it is used only in trusted server paths (Clerk webhooks, catalog seeding, admin scripts).
 - Server Actions still scope every query by the session subject. RLS is the second lock.
+
+**Two ways in, on purpose.** The marketing header and the landing hero open Clerk's *modal*, which
+is right where the visitor is already reading something. `/sign-in/[[...sign-in]]` and
+`/sign-up/[[...sign-up]]` are the routed pair, in the `(auth)` group with their own minimal chrome,
+because three callers need a URL a modal cannot give them: Clerk's own bounce out of `auth.protect()`
+(`NEXT_PUBLIC_CLERK_SIGN_IN_URL`), the checkout button returning a signed-out visitor to `/pricing`,
+and any shared link. Both are public in `middleware.ts` and both land on `/analyze`, which holds the
+"import your résumé first" state for a new account and the working screen for everyone else.
 
 ## 6. Data model
 
@@ -219,7 +227,7 @@ coverage_items
 templates                              -- seeded, not user data. No RLS; public read.
   id, name, kind enum('classic','sidebar','creative'), blurb, accent, structural_flags jsonb
 
-resume_drafts                          -- six per analysis
+resume_drafts                          -- one per template within capResumes
   id, clerk_user_id, analysis_id, template_id → templates, resume_json (jsonb),
   ats_rating enum('High','Medium','Low'), page_count, created_at
 
@@ -380,15 +388,15 @@ PER ANALYSIS (Step 1 of 3)
     ↓  parsing screen: 4 named steps + progressPct, streamed
   ① analyze-jd      → JdMeta + jd_requirements (with mention_count)
   ② coverage        → coverage_items + score          [PURE, no LLM]
-  ③ tailor          → 6 × resume_drafts + tailored_bullets
-  ④ interview       → 10 × interview_questions
+  ③ tailor          → capResumes × resume_drafts + tailored_bullets
+  ④ interview       → 12 × interview_questions
   ⑤ learning        → skill_gaps + learning_plans + learning_steps
                       (S3 resolve → S4 score → S5 bundle lookup → S5b select
                        → S5c bind → S5.5 knapsack → S6 ONE call → S7 validate)
 
 RESULTS
   score header + 3 buckets
-  ├─ Resumes   6 drafts · Compare two · Download all
+  ├─ Resumes   N drafts · Compare two · Download all
   ├─ Prep      12 questions · family tabs · expandable · worked answer on demand
   └─ Learning  ≤7 gaps by severity · ≤3 resources each · time-budgeted plan
                each resource bound to a bullet it unlocks and a question it answers
@@ -403,8 +411,8 @@ deterministic, reproducible and explainable line by line.
 ### F0 — Shell and theme
 
 Sticky header on the ground (not a raised surface): brand mark, `New analysis · History · Profile ·
-Admin · Status`, the token balance pill (F19), the appearance link (F18), theme switch, role label,
-Clerk user button.
+Pricing · Admin · Status`, the token balance pill (F19), the walkthrough button (F20), the appearance
+link (F18), theme switch, role label, Clerk user button.
 
 `Admin` is shown to every member, not only to admins. A link that quietly isn't there teaches nobody
 anything; a 403 that names the missing permission and the people who hold it (F15) is the more useful
@@ -412,7 +420,7 @@ outcome of the same click.
 
 **Footer**, on every surface including the public ones: the mark and the one-line promise, then three
 columns — Product (`New analysis · History · Profile · Status`), Company (`How it works · Privacy ·
-Contact`) and Support us — over a rule carrying `Terms · Privacy · Changelog`. The dot beside `Status`
+Contact`) and Support us — over a rule carrying `Terms · Privacy`. The dot beside `Status`
 is live: it renders only when a stage is actually degraded, from the same aggregate F14 reads. A
 decorative pulse next to the word "Status" would be the exact lie that page exists to prevent.
 
@@ -452,7 +460,8 @@ Profile card afterwards reads `filename · Parsed · N yrs experience · N skill
 
 ### F2 — JD input (Step 1 of 3)
 
-`Step 1 of 3 · The posting` → *"One résumé in, six tailored out"*. Two columns: the posting goes in the
+`Step 1 of 3 · The posting` → *"One résumé in, N tailored out"*, where N is `draftsPerRun` for
+this member — never a number written into the copy. Two columns: the posting goes in the
 left, and the right rail holds the corpus and the contract — the profile card, and **What comes back**
 in three numbered lines. Side by side on purpose: you can see what we'll draw *on* while you paste the
 thing we'll draw *against*.
@@ -475,6 +484,23 @@ four named steps resolving in sequence with a per-row status: *Reading the posti
 your profile → Rewriting your resume → Preparing questions and courses.* Streamed, never a fake timer.
 A stage failure stops there and says what failed — a spinner that lies is worse than an error.
 
+**A failed run stays on this screen.** The redirect to the results fires only when the stream ends
+without a failed stage; a run that broke would otherwise be dropped on a résumés tab with no header
+and no tabs. Beside *Try another posting* there is **Pick it up again**, which re-POSTs the same
+analysis. It never fires on its own — a page reload must not bill anybody.
+
+**Resuming is enforced, not asserted.** `runAnalysis` consults `resumeState` before each stage and
+returns early where the rows already exist, so a resumed run pays only for what it has not already
+produced. Measured end to end: re-running an analysis whose five stages were all complete finished
+with the row counts unchanged and `ai_runs` unmoved — zero model calls. Before this the pipeline ran
+every stage unconditionally, which duplicated requirements, coverage and questions and *threw* on
+drafts and the learning plan, whose unique constraints refused the second write.
+
+One value is rewritten on the skip path too: `fail()` reports a stage failure by putting its message
+in `scoreNote`, the column the score's own calibration lives in. A resume that skipped matching would
+leave the results header explaining the crash instead of the number, so the score, verdict and note
+are re-derived and written on both paths. They are pure functions of rows already in hand.
+
 **Stage figures.** Each stage carries a small looping diagram of the work it is doing: a page under a
 scan line, requirements wired to the bullets that evidence them (and one wired to nothing), a bullet
 being typed while two others swap places, questions and course cards forming. They answer what a
@@ -487,16 +513,21 @@ one is mounted at a time, they are `aria-hidden`, and the whole set freezes unde
 `Analysis complete · {jdSource}` with extracted JdMeta, the score ring, verdict, note, and three
 bucket cards with counts and tags.
 
-Below it, the three surfaces as an underline tab bar carrying a count each — `Résumés 6`,
-`Interview prep 10`, `Learning 4 gaps`. The counts are read before the tab is opened on purpose: a
+Below it, the three surfaces as an underline tab bar carrying a count each — `Résumés 11`,
+`Interview prep 12`, `Learning 4 gaps`. The Résumés tab also reads selected on
+`/analysis/[id]/preview/[templateId]`: a preview is a résumé opened, not a fourth place to be.
+
+**The header and the tab bar exist only for a `ready` analysis.** So every tab, and the preview,
+redirects to `/analysis/[id]` while the run is anything else — otherwise the page renders with no
+score, no tabs and no way back. The counts are read before the tab is opened on purpose: a
 surface that generated nothing is visible as empty from here rather than after a click (§11
 Reliability). Real links, so a tab is shareable and the back button behaves.
 
 **Acceptance:** every **Strong match** tag traces to a specific bullet in one click.
 
-### F5 — Tab 1: Resumes ("Six drafts, same evidence")
+### F5 — Tab 1: Resumes ("N drafts, same evidence")
 
-Six cards: thumbnail by family, name, `pages`, `kind` tag, `ATS {rating}` badge, plus **Download all**.
+One card per draft: thumbnail by family, name, `pages`, `kind` tag, `ATS {rating}` badge, plus **Download all**.
 `tailorSummary` states in one line what changed across all drafts.
 
 The thumbnail is an abstract miniature of the layout — grey bars on white paper, the template's own
@@ -520,7 +551,7 @@ JD-relevant ones the profile actually contains, summary line assembled only from
 ### F6 — Preview + diff
 
 Full-page preview of the actual template family — same layout, same accent, same typeface as the
-export, on white paper — with **All six drafts**, **Download DOCX**, **Download PDF**, a six-chip
+export, on white paper — with **All N drafts**, **Download DOCX**, **Download PDF**, a one-chip-per-draft
 template switcher, and a right rail: `cur.name`, `cur.blurb`, kind tag, ATS tag, the computed rating's
 own reasons, **What changed for this posting** (`changes`), and **Still not evidenced** (`missing`)
 with **See courses for these** linking into the Learning tab.
@@ -743,8 +774,8 @@ been cited by a draft, counted from `tailored_bullets`. A bullet at zero is eith
 about work nobody is hiring for, and either way it is the next thing to fix. Two counting rules
 matter and both are easy to get wrong:
 
-- **Per analysis, not per row.** One run renders a bullet into six templates. Counting rows says
-  "used 6×" for a bullet used once, and climbs six at a time for work done once.
+- **Per analysis, not per row.** One run renders a bullet into every template in the cap. Counting rows
+  says "used 11×" for a bullet used once, and climbs a cap at a time for work done once.
 - **A skill reports bullets, not a sum.** Adding its bullets' counts up would count one analysis
   once per bullet it cited, producing a figure that sounds like a tally of postings and isn't.
 
@@ -776,7 +807,7 @@ bullet used by one analysis reads "used as evidence 1×", not 6.
 
 ### F12 — The written pages
 
-`/how-it-works`, `/privacy`, `/terms`, `/changelog`, `/support`. Public — no session. A promise you
+`/how-it-works`, `/privacy`, `/terms`, `/support`. Public — no session. A promise you
 have to create an account to read is not a promise you can act on, and privacy is the promise this
 product most needs to make in writing.
 
@@ -785,12 +816,15 @@ keep: when §3's fabrication boundary moves, "What we can't tell you" moves in t
 
 - **How it works** is the four stages, each with what it *refuses* to do. The refusals are set as a
   list, not buried in prose — they are the load-bearing sentences.
-- **Changelog** records fixes as plainly as features, tagged `Release · Feature · Improvement · Fix`.
 - **Support us** publishes where the money goes, labelled **planned allocation** rather than a report,
   because we have not taken a quarter of money yet. Presenting a forecast as a result is the same
   class of lie as an "ATS score" (N4).
 
-**Acceptance:** all five render signed out; no page claims a number it cannot source.
+**Acceptance:** all four render signed out; no page claims a number it cannot source.
+
+**Removed.** There was a fifth, `/changelog`, listing releases from `lib/content/changelog.ts`.
+The page, its content module, its skeleton and every link to it were deleted; `/changelog` is no
+longer public in `middleware.ts` and now 404s. Do not reinstate it without asking.
 
 ### F13 — Contact
 
@@ -834,7 +868,11 @@ small to be a verified one*; "unknown" dressed up as "healthy" is the failure th
 avoid. Matching runs no model at all (`lib/domain/coverage.ts` is pure), so it says it has no worker
 to degrade.
 
-**Parked run.** For a signed-in viewer, the newest analysis still in `parsing`. Progress is counted
+**Stopped part-way.** Deliberately *not* called parked: that word is spent on a posting filed
+against the allowance (F19), which has started nothing and cost nothing, and this is a run that
+started and spent tokens. For a signed-in viewer, the newest analysis still in `parsing`, not queued,
+and at least six minutes old — the stream's own route caps at 300s, so anything younger may still be
+running, and this panel used to tell people their live run had stopped. Progress is counted
 from what the run persisted — requirements mean reading finished, coverage items mean matching
 finished, drafts mean rewriting, questions mean preparing — so the bar is a fact about rows, not a
 guess about a worker. A stage in flight contributes nothing; rounding up would be an invention.
@@ -882,7 +920,7 @@ as policy but because the RLS policy keyed to the subject does not admit it.
 | Cap | Where | Behaviour at the cap |
 |---|---|---|
 | `capAnalyses` | `checkAnalysisAllowance` | New runs refused, naming the cap and the admins who can raise it. Existing analyses stay readable. |
-| `capResumes` | `writeDrafts` | Renders the highest-ATS templates first. Below six is fewer drafts, never worse ones. |
+| `capResumes` | `writeDrafts` | Renders the highest-ATS templates first. Below the catalog size is fewer drafts, never worse ones. |
 | `capAnswers` | `draftAnswer` | Frameworks stay free at every cap, including zero. Already-drafted answers stay readable. |
 | `capCourses` | Learning tab | Bounds the course list per gap. **The gap is always shown**, at any cap including zero. |
 
@@ -1134,6 +1172,35 @@ row; parking that posting creates one row with `queued_at` set and no model call
 top-up webhook credits nothing twice; the balance shown equals `SUM(input+output)` over the cycle's
 `ai_runs`, checked by hand once at the gate.
 
+### F20 — The walkthrough
+
+Six steps, from the design's `TOUR` array: the token meter, the posting input, the score ring, the
+coverage buckets, the tab bar, the draft shelf. A spotlight cut out of a scrim, and a card beside it
+carrying a step counter, a title, two sentences and `Skip tour · Back · Next`.
+
+**A step is only shown if its anchor is on the page.** Each one names a `data-tour` key that a real
+surface carries — the design is one page where every screen is a state flip, and here they are
+routes, so the six are spread across `/analyze` and an analysis. The tour filters to what is
+actually in the DOM at the moment it starts, which is why the spotlight can never sit over nothing.
+Steps 1–2 live on the upload screen, 1 and 3–6 on a finished analysis.
+
+The header button replays it. From a page with no anchors it hops to `/analyze` first (a session
+flag survives the navigation) rather than opening over a surface it can't explain. It auto-starts
+once, on `/analyze`, for a browser that hasn't seen it: "seen" is `localStorage`, not a column —
+it is a fact about this device, not about the account.
+
+The overlay is `pointer-events: none` and the scrim is the spotlight's own 9999px outer shadow, one
+element, so the hole cannot drift away from the control it is cut around. Positions are viewport
+space, re-measured on scroll and resize. Escape skips; `←`/`→` step. Under
+`prefers-reduced-motion` the spotlight jumps rather than glides.
+
+Wide widths only. Below 860px the controls three of the six steps point at have moved into the
+bottom bar and the sheet, so the button goes with them.
+
+**Acceptance:** the spotlight tracks its control through a scroll; a step whose anchor is missing is
+never rendered; the tour never blocks a click outside its own card; replay works from any signed-in
+surface.
+
 
 ## 10. AI layer
 
@@ -1212,7 +1279,7 @@ comment beside it — a threshold chosen by feel is a threshold nobody can re-de
 | No course for a gap | Honest "no vetted course yet" state. Never invent a link. |
 | Quota exhausted | Full read access to past analyses. Never lock a user out of their own data. |
 | Career gap in dates | Surfaced neutrally at review. Never auto-concealed. |
-| Supabase unreachable mid-analysis | `analyses.status='failed'` with the completed stages preserved; resume rather than restart. |
+| Supabase unreachable mid-analysis | `analyses.status='failed'` with the completed stages preserved; **Pick it up again** resumes at the first stage with nothing persisted (F3). |
 
 ## 14. API surface (Server Actions unless noted)
 
@@ -1250,7 +1317,7 @@ requestAdminAccess()                  → files a support message
 
 | # | Decision | Recommendation | Trigger |
 |---|---|---|---|
-| D1 | Multiple master profiles | No in v1 — six drafts cover most of the need | If users create duplicate accounts |
+| D1 | Multiple master profiles | No in v1 — the draft set covers most of the need | If users create duplicate accounts |
 | D2 | Cover letters | Defer. Same evidence engine, new renderer | Post-v1 |
 | D3 | Mock interview practice | Defer. Big surface, different product | Post-v1 |
 | D4 | Course catalog scale | ~150 curated entries covering the top 40 skills, manual | If gap coverage drops below 80% |

@@ -55,7 +55,7 @@ export function ResultsHeader({
           the verdict takes a 280px basis, so on a phone the text drops to its
           own line instead of squeezing the ring to a coin beside three-line
           title. Matches the design's own `flex:none` / `min-width:280px`. */}
-      <div className="mb-6 flex flex-wrap items-center gap-6">
+      <div className="mb-6 flex flex-wrap items-center gap-6" data-tour="score">
         <svg width="120" height="120" viewBox="0 0 120 120" className="flex-none" role="img" aria-label={`${analysis.score.toFixed(0)} percent of this posting's requirements are evidenced by your profile`}>
           <circle cx="60" cy="60" r="52" fill="none" stroke="var(--color-bg-sunken)" strokeWidth="12" />
           <circle
@@ -96,7 +96,10 @@ export function ResultsHeader({
         </div>
       </div>
 
-      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
+      <div
+        data-tour="coverage"
+        className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]"
+      >
         <Bucket
           title="Strong match"
           tone="sage"

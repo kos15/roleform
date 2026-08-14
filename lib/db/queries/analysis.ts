@@ -15,7 +15,19 @@ import {
 export async function listAnalyses(clerkUserId: string, limit = 50) {
   return db.analysis.findMany({
     where: { clerkUserId },
-    select: { id: true, company: true, title: true, score: true, status: true, createdAt: true },
+    // `queuedAt` because a run parked against the token wall is also `parsing`,
+    // and History labelling it "Analysing" said the opposite of the truth: it
+    // has not started, nothing has been charged, and it never will start on its
+    // own (F19).
+    select: {
+      id: true,
+      company: true,
+      title: true,
+      score: true,
+      status: true,
+      queuedAt: true,
+      createdAt: true,
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
   });

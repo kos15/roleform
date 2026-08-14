@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteFooter } from "@/components/site-footer";
 import { MobileTabBar } from "@/components/mobile-tabbar";
 import { SheetAccount } from "@/components/sheet-account";
+import { ProductTour, TourLauncher } from "@/components/product-tour";
 import { currentRole } from "@/lib/admin/role";
 
 /**
@@ -57,6 +58,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href="/profile" className="text-[var(--color-text-muted)]">
             Profile
           </Link>
+          {/* In the design's nav, and everywhere else in the product — the
+              footer, the sheet, the meter's own tooltip. It was the one width
+              where the way to buy more tokens wasn't one click from the meter
+              that tells you they're running out. */}
+          <Link href="/pricing" className="text-[var(--color-text-muted)]">
+            Pricing
+          </Link>
           {/* Shown to everyone on purpose. A member who clicks it gets a 403 that
               names the permission and the people who can grant it — which is more
               use than a link that quietly isn't there. */}
@@ -75,10 +83,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <TokenPill />
         </Suspense>
 
-        {/* The palette lives one row down in the sheet at this width, with its
-            name spelled out — a second unlabelled circle beside the mode toggle
-            is the wrong thing to keep when space runs out. */}
+        {/* Both of these drop below 860px: the walkthrough spotlights header
+            controls that have moved to the bottom bar by then, and the palette
+            gets a spelled-out row in the sheet instead of a second circle. */}
         <span className="wide-only contents">
+          <TourLauncher />
           <AppearanceLink />
         </span>
         <ThemeToggle />
@@ -110,6 +119,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="mx-auto w-full max-w-6xl px-6 py-10">{children}</main>
 
       <SiteFooter />
+
+      {/* Outside <main> on purpose: it measures controls in the header and the
+          page alike, so it can't live inside either. */}
+      <ProductTour />
 
       <MobileTabBar
         isAdmin={isAdmin}

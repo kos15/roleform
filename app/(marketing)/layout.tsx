@@ -15,7 +15,7 @@ import { currentRole } from "@/lib/admin/role";
 /**
  * Chrome for the public surfaces: the landing page and everything a person
  * should be able to read before signing in — how it works, privacy, terms,
- * changelog, contact, support and status.
+ * contact, support and status.
  *
  * Privacy and terms in particular are behind no session on purpose. A promise
  * you have to create an account to read is not a promise you can rely on.
@@ -32,7 +32,15 @@ export default async function MarketingLayout({ children }: { children: React.Re
   return (
     <div className="flex min-h-screen flex-col">
       <header className="nav">
-        <Link href="/" className="mr-auto flex items-center gap-2.5 no-underline">
+        {/* Signed in, the mark goes back to the work rather than to the pitch.
+            The mobile bar sends members here for Tokens and Appearance, and
+            landing on the marketing page from inside a session — with its
+            "Get started" and its explanation of what Roleform is — reads as
+            having been logged out. */}
+        <Link
+          href={signedIn ? "/analyze" : "/"}
+          className="mr-auto flex items-center gap-2.5 no-underline"
+        >
           <Brand />
         </Link>
 
@@ -45,9 +53,6 @@ export default async function MarketingLayout({ children }: { children: React.Re
           </Link>
           <Link href="/pricing" className="text-[var(--color-text-muted)]">
             Pricing
-          </Link>
-          <Link href="/changelog" className="text-[var(--color-text-muted)]">
-            Changelog
           </Link>
           <Link href="/status" className="text-[var(--color-text-muted)]">
             Status

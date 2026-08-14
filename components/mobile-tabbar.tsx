@@ -227,7 +227,6 @@ function sheetLinks(isAdmin: boolean): { href: string; label: string; hint: stri
     { href: "/how-it-works", label: "How it works", hint: "What we do with your words" },
     { href: "/support", label: "Support us", hint: "Independent and ad-free" },
     { href: "/contact", label: "Contact", hint: "A person answers" },
-    { href: "/changelog", label: "Changelog", hint: "What shipped, and when" },
     { href: "/privacy", label: "Privacy", hint: "What we store" },
     { href: "/terms", label: "Terms", hint: "The plain-English version" },
   ];

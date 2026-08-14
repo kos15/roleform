@@ -82,7 +82,7 @@ export function AccessDenied({
             <Can>
               Run analyses up to your own cap — {usage.used} of {usage.cap} used this cycle
             </Can>
-            <Can>Render all six templates and draft full answers</Can>
+            <Can>Render every template your cap allows, and draft full answers</Can>
             <Can>Edit your profile and see your own usage</Can>
           </ul>
         </div>

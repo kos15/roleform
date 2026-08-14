@@ -8,12 +8,12 @@ import { computeCoverage, scoreAnalysis } from "@/lib/domain/coverage";
 import { orderSkills, rankBullets } from "@/lib/domain/ordering";
 import { summariseChanges } from "@/lib/domain/diff";
 import { canonicalSkill } from "@/lib/catalog/skills";
-import { isUncapped } from "@/lib/domain/entitlements";
+import { draftCount } from "@/lib/domain/entitlements";
 import { TEMPLATES, ratingFor, type TemplateDef } from "@/lib/render/templates";
 import { buildRenderModel, type RenderModel } from "@/lib/render/model";
 import { renderFitted } from "@/lib/render/pdf";
 import { getBullets, toDomainBullets } from "@/lib/db/queries/profile";
-import { getProfileById } from "@/lib/db/queries/analysis";
+import { getCoverage, getProfileById, getRequirements } from "@/lib/db/queries/analysis";
 import { progressFor, type StageEmitter } from "./stages";
 import type { AtsRating, DomainBullet, DomainRequirement } from "@/lib/domain/types";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
@@ -32,6 +32,25 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
  * stages ③–⑤ each catch their own failure, mark themselves degraded, and let
  * the run finish. Only stages ① and ② can fail the whole analysis, because
  * without requirements there is nothing to show at all.
+ *
+ * ── Resuming (specs §13) ────────────────────────────────────────────────────
+ * "We resume rather than restart" is a promise the product makes on three
+ * screens. It is kept HERE, and only here: every stage asks what it already
+ * persisted and returns early if the answer is "everything". A run picked up
+ * after a crash re-reads its own rows instead of re-billing the model for work
+ * it already paid for.
+ *
+ * Before this, `runAnalysis` executed all four stages unconditionally. Because
+ * `resume_drafts` and `learning_plans` carry unique constraints, that did not
+ * quietly duplicate — it *threw*, and the second attempt at a half-finished run
+ * degraded the exact tabs the first attempt had already written. Requirements,
+ * coverage items and questions have no such constraint and did duplicate.
+ *
+ * The completeness test per stage is `resumeState` below. A stage that wrote
+ * its rows in one `createMany` is all-or-nothing, so a single row proves it
+ * finished. Drafts are written one per template in a loop, so that stage is
+ * complete only at the full count — and a partial set is deleted before the
+ * redo, because the unique constraint leaves no other way through.
  */
 export async function runAnalysis(args: {
   clerkUserId: string;
@@ -61,7 +80,10 @@ export async function runAnalysis(args: {
   // Admins render every template (lib/domain/entitlements.ts). `templatesFor`
   // takes a count rather than Infinity, because it slices an array — so the
   // uncapped value here is the only honest finite number: all of them.
-  const capResumes = isUncapped(account.role) ? TEMPLATES.length : account.capResumes;
+  //
+  // Shared with `draftsPerRun`, which is what the analyse screen promises. One
+  // clamp, so the promise and the render cannot disagree.
+  const capResumes = draftCount(account.role, account.capResumes, TEMPLATES.length);
 
   // specs §13: a profile with zero bullets blocks analysis. The tool has
   // nothing to work from, and saying so beats inventing something.
@@ -77,68 +99,93 @@ export async function runAnalysis(args: {
     ...bullets.flatMap((b) => b.skillNames),
   ];
 
+  // What a previous attempt at this same analysis already finished. Every stage
+  // below consults this before spending anything.
+  const expectedDrafts = templatesFor(capResumes).length;
+  const done = await resumeState({ clerkUserId, analysisId, expectedDrafts });
+
   /* ---------------------------------------------------- ① reading the posting */
 
   emit({ stage: "reading", state: "running", progressPct: progressFor("reading", "running") });
 
-  const jd = await analyzeJd({ clerkUserId, analysisId, rawText: analysis.rawText });
-  if (!jd.ok) {
-    await fail(analysisId, jd.error.message);
-    emit({ stage: "reading", state: "failed", progressPct: 0, message: jd.error.message });
-    return;
+  let requirements: DomainRequirement[];
+  let skillIdByName: Map<string, string>;
+  // Only `title` and `company` are read downstream; the rest of JdMeta is
+  // written to the analysis row and never looked at again in this function.
+  let jobMeta: { title: string; company: string };
+
+  if (done.reading) {
+    // The requirements are already rows, and rows are what everything
+    // downstream refers to by id — so they are read back rather than
+    // regenerated. Regenerating would produce new ids and orphan the coverage
+    // and questions that already point at the old ones.
+    requirements = await getRequirements(clerkUserId, analysisId);
+    skillIdByName = await resolveSkillIds(
+      requirements.map((r) => r.skillName).filter((n): n is string => Boolean(n)),
+    );
+    jobMeta = { title: analysis.title ?? "", company: analysis.company ?? "" };
+  } else {
+    const jd = await analyzeJd({ clerkUserId, analysisId, rawText: analysis.rawText });
+    if (!jd.ok) {
+      await fail(analysisId, jd.error.message);
+      emit({ stage: "reading", state: "failed", progressPct: 0, message: jd.error.message });
+      return;
+    }
+
+    const { meta, requirements: parsed } = jd.value.analysis;
+
+    if (meta.language !== "en") {
+      const message = "This posting isn't in English. Roleform handles English postings in v1.";
+      await fail(analysisId, message);
+      emit({ stage: "reading", state: "failed", progressPct: 0, message });
+      return;
+    }
+    if (!meta.isJobPosting) {
+      const message = "This document doesn't read like a job posting, so we stopped rather than guess.";
+      await fail(analysisId, message);
+      emit({ stage: "reading", state: "failed", progressPct: 0, message });
+      return;
+    }
+
+    skillIdByName = await resolveSkillIds(parsed.map((r) => r.skillName));
+
+    const requirementRows = await db.jdRequirement.createManyAndReturn({
+      data: parsed.map((r) => ({
+        clerkUserId,
+        analysisId,
+        kind: r.kind,
+        text: r.text,
+        necessity: r.necessity,
+        mentionCount: r.mentionCount,
+        evidenceQuote: r.evidenceQuote,
+        skillId: skillIdByName.get(canonicalSkill(r.skillName) ?? "") ?? null,
+      })),
+    });
+
+    requirements = requirementRows.map((row, i) => ({
+      id: row.id,
+      kind: row.kind,
+      text: row.text,
+      necessity: row.necessity,
+      mentionCount: row.mentionCount,
+      evidenceQuote: row.evidenceQuote,
+      skillName: canonicalSkill(parsed[i].skillName),
+    }));
+
+    await db.analysis.update({
+      where: { id: analysisId },
+      data: {
+        company: meta.company || null,
+        title: meta.title || null,
+        location: meta.location || null,
+        seniority: meta.seniority,
+        employmentType: meta.employmentType,
+        stageState: { usedRegions: jd.value.analysis.usedRegions, truncated: jd.value.truncated },
+      },
+    });
+
+    jobMeta = { title: meta.title, company: meta.company };
   }
-
-  const { meta, requirements: parsed } = jd.value.analysis;
-
-  if (meta.language !== "en") {
-    const message = "This posting isn't in English. Roleform handles English postings in v1.";
-    await fail(analysisId, message);
-    emit({ stage: "reading", state: "failed", progressPct: 0, message });
-    return;
-  }
-  if (!meta.isJobPosting) {
-    const message = "This document doesn't read like a job posting, so we stopped rather than guess.";
-    await fail(analysisId, message);
-    emit({ stage: "reading", state: "failed", progressPct: 0, message });
-    return;
-  }
-
-  const skillIdByName = await resolveSkillIds(parsed.map((r) => r.skillName));
-
-  const requirementRows = await db.jdRequirement.createManyAndReturn({
-    data: parsed.map((r) => ({
-      clerkUserId,
-      analysisId,
-      kind: r.kind,
-      text: r.text,
-      necessity: r.necessity,
-      mentionCount: r.mentionCount,
-      evidenceQuote: r.evidenceQuote,
-      skillId: skillIdByName.get(canonicalSkill(r.skillName) ?? "") ?? null,
-    })),
-  });
-
-  const requirements: DomainRequirement[] = requirementRows.map((row, i) => ({
-    id: row.id,
-    kind: row.kind,
-    text: row.text,
-    necessity: row.necessity,
-    mentionCount: row.mentionCount,
-    evidenceQuote: row.evidenceQuote,
-    skillName: canonicalSkill(parsed[i].skillName),
-  }));
-
-  await db.analysis.update({
-    where: { id: analysisId },
-    data: {
-      company: meta.company || null,
-      title: meta.title || null,
-      location: meta.location || null,
-      seniority: meta.seniority,
-      employmentType: meta.employmentType,
-      stageState: { usedRegions: jd.value.analysis.usedRegions, truncated: jd.value.truncated },
-    },
-  });
 
   emit({ stage: "reading", state: "done", progressPct: progressFor("reading", "done") });
 
@@ -147,20 +194,41 @@ export async function runAnalysis(args: {
   emit({ stage: "matching", state: "running", progressPct: progressFor("matching", "running") });
 
   const profileSkillNames = resume.skills.map((s) => s.name);
-  const coverage = computeCoverage(requirements, bullets, profileSkillNames);
+
+  // Read back rather than recomputed when it exists. `computeCoverage` is pure
+  // and would return the same answer for the same inputs — but the profile may
+  // have been edited between the two attempts, and the stored rows are what the
+  // score header and the buckets are already showing. Downstream stages must
+  // work from the same coverage the user is looking at.
+  const coverage = done.matching
+    ? await getCoverage(clerkUserId, analysisId)
+    : computeCoverage(requirements, bullets, profileSkillNames);
+
+  // Pure, sub-millisecond, and needed by ③ and ④ either way — so it is derived
+  // on both paths rather than stored and reloaded.
   const scored = scoreAnalysis(requirements, coverage);
 
-  await db.coverageItem.createMany({
-    data: coverage.map((c) => ({
-      clerkUserId,
-      analysisId,
-      requirementId: c.requirementId,
-      status: c.status,
-      evidenceBulletIds: c.evidenceBulletIds,
-      rationale: c.rationale,
-    })),
-  });
+  if (!done.matching) {
+    await db.coverageItem.createMany({
+      data: coverage.map((c) => ({
+        clerkUserId,
+        analysisId,
+        requirementId: c.requirementId,
+        status: c.status,
+        evidenceBulletIds: c.evidenceBulletIds,
+        rationale: c.rationale,
+      })),
+    });
+  }
 
+  // Written on BOTH paths, including the skip.
+  //
+  // `fail()` reports a stage failure by putting its message in `scoreNote` —
+  // the same column the score's own calibration lives in. So a run that failed
+  // has already lost that sentence, and a resume that skipped this stage would
+  // leave the results header explaining the crash where it should be explaining
+  // the number. Three derived values from rows we are already holding: writing
+  // them again is idempotent and repairs the note.
   await db.analysis.update({
     where: { id: analysisId },
     data: {
@@ -176,69 +244,75 @@ export async function runAnalysis(args: {
 
   emit({ stage: "rewriting", state: "running", progressPct: progressFor("rewriting", "running") });
 
-  let tailored: TailoredResult[] = [];
+  const tailored: TailoredResult[] = [];
   let summaryLine = "";
   let professionalSummary = "";
 
-  try {
-    const ranked = rankBullets(bullets, requirements, coverage);
-    const requirementById = new Map(requirements.map((r) => [r.id, r]));
+  // The expensive stage: one model call per bullet plus one for the summary.
+  // Skipping it is most of what "resume rather than restart" is worth.
+  if (done.rewriting) {
+    emit({ stage: "rewriting", state: "done", progressPct: progressFor("rewriting", "done") });
+  } else {
+    try {
+      const ranked = rankBullets(bullets, requirements, coverage);
+      const requirementById = new Map(requirements.map((r) => [r.id, r]));
 
-    // One call per bullet, each scoped to its single best-matching requirement.
-    // Sequential rather than parallel: the per-user rate limit matters more here
-    // than latency, and the pipeline already streams progress.
-    for (const entry of ranked) {
-      const target = entry.requirementIds
-        .map((id) => requirementById.get(id))
-        .filter((r): r is DomainRequirement => Boolean(r))
-        .sort((a, b) => weight(b) - weight(a))[0];
+      // One call per bullet, each scoped to its single best-matching requirement.
+      // Sequential rather than parallel: the per-user rate limit matters more here
+      // than latency, and the pipeline already streams progress.
+      for (const entry of ranked) {
+        const target = entry.requirementIds
+          .map((id) => requirementById.get(id))
+          .filter((r): r is DomainRequirement => Boolean(r))
+          .sort((a, b) => weight(b) - weight(a))[0];
 
-      const result = await tailorBullet({
+        const result = await tailorBullet({
+          clerkUserId,
+          analysisId,
+          bullet: entry.bullet,
+          requirement: target ?? null,
+          profileTerms,
+          jobTitle: jobMeta.title,
+        });
+        if (result.ok) tailored.push(result.value);
+      }
+
+      const summary = await tailorSummary({
         clerkUserId,
         analysisId,
-        bullet: entry.bullet,
-        requirement: target ?? null,
+        jobTitle: jobMeta.title,
+        tailored,
         profileTerms,
-        jobTitle: meta.title,
       });
-      if (result.ok) tailored.push(result.value);
+      if (summary.ok) {
+        summaryLine = summary.value.summary;
+        professionalSummary = summary.value.professionalSummary;
+      }
+
+      await writeDrafts({
+        clerkUserId,
+        capResumes,
+        analysisId,
+        resume,
+        requirements,
+        profileSkillNames,
+        tailored,
+        professionalSummary,
+        summaryLine,
+        absent: scored.buckets.absent,
+      });
+
+      emit({ stage: "rewriting", state: "done", progressPct: progressFor("rewriting", "done") });
+    } catch (e) {
+      // The résumés degrade; Prep and Learning still run below.
+      emit({
+        stage: "rewriting",
+        state: "degraded",
+        progressPct: progressFor("rewriting", "done"),
+        message: "We couldn't finish the drafts. Your analysis and the other tabs are unaffected.",
+      });
+      logStageFailure("rewriting", e);
     }
-
-    const summary = await tailorSummary({
-      clerkUserId,
-      analysisId,
-      jobTitle: meta.title,
-      tailored,
-      profileTerms,
-    });
-    if (summary.ok) {
-      summaryLine = summary.value.summary;
-      professionalSummary = summary.value.professionalSummary;
-    }
-
-    await writeDrafts({
-      clerkUserId,
-      capResumes,
-      analysisId,
-      resume,
-      requirements,
-      profileSkillNames,
-      tailored,
-      professionalSummary,
-      summaryLine,
-      absent: scored.buckets.absent,
-    });
-
-    emit({ stage: "rewriting", state: "done", progressPct: progressFor("rewriting", "done") });
-  } catch (e) {
-    // The résumés degrade; Prep and Learning still run below.
-    emit({
-      stage: "rewriting",
-      state: "degraded",
-      progressPct: progressFor("rewriting", "done"),
-      message: "We couldn't finish the drafts. Your analysis and the other tabs are unaffected.",
-    });
-    logStageFailure("rewriting", e);
   }
 
   /* ------------------------------------------------- ④ + ⑤ prep and learning */
@@ -246,50 +320,54 @@ export async function runAnalysis(args: {
   emit({ stage: "preparing", state: "running", progressPct: progressFor("preparing", "running") });
 
   let prepDegraded = false;
-  try {
-    await writeQuestions({
-      clerkUserId,
-      analysisId,
-      meta: { title: meta.title, company: meta.company },
-      requirements,
-      bullets,
-      absent: scored.buckets.absent,
-    });
-  } catch (e) {
-    prepDegraded = true;
-    logStageFailure("prep", e);
+  if (!done.preparing) {
+    try {
+      await writeQuestions({
+        clerkUserId,
+        analysisId,
+        meta: jobMeta,
+        requirements,
+        bullets,
+        absent: scored.buckets.absent,
+      });
+    } catch (e) {
+      prepDegraded = true;
+      logStageFailure("prep", e);
+    }
   }
 
   let learningDegraded = false;
-  try {
-    // The Learning Engine, S3–S7 (lib/learning/build-plan.ts). One large-model
-    // call; everything else is a pure function or a primary-key read against
-    // the precomputed bundles.
-    //
-    // It runs AFTER writeQuestions on purpose: the proof-of-learning loop binds
-    // every recommended resource to an interview question, and a question that
-    // doesn't exist yet cannot be bound to. When Prep degrades, gaps still get
-    // written — they just fall through to roadmap fallbacks rather than steps,
-    // which is the honest consequence rather than a silent one.
-    const learning = await buildLearningPlan({
-      clerkUserId,
-      analysisId,
-      jobTitle: meta.title,
-      requirements,
-      coverage,
-      bullets,
-      profileSkillNames,
-      skillIdByName,
-      // No budget on the analysis run. The knapsack is pure and re-solvable in
-      // milliseconds, so the Learning tab re-plans against whatever budget the
-      // user picks without spending a token or touching the model (spec §10).
-      budgetMin: null,
-      rawJdText: analysis.rawText,
-    });
-    learningDegraded = learning.narrativeDegraded;
-  } catch (e) {
-    learningDegraded = true;
-    logStageFailure("learning", e);
+  if (!done.learning) {
+    try {
+      // The Learning Engine, S3–S7 (lib/learning/build-plan.ts). One large-model
+      // call; everything else is a pure function or a primary-key read against
+      // the precomputed bundles.
+      //
+      // It runs AFTER writeQuestions on purpose: the proof-of-learning loop binds
+      // every recommended resource to an interview question, and a question that
+      // doesn't exist yet cannot be bound to. When Prep degrades, gaps still get
+      // written — they just fall through to roadmap fallbacks rather than steps,
+      // which is the honest consequence rather than a silent one.
+      const learning = await buildLearningPlan({
+        clerkUserId,
+        analysisId,
+        jobTitle: jobMeta.title,
+        requirements,
+        coverage,
+        bullets,
+        profileSkillNames,
+        skillIdByName,
+        // No budget on the analysis run. The knapsack is pure and re-solvable in
+        // milliseconds, so the Learning tab re-plans against whatever budget the
+        // user picks without spending a token or touching the model (spec §10).
+        budgetMin: null,
+        rawJdText: analysis.rawText,
+      });
+      learningDegraded = learning.narrativeDegraded;
+    } catch (e) {
+      learningDegraded = true;
+      logStageFailure("learning", e);
+    }
   }
 
   await db.analysis.update({ where: { id: analysisId }, data: { status: "ready" } });
@@ -313,6 +391,79 @@ export async function runAnalysis(args: {
 
 function weight(r: DomainRequirement): number {
   return (r.necessity === "required" ? 3 : r.necessity === "preferred" ? 2 : 1) * r.mentionCount;
+}
+
+/**
+ * Which stages a previous attempt at this analysis already finished.
+ *
+ * One query. The completeness test differs per stage because the write pattern
+ * does, and "some rows exist" is only proof of completion for a stage that
+ * writes its rows in a single statement:
+ *
+ * | stage     | writes                       | complete when |
+ * |-----------|------------------------------|---------------|
+ * | reading   | one `createManyAndReturn`    | any row       |
+ * | matching  | one `createMany`             | any row       |
+ * | rewriting | one `create` per template    | the full count |
+ * | preparing | one `createMany`             | any row       |
+ * | learning  | plan first, then gaps/steps  | the plan row  |
+ *
+ * A half-written draft set is deleted rather than topped up. `resume_drafts`
+ * has a unique on (analysisId, templateId), so a redo over a partial set would
+ * throw on the first template that already exists — and the drafts all share
+ * one tailored set, so keeping three from an old run beside eight from a new
+ * one would put two different rewrites of the same history in one analysis.
+ * The tailored bullets under them cascade.
+ *
+ * `learning` is judged by the plan alone. Gaps written under a plan that then
+ * failed are left where they are: the plan row is unique per analysis, so they
+ * cannot be duplicated by a redo, and a gap the user can read is worth more
+ * than the tidiness of deleting it.
+ */
+async function resumeState(args: {
+  clerkUserId: string;
+  analysisId: string;
+  expectedDrafts: number;
+}): Promise<{
+  reading: boolean;
+  matching: boolean;
+  rewriting: boolean;
+  preparing: boolean;
+  learning: boolean;
+}> {
+  const { clerkUserId, analysisId, expectedDrafts } = args;
+
+  const row = await db.analysis.findFirst({
+    where: { clerkUserId, id: analysisId },
+    select: {
+      _count: {
+        select: {
+          jdRequirements: true,
+          coverageItems: true,
+          resumeDrafts: true,
+          interviewQuestions: true,
+        },
+      },
+      learningPlan: { select: { id: true } },
+    },
+  });
+
+  if (!row) {
+    return { reading: false, matching: false, rewriting: false, preparing: false, learning: false };
+  }
+
+  const drafts = row._count.resumeDrafts;
+  if (drafts > 0 && drafts < expectedDrafts) {
+    await db.resumeDraft.deleteMany({ where: { clerkUserId, analysisId } });
+  }
+
+  return {
+    reading: row._count.jdRequirements > 0,
+    matching: row._count.coverageItems > 0,
+    rewriting: expectedDrafts > 0 && drafts >= expectedDrafts,
+    preparing: row._count.interviewQuestions > 0,
+    learning: row.learningPlan !== null,
+  };
 }
 
 async function fail(analysisId: string, message: string) {

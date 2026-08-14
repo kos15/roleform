@@ -450,33 +450,6 @@ export function DocSkeleton() {
   );
 }
 
-export function ChangelogSkeleton() {
-  return (
-    <div className="mx-auto w-full max-w-[800px] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.75rem,5vw,3.5rem)] pb-16">
-      <PageIntroSkeleton />
-      <div className="mt-8 space-y-3.5">
-        {[0, 1, 2, 3].map((i) => (
-          <article
-            key={i}
-            className="flex flex-wrap gap-5 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] px-[1.375rem] py-5"
-          >
-            <div className="flex-none basis-32 space-y-2.5">
-              <Skeleton className="h-6 w-12" />
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="h-6 w-20 rounded-[var(--radius-pill)]" />
-            </div>
-            <div className="min-w-[min(220px,100%)] flex-1 basis-[300px] space-y-2.5">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-5/6" />
-              <Skeleton className="h-4 w-4/6" />
-            </div>
-          </article>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export function StatusSkeleton() {
   return (
     <div className="mx-auto w-full max-w-[860px] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.75rem,5vw,3.75rem)] pb-16">

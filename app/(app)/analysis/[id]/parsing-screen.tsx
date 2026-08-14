@@ -49,11 +49,18 @@ export function ParsingScreen({
   // different attempt rather than a re-render.
   const [attempt, setAttempt] = useState(0);
 
+  // A run that arrived already failed does not restart itself — that would bill
+  // a member for reloading a page. It restarts when they ask, which is what
+  // bumping `attempt` from the resume button means.
   useEffect(() => {
-    if (started.current || initialStatus === "failed") return;
+    if (started.current || (initialStatus === "failed" && attempt === 0)) return;
     started.current = true;
 
     const controller = new AbortController();
+    // The stream's own record of whether a stage failed. `failed` is React
+    // state and this closure would still read `null` after setting it, so the
+    // redirect below would fire over the error screen it just raised.
+    let stageFailed = false;
 
     void (async () => {
       const response = await fetch(`/api/analyze/${analysisId}`, {
@@ -76,6 +83,9 @@ export function ParsingScreen({
       }
 
       if (!response.body) {
+        // Released like every other failure path, so the resume button below
+        // is not dead the one time nothing ever started.
+        started.current = false;
         setFailed("We couldn't start the analysis.");
         return;
       }
@@ -100,13 +110,27 @@ export function ParsingScreen({
           if (update.message) {
             setMessages((prev) => ({ ...prev, [update.stage]: update.message! }));
           }
-          if (update.state === "failed") setFailed(update.message ?? "A stage failed.");
+          if (update.state === "failed") {
+            stageFailed = true;
+            setFailed(update.message ?? "A stage failed.");
+          }
         }
+      }
+
+      // Only a run that finished goes to the results. A failed one stays here,
+      // where the stage that broke is named and the resume button is.
+      if (stageFailed) {
+        started.current = false;
+        router.refresh();
+        return;
       }
 
       router.refresh();
       router.push(`/analysis/${analysisId}/resumes`);
-    })().catch(() => setFailed("The connection dropped partway through."));
+    })().catch(() => {
+      started.current = false;
+      setFailed("The connection dropped partway through.");
+    });
 
     return () => controller.abort();
   }, [analysisId, initialStatus, router, attempt]);
@@ -151,11 +175,30 @@ export function ParsingScreen({
       <div className="max-w-2xl space-y-4">
         <ErrorRegion title="This analysis stopped">{failed}</ErrorRegion>
         <p className="text-sm text-[var(--color-text-muted)]">
-          Whatever finished before the failure was kept — we resume rather than restart.
+          Whatever finished before the failure was kept — we resume rather than restart. Picking it
+          up again starts at the first stage with nothing to show for it, and the stages that
+          already ran are not charged for twice.
         </p>
-        <Button variant="secondary" onClick={() => router.push("/analyze")}>
-          Try another posting
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {/* Without this the failed screen was a dead end: the only way on was
+              a different posting.
+
+              The sentence above is now enforced rather than asserted —
+              `runAnalysis` consults `resumeState` before every stage and
+              returns early where the rows already exist. Read that before
+              changing this label back to "restart". */}
+          <Button
+            onClick={() => {
+              setFailed(null);
+              setAttempt((n) => n + 1);
+            }}
+          >
+            Pick it up again
+          </Button>
+          <Button variant="secondary" onClick={() => router.push("/analyze")}>
+            Try another posting
+          </Button>
+        </div>
       </div>
     );
   }

@@ -34,7 +34,7 @@ export const TOKEN_STAGES: TokenStage[] = [
   { stage: "Preparing questions and courses", estimate: 3_200 },
 ];
 
-/** A full four-stage analysis, six templates. */
+/** A full four-stage analysis, at the default template cap. */
 export const RUN_ESTIMATE = TOKEN_STAGES.reduce((sum, s) => sum + s.estimate, 0);
 
 /** One worked answer. Frameworks are free — they cost no model call at all. */

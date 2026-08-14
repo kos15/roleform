@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { FileText } from "lucide-react";
 import { getProfileWithDocument } from "@/lib/db/queries/profile";
 import { queuedRuns } from "@/lib/db/queries/tokens";
+import { draftsPerRun } from "@/lib/db/queries/entitlement";
 import { Card, EmptyState } from "@/components/ui";
 import { JdInput } from "./jd-input";
 import { QueuedRuns } from "./queued-runs";
@@ -12,6 +13,10 @@ export default async function AnalyzePage() {
   const profile = userId ? await getProfileWithDocument(userId) : null;
   // Almost always empty, and a partial index makes it cheap when it is (F19).
   const queued = userId ? await queuedRuns(userId) : [];
+  // What this member's run will actually return. Read rather than written into
+  // the copy: it is a per-member cap over an eleven-template catalog, so any
+  // fixed number in this heading is wrong for somebody (F15).
+  const drafts = userId ? await draftsPerRun(userId) : 0;
 
   if (!profile) {
     return (
@@ -33,11 +38,12 @@ export default async function AnalyzePage() {
     <div>
       <div className="rise-in mb-8 max-w-[620px]">
         <p className="eyebrow mb-2.5 text-[var(--color-accent-700)]">Step 1 of 3 · The posting</p>
-        <h1 className="mb-3">One résumé in. Six tailored out.</h1>
+        <h1 className="mb-3">One résumé in. {drafts} tailored out.</h1>
         <p className="text-[var(--color-text-muted)]">
           Paste or drop the posting. Roleform reads it, scores how much of it your own profile can
-          evidence, and returns six drafts, the questions this posting invites, and the gaps it
-          exposes. Nothing is invented — every bullet traces back to something you wrote.
+          evidence, and returns {drafts} draft{drafts === 1 ? "" : "s"}, the questions this posting
+          invites, and the gaps it exposes. Nothing is invented — every bullet traces back to
+          something you wrote.
         </p>
       </div>
 
@@ -95,7 +101,7 @@ export default async function AnalyzePage() {
             <p className="card-kicker mb-3 text-[var(--color-sage-700)]">What comes back</p>
             <ol className="flex flex-col gap-2.5 text-sm">
               {[
-                "Six drafts across classic, sidebar and creative — each with a computed ATS rating",
+                `${drafts} drafts across classic, sidebar and creative — each with a computed ATS rating`,
                 "The questions this posting suggests, by family, with frameworks not scripts",
                 "Requirements you can't yet evidence, and vetted courses that close them",
               ].map((text, i) => (

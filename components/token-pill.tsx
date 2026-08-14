@@ -33,6 +33,7 @@ export async function TokenPill() {
   return (
     <Link
       href="/profile"
+      data-tour="tokens"
       title={`${formatCount(balance.left)} tokens left of ${formatCount(balance.total)} · resets ${formatResetDate(account.resetsAt)}`}
       className="flex flex-none items-center gap-2 rounded-[var(--radius-pill)] border py-1 pl-2 pr-3 no-underline transition-colors"
       style={{

@@ -93,9 +93,6 @@ export function SiteFooter() {
           <FooterLink href="/privacy" muted>
             Privacy
           </FooterLink>
-          <FooterLink href="/changelog" muted>
-            Changelog
-          </FooterLink>
         </div>
       </div>
     </footer>

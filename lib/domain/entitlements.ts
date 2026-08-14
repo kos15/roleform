@@ -53,6 +53,19 @@ export function effectiveCap(role: Role, storedCap: number): number {
   return isUncapped(role) ? UNCAPPED : storedCap;
 }
 
+/**
+ * How many résumé drafts a run will actually produce.
+ *
+ * The promise on the analyse screen and the number the pipeline renders have to
+ * be the same number, so both read it here rather than each doing the clamp.
+ * `catalogSize` is passed in because `lib/domain` may not import the template
+ * table — it is a render concern, not a domain one.
+ */
+export function draftCount(role: Role, storedCap: number, catalogSize: number): number {
+  const cap = isUncapped(role) ? catalogSize : storedCap;
+  return Math.max(0, Math.min(cap, catalogSize));
+}
+
 /** True when this account may proceed. `used` is measured either way. */
 export function withinCap(role: Role, storedCap: number, used: number): boolean {
   return used < effectiveCap(role, storedCap);

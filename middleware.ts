@@ -26,7 +26,6 @@ const isPublic = createRouteMatcher([
   "/how-it-works",
   "/privacy",
   "/terms",
-  "/changelog",
   "/contact",
   "/support",
   "/pricing",
