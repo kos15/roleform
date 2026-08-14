@@ -764,10 +764,28 @@ re-billing. Master profile edits never rewrite past analyses (§6.2 invariant 4)
 
 ### F11 — Profile
 
-One screen over the whole corpus, because the corpus is one thing. Two columns: identity and
-contact, summary, skills, experience, then education / certifications / languages / preferences;
-aside carries profile strength and the checks that explain it. The AI layer writes to none of it
-(N3) — that is what makes the fabrication guard mean anything.
+One screen over the whole corpus, because the corpus is one thing. Two columns: the token meter
+(F19), identity and contact, summary, skills, experience, then education / certifications /
+languages / preferences; aside carries profile strength and the checks that explain it. The AI
+layer writes to none of it (N3) — that is what makes the fabrication guard mean anything.
+
+The meter leads the column, as in the design. It is the one thing on this page that is not the
+corpus, and it is above the corpus because it is what the corpus costs to use. It is a server
+component slotted into the client editor rather than imported by it — the balance is two aggregate
+queries and has no business in a bundle.
+
+**Everything here is editable.** Education and certifications were read-only cards; a page whose
+whole argument is "a draft can only say what exists here" cannot have sections you are unable to
+put anything into. Both take add and remove, and experience takes "Add a role".
+
+**Skills collapse.** The heading is a disclosure carrying the count; collapsed, the list is one row
+of chips coloured by evidence rather than by level, on the same rule the open rows state. Open is
+the default — collapsed is for someone who has read them and is here for something else.
+
+**Dates are guarded at the field.** `YYYY` / `YYYY-MM` is all `StoredResumeSchema` accepts and the
+editor autosaves per keystroke, so a field bound straight to the document rejects the save at "2",
+"20" and "201" on the way to "2017" and reports it as a save error. `DateInput` holds what was
+typed and commits only when it is a date; empty commits `null`, because "not stated" is an answer.
 
 **The evidence label is the point.** Every bullet and every skill says how often it has actually
 been cited by a draft, counted from `tailored_bullets`. A bullet at zero is either badly written or

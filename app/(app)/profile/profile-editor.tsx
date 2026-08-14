@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowUp, ChevronDown, Plus, X } from "lucide-react";
-import { Button, Input, Textarea } from "@/components/ui";
+import { Button, Input, Tag, Textarea } from "@/components/ui";
 import { updateProfile } from "@/app/actions/onboarding";
 import { profileStrength } from "@/lib/domain/profile-strength";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
@@ -36,6 +36,8 @@ interface Props {
   bulletCount: number;
   sourceFilename: string | null;
   updatedAt: string;
+  /** The token meter (F19), rendered server-side and slotted in at the top. */
+  tokenPanel: React.ReactNode;
 }
 
 export function ProfileEditor({
@@ -45,11 +47,15 @@ export function ProfileEditor({
   bulletCount,
   sourceFilename,
   updatedAt,
+  tokenPanel,
 }: Props) {
   const [resume, setResume] = useState<StoredResume>(initial);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [openRole, setOpenRole] = useState<number | null>(0);
   const [newSkill, setNewSkill] = useState("");
+  // Open by default. Collapsed is for someone who has read their skills and is
+  // here for something else — it is not the state you should have to leave.
+  const [skillsOpen, setSkillsOpen] = useState(true);
   const firstRender = useRef(true);
 
   // Autosave. The explicit Save button below forces the same call rather than
@@ -129,6 +135,8 @@ export function ProfileEditor({
   return (
     <div className="flex flex-wrap items-start gap-6">
       <div className="flex min-w-[min(300px,100%)] flex-1 basis-[560px] flex-col gap-4">
+        {tokenPanel}
+
         <IdentitySection
           resume={resume}
           patch={patch}
@@ -153,8 +161,38 @@ export function ProfileEditor({
 
         <Section
           title="Skills"
+          badge={`${resume.skills.length} skill${resume.skills.length === 1 ? "" : "s"}`}
+          collapsed={!skillsOpen}
+          onToggle={() => setSkillsOpen((o) => !o)}
           aside="Proficiency bounds what a draft is allowed to claim"
         >
+          {/* Collapsed: the same list as one scannable row. The colour is the
+              evidence, not the level — a skill nothing backs reads muted here
+              for the same reason its row says so when open. */}
+          {!skillsOpen ? (
+            <div className="rise-in flex flex-wrap gap-1.5">
+              {resume.skills.map((skill, si) => {
+                const evidenced = skillEvidence(skill.name, resume, evidenceByPath).evidencing > 0;
+                return (
+                  <span
+                    key={`${skill.name}-${si}`}
+                    className="rounded-[var(--radius-pill)] border border-[var(--color-line)] bg-[var(--color-bg)] px-3 py-1 text-xs"
+                    style={{
+                      color: evidenced ? "var(--color-sage-700)" : "var(--color-text-muted)",
+                    }}
+                  >
+                    {skill.name}
+                  </span>
+                );
+              })}
+              {resume.skills.length === 0 ? (
+                <Empty>Nothing here yet.</Empty>
+              ) : null}
+            </div>
+          ) : null}
+
+          {skillsOpen ? (
+          <>
           <div className="flex flex-col gap-2">
             {resume.skills.map((skill, si) => (
               <div
@@ -265,9 +303,44 @@ export function ProfileEditor({
               </form>
             </div>
           </div>
+          </>
+          ) : null}
         </Section>
 
-        <Section title="Experience" aside={`${bulletCount} bullets in the corpus`}>
+        <Section
+          title="Experience"
+          aside={`${bulletCount} bullets in the corpus`}
+          action={
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                patch((r) => ({
+                  ...r,
+                  work: [
+                    ...r.work,
+                    {
+                      name: "",
+                      position: "",
+                      location: "",
+                      // A blank date fails the YYYY-MM guard on save, so a new
+                      // role starts at this month rather than at "": the row is
+                      // saveable the moment it exists, and the member edits a
+                      // wrong date rather than hunting an invalid one.
+                      startDate: thisMonth(),
+                      endDate: null,
+                      summary: "",
+                      highlights: [],
+                    },
+                  ],
+                }));
+                setOpenRole(resume.work.length);
+              }}
+            >
+              <Plus className="lucide h-4 w-4" /> Add a role
+            </Button>
+          }
+        >
           <div className="flex flex-col gap-2.5">
             {resume.work.map((work, wi) => {
               const open = openRole === wi;
@@ -312,19 +385,21 @@ export function ProfileEditor({
                           />
                         </Labelled>
                         <Labelled label="Started">
-                          <Input
-                            placeholder="2021-03"
+                          {/* Guarded for the same reason as the education
+                              dates: this autosaves per keystroke, and "20" on
+                              the way to "2021" is not a date the schema
+                              accepts. */}
+                          <DateInput
                             value={work.startDate}
-                            onChange={(e) => patchWork(patch, wi, { startDate: e.target.value })}
+                            onCommit={(next) =>
+                              patchWork(patch, wi, { startDate: next ?? thisMonth() })
+                            }
                           />
                         </Labelled>
                         <Labelled label="Ended">
-                          <Input
-                            placeholder="Leave blank if current"
-                            value={work.endDate ?? ""}
-                            onChange={(e) =>
-                              patchWork(patch, wi, { endDate: e.target.value || null })
-                            }
+                          <DateInput
+                            value={work.endDate}
+                            onCommit={(next) => patchWork(patch, wi, { endDate: next })}
                           />
                         </Labelled>
                         <Labelled label="Location">
@@ -408,38 +483,148 @@ export function ProfileEditor({
         {/* items-start so a card with nothing in it stays the height of its
             content instead of stretching to match a full neighbour. */}
         <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
+          {/* Education and certifications are editable here, as in the design.
+              They were read-only cards, which made the corpus's own rule —
+              everything a draft can say has to exist here first — impossible to
+              act on for two of the sections it applies to. */}
           <Section title="Education" compact>
-            {resume.education.length === 0 ? (
-              <Empty>Nothing here yet.</Empty>
-            ) : (
-              <div className="flex flex-col gap-2.5">
-                {resume.education.map((edu, i) => (
-                  <Entry
-                    key={i}
-                    title={[edu.studyType, edu.area].filter(Boolean).join(", ") || edu.institution}
-                    meta={[edu.institution, edu.endDate ?? edu.startDate ?? ""]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="flex flex-col gap-3">
+              {resume.education.map((edu, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col gap-2.5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg)] p-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+                      Entry {i + 1}
+                    </span>
+                    <IconButton
+                      label="Remove this education entry"
+                      onClick={() =>
+                        patch((r) => ({
+                          ...r,
+                          education: r.education.filter((_, j) => j !== i),
+                        }))
+                      }
+                    >
+                      <X className="lucide h-3.5 w-3.5" />
+                    </IconButton>
+                  </div>
+                  <Labelled label="Degree">
+                    <Input
+                      placeholder="B.E."
+                      value={edu.studyType}
+                      onChange={(e) => patchEducation(patch, i, { studyType: e.target.value })}
+                    />
+                  </Labelled>
+                  <Labelled label="Field of study">
+                    <Input
+                      placeholder="Computer Science"
+                      value={edu.area}
+                      onChange={(e) => patchEducation(patch, i, { area: e.target.value })}
+                    />
+                  </Labelled>
+                  <Labelled label="Institution">
+                    <Input
+                      value={edu.institution}
+                      onChange={(e) => patchEducation(patch, i, { institution: e.target.value })}
+                    />
+                  </Labelled>
+                  <Labelled label="Graduated">
+                    <DateInput
+                      value={edu.endDate}
+                      onCommit={(next) => patchEducation(patch, i, { endDate: next })}
+                    />
+                  </Labelled>
+                </div>
+              ))}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-3"
+              onClick={() =>
+                patch((r) => ({
+                  ...r,
+                  education: [
+                    ...r.education,
+                    {
+                      institution: "",
+                      area: "",
+                      studyType: "",
+                      startDate: null,
+                      endDate: null,
+                      score: "",
+                      courses: [],
+                    },
+                  ],
+                }))
+              }
+            >
+              <Plus className="lucide h-4 w-4" /> Add education
+            </Button>
           </Section>
 
           <Section title="Certifications" compact>
-            {resume.certificates.length === 0 ? (
-              <Empty>Nothing here yet.</Empty>
-            ) : (
-              <div className="flex flex-col gap-2.5">
-                {resume.certificates.map((cert, i) => (
-                  <Entry
-                    key={i}
-                    title={cert.name}
-                    meta={[cert.issuer, cert.date ?? ""].filter(Boolean).join(" · ")}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="flex flex-col gap-3">
+              {resume.certificates.map((cert, i) => (
+                <div
+                  key={i}
+                  className="flex flex-col gap-2.5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg)] p-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-xs font-semibold text-[var(--color-text-muted)]">
+                      Entry {i + 1}
+                    </span>
+                    <IconButton
+                      label="Remove this certification"
+                      onClick={() =>
+                        patch((r) => ({
+                          ...r,
+                          certificates: r.certificates.filter((_, j) => j !== i),
+                        }))
+                      }
+                    >
+                      <X className="lucide h-3.5 w-3.5" />
+                    </IconButton>
+                  </div>
+                  <Labelled label="Name">
+                    <Input
+                      value={cert.name}
+                      onChange={(e) => patchCertificate(patch, i, { name: e.target.value })}
+                    />
+                  </Labelled>
+                  <Labelled label="Issuer">
+                    <Input
+                      value={cert.issuer}
+                      onChange={(e) => patchCertificate(patch, i, { issuer: e.target.value })}
+                    />
+                  </Labelled>
+                  <Labelled label="Issued">
+                    <DateInput
+                      value={cert.date}
+                      onCommit={(next) => patchCertificate(patch, i, { date: next })}
+                    />
+                  </Labelled>
+                </div>
+              ))}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-3"
+              onClick={() =>
+                patch((r) => ({
+                  ...r,
+                  certificates: [
+                    ...r.certificates,
+                    { name: "", issuer: "", date: null, url: "" },
+                  ],
+                }))
+              }
+            >
+              <Plus className="lucide h-4 w-4" /> Add a certification
+            </Button>
           </Section>
 
           <Section title="Languages" compact>
@@ -700,15 +885,44 @@ function Section({
   title,
   sub,
   aside,
+  action,
+  badge,
+  collapsed,
+  onToggle,
   compact,
   children,
 }: {
   title: string;
   sub?: string;
   aside?: string;
+  /** A control that belongs to the whole section, e.g. "Add a role". */
+  action?: React.ReactNode;
+  /** A count beside the heading. Only meaningful on a collapsible section. */
+  badge?: string;
+  /** Present ⇒ the heading is a disclosure button. */
+  collapsed?: boolean;
+  onToggle?: () => void;
   compact?: boolean;
   children: React.ReactNode;
 }) {
+  const heading = onToggle ? (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={!collapsed}
+      className="flex items-center gap-2.5 text-left"
+    >
+      <h3>{title}</h3>
+      {badge ? <Tag tone="muted">{badge}</Tag> : null}
+      <ChevronDown
+        className="lucide h-4 w-4 flex-none text-[var(--color-text-muted)] transition-transform duration-200"
+        style={{ transform: collapsed ? undefined : "rotate(180deg)" }}
+      />
+    </button>
+  ) : (
+    <h3>{title}</h3>
+  );
+
   return (
     <section
       className={`rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] ${
@@ -716,10 +930,11 @@ function Section({
       }`}
     >
       <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-2.5">
-        <h3>{title}</h3>
+        {heading}
         {aside ? (
           <span className="text-xs text-[var(--color-text-muted)]">{aside}</span>
         ) : null}
+        {action}
       </div>
       {sub ? <p className="-mt-2 mb-3 text-xs text-[var(--color-text-muted)]">{sub}</p> : null}
       {children}
@@ -783,15 +998,11 @@ function EvidenceLabel({ count }: { count: number }) {
  * bullet numbers up would count one analysis once for every bullet it cited,
  * and produce a figure that sounds like a tally of postings but isn't one.
  */
-function SkillEvidence({
-  name,
-  resume,
-  evidence,
-}: {
-  name: string;
-  resume: StoredResume;
-  evidence: Record<string, number>;
-}) {
+function skillEvidence(
+  name: string,
+  resume: StoredResume,
+  evidence: Record<string, number>,
+): { evidencing: number; mentioning: number; label: string } {
   const needle = name.toLowerCase();
   let evidencing = 0;
   let mentioning = 0;
@@ -806,13 +1017,28 @@ function SkillEvidence({
   resume.work.forEach((w, wi) => scan(w.highlights, `work.${wi}`));
   resume.projects.forEach((p, pi) => scan(p.highlights, `projects.${pi}`));
 
-  const label =
-    evidencing > 0
-      ? `${evidencing} of your bullets evidence this`
-      : mentioning > 0
-        ? `Named in ${mentioning} bullet${mentioning === 1 ? "" : "s"}, none used yet`
-        : "No bullet mentions this yet";
+  return {
+    evidencing,
+    mentioning,
+    label:
+      evidencing > 0
+        ? `${evidencing} of your bullets evidence this`
+        : mentioning > 0
+          ? `Named in ${mentioning} bullet${mentioning === 1 ? "" : "s"}, none used yet`
+          : "No bullet mentions this yet",
+  };
+}
 
+function SkillEvidence({
+  name,
+  resume,
+  evidence,
+}: {
+  name: string;
+  resume: StoredResume;
+  evidence: Record<string, number>;
+}) {
+  const { evidencing, label } = skillEvidence(name, resume, evidence);
   return (
     <div
       className="text-[11.5px]"
@@ -857,14 +1083,59 @@ function IconButton({
   );
 }
 
-function Entry({ title, meta }: { title: string; meta: string }) {
+/**
+ * A YYYY / YYYY-MM field that can be typed in.
+ *
+ * The stored schema accepts only those two shapes, and the editor autosaves on
+ * every keystroke — so a field bound straight to the document rejects the save
+ * at "2", "20" and "201" on the way to "2017", and reports it as a save error.
+ * This holds what was typed, and commits only when it is a date. Empty commits
+ * null, because "not stated" is a real answer.
+ */
+function DateInput({
+  value,
+  onCommit,
+}: {
+  value: string | null;
+  onCommit: (next: string | null) => void;
+}) {
+  const [raw, setRaw] = useState(value ?? "");
+  const committed = useRef(value ?? "");
+
+  // The document can change under us (a save round trip, a sibling removed).
+  // Only follow it when it disagrees with what we last sent.
+  useEffect(() => {
+    const next = value ?? "";
+    if (next !== committed.current) {
+      committed.current = next;
+      setRaw(next);
+    }
+  }, [value]);
+
+  const valid = raw === "" || /^\d{4}(-\d{2})?$/.test(raw);
+
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg)] px-3.5 py-3">
-      <div className="text-[0.85rem] font-semibold leading-snug">{title}</div>
-      {meta ? (
-        <div className="mt-1 text-[11.5px] text-[var(--color-text-muted)]">{meta}</div>
-      ) : null}
-    </div>
+    <>
+      <Input
+        placeholder="2017 or 2017-06"
+        inputMode="numeric"
+        aria-invalid={valid ? undefined : true}
+        value={raw}
+        onChange={(e) => {
+          const next = e.target.value;
+          setRaw(next);
+          if (next === "" || /^\d{4}(-\d{2})?$/.test(next)) {
+            committed.current = next;
+            onCommit(next === "" ? null : next);
+          }
+        }}
+      />
+      {valid ? null : (
+        <span className="text-[11.5px] text-[var(--color-text-muted)]">
+          Year, or year and month — 2017 or 2017-06. Not saved until it is one of those.
+        </span>
+      )}
+    </>
   );
 }
 
@@ -893,6 +1164,33 @@ function patchWork(
   next: Partial<StoredResume["work"][number]>,
 ) {
   patch((r) => ({ ...r, work: r.work.map((w, i) => (i === wi ? { ...w, ...next } : w)) }));
+}
+
+function patchEducation(
+  patch: (fn: (r: StoredResume) => StoredResume) => void,
+  i: number,
+  next: Partial<StoredResume["education"][number]>,
+) {
+  patch((r) => ({
+    ...r,
+    education: r.education.map((e, j) => (j === i ? { ...e, ...next } : e)),
+  }));
+}
+
+function patchCertificate(
+  patch: (fn: (r: StoredResume) => StoredResume) => void,
+  i: number,
+  next: Partial<StoredResume["certificates"][number]>,
+) {
+  patch((r) => ({
+    ...r,
+    certificates: r.certificates.map((c, j) => (j === i ? { ...c, ...next } : c)),
+  }));
+}
+
+function thisMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function patchHighlights(

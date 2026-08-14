@@ -61,6 +61,11 @@ export default async function ProfilePage() {
         has actually been used as evidence — the ones at zero are the ones worth rewriting.
       </PageIntro>
 
+      {/* The meter goes INTO the editor's left column rather than under it, as
+          in the design: it is the first thing on this screen, above the corpus
+          it pays for. Passed as a prop because it is an async server component
+          and the editor is a client one — the boundary is the reason this is a
+          slot and not an import. */}
       <ProfileEditor
         initial={resume}
         evidenceByPath={evidenceByPath}
@@ -68,9 +73,8 @@ export default async function ProfilePage() {
         bulletCount={bullets.length}
         sourceFilename={loaded.document?.filename ?? null}
         updatedAt={loaded.profile.updatedAt.toISOString()}
+        tokenPanel={<TokenPanel clerkUserId={userId} />}
       />
-
-      <TokenPanel clerkUserId={userId} />
 
       <div className="mt-8 max-w-3xl">
         <DeleteAccount />

@@ -78,7 +78,9 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
     .slice(0, 8);
 
   return (
-    <section className="mt-8 max-w-3xl rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-6">
+    // No width or top margin of its own: it is the first card in the editor's
+    // left column now, and it takes that column's measure.
+    <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[clamp(1.125rem,3vw,1.5rem)]">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="card-kicker mb-2">Token allowance</p>
