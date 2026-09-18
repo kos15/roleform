@@ -6,6 +6,7 @@ import { TEMPERATURE } from "./models";
 import {
   checkStagedBullet,
   isGroundedQuote,
+  noUrls,
   redactPii,
   scanTone,
 } from "@/lib/domain/guardrails";
@@ -86,6 +87,7 @@ export async function synthesisePlan(args: {
       temperature: TEMPERATURE.analysis,
       clerkUserId: args.clerkUserId,
       analysisId: args.analysisId,
+      maxOutputTokens: 2_500,
       // COST-3: one repair retry per stage. No backoff loop around a paid API.
       retries: 1,
       verify: (value) => {
@@ -144,6 +146,13 @@ export async function synthesisePlan(args: {
               `and nothing may speculate about their chances or compare them to anyone.`,
           );
         }
+
+        // GR-3, defense in depth on top of OUT-1: the schema has nowhere to
+        // put a resource's URL (the serialiser reads it from the database),
+        // so a URL in the narrative prose can only be one the model wrote
+        // unprompted.
+        const urlProblem = noUrls(prose);
+        if (urlProblem) problems.push(urlProblem);
 
         return problems.length > 0 ? problems.join("\n") : null;
       },

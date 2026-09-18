@@ -3,7 +3,49 @@ import { runStructured } from "./run";
 import { QuestionAnswerSchema, type QuestionAnswerOut } from "./schemas/question-answer";
 import { PROMPT_VERSIONS, SYSTEM } from "./prompts";
 import { TEMPERATURE } from "./models";
+import { noUrls, scanTone } from "@/lib/domain/guardrails";
 import type { DomainBullet, Result } from "@/lib/domain/types";
+
+/**
+ * Ranks the rest of the profile by term overlap with the question, and takes
+ * the top MAX. Not by a model — a cheap pure sort, the same shape
+ * `lib/domain/binding.ts#overlap` uses for the learning engine's proof-of-
+ * learning loop, kept local here since it ranks a different pair of things
+ * (a question against a bullet, not a requirement against one).
+ *
+ * Before this, every uncited bullet on the profile was sent on every worked
+ * answer (up to 40), most of them with nothing to do with the question asked
+ * (PR-5, G15). The trim happens before the prompt is built, so `allowed`
+ * below is exactly what the model was shown — a hook citing a bullet that
+ * got trimmed away is exactly as invalid as one citing an id that was never
+ * on the profile at all.
+ */
+const MAX_OTHER_BULLETS = 12;
+
+function rankByOverlap(question: string, bullets: DomainBullet[]): DomainBullet[] {
+  const qTerms = termsOf(question);
+  if (qTerms.size === 0) return bullets.slice(0, MAX_OTHER_BULLETS);
+  return [...bullets]
+    .map((bullet) => {
+      const bTerms = termsOf(bullet.text);
+      let shared = 0;
+      for (const t of bTerms) if (qTerms.has(t)) shared++;
+      return { bullet, score: bTerms.size === 0 ? 0 : shared / bTerms.size };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_OTHER_BULLETS)
+    .map((r) => r.bullet);
+}
+
+function termsOf(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]+/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 3),
+  );
+}
 
 /**
  * A full worked answer for one question (F7.2).
@@ -36,7 +78,8 @@ export async function generateAnswer(args: {
   otherBullets: DomainBullet[];
   requirementText: string | null;
 }): Promise<Result<{ answer: QuestionAnswerOut; aiRunId: string }>> {
-  const allowed = new Set([...args.evidenceBullets, ...args.otherBullets].map((b) => b.id));
+  const rankedOther = rankByOverlap(args.question.text, args.otherBullets);
+  const allowed = new Set([...args.evidenceBullets, ...rankedOther].map((b) => b.id));
 
   const outcome = await runStructured({
     purpose: "question_answer",
@@ -67,7 +110,7 @@ export async function generateAnswer(args: {
       `</cited_bullets>`,
       ``,
       `<other_profile_bullets>`,
-      ...args.otherBullets.slice(0, 40).map((b) => `- id=${b.id} :: ${b.text}`),
+      ...rankedOther.map((b) => `- id=${b.id} :: ${b.text}`),
       `</other_profile_bullets>`,
       ``,
       args.question.type === "gap"
@@ -80,6 +123,7 @@ export async function generateAnswer(args: {
     temperature: TEMPERATURE.answering,
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
+    maxOutputTokens: 2_500,
     retries: 1,
     verify: (value) => {
       const invented = value.resumeHooks
@@ -91,6 +135,24 @@ export async function generateAnswer(args: {
           `Cite only ids from <cited_bullets> or <other_profile_bullets>, or return an empty resumeHooks array.`
         );
       }
+      // GR-3: keyConcepts is already prompted as "never a URL"; sections and
+      // resumeHooks get the same check a validator, not just a sentence.
+      const urlProblem = noUrls({
+        sections: value.sections,
+        resumeHooks: value.resumeHooks,
+        keyConcepts: value.keyConcepts,
+      });
+      if (urlProblem) return urlProblem;
+
+      // GR-4: "prep" scope — a gap answer honestly naming what the candidate
+      // hasn't done is not a deficiency claim about them, it is the answer.
+      // Odds and comparison stay banned.
+      const prose = [value.headline, ...value.sections.map((s) => s.body)].join(" ");
+      const tone = scanTone(prose, "prep");
+      if (!tone.ok) {
+        return `Remove language about ${tone.violations.join(" and ")}. Never speculate about odds or compare the candidate to other applicants.`;
+      }
+
       return null;
     },
   });

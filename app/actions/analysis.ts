@@ -8,6 +8,7 @@ import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { extractText, MAX_UPLOAD_BYTES } from "@/lib/extract/text";
 import { getProfile } from "@/lib/db/queries/profile";
 import { findByContentHash } from "@/lib/db/queries/analysis";
+import { JD_MIN_CHARS, scanForInjection } from "@/lib/domain/guardrails";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 /**
@@ -47,7 +48,7 @@ export async function createAnalysis(input: {
 
   if (input.source === "paste") {
     rawText = (input.text ?? "").trim();
-    if (rawText.length < 120) {
+    if (rawText.length < JD_MIN_CHARS) {
       return err(appError("invalid_input", "That's too short to be a job posting. Paste the full text."));
     }
   } else {
@@ -88,6 +89,17 @@ export async function createAnalysis(input: {
   const walled = !tokens.ok;
   if (walled && !input.queue) return tokens;
 
+  // IN-5, moved here from the learning engine (G2): the scan runs before any
+  // row exists and before any model call, not after three of them have
+  // already read the JD. A flagged run still proceeds — output containment
+  // is the real defence (guardrails.md IN-5) — but the flag is stored once,
+  // here, rather than recomputed at stage ⑤ every time the run is resumed.
+  const injection = scanForInjection(rawText);
+  if (injection.flagged) {
+    // Pattern names only, never the matched text (N7).
+    console.warn(`[analysis] injection_patterns=${injection.patterns.join(",")}`);
+  }
+
   // The row IS the charge — see lib/auth.ts. A create that throws leaves
   // nothing behind, so there is no refund to get wrong.
   const row = await db.analysis.create({
@@ -99,6 +111,7 @@ export async function createAnalysis(input: {
       rawText,
       contentHash,
       status: "parsing",
+      stageState: { injection: injection.patterns },
       // Stamped only when the wall was real. Queuing a run we could afford
       // would park a posting for no reason and hide it behind a reset date.
       queuedAt: walled ? new Date() : null,

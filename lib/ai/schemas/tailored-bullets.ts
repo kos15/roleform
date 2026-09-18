@@ -10,8 +10,14 @@ import { z } from "zod";
  *
  * `sourceBulletId` is echoed back so the verification layer can reject an
  * invented id before it ever reaches the NOT NULL foreign key (N1).
+ *
+ * A single object, not `{ bullets: [...] }` (F24 prompt diet). The call
+ * already asks for exactly one rewrite of exactly one bullet — a one-element
+ * array and the sentence enforcing it ("return exactly one entry") were both
+ * billed on every one of the ~25 tailoring calls a run makes, to express a
+ * cardinality the schema itself can just not have. `rationale` is dropped
+ * for the same reason from the other direction: nothing ever read it.
  */
-
 export const TailoredBulletSchema = z.object({
   sourceBulletId: z
     .string()
@@ -30,11 +36,6 @@ export const TailoredBulletSchema = z.object({
         "requantify = reframed using a number already on the source bullet; " +
         "omit = not relevant to this posting, leave it out of this draft.",
     ),
-  rationale: z.string().max(160).describe("One line: why this wording serves this posting."),
-});
-
-export const TailoredBulletsSchema = z.object({
-  bullets: z.array(TailoredBulletSchema).min(1),
 });
 
 export type TailoredBulletOut = z.infer<typeof TailoredBulletSchema>;

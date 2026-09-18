@@ -33,6 +33,10 @@ export function ResultsHeader({
     score: number;
     scoreVerdict: string;
     scoreNote: string;
+    /** G4: stage ① read only the first JD_MAX_CHARS characters. */
+    truncated: boolean;
+    /** G3/IN-6: a requirement was excluded before it ever became a row. */
+    protectedNotice: string | null;
   };
   requirements: DomainRequirement[];
   coverage: DomainCoverageItem[];
@@ -50,6 +54,18 @@ export function ResultsHeader({
       <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
         Analysis complete · {analysis.jdSource === "upload" ? (analysis.jdFilename ?? "uploaded file") : "pasted text"}
       </p>
+
+      {/* G4/G3: what stage ① did to the posting before reading it, stated
+          plainly rather than left silent. Neutral tone, no accusatory colour —
+          the same register PROTECTED_NOTICE already uses. */}
+      {analysis.truncated || analysis.protectedNotice ? (
+        <p className="mb-4 max-w-[60ch] text-xs leading-relaxed text-[var(--color-text-muted)]">
+          {analysis.truncated
+            ? "This posting was long — we read the first part and told you what we used. "
+            : ""}
+          {analysis.protectedNotice ?? ""}
+        </p>
+      ) : null}
 
       {/* One wrapping row, not a nested rigid one: the ring keeps its 120px and
           the verdict takes a 280px basis, so on a phone the text drops to its

@@ -27,7 +27,10 @@ export async function extractProfile(args: {
     prompt: `Transcribe this résumé.\n\n<resume_text>\n${args.rawText}\n</resume_text>`,
     temperature: TEMPERATURE.extraction,
     clerkUserId: args.clerkUserId,
-    retries: 2,
+    maxOutputTokens: 6_000,
+    // COST-3: one corrective retry, not two — a résumé that fails the
+    // zero-highlights check almost always fails it the same way twice.
+    retries: 1,
     verify: (value) => {
       const total = value.resume.work.reduce((n, w) => n + w.highlights.length, 0);
       if (value.resume.work.length > 0 && total === 0) {

@@ -25,6 +25,14 @@ export interface RunOptions<S extends z.ZodType> {
   temperature: number;
   clerkUserId: string;
   analysisId?: string;
+  /**
+   * PR-3 / learning-engine invariant I6: every call declares a ceiling. No
+   * open-ended generation anywhere in this codebase — a response cut by the
+   * ceiling fails schema like any other malformed output and takes its one
+   * corrective retry, rather than the model quietly running long and the run
+   * paying for tokens nobody asked for.
+   */
+  maxOutputTokens: number;
   /** Corrective retries on schema failure. specs §10 sets these per purpose. */
   retries: number;
   /**
@@ -39,6 +47,9 @@ export interface RunOutcome<T> {
   value: T;
   aiRunId: string;
   retryCount: number;
+  /** What this call actually burned, on the attempt that succeeded (GR-5). */
+  inputTokens: number;
+  outputTokens: number;
 }
 
 export async function runStructured<S extends z.ZodType>(
@@ -60,6 +71,7 @@ export async function runStructured<S extends z.ZodType>(
         system: opts.system,
         prompt: correction ? `${opts.prompt}\n\n## Correction required\n${correction}` : opts.prompt,
         temperature: opts.temperature,
+        maxOutputTokens: opts.maxOutputTokens,
       });
 
       const object = result.object as z.infer<S>;
@@ -71,15 +83,18 @@ export async function runStructured<S extends z.ZodType>(
         continue;
       }
 
+      const inputTokens = result.usage.inputTokens ?? 0;
+      const outputTokens = result.usage.outputTokens ?? 0;
+
       const aiRunId = await recordRun(opts, {
-        inputTokens: result.usage.inputTokens ?? 0,
-        outputTokens: result.usage.outputTokens ?? 0,
+        inputTokens,
+        outputTokens,
         latencyMs: Date.now() - startedAt,
         schemaValid: true,
         retryCount,
       });
 
-      return ok({ value: object, aiRunId, retryCount });
+      return ok({ value: object, aiRunId, retryCount, inputTokens, outputTokens });
     } catch (e) {
       // A rejected request is our bug, not the model's: a malformed schema, a
       // bad key, an unknown model. Rewording the prompt cannot fix it, so burn

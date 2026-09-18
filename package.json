@@ -19,11 +19,13 @@
     "grant:admin": "pnpm script scripts/grant-admin.ts",
     "check:constraints": "pnpm script scripts/smoke-constraints.ts",
     "check:coverage": "pnpm script scripts/coverage-fixtures.ts",
+    "check:jdstrip": "pnpm script scripts/jd-strip-fixtures.ts",
     "check:fabrication": "pnpm script scripts/fabrication-eval.ts",
     "check:roundtrip": "pnpm script scripts/docx-roundtrip.ts",
     "render:samples": "pnpm script scripts/render-samples.ts",
     "check:links": "pnpm script scripts/link-check.ts",
-    "check:corpus": "pnpm script scripts/corpus-health.ts"
+    "check:corpus": "pnpm script scripts/corpus-health.ts",
+    "tokens:calibrate": "pnpm script scripts/tokens-calibrate.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.20",

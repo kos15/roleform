@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { nodeFor, roadmapUrl } from "@/lib/catalog/taxonomy";
 import { normaliseSkill } from "@/lib/catalog/skills";
 import { bindBullet, bindQuestion } from "@/lib/domain/binding";
-import { PROTECTED_NOTICE, scanForInjection, scanProtected } from "@/lib/domain/guardrails";
+import { PROTECTED_NOTICE, scanProtected } from "@/lib/domain/guardrails";
 import { solvePlan, type PlannableStep } from "@/lib/domain/plan";
 import { resolveTerms, resolutionRate } from "@/lib/domain/resolve";
 import {
@@ -65,8 +65,6 @@ export interface BuildPlanArgs {
   skillIdByName: Map<string, string>;
   /** The user's stated study budget in minutes, or null for "everything". */
   budgetMin: number | null;
-  /** Raw JD text, scanned for injection markers (IN-5). Never logged. */
-  rawJdText: string;
 }
 
 export interface BuildPlanResult {
@@ -115,13 +113,10 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
       .map((r) => ({ term: r.term, normalised: normaliseSkill(r.term) })),
   );
 
-  // IN-5. A flagged run proceeds — output containment is the real defence, and
-  // it runs on every run regardless. What the flag buys is a log line that
-  // explains an anomaly later. Pattern names only, never the matched text (N7).
-  const injection = scanForInjection(args.rawJdText);
-  if (injection.flagged) {
-    console.warn(`[learning] injection_patterns=${injection.patterns.join(",")}`);
-  }
+  // IN-5 now runs once, in createAnalysis, before any row exists and before
+  // any of the three model calls upstream of this one have read the JD (G2)
+  // — re-scanning the same text a second time here bought nothing this stage
+  // didn't already have from the flag stored on the analysis row.
 
   /* ------------------------------------------------------- IN-6 · the firewall */
 
