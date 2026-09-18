@@ -23,7 +23,7 @@
  * uncapped account that is suspended is still suspended.
  */
 
-import type { Role } from "./types";
+import type { PlanId, Role } from "./types";
 
 /**
  * The cap value that means "no ceiling".
@@ -76,4 +76,36 @@ export function formatCap(cap: number, zeroLabel = "Off"): string {
   if (cap === UNCAPPED) return "Unlimited";
   if (cap === 0) return zeroLabel;
   return String(cap);
+}
+
+/**
+ * The plan actually in force (F23, PAY-2). PURE.
+ *
+ * A paid plan the row carries has lapsed the moment `planExpiresAt` is in the
+ * past — no scheduler settles this (CLAUDE.md §8), so every reader of "what
+ * plan is this member on" has to ask the question fresh, on read, against the
+ * clock. This is the ONE function that is allowed to answer it: a member's
+ * plan and caps are read through this everywhere except `lib/auth.ts#settlePlan`
+ * (which writes the mirror back) and `lib/admin/members.ts` (which settles the
+ * same way for the panel). A direct reader of `users.plan` anywhere else is a
+ * bug (rules.md PAY-2).
+ *
+ * Free never lapses — `planExpiresAt` is null on Free by construction (the
+ * `users_plan_expiry_pairing` CHECK), so the expiry check never applies to it.
+ */
+export function effectivePlan(
+  row: { plan: PlanId; planExpiresAt: Date | null },
+  now: Date = new Date(),
+): PlanId {
+  if (row.plan === "free") return "free";
+  if (!row.planExpiresAt || row.planExpiresAt <= now) return "free";
+  return row.plan;
+}
+
+/** True when a stored paid plan is currently unreachable through `effectivePlan`. */
+export function planLapsed(
+  row: { plan: PlanId; planExpiresAt: Date | null },
+  now: Date = new Date(),
+): boolean {
+  return row.plan !== "free" && effectivePlan(row, now) === "free";
 }

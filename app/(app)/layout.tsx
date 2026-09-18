@@ -6,6 +6,7 @@ import { Brand } from "@/components/brand";
 import { AppearanceLink } from "@/components/appearance-link";
 import { TokenPill } from "@/components/token-pill";
 import { LowBalanceBanner } from "@/components/low-balance-banner";
+import { RenewalBanner } from "@/components/renewal-banner";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteFooter } from "@/components/site-footer";
 import { MobileTabBar } from "@/components/mobile-tabbar";
@@ -52,6 +53,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               analysis this link discards it and starts another, and the verb
               alone didn't say so. */}
           <Link href="/analyze">New analysis</Link>
+          <Link href="/jobs" className="text-[var(--color-text-muted)]">
+            Jobs
+          </Link>
           <Link href="/history" className="text-[var(--color-text-muted)]">
             History
           </Link>
@@ -113,6 +117,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="px-6">
         <Suspense fallback={null}>
           <LowBalanceBanner />
+        </Suspense>
+        <Suspense fallback={null}>
+          <RenewalBanner />
         </Suspense>
       </div>
 

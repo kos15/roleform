@@ -219,6 +219,7 @@ function AppearanceRow() {
  */
 function sheetLinks(isAdmin: boolean): { href: string; label: string; hint: string }[] {
   return [
+    { href: "/jobs", label: "Jobs", hint: "Listings matched to your profile" },
     { href: "/history", label: "History", hint: "Every analysis you have run" },
     { href: "/status", label: "Status", hint: "Live system health" },
     ...(isAdmin

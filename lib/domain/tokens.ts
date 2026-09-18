@@ -37,6 +37,17 @@ export const TOKEN_STAGES: TokenStage[] = [
 /** A full four-stage analysis, at the default template cap. */
 export const RUN_ESTIMATE = TOKEN_STAGES.reduce((sum, s) => sum + s.estimate, 0);
 
+/**
+ * The pipeline's own hard per-run ceiling (F24, GR-5), enforced by a
+ * `TokenAccumulator` (lib/domain/guardrails.ts) between tailoring calls —
+ * the same class the learning engine already uses for its own stage (there,
+ * 15,000; here, four times the surface, so four times the ceiling). One
+ * long profile times one corrective retry on every bullet has no bound
+ * today; past this line, remaining bullets go out verbatim and the stage
+ * says so, rather than the run quietly spending whatever it takes.
+ */
+export const ANALYSIS_TOKEN_CEILING = 60_000;
+
 /** One worked answer. Frameworks are free — they cost no model call at all. */
 export const DRAFT_ESTIMATE = 1_600;
 

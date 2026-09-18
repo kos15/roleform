@@ -9,13 +9,15 @@ import { orderSkills, rankBullets } from "@/lib/domain/ordering";
 import { summariseChanges } from "@/lib/domain/diff";
 import { canonicalSkill } from "@/lib/catalog/skills";
 import { draftCount } from "@/lib/domain/entitlements";
+import { PROTECTED_NOTICE, TokenAccumulator, scanProtected } from "@/lib/domain/guardrails";
+import { ANALYSIS_TOKEN_CEILING } from "@/lib/domain/tokens";
 import { TEMPLATES, ratingFor, type TemplateDef } from "@/lib/render/templates";
 import { buildRenderModel, type RenderModel } from "@/lib/render/model";
 import { renderFitted } from "@/lib/render/pdf";
 import { getBullets, toDomainBullets } from "@/lib/db/queries/profile";
 import { getCoverage, getProfileById, getRequirements } from "@/lib/db/queries/analysis";
-import { progressFor, type StageEmitter } from "./stages";
-import type { AtsRating, DomainBullet, DomainRequirement } from "@/lib/domain/types";
+import { progressFor, readStageState, type StageEmitter } from "./stages";
+import type { AtsRating, DomainBullet, DomainCoverageItem, DomainRequirement } from "@/lib/domain/types";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 
 /**
@@ -93,11 +95,26 @@ export async function runAnalysis(args: {
     return;
   }
 
-  const profileTerms = [
-    ...resume.skills.map((s) => s.name),
-    ...resume.skills.flatMap((s) => s.keywords),
-    ...bullets.flatMap((b) => b.skillNames),
-  ];
+  // The user's own top-level Skills section — declared without being tied to
+  // one role, so it is legitimately allowed on any bullet's rewrite. Used
+  // whole for the summary (which spans the whole résumé) and as the base for
+  // each bullet's own scoped allowlist below (G6).
+  const globalSkillTerms = [...resume.skills.map((s) => s.name), ...resume.skills.flatMap((s) => s.keywords)];
+  const profileTerms = [...globalSkillTerms, ...bullets.flatMap((b) => b.skillNames)];
+
+  // G6 — a tool the model infers from ONE role's bullet must not surface on
+  // an unrelated role's rewrite. `checkFabrication`'s allowlist used to be
+  // this whole-profile `profileTerms` for every bullet regardless of which
+  // role it came from; a Kubernetes bullet under a 2019 internship could
+  // license "Kubernetes" appearing on a rewrite of a 2024 role that never
+  // mentioned it. Scoped instead to the skills a bullet's OWN role evidences,
+  // grouped once here by `scopeRef` ("work.1") rather than re-filtered on
+  // every one of the ~25 tailoring calls a run makes.
+  const skillsByScope = new Map<string, string[]>();
+  for (const b of bullets) {
+    skillsByScope.set(b.scopeRef, [...(skillsByScope.get(b.scopeRef) ?? []), ...b.skillNames]);
+  }
+  const scopedTerms = (scopeRef: string) => [...globalSkillTerms, ...(skillsByScope.get(scopeRef) ?? [])];
 
   // What a previous attempt at this same analysis already finished. Every stage
   // below consults this before spending anything.
@@ -147,10 +164,23 @@ export async function runAnalysis(args: {
       return;
     }
 
-    skillIdByName = await resolveSkillIds(parsed.map((r) => r.skillName));
+    // IN-6, moved here from the learning engine (G3). Before this, a
+    // discriminatory requirement was written to jd_requirements, scored,
+    // fed to coverage and to the questions call, and only excluded once the
+    // run reached stage ⑤ — everything upstream of learning saw it. Filtered
+    // before the first row is written, so coverage, the score, tailoring and
+    // the questions call never see one either.
+    let protectedNotice: string | null = null;
+    const admissible = parsed.filter((r) => {
+      const scan = scanProtected(`${r.text} ${r.evidenceQuote}`);
+      if (scan.blocked) protectedNotice = PROTECTED_NOTICE;
+      return !scan.blocked;
+    });
+
+    skillIdByName = await resolveSkillIds(admissible.map((r) => r.skillName));
 
     const requirementRows = await db.jdRequirement.createManyAndReturn({
-      data: parsed.map((r) => ({
+      data: admissible.map((r) => ({
         clerkUserId,
         analysisId,
         kind: r.kind,
@@ -169,7 +199,7 @@ export async function runAnalysis(args: {
       necessity: row.necessity,
       mentionCount: row.mentionCount,
       evidenceQuote: row.evidenceQuote,
-      skillName: canonicalSkill(parsed[i].skillName),
+      skillName: canonicalSkill(admissible[i].skillName),
     }));
 
     await db.analysis.update({
@@ -180,7 +210,14 @@ export async function runAnalysis(args: {
         location: meta.location || null,
         seniority: meta.seniority,
         employmentType: meta.employmentType,
-        stageState: { usedRegions: jd.value.analysis.usedRegions, truncated: jd.value.truncated },
+        // Merged with the existing state (`injection`, written by
+        // createAnalysis before this stage ran), never overwritten — G4/G3.
+        stageState: {
+          ...readStageState(analysis.stageState),
+          usedRegions: jd.value.analysis.usedRegions,
+          truncated: jd.value.truncated,
+          protectedNotice,
+        },
       },
     });
 
@@ -257,10 +294,32 @@ export async function runAnalysis(args: {
       const ranked = rankBullets(bullets, requirements, coverage);
       const requirementById = new Map(requirements.map((r) => [r.id, r]));
 
+      // GR-5: the pipeline's own per-run ceiling. One long profile times one
+      // corrective retry on every bullet had no bound before this — past the
+      // ceiling, remaining bullets go out exactly as written rather than the
+      // run spending whatever it takes to keep rewriting.
+      const budget = new TokenAccumulator(ANALYSIS_TOKEN_CEILING);
+      let ceilingHit = false;
+
       // One call per bullet, each scoped to its single best-matching requirement.
       // Sequential rather than parallel: the per-user rate limit matters more here
       // than latency, and the pipeline already streams progress.
       for (const entry of ranked) {
+        if (budget.exceeded()) {
+          ceilingHit = true;
+          tailored.push({
+            sourceBulletId: entry.bullet.id,
+            originalText: entry.bullet.text,
+            rewrittenText: entry.bullet.text,
+            transform: "verbatim",
+            targetsRequirementId: null,
+            aiRunId: null,
+            blockedBy: ["token_ceiling"],
+            tokensUsed: 0,
+          });
+          continue;
+        }
+
         const target = entry.requirementIds
           .map((id) => requirementById.get(id))
           .filter((r): r is DomainRequirement => Boolean(r))
@@ -271,10 +330,13 @@ export async function runAnalysis(args: {
           analysisId,
           bullet: entry.bullet,
           requirement: target ?? null,
-          profileTerms,
+          profileTerms: scopedTerms(entry.bullet.scopeRef),
           jobTitle: jobMeta.title,
         });
-        if (result.ok) tailored.push(result.value);
+        if (result.ok) {
+          tailored.push(result.value);
+          budget.add(result.value.tokensUsed);
+        }
       }
 
       const summary = await tailorSummary({
@@ -302,7 +364,20 @@ export async function runAnalysis(args: {
         absent: scored.buckets.absent,
       });
 
-      emit({ stage: "rewriting", state: "done", progressPct: progressFor("rewriting", "done") });
+      // GR-5: past the ceiling the stage still finished — every bullet has a
+      // draft — it just could not rewrite all of them. Degraded, not failed:
+      // the other tabs, and every bullet that was rewritten, are unaffected.
+      emit(
+        ceilingHit
+          ? {
+              stage: "rewriting",
+              state: "degraded",
+              progressPct: progressFor("rewriting", "done"),
+              message:
+                "This posting was long enough that we stopped rewriting partway through — the rest of your bullets kept their original wording.",
+            }
+          : { stage: "rewriting", state: "done", progressPct: progressFor("rewriting", "done") },
+      );
     } catch (e) {
       // The résumés degrade; Prep and Learning still run below.
       emit({
@@ -328,6 +403,7 @@ export async function runAnalysis(args: {
         meta: jobMeta,
         requirements,
         bullets,
+        coverage,
         absent: scored.buckets.absent,
       });
     } catch (e) {
@@ -361,7 +437,6 @@ export async function runAnalysis(args: {
         // milliseconds, so the Learning tab re-plans against whatever budget the
         // user picks without spending a token or touching the model (spec §10).
         budgetMin: null,
-        rawJdText: analysis.rawText,
       });
       learningDegraded = learning.narrativeDegraded;
     } catch (e) {
@@ -644,21 +719,34 @@ async function measurePages(
   }
 }
 
+/** Bullets get ranked, not just truncated (PR-5): interview.ts stays unaware of coverage. */
+const MAX_QUESTION_BULLETS = 40;
+
 async function writeQuestions(args: {
   clerkUserId: string;
   analysisId: string;
   meta: { title: string; company: string };
   requirements: DomainRequirement[];
   bullets: DomainBullet[];
+  coverage: DomainCoverageItem[];
   absent: DomainRequirement[];
 }) {
+  // Trimmed by relevance before the call, not by the model (PR-5, G15). A
+  // profile with more than forty bullets used to send every one of them on
+  // every analysis; `rankBullets` (already computed for tailoring, reused
+  // here rather than duplicated) puts the ones a coverage item actually
+  // cited first, so the cut falls on the bullets least likely to matter.
+  const rankedBullets = rankBullets(args.bullets, args.requirements, args.coverage)
+    .slice(0, MAX_QUESTION_BULLETS)
+    .map((r) => r.bullet);
+
   const result = await generateQuestions({
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
     jobTitle: args.meta.title,
     company: args.meta.company,
     requirements: args.requirements,
-    bullets: args.bullets,
+    bullets: rankedBullets,
     absentRequirements: args.absent,
   });
   if (!result.ok) throw new Error(result.error.code);

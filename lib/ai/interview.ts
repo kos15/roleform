@@ -3,6 +3,7 @@ import { runStructured } from "./run";
 import { InterviewQuestionsSchema, type InterviewQuestionOut } from "./schemas/interview-questions";
 import { PROMPT_VERSIONS, SYSTEM } from "./prompts";
 import { TEMPERATURE } from "./models";
+import { noUrls, scanTone } from "@/lib/domain/guardrails";
 import type { DomainBullet, DomainRequirement, Result } from "@/lib/domain/types";
 
 /**
@@ -53,6 +54,7 @@ export async function generateQuestions(args: {
     temperature: TEMPERATURE.questions,
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
+    maxOutputTokens: 3_500,
     retries: 1,
     verify: (value) => {
       const problems: string[] = [];
@@ -77,6 +79,21 @@ export async function generateQuestions(args: {
 
       const likely = value.questions.filter((q) => q.likely).length;
       if (likely !== 4) problems.push(`Exactly four questions must have likely = true; you marked ${likely}.`);
+
+      // GR-3: a question or its frame is scaffolding, never a place to put a
+      // link — nothing on the Prep tab is a model-written URL.
+      const urlProblem = noUrls(value.questions.map((q) => ({ text: q.text, whyTheyAsk: q.whyTheyAsk, frame: q.frame })));
+      if (urlProblem) problems.push(urlProblem);
+
+      // GR-4: odds and comparison are banned everywhere; "deficiency" is not
+      // — a question can honestly ask about a weakness.
+      const prose = value.questions.flatMap((q) => [q.text, q.whyTheyAsk, ...q.frame]).join(" ");
+      const tone = scanTone(prose, "prep");
+      if (!tone.ok) {
+        problems.push(
+          `Remove language about ${tone.violations.join(" and ")}. Never speculate about odds or compare the candidate to other applicants.`,
+        );
+      }
 
       return problems.length > 0 ? problems.join(" ") : null;
     },

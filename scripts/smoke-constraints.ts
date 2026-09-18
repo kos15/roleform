@@ -300,8 +300,98 @@ async function main() {
     ),
   );
 
+  /* --------------------------------- 5b. F23 — the two new caps and expiry */
+
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "cap_roadmaps above the published ceiling",
+        rule: "F23",
+        statement: `insert into users (clerk_user_id, email_hash, cap_roadmaps)
+          values ('smoke-user-roadmaps', 'x', 201)`,
+      },
+      "23514",
+    ),
+  );
+
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "cap_job_searches above the published ceiling",
+        rule: "F23",
+        statement: `insert into users (clerk_user_id, email_hash, cap_job_searches)
+          values ('smoke-user-jobsearches', 'x', 501)`,
+      },
+      "23514",
+    ),
+  );
+
+  // G7: the bug this constraint exists to make unrepresentable — a paid plan
+  // granted once and never checked again. A row claiming 'pro' with no
+  // expiry is the exact state `effectivePlan` (lib/domain/entitlements.ts)
+  // would otherwise have no way to ever call lapsed.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "a paid plan with no expiry",
+        rule: "F23",
+        statement: `insert into users (clerk_user_id, email_hash, plan, plan_expires_at)
+          values ('smoke-user-planexp', 'x', 'pro', null)`,
+      },
+      "23514",
+    ),
+  );
+
+  /* --------------------------------------------- 5c. N14 — a roadmap item's FK must match its kind */
+
+  // The roadmap's version of N1/N2: a step that names nothing is a claim
+  // about work the user never generated. `kind='question'` requires
+  // question_id — this row claims the kind and gives it nothing to point at.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "roadmap_item of kind 'question' with no question_id",
+        rule: "N14",
+        statement: `${SEED_ANALYSIS}
+          insert into roadmaps (id, clerk_user_id, analysis_id)
+          values ('00000000-0000-4000-8000-00000000f00d', 'smoke-user',
+                  '00000000-0000-4000-8000-00000000cafe');
+          insert into roadmap_items
+            (clerk_user_id, roadmap_id, key, section, ordinal, label, kind)
+          values ('smoke-user', '00000000-0000-4000-8000-00000000f00d',
+                  'rehearse-nothing', 'rehearse', 0, 'Rehearse: nothing', 'question')`,
+      },
+      "23514",
+    ),
+  );
+
+  /* -------------------------------------------- 5d. F22 — an "applied" job needs its date */
+
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "saved_job marked 'applied' with no applied_at",
+        rule: "F22",
+        statement: `insert into users (clerk_user_id, email_hash) values ('smoke-user-job', 'x');
+          insert into job_listings
+            (id, source, external_id, url, title, company, location, snippet, expires_at)
+          values ('00000000-0000-4000-8000-0000000000ee', 'adzuna', 'smoke-ext-1',
+                  'https://example.com/job', 'Smoke Job', 'Acme', 'Remote', 'x',
+                  now() + interval '30 days');
+          insert into saved_jobs (clerk_user_id, listing_id, status, applied_at)
+          values ('smoke-user-job', '00000000-0000-4000-8000-0000000000ee', 'applied', null)`,
+      },
+      "23514",
+    ),
+  );
+
   /* ------------------------------------------ 6. N10 — RLS denies strangers */
-  results.push(await rlsCheck());
+  results.push(...(await rlsCheck()));
 
   await sql.end();
 
@@ -350,43 +440,59 @@ async function expectRejection(
  * RLS through an ANON client with no session token. The integration supplies
  * the "authenticated" claim; a request without it must read nothing.
  */
-async function rlsCheck(): Promise<Check> {
+/**
+ * Own-rows tables (F21/F22 added `saved_jobs`, `job_searches`,
+ * `roadmap_items` to the list `analyses` was the sole member of) and the two
+ * no-policy cache tables (`job_listings`, `job_search_hits` — JS-9), each
+ * checked the same way: an anonymous client must never read a row.
+ */
+const RLS_TABLES = ["analyses", "saved_jobs", "job_searches", "roadmap_items", "job_listings", "job_search_hits"];
+
+async function rlsCheck(): Promise<Check[]> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!supabaseUrl || !publishableKey) {
-    return {
-      name: "anonymous select under RLS",
+    return RLS_TABLES.map((table) => ({
+      name: `anonymous select under RLS (${table})`,
       rule: "N10",
       passed: false,
       detail: "NEXT_PUBLIC_SUPABASE_URL / PUBLISHABLE_KEY not set — cannot verify RLS",
-    };
+    }));
   }
 
   const anon = createClient(supabaseUrl, publishableKey, { auth: { persistSession: false } });
-  const { data, error } = await anon.from("analyses").select("id").limit(1);
 
-  if (error) {
-    return {
-      name: "anonymous select under RLS",
-      rule: "N10",
-      passed: true,
-      detail: `denied: ${error.code ?? error.message}`,
-    };
-  }
-  if ((data ?? []).length === 0) {
-    return {
-      name: "anonymous select under RLS",
-      rule: "N10",
-      passed: true,
-      detail: "returned zero rows (policy filtered everything, as intended)",
-    };
-  }
-  return {
-    name: "anonymous select under RLS",
-    rule: "N10",
-    passed: false,
-    detail: `an anonymous client READ ${data!.length} row(s) — RLS is not enforced`,
-  };
+  return Promise.all(
+    RLS_TABLES.map(async (table) => {
+      // "*", not "id": job_search_hits has no id column (its primary key is
+      // the composite search_id/listing_id), and every other table here does
+      // — one shape covers all six without special-casing the one exception.
+      const { data, error } = await anon.from(table).select("*").limit(1);
+
+      if (error) {
+        return {
+          name: `anonymous select under RLS (${table})`,
+          rule: "N10",
+          passed: true,
+          detail: `denied: ${error.code ?? error.message}`,
+        };
+      }
+      if ((data ?? []).length === 0) {
+        return {
+          name: `anonymous select under RLS (${table})`,
+          rule: "N10",
+          passed: true,
+          detail: "returned zero rows (policy filtered everything, as intended)",
+        };
+      }
+      return {
+        name: `anonymous select under RLS (${table})`,
+        rule: "N10",
+        passed: false,
+        detail: `an anonymous client READ ${data!.length} row(s) — RLS is not enforced`,
+      };
+    }),
+  );
 }
 
 main().catch((e) => {

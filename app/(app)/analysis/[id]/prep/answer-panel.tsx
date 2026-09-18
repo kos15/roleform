@@ -5,7 +5,9 @@ import { BookOpen, CornerDownRight, ExternalLink, Sparkles } from "lucide-react"
 import { draftAnswer } from "@/app/actions/prep";
 import { Button, ErrorRegion, Skeleton, Tag } from "@/components/ui";
 import { TokenWallDialog } from "@/components/token-wall";
+import { CapWallDialog } from "@/components/cap-wall";
 import type { TokenWall } from "@/lib/domain/tokens";
+import type { CapWall } from "@/lib/domain/quotas";
 import type { AnswerView } from "./types";
 
 /**
@@ -39,6 +41,7 @@ export function AnswerPanel({
   const [answer, setAnswer] = useState<AnswerView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [wall, setWall] = useState<TokenWall | null>(null);
+  const [capWall, setCapWall] = useState<CapWall | null>(null);
   const [pending, startTransition] = useTransition();
 
   const load = () => {
@@ -53,6 +56,9 @@ export function AnswerPanel({
         // this panel stay exactly where they are — a drafted answer is the only
         // part of the Prep tab that costs anything (F19).
         setWall(result.error.wall);
+      } else if (result.error.capWall) {
+        // The answers cap, same shape (F15/F23 PAY-4/PAY-5).
+        setCapWall(result.error.capWall);
       } else {
         setError(result.error.message);
       }
@@ -80,6 +86,7 @@ export function AnswerPanel({
             resumeLabel="Draft the answer"
           />
         ) : null}
+        {capWall ? <CapWallDialog wall={capWall} onClose={() => setCapWall(null)} /> : null}
         {error ? <ErrorRegion title="That draft didn't come back">{error}</ErrorRegion> : null}
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <Button variant="secondary" size="sm" onClick={load} disabled={pending} busy={pending}>

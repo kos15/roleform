@@ -14,6 +14,19 @@
  * needs a query and therefore lives in lib/learning/validate.ts, a layer up.
  */
 
+/* ----------------------------------------------------------- IN-1 · size caps */
+
+/**
+ * The JD size band (G5). One constant, read by both the action that first
+ * sees the pasted or uploaded text (`createAnalysis`) and the AI call that
+ * truncates it (`analyzeJd`) — before this they disagreed (120 char floor,
+ * 24,000 char ceiling) with what guardrails.md IN-1 actually specifies (200,
+ * 20,000), so the action accepted postings the model call would then still
+ * have to truncate on every run.
+ */
+export const JD_MIN_CHARS = 200;
+export const JD_MAX_CHARS = 20_000;
+
 /* ------------------------------------------------------- IN-4 · PII redaction */
 
 /**
@@ -221,8 +234,22 @@ const TONE_VIOLATIONS: Array<{ name: string; test: RegExp }> = [
   { name: "deficiency", test: /\b(red flag|weakness|deficien\w+|shortcoming|unqualified)\b/i },
 ];
 
-export function scanTone(text: string): { ok: boolean; violations: string[] } {
-  const violations = TONE_VIOLATIONS.filter((v) => v.test.test(text)).map((v) => v.name);
+/**
+ * `deficiency` is excluded on the Prep tab (GR-4): "What is your greatest
+ * weakness?" is a real, ordinary interview question, and a worked answer
+ * that names a weakness to then address it is the whole point of answering
+ * one well. Odds and comparison stay banned everywhere prose is generated —
+ * no surface in this product computes a candidate's chances or ranks them
+ * against anyone.
+ */
+const PREP_TONE_VIOLATIONS = TONE_VIOLATIONS.filter((v) => v.name !== "deficiency");
+
+export function scanTone(
+  text: string,
+  scope: "full" | "prep" = "full",
+): { ok: boolean; violations: string[] } {
+  const set = scope === "prep" ? PREP_TONE_VIOLATIONS : TONE_VIOLATIONS;
+  const violations = set.filter((v) => v.test.test(text)).map((v) => v.name);
   return { ok: violations.length === 0, violations };
 }
 
@@ -261,6 +288,49 @@ export class TokenAccumulator {
   pastReserve(fraction = 0.7): boolean {
     return this.used >= this.ceiling * fraction;
   }
+}
+
+/* --------------------------------------------------------------- GR-3 · no URLs */
+
+/**
+ * GR-3 — no model-written string may contain a URL.
+ *
+ * Applied by every caller whose schema has a PROSE field a model writes
+ * freely (rules.md GR-3): tailored bullets and summaries, interview
+ * questions and frameworks, worked answers, the learning plan's narrative.
+ * A model that wants to point somewhere has nowhere honest to put it — every
+ * real link in this product is read from the curated catalog (N8) or a
+ * provider's own field (JS-3), never typed by a model.
+ *
+ * Deliberately NOT applied to `extractProfile` (basics.url, profiles[].url,
+ * certificates[].url, project.url are the point — the model is transcribing
+ * URLs the user's own résumé states) or `analyzeJd` (`evidenceQuote` is a
+ * verbatim span of the posting, separately checked against the source text;
+ * a posting that names its own apply link is not a fabrication, and this
+ * function would wrongly reject a correct verbatim quote for containing one).
+ */
+const URL_PATTERN = /\bhttps?:\/\/[^\s)>\]"'`]+/gi;
+
+export function findUrls(value: unknown): string[] {
+  const found: string[] = [];
+  const walk = (v: unknown) => {
+    if (typeof v === "string") {
+      const matches = v.match(URL_PATTERN);
+      if (matches) found.push(...matches);
+    } else if (Array.isArray(v)) {
+      v.forEach(walk);
+    } else if (v && typeof v === "object") {
+      Object.values(v).forEach(walk);
+    }
+  };
+  walk(value);
+  return found;
+}
+
+export function noUrls(value: unknown): string | null {
+  const urls = findUrls(value);
+  if (urls.length === 0) return null;
+  return `Remove the link(s) you wrote (${urls.join(", ")}). Never write a URL — every real link in this product comes from the curated catalog or a provider's own field, not from you.`;
 }
 
 /* --------------------------------------------------------------------- utils */

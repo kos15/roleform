@@ -129,10 +129,33 @@ function numbersIn(s: string): string[] {
   );
 }
 
+/**
+ * Two entries in SENIORITY double as ordinary verbs — "lead the migration",
+ * "head the team" — and the plain `\bword\b` match below used to count
+ * either one as a seniority claim on sight (G6). Both are checked here
+ * against a shaped context instead: a role noun right after it, or a
+ * title-introducing phrase right before it. Every other entry on the
+ * ladder is unambiguous as a title and keeps the simple match.
+ */
+const VERB_RISK = new Set(["lead", "head"]);
+const TITLE_NOUN_AFTER =
+  /^\s+(engineer|developer|manager|architect|designer|scientist|analyst|consultant|of\s)/i;
+const TITLE_PHRASE_BEFORE = /\b(as (?:a|the)|promoted to|named|role of|title:)\s*$/i;
+
 function highestRank(s: string): number {
   let rank = -1;
   SENIORITY.forEach((word, i) => {
-    if (new RegExp(`\\b${word}\\b`).test(s)) rank = Math.max(rank, i);
+    const pattern = new RegExp(`\\b${word}\\b`, "gi");
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(s)) !== null) {
+      if (VERB_RISK.has(word)) {
+        const before = s.slice(Math.max(0, match.index - 24), match.index);
+        const after = s.slice(match.index + word.length, match.index + word.length + 24);
+        if (!TITLE_NOUN_AFTER.test(after) && !TITLE_PHRASE_BEFORE.test(before)) continue;
+      }
+      rank = Math.max(rank, i);
+      break;
+    }
   });
   return rank;
 }

@@ -163,16 +163,24 @@ users
   role enum('member','admin')        -- MIRROR of Clerk publicMetadata.role, not the truth
   suspended bool
   cap_analyses, cap_resumes, cap_answers, cap_courses int   -- F15, each CHECKed
+  cap_roadmaps int CHECK 0..200      -- F23, per cycle
+  cap_job_searches int CHECK 0..500  -- F23, per cycle
+  plan_expires_at timestamptz null   -- F23. CHECK (plan = 'free') = (plan_expires_at IS NULL)
   quota_remaining int                -- superseded by cap_analyses; no longer read
   quota_resets_at timestamptz        -- anchors the rolling 30-day cycle
 
 workspace_settings                     -- F15. Operator config, not user data. One row,
   id text PRIMARY KEY DEFAULT 'workspace'   -- CHECKed to that single value
   cap_analyses, cap_resumes, cap_answers, cap_courses int  -- same bounds as users, CHECKed
+  cap_roadmaps, cap_job_searches int -- F23, same bounds as users, CHECKed
   updated_at timestamptz
   -- The caps a NEW account is provisioned with. RLS is ON with NO policy: no
   -- anon or authenticated request has business reading it, and the admin path
   -- goes over the Prisma connection, which bypasses RLS.
+  -- capsFromDefaults() is the one function that reads this row into a new
+  -- account's caps, used by both provisionUser and the Clerk user.created
+  -- webhook path (G19) — a cap missing from that helper is a cap that lies
+  -- on whichever door didn't go through it.
 
 contact_messages                       -- F13. The one table whose subject may be NULL:
   id, clerk_user_id text NULL, name, email, subject, body, created_at
@@ -209,6 +217,10 @@ analyses                               -- one JD run. The unit of History.
   company, title, location, seniority, employment_type
   score numeric(5,2), score_verdict text, score_note text
   status enum('parsing','ready','failed'), created_at
+  listing_id → job_listings null      -- F22 §3.5. Set when the run started as "Analyse" on a
+                                       -- saved listing; the results header reads it to show
+                                       -- "From your saved job" and the roadmap's Apply step
+                                       -- binds to the same saved_jobs row through it.
 
 jd_requirements
   id, analysis_id → analyses
@@ -333,6 +345,57 @@ token_grants                           -- one-off top-ups: bought, or granted by
   source enum('purchase','admin'),
   reference text UNIQUE,               -- payment id, or admin:<uuid>. THE idempotency guarantee.
   granted_by text, created_at
+
+plan_purchases                         -- F23. The webhook's idempotency guarantee for PLAN
+  id, clerk_user_id, plan enum('pro','ultra'),
+  amount_paise int, reference text UNIQUE,   -- Razorpay payment id — mirrors token_grants.reference
+  created_at
+  -- Without this table a redelivered webhook re-extends plan_expires_at a
+  -- second time for one payment (PAY-1's "never shortens" has no matching
+  -- "never doubles" without it). token_grants covers top-ups; this covers
+  -- the plan-purchase path the same way.
+
+roadmaps                               -- F21. One per analysis, built on demand, zero tokens.
+  id, clerk_user_id, analysis_id UNIQUE → analyses (cascade), created_at
+
+roadmap_items                          -- F21. ★ FABRICATION GUARD, roadmap edition (N14)
+  id, clerk_user_id, roadmap_id → roadmaps (cascade)
+  key text, section enum('prepare','rehearse','deepen','learn','apply')
+  ordinal int, label text
+  kind enum('fixed','question','answer','learning_step','gap','saved_job')
+  question_id → interview_questions (cascade) null
+  learning_step_id → learning_steps (cascade) null
+  gap_id → skill_gaps (cascade) null
+  saved_job_id → saved_jobs (set null) null
+  done_at timestamptz null             -- N15: written only by the user's own tick
+  UNIQUE (roadmap_id, key)
+  CHECK: exactly the FK that matches `kind` is set; `fixed` has none
+
+job_listings                           -- F22. Shared cache, no user id. RLS on, NO policy (JS-9).
+  id, source enum('adzuna','jooble','jsearch'), external_id text,
+  url, title, company, location, snippet,
+  posted_at, salary_min, salary_max, currency,
+  raw jsonb,                           -- the provider's own record, kept for re-normalisation,
+                                        -- never rendered (N18)
+  fetched_at, expires_at               -- read-time filter (`where expires_at > now()`), not a sweep
+  UNIQUE (source, external_id)
+
+job_searches                           -- F22. THE cap's source of truth — counted, not `job_search_hits`.
+  id, clerk_user_id, query_hash text,
+  titles text[], location, remote bool,
+  result_count int, sources text[], created_at
+
+job_search_hits                        -- F22. Cache membership only, no user id (JS-9).
+  search_id → job_searches (cascade), listing_id → job_listings (cascade), rank int
+  PRIMARY KEY (search_id, listing_id)  -- no `id` column — the composite key is the identity
+
+saved_jobs                             -- F22. The only table that pairs a listing with a person.
+  id, clerk_user_id, listing_id → job_listings (restrict),
+  analysis_id → analyses (set null) null,
+  status enum('saved','applied','interviewing','offer','rejected','closed'),
+  applied_at null, note text, created_at, updated_at
+  UNIQUE (clerk_user_id, listing_id)
+  CHECK (status <> 'applied' OR applied_at IS NOT NULL)
 ```
 
 `users` also carries `cap_tokens` (CHECK 0..4,000,000) and `analyses` carries `queued_at`
@@ -348,6 +411,10 @@ token_grants                           -- one-off top-ups: bought, or granted by
 5. RLS is enabled on every table carrying `clerk_user_id`. `templates`, `skills`, `courses`, `course_skills` and `skill_bundles` are reference data with public read and no write policy for authenticated users. `unresolved_terms` and `corpus_gaps` have RLS enabled with **no policy at all** — they carry no user id and nothing an anon or authenticated request has any business reading.
 7. `skill_gaps` CHECK: `unlocks_bullet_draft` cannot exist without `unlocks_bullet_id`. A staged rewrite always names the bullet it rewrites — OUT-2 as a constraint rather than a validator. The bindings themselves are nullable; the binder returns null rather than guessing, so an absent binding is honest and a false one is unreachable.
 6. `token_grants.reference` is UNIQUE. A public webhook that grants tokens is redelivered on any non-2xx, and this is what makes a second delivery a conflict rather than a second credit — idempotency as a constraint, not as a remembered check (F19).
+8. `roadmap_items` CHECK enforces N14: exactly the foreign key its `kind` names is set, `fixed` has none. A step that names nothing is a claim about work the user never generated — the roadmap's own version of N1/N2.
+9. `plan_purchases.reference` is UNIQUE, the same idempotency shape as `token_grants.reference` (invariant 6), for the plan-purchase side of the webhook (F23, PAY-1).
+10. `users` CHECK `(plan = 'free') = (plan_expires_at IS NULL)` makes the F23 revenue bug — a paid plan with no expiry — unrepresentable rather than merely unlikely (N21).
+11. `saved_jobs` CHECK `(status <> 'applied') OR (applied_at IS NOT NULL)`: a status of "applied" always carries the date it happened (F22).
 
 ### 6.3 Storage layout
 
@@ -358,8 +425,12 @@ exports/{clerk_user_id}/{analysis_id}/all.zip
 ```
 
 Storage RLS policies mirror the table policies: path prefix must match the requesting subject.
-Retention: `exports` objects expire after 90 days (re-render is cheap and deterministic);
-`resumes` persist until the user deletes the account or replaces the résumé.
+Retention: `exports` objects persist until the user deletes the account (G17 — an earlier draft
+of this spec claimed a 90-day expiry sweep; nothing enforces one, because there is no scheduler
+in v1 to run it, §12 "no continuous... no CI gating" plus D8's "no scheduler" verdict apply here
+too). `resumes` persist the same way: until the user deletes the account or replaces the résumé.
+A 90-day export sweep is deferred behind the same trigger as D8 — the first scheduler, whatever
+brings it.
 
 ## 7. The match score
 
@@ -1219,6 +1290,239 @@ bottom bar and the sheet, so the button goes with them.
 never rendered; the tour never blocks a click outside its own card; replay works from any signed-in
 surface.
 
+### F21 — Roadmap
+
+A fourth tab on every analysis, `/analysis/[id]/roadmap`: the three result surfaces compiled into
+one ordered checklist, one checkmark per step. Every step is compiled from rows the analysis
+already holds — `lib/domain/roadmap.ts`'s pure `compileRoadmap(rows)` — and no step is written by
+a model (N13). A step that names a question, a learning step, a draft, or a gap carries the
+foreign key to that row, never free text; the CHECK on `roadmap_items` makes that mandatory (N14,
+§6.2 invariant 8).
+
+Five sections, in order, each omitted entirely when it has no rows rather than padded (RM-2):
+**Prepare** (fixed keys — read the coverage buckets, pick a template, download), **Rehearse** (one
+step per `likely = true` question), **Deepen** (one step per `technical`/`system_design`
+question), **Learn** (one step per learning step, in plan order, plus one per gap that resolved
+only to a fallback), **Apply** (fixed keys — apply, follow up after a week — the Apply step binds
+to a saved job, F22, when one exists on the analysis).
+
+Completion is user-authored only: `done_at` is set and cleared solely by `setRoadmapItemDone`
+(N15). Facts the app already knows — an export exists, an answer was drafted, a saved job's status
+changed — render as a hint beside the step, never as a tick. Progress is `n of m`: a count, never
+a percentage, never the word "ready" (N16, applying N4's own rule that an honest number beats a
+number nobody can source).
+
+Built on demand, one click, at zero token cost — `buildRoadmap(analysisId)` inserts one `roadmaps`
+row and N `roadmap_items` and writes no `ai_runs` row. Gated by `capRoadmaps` (§6.2 `users`), per
+cycle: Free 1, Pro 40, Ultra 150 — the paid tiers match their analyses caps so every analysis can
+carry one. A roadmap already built stays readable and tickable at any cap, including after a lapse
+(RM-5) — a cap refuses the next new thing, never what exists (F15's rule, unchanged). At the cap
+the tab renders the cap wall (F23), plan exit first.
+
+**Acceptance:** building creates one `roadmaps` row, N `roadmap_items`, zero `ai_runs`; every
+non-fixed item resolves to a live row and deleting its source row cascades the item away; ticking
+survives reload and is scoped by RLS so a second member cannot tick another member's item; a Free
+member's second build in a cycle is refused with the cap wall and creates no row; neither "ready"
+nor a percentage ever appears on the tab.
+
+### F22 — Job search
+
+`/jobs`: listings fitted to the profile's stated target titles, skills and location, pulled from
+job-board APIs, with save, status tracking, and a one-click path into an analysis. It closes the
+loop the other tabs open: find → analyse → roadmap → apply → track.
+
+**Sourcing is documented APIs only — never scraping** (N17). Two adapters ship behind one
+interface, `lib/jobs/sources/{adzuna,jooble}.ts` implementing `JobSource { id, search(q, signal),
+attribution }`: Adzuna (free key, India plus 15 countries, JSON, a `redirect_url` per listing) and
+Jooble (free key, broad India coverage, one POST). Each adapter's terms are read once and its
+attribution and rate limits are recorded in its own file before it ships; an adapter with no
+documented terms does not ship. Every provider response crosses the boundary through
+`JobListingInSchema` (N18) — a malformed record is dropped and counted, never coerced, and never
+throws the search. A listing's `url` is always the provider's own field; the app assembles no URL
+of its own.
+
+**The query is pure and deliberately narrow** (N19). `lib/domain/job-query.ts` builds a `JobQuery`
+from the stored profile alone: titles from `preferences.targetTitles`, falling back to the latest
+`work[].position`; the profile's top 8 skills by evidence-citation count, canonicalised; a city and
+a remote flag from `basics.location` and `preferences.workMode`. `JobQuery` has no field for a
+name, a contact detail, a bullet, a résumé, or a JD — what a model or a log could leak simply
+cannot be represented. The query is editable on the page; edits are stored back onto the same
+`preferences` object (user-authored, N3).
+
+**Ranking is deterministic** — `lib/domain/job-rank.ts`: skill overlap (canonical profile skills
+found in title plus snippet) first, recency second, source order third, no model call. Each result
+shows the overlap as named skill chips, labelled "skill overlap" — never a number, a ring, or the
+word "match" (N20; N4's own rule again, since a snippet earns no coverage score). Every results
+view carries attribution for every source with results (JS-6), unconditionally.
+
+**Analysing a listing.** Provider responses are snippets, not full postings, so **Analyse** opens
+`/analyze?listing=<id>` with the snippet pre-filled and a notice that a real analysis needs the
+full posting pasted in. The resulting `analyses.listing_id` (§6.2) links the run back to the
+listing, which is how the results header's "From your saved job" tag and the roadmap's Apply step
+both find it. The app never fetches the employer's own page (N17 again — that would be scraping by
+another name).
+
+**Saved jobs** persist at any cap, including Off, because a cap refuses the next new search, never
+what a member already saved (mirroring F21's RM-5). Search results are cached server-side by
+`query_hash` for 12 hours; a repeat inside the window reads the cache and counts against nothing
+(JS-4). Listings expire after 30 days, enforced at read (`where expires_at > now()`), not by a
+scheduler — there isn't one (D8).
+
+Gated by `capJobSearches` (§6.2 `users`), per cycle: Free **0** (off entirely — the page renders
+the query it would run and the cap wall, and makes zero outbound calls, JS-9), Pro 60, Ultra 200.
+A durable ceiling (the cap, counted from `job_searches` rows) plus a burst limit
+(`LIMITS.jobSearch`, 12/hour) both apply (N19/JS-3). Listing text is untrusted third-party content:
+when it becomes an analysis it gets the same injection handling (G2) as a pasted JD (JS-6). Logs
+carry counts and `query_hash` only — never a title, a city, or a company (N19/JS-8, applying N7).
+
+**Acceptance:** a Free member loading `/jobs` triggers zero outbound requests; a Pro search creates
+one `job_searches` row, at most 50 listings, and finishes under 8s per source or names the source
+that failed; every rendered `url` equals the provider's own field; attribution renders for every
+source that returned results; saving, status changes and notes survive the listing's cache expiry
+(the FK is `ON DELETE RESTRICT`); nothing beyond counts and `query_hash` is logged.
+
+### F23 — Plan changes
+
+Two new `QuotaKey`s (`roadmaps`, `jobSearches`) join the existing five, each with a column, a
+CHECK, a `PLANS` value, a `NOTES` line and an enforcement seam that counts rows (N22) — a plan is
+its caps, never a boolean feature flag. `QUOTAS` drives the admin panel, the pricing comparison
+table and the webhook from one source, so each surface extends itself once the key exists.
+
+**Plan expiry closes the revenue bug (G7):** a paid plan granted once and never re-checked. `users`
+gains `plan_expires_at`, CHECK `(plan = 'free') = (plan_expires_at IS NULL)` (N21, §6.2 invariant
+10). A plan purchase extends from `greatest(now(), coalesce(plan_expires_at, now())) + 30 days` —
+buying again before expiry adds time, it never overwrites (PAY-1). `lib/domain/entitlements.
+effectivePlan(row, now)` is the pure read: expired reads as `free`. Lapse is **settled on read, not
+by a scheduler** — every allowance check, and `listMembers`, calls `settlePlan`, which writes the
+Free plan, the Free caps and a null expiry back when `effectivePlan` disagrees with the stored row
+(PAY-2, PAY-3; this is the mirror of what raising a plan already does on the way up). Direct reads
+of `users.plan` or `users.cap_*` outside `lib/auth.ts` and `lib/admin/members.ts` are a bug
+(assumption R6, verified by grep at the M8 gate). Read access to everything already generated is
+unaffected by a lapse — the pricing page's "you keep read access" line was already the promise.
+
+**The cap wall (G9)** is a second value beside the token wall, same shape: `{ key, label, period,
+cap, used, resetDate, resetIn, upgrade, admins }`, carried on a `cap_wall` error and rendered by
+`CapWallDialog` from the value alone — never a plain error string for a refusal with somewhere to
+go. Exits in order: the cycle reset, the next plan up (`upgrade`), then an admin, where admins
+exist (PAY-5). The generic `checkCap(key)` helper backs it, and every cap on every seam — analyses,
+answer drafts, roadmaps, job searches — is migrated onto the same wall (M8.4), so no cap refuses
+differently from any other.
+
+**The webhook**, on a captured payment: refuses the grant and files a `contact_messages` inbox row
+when the amount doesn't match the plan's price, answering 200 either way (the money moved; a
+person resolves the mismatch, PAY-4). `plan_purchases.reference` is the idempotency guarantee for
+this path (§6.2 invariant 9), the same shape as `token_grants.reference` for top-ups — a redelivery
+extends nothing twice. A successful purchase writes all seven caps and the new expiry.
+
+**Renewal is manual in v1** (no Razorpay Subscriptions, D11): the profile panel reads "Pro until 12
+Oct · Renew"; a renewal banner shows once, five days out, keyed on the expiry date; the pricing CTA
+reads "Renew Pro" for a member already on Pro. Admin cap overrides do not survive a lapse — a
+lapsed row is reset to the Free caps exactly as an upgraded row is replaced (D10).
+
+**Acceptance:** a Pro row with a past `plan_expires_at` reads as Free on the next allowance check
+and is written back as Free with Free caps; paying twice inside a cycle yields one row with the
+expiry extended, not duplicated; a wrong-amount capture grants nothing and appears in the admin
+inbox; every cap refusal on every seam returns a `cap_wall` with a plan exit where one exists;
+`/pricing` and the admin plan strip print the same seven numbers per plan.
+
+### F24 — Prompt diet
+
+Every instruction gets exactly one home: field shape lives in a schema's `.describe()`, behaviour
+lives in the system prompt, enforcement lives in a validator — never two homes for the same rule
+(PR-1). A prompt line survives only if removing it changes first-attempt output; "do not invent a
+URL" is `noUrls()`'s job, not a sentence's (PR-2). The shared `LAW` block across all seven prompts
+collapses to one sentence: *"Nothing is invented: you never add a fact the user did not state."*
+
+**Every call now declares a ceiling.** `runStructured` (renamed `lib/ai/run.ts`'s `runOutcome`
+path) refuses to compile without a `maxOutputTokens` (PR-3, G1): extract 6,000 · analyzeJd 3,000 ·
+tailor 200 · summary 400 · questions 3,500 · answer 2,500 · plan 2,500. A response the ceiling cuts
+short fails schema validation, takes its one corrective retry (PR-4), and then follows the
+purpose's existing fallback.
+
+**Per-call inputs are trimmed by pure ranking before the call is made — never by asking a model to
+ignore content** (PR-5). `answerQuestion`'s `otherBullets` narrows to the top 12 by term overlap
+with the question (`lib/ai/answer.ts`'s `rankByOverlap`). `generateQuestions`'s bullets cap at 40,
+ranked by coverage relevance. The JD itself is pre-stripped of boilerplate — benefits, EEO,
+"About us" — by `lib/domain/jd-segment.ts`'s `stripBoilerplate()`, a conservative regex on
+headings with an absolute floor (not a percentage — a percentage floor reverts stripping on
+exactly the short, boilerplate-heavy postings where it matters most) so a real requirements
+paragraph is never dropped; the floor/ceiling pair (200 / 20,000 characters) lives in one constant,
+`JD_MIN_CHARS`/`JD_MAX_CHARS` in `lib/domain/guardrails.ts`, read by both the client-side submit
+check and the server action so the two can never disagree (an earlier client-side floor of 120
+characters, stale after this change, was caught and fixed in the same pass). `analyzeJd` and
+`extractProfile` retry once, not twice (G14).
+
+**The whole run carries a ceiling too** (G12): `run-analysis.ts`'s tailoring loop carries a
+`TokenAccumulator` (the learning engine's own class, reused) with a 60,000-token budget for the
+analysis. Past it, remaining bullets are written verbatim rather than left unwritten, stages ④ and
+⑤ still run since they're bounded regardless, and the results header names which bullets were left
+as written (§9 F4's `truncated`/`protectedNotice` plumbing carries this too). The ceiling is
+`ANALYSIS_TOKEN_CEILING` in `lib/domain/tokens.ts`, beside the per-purpose estimates.
+
+Every version bump keeps the old prompt text in the file for one release so `ai_runs.prompt_version`
+stays a real axis to compare against (PR-6): `tailor-bullets@2` (schema becomes a single object,
+`rationale` dropped entirely since it was never stored or shown), `tailor-summary@2`,
+`analyze-jd@2`, `interview-questions@3`, `question-answer@2`, `extract-profile@2`,
+`learning-plan@2`. `pnpm tokens:calibrate` prints measured p50/p95 per purpose from `ai_runs`,
+`TOKEN_STAGES` is hand-recalibrated from that output after each bump, and the pricing page's "about
+N tokens" line derives from the same numbers (PR-6, G11).
+
+**Acceptance:** typecheck fails on any `runStructured` call missing its ceiling; the fabrication
+eval stays at zero on every diet prompt, per stage, or that stage's diet reverts and the milestone
+still closes (PR-7); the pre-strip fixture set (`pnpm check:jdstrip`) never drops a line containing
+a requirement.
+
+### F25 — Guardrail closure
+
+The gap register from the M8–M12 review (G1–G19), closed in the milestone each gap's fix depends
+on, plus the guardrails F21 and F22 need that didn't exist before them. A guardrail is code, never
+prompt wording alone (GR-1) — the prompt may say the same thing too, only when PR-2's "changes
+first-attempt output" test still holds for that sentence.
+
+**Closed:** `maxOutputTokens` required (G1, F24 §5.3) · injection scan moved to `createAnalysis`,
+before any row or model call, with the flag stored on `stage_state.injection` and the run
+proceeding regardless — containment, not refusal, is the defence (G2, GR-2) · protected-term
+scanning moved into stage ① on parsed requirements, before rows are written, with the dropped
+notice shown once on the results header rather than computed and discarded (G3 — this was
+previously dead code: computed, never rendered, until this pass) · the results header states
+plainly when a posting was truncated for length (G4) · one JD length constant used by both the
+client check and the server action (G5) · the tailoring tool allowlist scoped to a bullet's own
+role rather than the whole profile, and the seniority ladder restricted to title-shaped tokens
+rather than any verb that merely sounds senior (G6, re-measured with `check:fabrication`) ·
+`deleteEverythingFor`/`deleteAccount` null `contact_messages.clerk_user_id` for the deleted subject
+rather than leaving an orphaned reference (G13) · `analyzeJd`/`extractProfile` retries cut from 2
+to 1 (G14) · `noUrls(value)` applied to every prose field of every schema through one shared
+regex, one place, `lib/domain/guardrails.ts` (G16, GR-3 — course links still come only from the
+catalog, N8) · the exports-retention spec text corrected to what the code actually does (G17, §6.3)
+· the Clerk `user.created` path and `provisionUser` both read caps through one
+`capsFromDefaults()` function, so a raised workspace default reaches an account through either door
+(G19).
+
+**New — roadmap (RM-1–RM-5, §9 F21):** no model call anywhere in the compile path, verified by
+`ai_runs` staying flat across a build; every non-fixed item's FK matches its `kind`, enforced by
+the CHECK; `done_at` is written only by `setRoadmapItemDone`; progress renders `n of m`, never a
+percentage or "ready"; every label is a snapshot of a user's own row or a fixed key, never free
+text from anywhere else, guaranteed by `compileRoadmap` being pure.
+
+**New — job search (JS-1–JS-10, §9 F22):** documented APIs only, enforced by the adapter interface
+and `agent.md`'s never-list; every provider response crosses `JobListingInSchema`, unparseable
+records dropped and counted; a listing's `url` is always the provider's own field, never assembled;
+`JobQuery` has no field for anything beyond titles, skills, city and a remote flag; fit is skill
+overlap, named, never a number or the word "match"; listing text gets the same injection handling
+as a pasted JD once it becomes an analysis (G2 covers this too); the durable cap plus the burst
+limit plus the 8s/50-listing/one-call-per-source constants; attribution rendered unconditionally
+per source; no user id on cached listings, the pairing lives only in `saved_jobs`; logs carry
+counts and `query_hash`, never a title or a city.
+
+**New — pay (PAY-1–PAY-5, §9 F23):** the expiry CHECK; lapse settled on read by one function and
+nothing else lowering a plan; a mismatched captured amount granting nothing and filing an inbox
+row; every cap refusal carrying a `cap_wall` value with the plan as an exit before an admin is; the
+plan table and the pricing page reading from one `PLANS` source, the two new keys added there and
+nowhere else.
+
+A guardrail that has never been watched rejecting something is not a guardrail (GR-6): every CHECK
+above has a case in `scripts/smoke-constraints.ts` (§12), added in the same change as the
+constraint itself.
 
 ## 10. AI layer
 
@@ -1269,7 +1573,7 @@ making a wrong state unrepresentable over remembering to check for it.
 
 | Check | Gate | Why it survives |
 |---|---|---|
-| Constraint smoke test — one bad insert per guard: N1, N2, N4, F19 ×4, RLS, plus the learning engine's OUT-2 / step-duration / fallback-completeness / severity-range guards. 13 cases. | M1 | Confirms the safety net is actually connected. Five minutes, once. |
+| Constraint smoke test — one bad insert per guard: N1, N2, N4, F19 ×4, RLS, the learning engine's OUT-2 / step-duration / fallback-completeness / severity-range guards, and — added across M8–M11 — F23 ×3 (the two new cap ceilings, a paid plan with no expiry), N14 (a roadmap item's FK mismatching its kind), F22 (an "applied" saved job with no date), and RLS re-checked across six own-rows/no-policy tables instead of one. 17 insert cases + 6 RLS reads = 23 cases. | M1, re-run at each of M8/M10/M11's gates | Confirms the safety net is actually connected. Five minutes, once per milestone that adds a guard. |
 | Fabrication eval — 30 bullets vs postings demanding absent skills | M4 | This is the product's entire promise. Unverified, we ship a claim we never checked. |
 | DOCX round-trip — export, re-import, compare | M6 | Parsability is invisible until a user is rejected because of it. |
 
@@ -1309,6 +1613,8 @@ updateProfile(patch)                  → ResumeJson
 replaceResume(file)                   → upload → review → commit
 
 createAnalysis(input)                 → { analysisId, queued } // streamed pipeline; `queue` parks it (F19)
+                                                            //   input.listingId binds the run to a saved
+                                                            //   job (F22 §3.5); optional
 startQueuedAnalysis(analysisId)       → { id }               // F19, re-checks the meter
 discardQueuedAnalysis(analysisId)     → null                 // F19
 getAnalysis(analysisId)               → full result tree
@@ -1326,9 +1632,20 @@ updateWorkspaceDefaults(caps)                               // F15, new accounts
 startPlanCheckout(planId)                   → RazorpayOrder // F17, amount read server-side
 startTopupCheckout(topupId)                 → RazorpayOrder // F19, refused on Free server-side
 grantTokens({ clerkUserId, tokens })        → { tokens }    // F19, admin one-off — NOT a cap change
-POST /api/webhooks/razorpay                    (route)      // F17/F19, the ONLY place users.plan is raised
-                                                            //   or token_grants written from a purchase
+POST /api/webhooks/razorpay                    (route)      // F17/F19/F23, the ONLY place users.plan is
+                                                            //   raised, plan_expires_at extended, or
+                                                            //   token_grants/plan_purchases written from
+                                                            //   a purchase
 requestAdminAccess()                  → files a support message
+
+buildRoadmap(analysisId)              → { roadmapId }        // F21, cap → checkCap('roadmaps'); zero ai_runs
+setRoadmapItemDone(itemId, done)      → RoadmapItem           // F21, the ONLY writer of done_at (N15)
+
+searchJobs(query)                     → { searchId, listings } // F22, cap → checkCap('jobSearches');
+                                                            //   burst-limited; cached by query_hash 12h
+saveJob(listingId)                    → SavedJob              // F22
+unsaveJob(listingId)                  → null                  // F22
+setSavedJobStatus({ listingId, status, appliedAt? })         // F22, CHECK requires appliedAt when 'applied'
 ```
 
 ## 15. Open decisions
@@ -1344,6 +1661,10 @@ requestAdminAccess()                  → files a support message
 | D8 | A scheduler for queued runs | No. A parked run waits on `/analyze` with a button | If parked runs routinely go unstarted for days |
 | D9 | Per-cycle cap history | No. The top-up carry rule uses the current cap for past cycles | If an admin's cap change is ever disputed over a top-up |
 | D7 | Adding automated tests | Add if the same bug is fixed twice | A second regression |
+| D10 | Admin cap overrides on a lapsed account | Lost on lapse — the row resets to Free caps, same as it's replaced on upgrade | An admin asks twice |
+| D11 | Razorpay Subscriptions | No in v1; manual renew with a banner | Renewal rate < 50% after two cycles |
+| D12 | JSearch (paid) as a third job source | Off until Adzuna + Jooble coverage for the top 20 India target titles is measured < 70% | The R4 measurement |
+| D13 | Auto-build the roadmap for Pro at run end | No; on demand for everyone, one click, zero cost | Pro members ask for it |
 
 ## 16. What would make this fail
 

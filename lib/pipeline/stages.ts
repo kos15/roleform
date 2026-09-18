@@ -64,3 +64,27 @@ export function progressFor(stage: StageKey, state: StageState): number {
   const { start, end } = PROGRESS[stage];
   return state === "running" ? start : end;
 }
+
+/**
+ * What `analyses.stage_state` can honestly say (G4). Written across three
+ * places in the pipeline (`createAnalysis`'s injection scan, stage ①'s
+ * usedRegions/truncated/protectedNotice) and read here in the one shape the
+ * results header renders — a Json column is only as trustworthy as what
+ * parses back out of it (CLAUDE.md §11).
+ */
+export interface AnalysisStageState {
+  usedRegions: string[];
+  truncated: boolean;
+  protectedNotice: string | null;
+  injection: string[];
+}
+
+export function readStageState(value: unknown): AnalysisStageState {
+  const obj = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+  return {
+    usedRegions: Array.isArray(obj.usedRegions) ? obj.usedRegions.filter((r): r is string => typeof r === "string") : [],
+    truncated: obj.truncated === true,
+    protectedNotice: typeof obj.protectedNotice === "string" ? obj.protectedNotice : null,
+    injection: Array.isArray(obj.injection) ? obj.injection.filter((p): p is string => typeof p === "string") : [],
+  };
+}

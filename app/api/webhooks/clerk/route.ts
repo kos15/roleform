@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { Webhook } from "svix";
 import { db } from "@/lib/db";
 import { hashEmail } from "@/lib/auth";
-import { workspaceDefaults } from "@/lib/admin/defaults";
+import { workspaceDefaults, capsFromDefaults } from "@/lib/admin/defaults";
 import { deleteEverythingFor } from "./delete";
 
 /**
@@ -47,8 +47,12 @@ export async function POST(request: Request) {
     const emails = event.data.email_addresses as Array<{ email_address: string }> | undefined;
     const email = emails?.[0]?.email_address ?? "";
     // The workspace defaults apply here too — this and `provisionUser` are the
-    // two doors into a new account, and they have to agree about what a new
-    // account starts with (lib/admin/defaults.ts).
+    // two doors into a new account, and `capsFromDefaults` is what keeps them
+    // agreeing about what a new account starts with (G19, lib/admin/defaults.ts).
+    // This door used to write four of the seven caps by hand and leave the
+    // rest — `capTokens` included — on the schema's column default, so an
+    // admin who raised the workspace token default saw it apply only to
+    // signups that happened to provision through `provisionUser` first.
     const defaults = await workspaceDefaults();
     await db.user.upsert({
       where: { clerkUserId },
@@ -57,14 +61,11 @@ export async function POST(request: Request) {
         emailHash: hashEmail(email),
         // The cycle anchor (F15, F19). Without it every read of `cycleStart`
         // falls back to `now`, usage counts from this instant, and no cap
-        // binds — the meter and the four caps become decorative. Written once,
+        // binds — the meter and the seven caps become decorative. Written once,
         // at creation, and never moved: it is a fixed point the 30-day windows
         // are laid out around, not a date a scheduler has to maintain.
         quotaResetsAt: new Date(),
-        capAnalyses: defaults.analyses,
-        capResumes: defaults.resumes,
-        capAnswers: defaults.answers,
-        capCourses: defaults.courses,
+        ...capsFromDefaults(defaults),
       },
       update: {},
     });

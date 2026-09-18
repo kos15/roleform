@@ -4,7 +4,9 @@ import { db } from "@/lib/db";
 import { initialsOf, roleFromMetadata, type Role } from "@/lib/admin/role";
 import { cycleStart, type QuotaKey } from "@/lib/domain/quotas";
 import { formatTokens } from "@/lib/domain/tokens";
+import { effectivePlan } from "@/lib/domain/entitlements";
 import { grantedTokens } from "@/lib/db/queries/tokens";
+import { settlePlan } from "@/lib/db/queries/plan";
 import { planById, type PlanId } from "@/lib/content/pricing";
 
 /**
@@ -36,6 +38,8 @@ export interface MemberUsage {
   resumes: number;
   answers: number;
   courses: number;
+  roadmaps: number;
+  jobSearches: number;
 }
 
 export interface Member {
@@ -48,6 +52,8 @@ export interface Member {
   planId: PlanId;
   /** The same fact, spelled the way the panel prints it. */
   plan: string;
+  /** null on Free (never lapses) and on a plan just settled to Free this read. */
+  planExpiresAt: string | null;
   role: Role;
   suspended: boolean;
   joined: string;
@@ -63,6 +69,7 @@ export async function listMembers(): Promise<Member[]> {
     select: {
       clerkUserId: true,
       plan: true,
+      planExpiresAt: true,
       suspended: true,
       createdAt: true,
       quotaResetsAt: true,
@@ -71,22 +78,49 @@ export async function listMembers(): Promise<Member[]> {
       capResumes: true,
       capAnswers: true,
       capCourses: true,
+      capRoadmaps: true,
+      capJobSearches: true,
     },
   });
 
   if (rows.length === 0) return [];
 
+  // PAY-2: the panel never quotes a plan that has already lapsed. A row whose
+  // stored plan disagrees with `effectivePlan` is settled — written back to
+  // Free — before it is rendered, the same write `lib/auth.ts`'s allowance
+  // checks perform the next time this member tries to do anything. Most rows
+  // are unaffected and pass through unchanged.
+  const settled = await Promise.all(
+    rows.map(async (row) => {
+      if (effectivePlan(row) === row.plan) return row;
+      await settlePlan(row.clerkUserId);
+      const free = planById("free").caps;
+      return {
+        ...row,
+        plan: "free" as PlanId,
+        planExpiresAt: null,
+        capTokens: free.tokens,
+        capAnalyses: free.analyses,
+        capResumes: free.resumes,
+        capAnswers: free.answers,
+        capCourses: free.courses,
+        capRoadmaps: free.roadmaps,
+        capJobSearches: free.jobSearches,
+      };
+    }),
+  );
+
   const [usage, topups] = await Promise.all([
-    Promise.all(rows.map((row) => usageFor(row.clerkUserId, cycleStart(row.quotaResetsAt)))),
+    Promise.all(settled.map((row) => usageFor(row.clerkUserId, cycleStart(row.quotaResetsAt)))),
     // Granted, not unspent: the panel is answering "what has this member been
     // given", which is the number an admin deciding whether to grant more
     // actually needs. What is LEFT of it is the member's own header pill.
-    Promise.all(rows.map((row) => grantedTokens(row.clerkUserId))),
+    Promise.all(settled.map((row) => grantedTokens(row.clerkUserId))),
   ]);
 
-  const directory = await resolveIdentities(rows.map((r) => r.clerkUserId));
+  const directory = await resolveIdentities(settled.map((r) => r.clerkUserId));
 
-  return rows.map((row, i) => {
+  return settled.map((row, i) => {
     const person = directory.get(row.clerkUserId);
     const name = person?.name ?? "Unnamed member";
     return {
@@ -96,6 +130,9 @@ export async function listMembers(): Promise<Member[]> {
       initials: initialsOf(name),
       planId: row.plan,
       plan: planById(row.plan).name,
+      planExpiresAt: row.planExpiresAt
+        ? row.planExpiresAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+        : null,
       // From Clerk, not from the mirrored column: the mirror only refreshes
       // when a person visits, and a panel that shows a stale role is worse
       // than one that costs a directory read.
@@ -108,6 +145,8 @@ export async function listMembers(): Promise<Member[]> {
         resumes: row.capResumes,
         answers: row.capAnswers,
         courses: row.capCourses,
+        roadmaps: row.capRoadmaps,
+        jobSearches: row.capJobSearches,
       },
       used: usage[i],
       topupTokens: topups[i],
@@ -122,7 +161,7 @@ async function usageFor(clerkUserId: string, since: Date): Promise<MemberUsage> 
     select: { id: true },
   });
 
-  const [tokens, analyses, answers, resumes, courses] = await Promise.all([
+  const [tokens, analyses, answers, resumes, courses, roadmaps, jobSearches] = await Promise.all([
     db.aiRun.aggregate({
       where: { clerkUserId, createdAt: { gte: since } },
       _sum: { inputTokens: true, outputTokens: true },
@@ -138,6 +177,8 @@ async function usageFor(clerkUserId: string, since: Date): Promise<MemberUsage> 
     lastRun
       ? db.skillGap.count({ where: { clerkUserId, analysisId: lastRun.id } })
       : Promise.resolve(0),
+    db.roadmap.count({ where: { clerkUserId, createdAt: { gte: since } } }),
+    db.jobSearch.count({ where: { clerkUserId, createdAt: { gte: since } } }),
   ]);
 
   return {
@@ -146,6 +187,8 @@ async function usageFor(clerkUserId: string, since: Date): Promise<MemberUsage> 
     resumes,
     answers,
     courses,
+    roadmaps,
+    jobSearches,
   };
 }
 

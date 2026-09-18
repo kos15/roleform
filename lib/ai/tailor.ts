@@ -1,9 +1,10 @@
 import "server-only";
 import { runStructured } from "./run";
-import { TailoredBulletsSchema, TailorSummarySchema } from "./schemas/tailored-bullets";
+import { TailoredBulletSchema, TailorSummarySchema } from "./schemas/tailored-bullets";
 import { PROMPT_VERSIONS, SYSTEM } from "./prompts";
 import { TEMPERATURE } from "./models";
 import { checkFabrication } from "@/lib/domain/fabrication";
+import { noUrls } from "@/lib/domain/guardrails";
 import type { DomainBullet, DomainRequirement, Result, Transform } from "@/lib/domain/types";
 
 /**
@@ -36,6 +37,8 @@ export interface TailoredResult {
   aiRunId: string | null;
   /** Populated when the guard rejected a rewrite and we fell back to verbatim. */
   blockedBy: string[];
+  /** input+output tokens the call actually burned. 0 on the no-call and failure paths. */
+  tokensUsed: number;
 }
 
 export async function tailorBullet(args: {
@@ -60,6 +63,7 @@ export async function tailorBullet(args: {
         targetsRequirementId: null,
         aiRunId: null,
         blockedBy: [],
+        tokensUsed: 0,
       },
     };
   }
@@ -68,7 +72,7 @@ export async function tailorBullet(args: {
     purpose: "tailor_bullet",
     promptVersion: PROMPT_VERSIONS.tailorBullets,
     tier: "strong",
-    schema: TailoredBulletsSchema,
+    schema: TailoredBulletSchema,
     system: SYSTEM.tailorBullets,
     prompt: [
       `Role being applied for: ${args.jobTitle}`,
@@ -80,36 +84,31 @@ export async function tailorBullet(args: {
       `<bullet id="${bullet.id}">`,
       bullet.text,
       `</bullet>`,
-      ``,
-      `Return exactly one entry, for bullet id ${bullet.id}.`,
     ].join("\n"),
     temperature: TEMPERATURE.tailoring,
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
+    maxOutputTokens: 200,
     // specs §10: one retry, then fail open to the original.
     retries: 1,
     verify: (value) => {
       // M4.2 — id verification. An invented id never reaches the FK.
-      const bad = value.bullets.filter((b) => b.sourceBulletId !== bullet.id);
-      if (bad.length > 0) {
-        return `sourceBulletId must be exactly "${bullet.id}". You returned ${bad
-          .map((b) => `"${b.sourceBulletId}"`)
-          .join(", ")}.`;
+      if (value.sourceBulletId !== bullet.id) {
+        return `sourceBulletId must be exactly "${bullet.id}". You returned "${value.sourceBulletId}".`;
       }
       // M4.3 — content guardrails, before we spend a second round trip on it.
-      const findings = value.bullets.flatMap((b) =>
-        checkFabrication({
-          source: bullet.text,
-          rewritten: b.rewrittenText,
-          profileTerms: args.profileTerms,
-        }),
-      );
+      const findings = checkFabrication({
+        source: bullet.text,
+        rewritten: value.rewrittenText,
+        profileTerms: args.profileTerms,
+      });
       if (findings.length > 0) {
         return findings
           .map((f) => `Remove "${f.token}" — ${f.reason}. Only what the source bullet states.`)
           .join(" ");
       }
-      return null;
+      // GR-3: a résumé bullet is never a place a model puts a link.
+      return noUrls(value.rewrittenText);
     },
   });
 
@@ -126,11 +125,13 @@ export async function tailorBullet(args: {
         targetsRequirementId: requirement.id,
         aiRunId: null,
         blockedBy: [outcome.error.code],
+        tokensUsed: 0,
       },
     };
   }
 
-  const returned = outcome.value.value.bullets[0];
+  const returned = outcome.value.value;
+  const tokensUsed = outcome.value.inputTokens + outcome.value.outputTokens;
   const findings = checkFabrication({
     source: bullet.text,
     rewritten: returned.rewrittenText,
@@ -148,6 +149,7 @@ export async function tailorBullet(args: {
         targetsRequirementId: requirement.id,
         aiRunId: outcome.value.aiRunId,
         blockedBy: findings.map((f) => `${f.kind}:${f.token}`),
+        tokensUsed,
       },
     };
   }
@@ -162,6 +164,7 @@ export async function tailorBullet(args: {
       targetsRequirementId: requirement.id,
       aiRunId: outcome.value.aiRunId,
       blockedBy: [],
+      tokensUsed,
     },
   };
 }
@@ -189,6 +192,7 @@ export async function tailorSummary(args: {
     temperature: TEMPERATURE.tailoring,
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
+    maxOutputTokens: 400,
     retries: 1,
     verify: (value) => {
       const findings = checkFabrication({
@@ -196,9 +200,10 @@ export async function tailorSummary(args: {
         rewritten: value.professionalSummary,
         profileTerms: args.profileTerms,
       });
-      return findings.length > 0
-        ? findings.map((f) => `Remove "${f.token}" — ${f.reason}.`).join(" ")
-        : null;
+      if (findings.length > 0) {
+        return findings.map((f) => `Remove "${f.token}" — ${f.reason}.`).join(" ");
+      }
+      return noUrls(value);
     },
   });
 

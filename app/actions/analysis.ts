@@ -8,6 +8,7 @@ import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { extractText, MAX_UPLOAD_BYTES } from "@/lib/extract/text";
 import { getProfile } from "@/lib/db/queries/profile";
 import { findByContentHash } from "@/lib/db/queries/analysis";
+import { JD_MIN_CHARS, scanForInjection } from "@/lib/domain/guardrails";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 /**
@@ -33,6 +34,13 @@ export async function createAnalysis(input: {
    * that could park a run it was perfectly able to pay for.
    */
   queue?: boolean;
+  /**
+   * Set when this run began as "Analyse" on a saved listing (F22 §3.5). The
+   * hand-off pre-fills the SNIPPET a job-board API returned, not the full
+   * posting — the member pastes that in themselves, which is why this field
+   * only records provenance and never substitutes for `text`.
+   */
+  listingId?: string;
 }): Promise<Result<{ analysisId: string; reused: boolean; queued: boolean }>> {
   const user = await requireUser();
   if (!user.ok) return user;
@@ -47,7 +55,7 @@ export async function createAnalysis(input: {
 
   if (input.source === "paste") {
     rawText = (input.text ?? "").trim();
-    if (rawText.length < 120) {
+    if (rawText.length < JD_MIN_CHARS) {
       return err(appError("invalid_input", "That's too short to be a job posting. Paste the full text."));
     }
   } else {
@@ -65,7 +73,10 @@ export async function createAnalysis(input: {
   // F2 acceptance: identical JD text reuses the prior analysis, no second charge.
   const contentHash = createHash("sha256").update(normalise(rawText)).digest("hex");
   const existing = await findByContentHash(user.value, contentHash);
-  if (existing) return ok({ analysisId: existing.id, reused: true, queued: false });
+  if (existing) {
+    if (input.listingId) await bindSavedJob(user.value, input.listingId, existing.id);
+    return ok({ analysisId: existing.id, reused: true, queued: false });
+  }
 
   const limited = rateLimit(
     `analysis:${user.value}`,
@@ -88,6 +99,17 @@ export async function createAnalysis(input: {
   const walled = !tokens.ok;
   if (walled && !input.queue) return tokens;
 
+  // IN-5, moved here from the learning engine (G2): the scan runs before any
+  // row exists and before any model call, not after three of them have
+  // already read the JD. A flagged run still proceeds — output containment
+  // is the real defence (guardrails.md IN-5) — but the flag is stored once,
+  // here, rather than recomputed at stage ⑤ every time the run is resumed.
+  const injection = scanForInjection(rawText);
+  if (injection.flagged) {
+    // Pattern names only, never the matched text (N7).
+    console.warn(`[analysis] injection_patterns=${injection.patterns.join(",")}`);
+  }
+
   // The row IS the charge — see lib/auth.ts. A create that throws leaves
   // nothing behind, so there is no refund to get wrong.
   const row = await db.analysis.create({
@@ -99,6 +121,8 @@ export async function createAnalysis(input: {
       rawText,
       contentHash,
       status: "parsing",
+      stageState: { injection: injection.patterns },
+      listingId: input.listingId ?? null,
       // Stamped only when the wall was real. Queuing a run we could afford
       // would park a posting for no reason and hide it behind a reset date.
       queuedAt: walled ? new Date() : null,
@@ -106,9 +130,26 @@ export async function createAnalysis(input: {
     select: { id: true },
   });
 
+  if (input.listingId) await bindSavedJob(user.value, input.listingId, row.id);
+
   revalidatePath("/history");
   revalidatePath("/analyze");
+  revalidatePath("/jobs");
   return ok({ analysisId: row.id, reused: false, queued: walled });
+}
+
+/**
+ * F22 §3.5 — once a member analyses a saved listing, the roadmap's Apply
+ * step and the saved-jobs panel can both point at the result. Best-effort
+ * and silent when nothing was saved for this listing: analysing a listing
+ * you never saved is a completely ordinary thing to do, it just has nothing
+ * to bind.
+ */
+async function bindSavedJob(clerkUserId: string, listingId: string, analysisId: string): Promise<void> {
+  await db.savedJob.updateMany({
+    where: { clerkUserId, listingId, analysisId: null },
+    data: { analysisId },
+  });
 }
 
 /**

@@ -35,7 +35,16 @@ declare
     'learning_steps',
     'exports',
     'ai_runs',
-    'token_grants'
+    'token_grants',
+    -- F21: the roadmap is compiled from a member's own rows and its ticks
+    -- are theirs alone.
+    'roadmaps',
+    'roadmap_items',
+    -- F22: the pairing of a member with a listing, and their own search log.
+    -- `job_listings` and `job_search_hits` are the shared cache underneath
+    -- both — see the no-policy block below.
+    'saved_jobs',
+    'job_searches'
   ];
   key_column text;
 begin
@@ -119,6 +128,41 @@ declare
   t text;
 begin
   foreach t in array array['unresolved_terms', 'corpus_gaps'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('alter table public.%I force row level security', t);
+    execute format('drop policy if exists "public read" on public.%I', t);
+  end loop;
+end $$;
+
+-- ------------------------------------------------------------ plan purchases
+-- plan_purchases exists only for webhook idempotency (F23, G7/G8) — the same
+-- shape token_grants already has for top-ups, but nothing a member ever
+-- reads directly (their own plan and its expiry come back through /profile
+-- and the admin panel, both scoped queries over `users`). Written only by the
+-- Razorpay webhook over the Prisma connection, which bypasses RLS. RLS on,
+-- NO policy — the same rule workspace_settings and unresolved_terms use.
+alter table public.plan_purchases enable row level security;
+alter table public.plan_purchases force row level security;
+drop policy if exists "public read" on public.plan_purchases;
+
+-- ------------------------------------------------------------- job listings
+-- job_listings is the shared cache underneath F22: one row per posting a
+-- provider returned, carrying no clerk_user_id. The listing is public content
+-- from a job board; the pairing of a listing with a member lives only in
+-- saved_jobs, which IS scoped above (JS-5, JS-9). job_search_hits is that
+-- cache's own membership row (which listings belonged to which search) and
+-- carries no user id either — the pairing of a search with a member is one
+-- hop away, on job_searches.
+--
+-- Same shape as unresolved_terms and corpus_gaps directly above: RLS on, NO
+-- policy, because nothing an anon or authenticated request has any business
+-- reading here directly. Every read is a Server Action that joins through
+-- saved_jobs or returns a fresh searchJobs() result, both scoped by subject.
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['job_listings', 'job_search_hits'] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('alter table public.%I force row level security', t);
     execute format('drop policy if exists "public read" on public.%I', t);

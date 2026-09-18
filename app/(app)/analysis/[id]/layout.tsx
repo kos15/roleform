@@ -7,6 +7,7 @@ import {
   getRequirements,
   getTabCounts,
 } from "@/lib/db/queries/analysis";
+import { readStageState } from "@/lib/pipeline/stages";
 import { ResultsHeader } from "./results-header";
 import { AnalysisTabs } from "./analysis-tabs";
 
@@ -43,6 +44,10 @@ export default async function AnalysisLayout({
 
   const evidenceIds = [...new Set(coverage.flatMap((c) => c.evidenceBulletIds))];
   const bulletTexts = await getBulletTexts(userId, evidenceIds);
+  // G4: what stage ① actually did to the posting before it was ever read —
+  // truncated for length, or a requirement excluded under IN-6 — surfaced
+  // once, plainly, rather than left in a column nothing renders.
+  const stageState = readStageState(analysis.stageState);
 
   return (
     <div className="space-y-8">
@@ -58,6 +63,10 @@ export default async function AnalysisLayout({
           score: Number(analysis.score ?? 0),
           scoreVerdict: analysis.scoreVerdict ?? "",
           scoreNote: analysis.scoreNote ?? "",
+          truncated: stageState.truncated,
+          protectedNotice: stageState.protectedNotice,
+          // F22 §3.5 — this run started as "Analyse" on a saved listing.
+          fromSavedJob: analysis.listingId !== null,
         }}
         requirements={requirements}
         coverage={coverage}

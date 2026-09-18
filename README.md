@@ -31,6 +31,14 @@ pnpm db:policies                # apply lib/db/policies.sql — RLS lives in the
 pnpm seed:catalog               # templates + skills + link-checked course catalog
 ```
 
+**On Vercel, the last two run automatically on every deploy:** `build` is
+`prisma migrate deploy && pnpm db:policies && next build`, in that order, against whatever
+`DATABASE_URL`/`DIRECT_URL` that Vercel environment (production vs. preview) has configured. Both
+steps are idempotent — a deploy with nothing pending is a no-op on both — so this is safe to run on
+every build, not just the first one. A failure in either step fails the build before `next build`
+ever runs, so a broken migration cannot ship. Local `pnpm db:migrate` / `pnpm db:policies` above
+are for authoring and testing a migration before it reaches that pipeline.
+
 `prisma/schema.prisma` is the truth; migrations are generated, never hand-authored — except the
 two CHECK constraints (N1/N2), which Prisma has no schema syntax for and which are added by
 hand, once, to `prisma/migrations/*_init/migration.sql`. Table and column names are
@@ -67,8 +75,10 @@ milestone, at the gate. These are the commands behind it.
 | `pnpm check:fabrication` | ★ Fabrication eval — 30 bullets vs postings demanding absent skills | M4 gate |
 | `pnpm check:roundtrip` | ★ DOCX round-trip — render, re-import, compare (bar: 95%) | M6 gate |
 | `pnpm check:coverage` | Score fixtures, by hand, written down. Pure — no DB, no keys | anytime |
+| `pnpm check:jdstrip` | Boilerplate pre-strip fixtures (F24). Pure — no DB, no keys | anytime |
 | `pnpm render:samples` | Renders all eleven templates to `.samples/`. Open them | anytime |
 | `pnpm check:links` | Catalog link check, refreshes `verified_at` | quarterly |
+| `pnpm tokens:calibrate` | Measured p50/p95 tokens per purpose, for hand-recalibrating `TOKEN_STAGES` (F24) | after a prompt change, or quarterly |
 
 The three ★ checks are the ones that survive the light-testing policy, because each catches a
 failure that would otherwise be expensive and silent.

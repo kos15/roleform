@@ -3,10 +3,11 @@ import { createHash } from "node:crypto";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { listAdmins } from "@/lib/admin/members";
-import { workspaceDefaults } from "@/lib/admin/defaults";
-import { cycleStart } from "@/lib/domain/quotas";
+import { workspaceDefaults, capsFromDefaults } from "@/lib/admin/defaults";
+import { cycleEnd, cycleStart, QUOTA_BY_KEY, type CapWall, type QuotaKey } from "@/lib/domain/quotas";
 import { UNCAPPED, isUncapped, withinCap } from "@/lib/domain/entitlements";
 import { accountTokens } from "@/lib/db/queries/tokens";
+import { settlePlan } from "@/lib/db/queries/plan";
 import {
   SPEND,
   TOKEN_STAGES,
@@ -53,19 +54,22 @@ export async function provisionUser(clerkUserId: string): Promise<void> {
       emailHash: hashEmail(email),
       // The cycle anchor (F15, F19). Without it every read of `cycleStart`
       // falls back to `now`, usage counts from this instant, and no cap
-      // binds — the meter and the four caps become decorative. Written once,
+      // binds — the meter and the seven caps become decorative. Written once,
       // at creation, and never moved: it is a fixed point the 30-day windows
       // are laid out around, not a date a scheduler has to maintain.
       quotaResetsAt: new Date(),
-      capTokens: defaults.tokens,
-      capAnalyses: defaults.analyses,
-      capResumes: defaults.resumes,
-      capAnswers: defaults.answers,
-      capCourses: defaults.courses,
+      ...capsFromDefaults(defaults),
     },
     update: {},
   });
 }
+
+// `settlePlan` (F23, PAY-2/PAY-3) lives in lib/db/queries/plan.ts, imported
+// above — not here, because this module already imports `listAdmins` from
+// lib/admin/members.ts, and lib/admin/members.ts needs `settlePlan` too
+// (PAY-2: the panel never reads a stale plan). Defining it in this file
+// would make that a real circular import between two modules whose
+// functions are called at runtime, not just referenced for their types.
 
 /**
  * The token meter, checked before the work starts (F19).
@@ -92,6 +96,10 @@ export async function checkTokenAllowance(
   clerkUserId: string,
   kind: SpendKind,
 ): Promise<Result<null>> {
+  // Settled first (PAY-2): a lapsed Pro member's balance is read against the
+  // Free allowance, not the plan they stopped paying for last cycle.
+  await settlePlan(clerkUserId);
+
   // Admins are uncapped (lib/domain/entitlements.ts). Checked before the
   // balance is read, because the balance is an aggregate over `ai_runs` and
   // there is no point paying for a number nothing is going to compare against.
@@ -196,9 +204,13 @@ export async function requireUser(): Promise<Result<string>> {
 export async function checkAnalysisAllowance(
   clerkUserId: string,
 ): Promise<Result<{ used: number; cap: number }>> {
+  // Settled first (PAY-2): a lapsed member is checked against Free's cap,
+  // not a plan nobody is still paying for.
+  await settlePlan(clerkUserId);
+
   let row = await db.user.findUnique({
     where: { clerkUserId },
-    select: { capAnalyses: true, suspended: true, quotaResetsAt: true, role: true },
+    select: { capAnalyses: true, suspended: true, quotaResetsAt: true, role: true, plan: true },
   });
 
   // A signed-in subject with no row means the webhook hasn't landed. Provision
@@ -207,7 +219,7 @@ export async function checkAnalysisAllowance(
     await provisionUser(clerkUserId);
     row = await db.user.findUnique({
       where: { clerkUserId },
-      select: { capAnalyses: true, suspended: true, quotaResetsAt: true, role: true },
+      select: { capAnalyses: true, suspended: true, quotaResetsAt: true, role: true, plan: true },
     });
   }
 
@@ -229,14 +241,19 @@ export async function checkAnalysisAllowance(
   // Suspension is checked above and is NOT bypassed for an uncapped account:
   // it is a deliberate block, not a ceiling (lib/domain/entitlements.ts).
   if (!withinCap(row.role, row.capAnalyses, used)) {
-    return err(
-      appError(
+    // PAY-4/PAY-5: every cap refusal carries the value it was raised from, so
+    // the UI can open the same dialog the token wall does rather than a plain
+    // sentence with nowhere to go.
+    const capWall = await buildCapWall(clerkUserId, "analyses", row.capAnalyses, used, row.quotaResetsAt, row.plan);
+    return err({
+      ...appError(
         "quota_exhausted",
         row.capAnalyses === 0
           ? `Your JD analyses cap is set to zero${await askWhom()}.`
           : `You've used all ${row.capAnalyses} JD analyses in this cycle${await askWhom()}. Your existing analyses stay available.`,
       ),
-    );
+      capWall,
+    });
   }
 
   return ok({ used, cap: isUncapped(row.role) ? UNCAPPED : row.capAnalyses });
@@ -253,9 +270,11 @@ export async function checkAnalysisAllowance(
 export async function checkAnswerAllowance(
   clerkUserId: string,
 ): Promise<Result<{ used: number; cap: number }>> {
+  await settlePlan(clerkUserId);
+
   const row = await db.user.findUnique({
     where: { clerkUserId },
-    select: { capAnswers: true, suspended: true, quotaResetsAt: true, role: true },
+    select: { capAnswers: true, suspended: true, quotaResetsAt: true, role: true, plan: true },
   });
   if (!row) return err(appError("not_found", "We couldn't find your account."));
 
@@ -273,17 +292,139 @@ export async function checkAnswerAllowance(
   });
 
   if (!withinCap(row.role, row.capAnswers, used)) {
-    return err(
-      appError(
+    const capWall = await buildCapWall(clerkUserId, "answers", row.capAnswers, used, row.quotaResetsAt, row.plan);
+    return err({
+      ...appError(
         "quota_exhausted",
         row.capAnswers === 0
           ? `Full answer drafts are switched off on your account${await askWhom()}. Every question still shows its framework and the bullets to answer from.`
           : `You've used all ${row.capAnswers} full answer drafts in this cycle${await askWhom()}. Frameworks stay free, and answers you've already drafted stay readable.`,
       ),
-    );
+      capWall,
+    });
   }
 
   return ok({ used, cap: isUncapped(row.role) ? UNCAPPED : row.capAnswers });
+}
+
+/**
+ * Roadmap build allowance (F21, F15). Same shape as the two caps above:
+ * counted from rows, so an attempt refused up front costs nothing. A roadmap
+ * already built stays readable and tickable at any cap (RM-5) — this only
+ * guards a NEW build.
+ */
+export async function checkRoadmapAllowance(
+  clerkUserId: string,
+): Promise<Result<{ used: number; cap: number }>> {
+  return checkCap(clerkUserId, "roadmaps", (uid, since) =>
+    db.roadmap.count({ where: { clerkUserId: uid, createdAt: { gte: since } } }),
+  );
+}
+
+/**
+ * Job search allowance (F22, F15). Off (cap 0) on Free — the wall is what a
+ * Free member sees on `/jobs` before any outbound request is made (JS-9).
+ * A repeat query inside the 12h cache window (JS-4) writes no `job_searches`
+ * row, so it is invisible to this count and costs nothing against the cap.
+ */
+export async function checkJobSearchAllowance(
+  clerkUserId: string,
+): Promise<Result<{ used: number; cap: number }>> {
+  return checkCap(clerkUserId, "jobSearches", (uid, since) =>
+    db.jobSearch.count({ where: { clerkUserId: uid, createdAt: { gte: since } } }),
+  );
+}
+
+/**
+ * The shared shape behind `checkRoadmapAllowance` and `checkJobSearchAllowance`
+ * — both are cyclical, count-based caps with no cost or content-specific
+ * refusal copy, unlike analyses and answers (which keep their own bespoke
+ * wording above, and predate this helper). `countUsage` takes the table to
+ * count from, because the two caps count different rows and `lib/auth.ts`
+ * is not the place to teach a generic function about every table in the
+ * schema.
+ */
+async function checkCap(
+  clerkUserId: string,
+  key: Extract<QuotaKey, "roadmaps" | "jobSearches">,
+  countUsage: (clerkUserId: string, since: Date) => Promise<number>,
+): Promise<Result<{ used: number; cap: number }>> {
+  await settlePlan(clerkUserId);
+
+  const row = await db.user.findUnique({
+    where: { clerkUserId },
+    select: {
+      capRoadmaps: true,
+      capJobSearches: true,
+      suspended: true,
+      quotaResetsAt: true,
+      role: true,
+      plan: true,
+    },
+  });
+  if (!row) return err(appError("not_found", "We couldn't find your account."));
+
+  const cap = key === "roadmaps" ? row.capRoadmaps : row.capJobSearches;
+  const def = QUOTA_BY_KEY[key];
+
+  if (row.suspended) {
+    return err(
+      appError(
+        "quota_exhausted",
+        `Generation is suspended on your account${await askWhom()}. Everything you've already built or saved stays readable.`,
+      ),
+    );
+  }
+
+  const since = cycleStart(row.quotaResetsAt);
+  const used = await countUsage(clerkUserId, since);
+
+  if (!withinCap(row.role, cap, used)) {
+    const capWall = await buildCapWall(clerkUserId, key, cap, used, row.quotaResetsAt, row.plan);
+    const noun = key === "roadmaps" ? "roadmaps" : "job searches";
+    return err({
+      code: "cap_wall",
+      message:
+        cap === 0
+          ? `${def.label} are off on your account${await askWhom()}.`
+          : `You've used all ${cap} ${noun} in this cycle${await askWhom()}.`,
+      capWall,
+    });
+  }
+
+  return ok({ used, cap: isUncapped(row.role) ? UNCAPPED : cap });
+}
+
+/**
+ * Everything a cap-refusal dialog needs (F23, PAY-4/PAY-5) — the mirror of
+ * `buildWall` above, for the four cyclical count-based caps rather than the
+ * token meter. Built only on the refusal path, same reasoning as `buildWall`:
+ * paying for a plan read and the admin list on every successful check would
+ * be a query per run to describe something that didn't happen.
+ */
+async function buildCapWall(
+  clerkUserId: string,
+  key: Extract<QuotaKey, "analyses" | "answers" | "roadmaps" | "jobSearches">,
+  cap: number,
+  used: number,
+  quotaResetsAt: Date | null,
+  planId: PlanId,
+): Promise<CapWall> {
+  const def = QUOTA_BY_KEY[key];
+  const up = planAbove(planId);
+  const admins = await listAdmins();
+
+  return {
+    key,
+    label: def.label,
+    period: def.period,
+    cap,
+    used,
+    resetDate: formatResetDate(cycleEnd(quotaResetsAt)),
+    resetIn: formatResetIn(cycleEnd(quotaResetsAt)),
+    upgrade: up ? { id: up.id, name: up.name, price: up.price, cap: up.caps[key] } : null,
+    admins: admins.map((a) => a.name),
+  };
 }
 
 /**

@@ -27,12 +27,18 @@ export async function deleteAccount(): Promise<Result<{ objectsDeleted: number }
 
   await db.$transaction([
     // analyses cascade into requirements, coverage, drafts, tailored bullets,
-    // questions and gaps.
+    // questions, gaps and roadmaps (ON DELETE CASCADE). saved_jobs and
+    // job_searches cascade from the user row below the same way token_grants
+    // always has — neither needs its own deleteMany here.
     db.analysis.deleteMany({ where: { clerkUserId } }),
     db.export.deleteMany({ where: { clerkUserId } }),
     db.masterProfile.deleteMany({ where: { clerkUserId } }),
     db.sourceDocument.deleteMany({ where: { clerkUserId } }),
     db.aiRun.deleteMany({ where: { clerkUserId } }),
+    // The one table with no FK to users (its subject may be NULL for a
+    // signed-out sender). Rows outlive the account; the subject does not
+    // (N7, G13) — same fix as the Clerk `user.deleted` path.
+    db.contactMessage.updateMany({ where: { clerkUserId }, data: { clerkUserId: null } }),
     db.user.deleteMany({ where: { clerkUserId } }),
   ]);
 

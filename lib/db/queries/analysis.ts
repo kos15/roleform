@@ -103,12 +103,17 @@ export async function getDraft(clerkUserId: string, draftId: string) {
  */
 export async function getTabCounts(clerkUserId: string, analysisId: string) {
   const where = { clerkUserId, analysisId };
-  const [resumes, questions, gaps] = await Promise.all([
+  const [resumes, questions, gaps, roadmap] = await Promise.all([
     db.resumeDraft.count({ where }),
     db.interviewQuestion.count({ where }),
     db.skillGap.count({ where }),
+    db.roadmap.findFirst({ where, select: { items: { select: { doneAt: true } } } }),
   ]);
-  return { resumes, questions, gaps };
+  // null before a roadmap is built (F21) — the tab reads "—", not "0 of 0".
+  const roadmapProgress = roadmap
+    ? { done: roadmap.items.filter((i) => i.doneAt !== null).length, total: roadmap.items.length }
+    : null;
+  return { resumes, questions, gaps, roadmapProgress };
 }
 
 export async function getTailoredBullets(clerkUserId: string, draftId: string) {
