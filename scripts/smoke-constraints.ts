@@ -345,6 +345,30 @@ async function main() {
     ),
   );
 
+  /* --------------------------------------------- 5c. N14 — a roadmap item's FK must match its kind */
+
+  // The roadmap's version of N1/N2: a step that names nothing is a claim
+  // about work the user never generated. `kind='question'` requires
+  // question_id — this row claims the kind and gives it nothing to point at.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "roadmap_item of kind 'question' with no question_id",
+        rule: "N14",
+        statement: `${SEED_ANALYSIS}
+          insert into roadmaps (id, clerk_user_id, analysis_id)
+          values ('00000000-0000-4000-8000-00000000f00d', 'smoke-user',
+                  '00000000-0000-4000-8000-00000000cafe');
+          insert into roadmap_items
+            (clerk_user_id, roadmap_id, key, section, ordinal, label, kind)
+          values ('smoke-user', '00000000-0000-4000-8000-00000000f00d',
+                  'rehearse-nothing', 'rehearse', 0, 'Rehearse: nothing', 'question')`,
+      },
+      "23514",
+    ),
+  );
+
   /* ------------------------------------------ 6. N10 — RLS denies strangers */
   results.push(await rlsCheck());
 

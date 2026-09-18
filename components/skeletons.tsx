@@ -127,6 +127,29 @@ export function LearningSkeleton() {
   );
 }
 
+export function RoadmapSkeleton() {
+  return (
+    <section>
+      <Skeleton className="mb-5 h-4 w-32" />
+      <div className="space-y-6">
+        {[0, 1, 2].map((section) => (
+          <div key={section}>
+            <Skeleton className="mb-2 h-5 w-24" />
+            <div className="space-y-2.5">
+              {[0, 1, 2].map((row) => (
+                <div key={row} className="flex items-center gap-3">
+                  <Skeleton className="h-6 w-6 flex-none rounded-[var(--radius-pill)]" />
+                  <Skeleton className="h-4 w-full max-w-[28rem]" />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function ResumesSkeleton() {
   return (
     <section>

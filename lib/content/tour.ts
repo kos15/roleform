@@ -48,6 +48,11 @@ export const TOUR_STEPS: readonly TourStep[] = [
     title: "Every draft, one set of facts",
     body: "Each template carries an ATS rating computed from its structure, with the reason beside it. You are choosing a layout, not a promise.",
   },
+  {
+    key: "roadmap",
+    title: "One checklist, compiled for free",
+    body: "Build it once and it turns the likely questions, the ones worth a full answer, and every learning step into an ordered list you tick through — nothing here is generated, only assembled.",
+  },
 ];
 
 /** Where the walkthrough starts when the current page has nothing to point at. */

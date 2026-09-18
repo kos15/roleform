@@ -23,6 +23,8 @@ export interface TabCounts {
   resumes: number;
   questions: number;
   gaps: number;
+  /** null before a roadmap is built (F21) — the tab reads "—", not "0 of 0". */
+  roadmapProgress: { done: number; total: number } | null;
 }
 
 export function AnalysisTabs({
@@ -41,6 +43,14 @@ export function AnalysisTabs({
       slug: "learning",
       label: "Learning",
       count: `${counts.gaps} gap${counts.gaps === 1 ? "" : "s"}`,
+    },
+    {
+      slug: "roadmap",
+      label: "Roadmap",
+      // N16: a count, never a percentage — "—" before it exists, "n/m" after.
+      count: counts.roadmapProgress
+        ? `${counts.roadmapProgress.done}/${counts.roadmapProgress.total}`
+        : "—",
     },
   ];
 
