@@ -31,6 +31,14 @@ pnpm db:policies                # apply lib/db/policies.sql — RLS lives in the
 pnpm seed:catalog               # templates + skills + link-checked course catalog
 ```
 
+**On Vercel, the last two run automatically on every deploy:** `build` is
+`prisma migrate deploy && pnpm db:policies && next build`, in that order, against whatever
+`DATABASE_URL`/`DIRECT_URL` that Vercel environment (production vs. preview) has configured. Both
+steps are idempotent — a deploy with nothing pending is a no-op on both — so this is safe to run on
+every build, not just the first one. A failure in either step fails the build before `next build`
+ever runs, so a broken migration cannot ship. Local `pnpm db:migrate` / `pnpm db:policies` above
+are for authoring and testing a migration before it reaches that pipeline.
+
 `prisma/schema.prisma` is the truth; migrations are generated, never hand-authored — except the
 two CHECK constraints (N1/N2), which Prisma has no schema syntax for and which are added by
 hand, once, to `prisma/migrations/*_init/migration.sql`. Table and column names are
