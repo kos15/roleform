@@ -8,8 +8,16 @@ import { TokenWallDialog } from "@/components/token-wall";
 import { CapWallDialog } from "@/components/cap-wall";
 import { createAnalysis } from "@/app/actions/analysis";
 import { SAMPLE_JD } from "@/lib/sample-jd";
+import { JD_MIN_CHARS } from "@/lib/domain/guardrails";
 import type { TokenWall } from "@/lib/domain/tokens";
 import type { CapWall } from "@/lib/domain/quotas";
+
+export interface InitialListing {
+  id: string;
+  title: string;
+  company: string;
+  snippet: string;
+}
 
 /**
  * F2 — JD input. Segmented control: Upload file / Paste text.
@@ -17,10 +25,14 @@ import type { CapWall } from "@/lib/domain/quotas";
  * The design's demo affordances ("try an unreadable file") ship behind
  * NEXT_PUBLIC_DEV_AFFORDANCES, never in production UI.
  */
-export function JdInput() {
+export function JdInput({ initialListing = null }: { initialListing?: InitialListing | null }) {
   const router = useRouter();
   const [mode, setMode] = useState<"paste" | "upload">("paste");
-  const [text, setText] = useState("");
+  // F22 §3.5 — a job-board API returns a SNIPPET, never the full posting, so
+  // "Analyse" on a saved listing pre-fills it with a notice rather than
+  // pretending it is a real analysis input yet. The member still has to
+  // paste the actual posting for the run to mean anything.
+  const [text, setText] = useState(initialListing?.snippet ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,17 +41,19 @@ export function JdInput() {
   const [capWall, setCapWall] = useState<CapWall | null>(null);
 
   const devAffordances = process.env.NEXT_PUBLIC_DEV_AFFORDANCES === "true";
-  const canSubmit = mode === "paste" ? text.trim().length >= 120 : file !== null;
+  const canSubmit = mode === "paste" ? text.trim().length >= JD_MIN_CHARS : file !== null;
 
   /** Rebuilt on each attempt — the file is read fresh, so this can't be cached. */
   async function payload(queue: boolean) {
+    const listingId = initialListing?.id;
     return mode === "paste"
-      ? { source: "paste" as const, text, queue }
+      ? { source: "paste" as const, text, queue, listingId }
       : {
           source: "upload" as const,
           filename: file!.name,
           fileBase64: Buffer.from(await file!.arrayBuffer()).toString("base64"),
           queue,
+          listingId,
         };
   }
 
@@ -112,6 +126,16 @@ export function JdInput() {
 
       {error ? <ErrorRegion title="We couldn't use that">{error}</ErrorRegion> : null}
 
+      {initialListing ? (
+        <p className="mb-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] px-4 py-3 text-sm leading-relaxed text-[var(--color-text-muted)]">
+          <strong className="font-semibold text-[var(--color-text)]">
+            {initialListing.title} at {initialListing.company}.
+          </strong>{" "}
+          This is the summary the job board gave us. Paste the full posting from the listing for a
+          real analysis.
+        </p>
+      ) : null}
+
       {mode === "paste" ? (
         <div className="rise-in">
           <Textarea
@@ -126,8 +150,8 @@ export function JdInput() {
             <span className="text-sm text-[var(--color-text-muted)]">
               {text.length.toLocaleString()} characters
               {/* The floor is quoted only once there is something to measure —
-                  "we need at least 120" over an empty box is a scolding. */}
-              {text.length > 0 && text.trim().length < 120 ? " · we need at least 120" : ""}
+                  "we need at least 200" over an empty box is a scolding. */}
+              {text.length > 0 && text.trim().length < JD_MIN_CHARS ? ` · we need at least ${JD_MIN_CHARS}` : ""}
             </span>
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" size="sm" onClick={() => setText(SAMPLE_JD)}>

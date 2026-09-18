@@ -34,6 +34,13 @@ export async function createAnalysis(input: {
    * that could park a run it was perfectly able to pay for.
    */
   queue?: boolean;
+  /**
+   * Set when this run began as "Analyse" on a saved listing (F22 §3.5). The
+   * hand-off pre-fills the SNIPPET a job-board API returned, not the full
+   * posting — the member pastes that in themselves, which is why this field
+   * only records provenance and never substitutes for `text`.
+   */
+  listingId?: string;
 }): Promise<Result<{ analysisId: string; reused: boolean; queued: boolean }>> {
   const user = await requireUser();
   if (!user.ok) return user;
@@ -66,7 +73,10 @@ export async function createAnalysis(input: {
   // F2 acceptance: identical JD text reuses the prior analysis, no second charge.
   const contentHash = createHash("sha256").update(normalise(rawText)).digest("hex");
   const existing = await findByContentHash(user.value, contentHash);
-  if (existing) return ok({ analysisId: existing.id, reused: true, queued: false });
+  if (existing) {
+    if (input.listingId) await bindSavedJob(user.value, input.listingId, existing.id);
+    return ok({ analysisId: existing.id, reused: true, queued: false });
+  }
 
   const limited = rateLimit(
     `analysis:${user.value}`,
@@ -112,6 +122,7 @@ export async function createAnalysis(input: {
       contentHash,
       status: "parsing",
       stageState: { injection: injection.patterns },
+      listingId: input.listingId ?? null,
       // Stamped only when the wall was real. Queuing a run we could afford
       // would park a posting for no reason and hide it behind a reset date.
       queuedAt: walled ? new Date() : null,
@@ -119,9 +130,26 @@ export async function createAnalysis(input: {
     select: { id: true },
   });
 
+  if (input.listingId) await bindSavedJob(user.value, input.listingId, row.id);
+
   revalidatePath("/history");
   revalidatePath("/analyze");
+  revalidatePath("/jobs");
   return ok({ analysisId: row.id, reused: false, queued: walled });
+}
+
+/**
+ * F22 §3.5 — once a member analyses a saved listing, the roadmap's Apply
+ * step and the saved-jobs panel can both point at the result. Best-effort
+ * and silent when nothing was saved for this listing: analysing a listing
+ * you never saved is a completely ordinary thing to do, it just has nothing
+ * to bind.
+ */
+async function bindSavedJob(clerkUserId: string, listingId: string, analysisId: string): Promise<void> {
+  await db.savedJob.updateMany({
+    where: { clerkUserId, listingId, analysisId: null },
+    data: { analysisId },
+  });
 }
 
 /**

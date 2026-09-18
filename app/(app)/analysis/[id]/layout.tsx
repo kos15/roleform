@@ -65,6 +65,8 @@ export default async function AnalysisLayout({
           scoreNote: analysis.scoreNote ?? "",
           truncated: stageState.truncated,
           protectedNotice: stageState.protectedNotice,
+          // F22 §3.5 — this run started as "Analyse" on a saved listing.
+          fromSavedJob: analysis.listingId !== null,
         }}
         requirements={requirements}
         coverage={coverage}

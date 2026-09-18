@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { FileText } from "lucide-react";
+import { db } from "@/lib/db";
 import { getProfileWithDocument } from "@/lib/db/queries/profile";
 import { queuedRuns } from "@/lib/db/queries/tokens";
 import { draftsPerRun } from "@/lib/db/queries/entitlement";
@@ -8,7 +9,11 @@ import { Card, EmptyState } from "@/components/ui";
 import { JdInput } from "./jd-input";
 import { QueuedRuns } from "./queued-runs";
 
-export default async function AnalyzePage() {
+export default async function AnalyzePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ listing?: string }>;
+}) {
   const { userId } = await auth();
   const profile = userId ? await getProfileWithDocument(userId) : null;
   // Almost always empty, and a partial index makes it cheap when it is (F19).
@@ -17,6 +22,17 @@ export default async function AnalyzePage() {
   // the copy: it is a per-member cap over an eleven-template catalog, so any
   // fixed number in this heading is wrong for somebody (F15).
   const drafts = userId ? await draftsPerRun(userId) : 0;
+
+  // F22 §3.5 — "Analyse" on a saved listing lands here with its snippet
+  // pre-filled. `job_listings` carries no user id (JS-9), so this read needs
+  // no scoping beyond the id itself; the listing is public content either way.
+  const { listing: listingId } = await searchParams;
+  const listing = listingId
+    ? await db.jobListing.findUnique({
+        where: { id: listingId },
+        select: { id: true, title: true, company: true, snippet: true },
+      })
+    : null;
 
   if (!profile) {
     return (
@@ -62,7 +78,11 @@ export default async function AnalyzePage() {
         {/* min-w-0 because a flex child defaults to min-width:auto, and the
             textarea inside would otherwise set the column's floor. */}
         <div className="min-w-0 flex-[1_1_30rem]">
-          <JdInput />
+          <JdInput
+            initialListing={
+              listing ? { id: listing.id, title: listing.title, company: listing.company, snippet: listing.snippet } : null
+            }
+          />
         </div>
 
         <aside className="flex min-w-0 flex-[0_1_22rem] flex-col gap-4">

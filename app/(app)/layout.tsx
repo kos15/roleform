@@ -53,6 +53,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               analysis this link discards it and starts another, and the verb
               alone didn't say so. */}
           <Link href="/analyze">New analysis</Link>
+          <Link href="/jobs" className="text-[var(--color-text-muted)]">
+            Jobs
+          </Link>
           <Link href="/history" className="text-[var(--color-text-muted)]">
             History
           </Link>
