@@ -322,9 +322,43 @@ model User {
   /// and no crash between two writes can drift a balance that isn't stored.
   capTokens Int @default(60000) @map("cap_tokens") // per cycle
 
+  /// The roadmap tab's build cap (F21). Counted from `roadmaps` rows created
+  /// in the cycle — a roadmap costs zero tokens, so this is the only limiter.
+  capRoadmaps Int @default(1) @map("cap_roadmaps") // per cycle
+  /// Job search runs (F22). Off on Free: the cap is 0, not a feature flag —
+  /// a plan is its caps (N22), so gating by cap keeps this row the only place
+  /// "who can search" is decided.
+  capJobSearches Int @default(0) @map("cap_job_searches") // per cycle
+
+  /// When a paid plan lapses (F23). Null on Free — CHECKed by hand in the
+  /// migration: (plan = 'free') = (plan_expires_at IS NULL). Extended, never
+  /// overwritten, by a purchase; read (never written) everywhere else through
+  /// `effectivePlan`, which settles a lapsed row back to Free on the next
+  /// allowance check rather than waiting on a scheduler that does not exist
+  /// (CLAUDE.md §8).
+  planExpiresAt DateTime? @map("plan_expires_at") @db.Timestamptz
+
   tokenGrants TokenGrant[]
+  savedJobs   SavedJob[]
+  jobSearches JobSearch[]
 
   @@map("users")
+}
+
+/// One captured plan payment (F23, G7/G8). Exists only for idempotency: a
+/// redelivered `payment.captured` webhook for a payment already applied must
+/// extend `planExpiresAt` by zero days, not another 30 — the same shape
+/// `TokenGrant.reference` already uses for top-ups.
+model PlanPurchase {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String   @map("clerk_user_id")
+  plan        PlanTier
+  /// The payment id. UNIQUE, always.
+  reference   String   @unique
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([clerkUserId], map: "plan_purchases_user_idx")
+  @@map("plan_purchases")
 }
 
 /// A one-off top-up: tokens bought or granted, outside the cycle allowance.
@@ -374,11 +408,13 @@ model WorkspaceSettings {
   /// `settings` row we have to remember not to duplicate.
   id String @id @default("workspace")
 
-  capTokens   Int @default(60000) @map("cap_tokens")
-  capAnalyses Int @default(40) @map("cap_analyses")
-  capResumes  Int @default(11) @map("cap_resumes")
-  capAnswers  Int @default(40) @map("cap_answers")
-  capCourses  Int @default(4) @map("cap_courses")
+  capTokens      Int @default(60000) @map("cap_tokens")
+  capAnalyses    Int @default(40) @map("cap_analyses")
+  capResumes     Int @default(11) @map("cap_resumes")
+  capAnswers     Int @default(40) @map("cap_answers")
+  capCourses     Int @default(4) @map("cap_courses")
+  capRoadmaps    Int @default(1) @map("cap_roadmaps")
+  capJobSearches Int @default(0) @map("cap_job_searches")
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -536,7 +572,14 @@ model Analysis {
   /// never blocked, which is almost all of them.
   queuedAt DateTime? @map("queued_at") @db.Timestamptz
 
+  /// Set when this run began as "Analyse" on a saved listing (F22). Nullable,
+  /// set-null on delete: the listing is a shared cache row with no user id, so
+  /// its removal (30-day expiry sweep, §8) must not take an analysis with it —
+  /// only the cross-reference goes.
+  listingId String? @map("listing_id") @db.Uuid
+
   profile            MasterProfile       @relation(fields: [profileId], references: [id], onDelete: Restrict)
+  listing            JobListing?         @relation(fields: [listingId], references: [id], onDelete: SetNull)
   jdRequirements     JdRequirement[]
   coverageItems      CoverageItem[]
   resumeDrafts       ResumeDraft[]
@@ -544,6 +587,8 @@ model Analysis {
   skillGaps          SkillGap[]
   learningPlan       LearningPlan?
   exports            Export[]
+  roadmap            Roadmap?
+  savedJobs          SavedJob[]
 
   // F2: identical JD text reuses the prior analysis — no second charge.
   @@unique([clerkUserId, contentHash], map: "analyses_user_content_hash")
@@ -696,6 +741,7 @@ model InterviewQuestion {
   /// Gaps whose material makes this question answerable (RLE §1).
   boundGaps         SkillGap[]
   learningSteps     LearningStep[]
+  roadmapItems      RoadmapItem[]
   // ★ FABRICATION GUARD #2 — CHECK (type = 'gap' OR cardinality(evidence_bullet_ids) > 0)
   // added by hand in the migration SQL — see the header comment. `cardinality`
   // rather than `array_length(x, 1)` for the reason spelled out on
@@ -923,6 +969,7 @@ model SkillGap {
   unlocksBullet   ExperienceBullet?  @relation(fields: [unlocksBulletId], references: [id], onDelete: Restrict)
   answersQuestion InterviewQuestion? @relation(fields: [answersQuestionId], references: [id], onDelete: SetNull)
   steps           LearningStep[]
+  roadmapItems    RoadmapItem[]
 
   @@index([analysisId], map: "skill_gaps_analysis_idx")
   @@index([unlocksBulletId], map: "skill_gaps_unlocks_bullet_idx")
@@ -1028,6 +1075,7 @@ model LearningStep {
   course          Course             @relation(fields: [courseId], references: [id], onDelete: Restrict)
   unlocksBullet   ExperienceBullet?  @relation(fields: [unlocksBulletId], references: [id], onDelete: Restrict)
   answersQuestion InterviewQuestion? @relation(fields: [answersQuestionId], references: [id], onDelete: Cascade)
+  roadmapItems    RoadmapItem[]
 
   @@index([planId, ordinal], map: "learning_steps_plan_idx")
   @@index([gapId], map: "learning_steps_gap_idx")
@@ -1185,4 +1233,221 @@ model AiRun {
 
   @@index([clerkUserId, createdAt], map: "ai_runs_user_created_idx")
   @@map("ai_runs")
+}
+
+/**
+ * ----------------------------------------------------------------- roadmap
+ *
+ * F21. A per-analysis checklist compiled from rows the analysis already
+ * holds — never written by a model (N13). One row created per item at build
+ * time; completion is the one thing on this table a user, not the compiler,
+ * writes (N15).
+ */
+
+/// The five sections a roadmap renders in, fixed order. A section absent from
+/// an analysis (no likely questions, no technical ones, no gaps) is simply
+/// never inserted — never padded (RM-2).
+enum RoadmapSection {
+  prepare
+  rehearse
+  deepen
+  learn
+  apply
+
+  @@map("roadmap_section")
+}
+
+/// What an item points at. Drives which one FK the CHECK below requires.
+/// `fixed` items (read the buckets, download, apply, follow up) point at
+/// nothing — their label is not a claim about a row, it is the step itself.
+enum RoadmapItemKind {
+  fixed
+  question
+  answer
+  learning_step
+  gap
+  saved_job
+
+  @@map("roadmap_item_kind")
+}
+
+model Roadmap {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String   @map("clerk_user_id")
+  analysisId  String   @unique @map("analysis_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  analysis Analysis      @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  items    RoadmapItem[]
+
+  @@map("roadmaps")
+}
+
+model RoadmapItem {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String          @map("clerk_user_id")
+  roadmapId   String          @map("roadmap_id") @db.Uuid
+  /// Stable within one roadmap — "rehearse-<questionId>", "learn-<stepId>",
+  /// or a fixed slug ("prepare-read-buckets"). What the CHECK's UNIQUE guards
+  /// and what a deep link's #fragment targets.
+  key         String
+  section     RoadmapSection
+  ordinal     Int
+  /// A snapshot of the user's own row (a question's text, a course's title)
+  /// or a fixed sentence. Never rewritten after compile — RM-2/RM-5.
+  label       String
+  kind        RoadmapItemKind
+
+  questionId     String? @map("question_id") @db.Uuid
+  learningStepId String? @map("learning_step_id") @db.Uuid
+  gapId          String? @map("gap_id") @db.Uuid
+  savedJobId     String? @map("saved_job_id") @db.Uuid
+
+  /// Written ONLY by the user's own tick (N15). Nothing derived, scheduled or
+  /// model-written sets this — a fact the app can see (exported, drafted) is
+  /// shown beside the row as a hint, computed at read time, never stored here.
+  doneAt DateTime? @map("done_at") @db.Timestamptz
+
+  roadmap      Roadmap            @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  question     InterviewQuestion? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  learningStep LearningStep?      @relation(fields: [learningStepId], references: [id], onDelete: Cascade)
+  gap          SkillGap?          @relation(fields: [gapId], references: [id], onDelete: Cascade)
+  savedJob     SavedJob?          @relation(fields: [savedJobId], references: [id], onDelete: SetNull)
+  // CHECK (roadmap_items_kind_fk) added by hand in the migration SQL: exactly
+  // the FK that matches `kind` is set, and a `fixed` item has none of them
+  // (N14). Prisma has no native CHECK attribute (CLAUDE.md §13).
+
+  @@unique([roadmapId, key], map: "roadmap_items_roadmap_key")
+  @@index([roadmapId], map: "roadmap_items_roadmap_idx")
+  @@map("roadmap_items")
+}
+
+/**
+ * -------------------------------------------------------------- job search
+ *
+ * F22. Listings from documented job-board APIs only (N17) — never scraped,
+ * never an employer's page fetched. `job_listings` is a shared cache with no
+ * user id: the listing is public content, and the pairing of a listing with a
+ * person lives only in `saved_jobs` (N19/JS-5, JS-9).
+ */
+
+/// Sourcing adapters, one per documented API this deployment is keyed for.
+/// A new source is a value added here plus an adapter file — never a scrape.
+enum JobProvider {
+  adzuna
+  jooble
+
+  @@map("job_provider")
+}
+
+enum SavedJobStatus {
+  saved
+  applied
+  interviewing
+  offer
+  rejected
+  closed
+
+  @@map("saved_job_status")
+}
+
+/// The shared cache. No RLS policy at all (like `unresolved_terms` and
+/// `corpus_gaps`) — nothing an anon or authenticated request has business
+/// reading directly; every read goes through a Server Action that joins via
+/// `saved_jobs` or returns a `searchJobs` result, both scoped by subject.
+model JobListing {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source     JobProvider
+  externalId String    @map("external_id")
+  /// The provider's own field. Never assembled by us (N18).
+  url        String
+  title      String
+  company    String
+  location   String
+  snippet    String
+  postedAt   DateTime? @map("posted_at") @db.Timestamptz
+  salaryMin  Int?      @map("salary_min")
+  salaryMax  Int?      @map("salary_max")
+  currency   String?
+  /// The provider's own record, kept for re-normalisation. Never rendered.
+  raw        Json      @default("{}")
+  fetchedAt  DateTime  @default(now()) @map("fetched_at") @db.Timestamptz
+  /// 30 days out from `fetchedAt`. Read-filtered (`where expires_at > now()`),
+  /// never swept by a job — there is no scheduler (CLAUDE.md §8).
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+
+  hits      JobSearchHit[]
+  savedBy   SavedJob[]
+  analyses  Analysis[]
+
+  @@unique([source, externalId], map: "job_listings_source_external_id")
+  @@index([expiresAt], map: "job_listings_expires_idx")
+  @@map("job_listings")
+}
+
+/// One search, for the cap (F23) and the cache key. No result rows here — see
+/// `JobSearchHit`.
+model JobSearch {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String   @map("clerk_user_id")
+  /// Hash of the normalised query — titles, location, remote flag, sources.
+  /// A repeat within the cache window reads `JobSearchHit` and writes no new
+  /// row here, so it never counts against the cap (JS-4).
+  queryHash   String   @map("query_hash")
+  titles      String[] @default([])
+  location    String   @default("")
+  remote      Boolean  @default(false)
+  resultCount Int      @default(0) @map("result_count")
+  sources     String[] @default([])
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user User           @relation(fields: [clerkUserId], references: [clerkUserId], onDelete: Cascade)
+  hits JobSearchHit[]
+
+  @@index([clerkUserId, queryHash, createdAt], map: "job_searches_cache_idx")
+  @@index([clerkUserId, createdAt], map: "job_searches_user_created_idx")
+  @@map("job_searches")
+}
+
+/// The cache's own membership row — which listings belonged to which search,
+/// in rank order. No user id (JS-9): the pairing of a search with a member is
+/// on `JobSearch`, one hop away.
+model JobSearchHit {
+  searchId  String @map("search_id") @db.Uuid
+  listingId String @map("listing_id") @db.Uuid
+  rank      Int
+
+  search  JobSearch  @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  listing JobListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([searchId, listingId])
+  @@map("job_search_hits")
+}
+
+/// What a member kept. Outlives the cap and outlives the listing's cache
+/// expiry (`onDelete: Restrict` on `listingId` — JS-10): a saved job is a
+/// record of intent, and the 30-day sweep is a cache policy, not a reason to
+/// take someone's tracker row.
+model SavedJob {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String         @map("clerk_user_id")
+  listingId   String         @map("listing_id") @db.Uuid
+  /// Set once the member analyses this listing (F22 §3.5). Null until then.
+  analysisId  String?        @map("analysis_id") @db.Uuid
+  status      SavedJobStatus @default(saved)
+  appliedAt   DateTime?      @map("applied_at") @db.Timestamptz
+  note        String         @default("")
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  user         User          @relation(fields: [clerkUserId], references: [clerkUserId], onDelete: Cascade)
+  listing      JobListing    @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  analysis     Analysis?     @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+  roadmapItems RoadmapItem[]
+  // CHECK (saved_jobs_applied_has_date): status <> 'applied' OR applied_at IS
+  // NOT NULL — added by hand in the migration SQL.
+
+  @@unique([clerkUserId, listingId], map: "saved_jobs_user_listing")
+  @@index([clerkUserId, updatedAt], map: "saved_jobs_user_updated_idx")
+  @@map("saved_jobs")
 }

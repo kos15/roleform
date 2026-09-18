@@ -300,6 +300,51 @@ async function main() {
     ),
   );
 
+  /* --------------------------------- 5b. F23 — the two new caps and expiry */
+
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "cap_roadmaps above the published ceiling",
+        rule: "F23",
+        statement: `insert into users (clerk_user_id, email_hash, cap_roadmaps)
+          values ('smoke-user-roadmaps', 'x', 201)`,
+      },
+      "23514",
+    ),
+  );
+
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "cap_job_searches above the published ceiling",
+        rule: "F23",
+        statement: `insert into users (clerk_user_id, email_hash, cap_job_searches)
+          values ('smoke-user-jobsearches', 'x', 501)`,
+      },
+      "23514",
+    ),
+  );
+
+  // G7: the bug this constraint exists to make unrepresentable — a paid plan
+  // granted once and never checked again. A row claiming 'pro' with no
+  // expiry is the exact state `effectivePlan` (lib/domain/entitlements.ts)
+  // would otherwise have no way to ever call lapsed.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "a paid plan with no expiry",
+        rule: "F23",
+        statement: `insert into users (clerk_user_id, email_hash, plan, plan_expires_at)
+          values ('smoke-user-planexp', 'x', 'pro', null)`,
+      },
+      "23514",
+    ),
+  );
+
   /* ------------------------------------------ 6. N10 — RLS denies strangers */
   results.push(await rlsCheck());
 

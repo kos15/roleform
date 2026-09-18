@@ -6,6 +6,7 @@ import { Brand } from "@/components/brand";
 import { AppearanceLink } from "@/components/appearance-link";
 import { TokenPill } from "@/components/token-pill";
 import { LowBalanceBanner } from "@/components/low-balance-banner";
+import { RenewalBanner } from "@/components/renewal-banner";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteFooter } from "@/components/site-footer";
 import { MobileTabBar } from "@/components/mobile-tabbar";
@@ -113,6 +114,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <div className="px-6">
         <Suspense fallback={null}>
           <LowBalanceBanner />
+        </Suspense>
+        <Suspense fallback={null}>
+          <RenewalBanner />
         </Suspense>
       </div>
 

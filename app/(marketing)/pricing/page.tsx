@@ -1,12 +1,15 @@
 import { Fragment } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
 import { PageIntro, Bullet } from "@/components/page-intro";
 import { Tag } from "@/components/ui";
 import { displayCap } from "@/lib/domain/quotas";
 import { COMPARE_ROWS, PLANS, PLAN_ROWS, PRICING_REFUSALS, TOPUPS } from "@/lib/content/pricing";
 import { RUN_ESTIMATE, TOKEN_STAGES, formatCount } from "@/lib/domain/tokens";
 import { CheckoutButton } from "@/components/checkout-button";
+import { db } from "@/lib/db";
+import { settlePlan } from "@/lib/db/queries/plan";
 
 export const metadata: Metadata = {
   title: "Pricing · Roleform",
@@ -22,7 +25,17 @@ export const metadata: Metadata = {
  * refusals at the bottom are there for the same reason the four pipeline stages
  * publish theirs: this is the page a product is most tempted to overclaim on.
  */
-export default function PricingPage() {
+export default async function PricingPage() {
+  // Public route (middleware.ts) — signed-out visitors read `null` here and
+  // every card shows its ordinary CTA. Settled first (F23, PAY-2) so a
+  // lapsed member sees "Go Pro" again rather than a stale "Renew" on a plan
+  // that no longer applies to them.
+  const { userId } = await auth();
+  if (userId) await settlePlan(userId);
+  const currentPlanId = userId
+    ? (await db.user.findUnique({ where: { clerkUserId: userId }, select: { plan: true } }))?.plan
+    : null;
+
   return (
     <div className="mx-auto w-full max-w-[1000px] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.75rem,5vw,3.5rem)] pb-16">
       <PageIntro kicker="Pricing" title="Pay for the runs, not for the seat">
@@ -78,7 +91,7 @@ export default function PricingPage() {
             {plan.pricePaise > 0 ? (
               <CheckoutButton
                 purchase={{ kind: "plan", id: plan.id }}
-                label={plan.cta}
+                label={currentPlanId === plan.id ? `Renew ${plan.name}` : plan.cta}
                 description={`Roleform — ${plan.name}, one month`}
                 variant={plan.featured ? "primary" : "secondary"}
                 className="w-full"

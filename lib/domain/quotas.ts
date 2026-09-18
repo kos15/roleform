@@ -19,14 +19,28 @@
 import { UNCAPPED } from "./entitlements";
 import { formatTokens } from "./tokens";
 
-export type QuotaKey = "tokens" | "analyses" | "resumes" | "answers" | "courses";
+export type QuotaKey =
+  | "tokens"
+  | "analyses"
+  | "resumes"
+  | "answers"
+  | "courses"
+  | "roadmaps"
+  | "jobSearches";
 
 export type QuotaPeriod = "cycle" | "analysis" | "gap";
 
 export interface QuotaDefinition {
   key: QuotaKey;
   /** Column on `users`. */
-  column: "capTokens" | "capAnalyses" | "capResumes" | "capAnswers" | "capCourses";
+  column:
+    | "capTokens"
+    | "capAnalyses"
+    | "capResumes"
+    | "capAnswers"
+    | "capCourses"
+    | "capRoadmaps"
+    | "capJobSearches";
   label: string;
   unit: string;
   period: QuotaPeriod;
@@ -99,6 +113,30 @@ export const QUOTAS: QuotaDefinition[] = [
     max: 6,
     description:
       "Vetted catalog matches returned per unevidenced requirement. Gaps are always shown, with or without courses.",
+  },
+  {
+    key: "roadmaps",
+    column: "capRoadmaps",
+    label: "Roadmaps built",
+    unit: "per month",
+    period: "cycle",
+    step: 5,
+    min: 0,
+    max: 200,
+    description:
+      "The checklist compiled from an analysis's own rows — costs zero tokens, so this cap is the only limiter. A roadmap you have built stays readable and tickable at any cap.",
+  },
+  {
+    key: "jobSearches",
+    column: "capJobSearches",
+    label: "Job searches",
+    unit: "per month",
+    period: "cycle",
+    step: 10,
+    min: 0,
+    max: 500,
+    description:
+      "Listings fetched from job-board APIs against your profile's titles and skills. Off on Free. Saved jobs and their statuses stay at any cap, including Off.",
   },
 ];
 
@@ -182,4 +220,46 @@ export function cycleEnd(quotaResetsAt: Date | null, now: Date = new Date()): Da
   const end = cycleStart(quotaResetsAt, now);
   end.setDate(end.getDate() + CYCLE_DAYS);
   return end;
+}
+
+/* ----------------------------------------------------------------- the cap wall */
+
+/**
+ * One exit out of a cap wall that isn't the reset. `TokenWall`'s `upgrade`
+ * shape, narrowed to what a count-based cap needs — a plan and the number it
+ * would carry for this exact key (F23, PAY-4).
+ */
+export interface CapWallOffer {
+  id: string;
+  name: string;
+  price: string;
+  cap: number;
+}
+
+/**
+ * Everything a cap-refusal dialog needs, computed on the server (F23).
+ *
+ * The mirror of `TokenWall` for the four cyclical, count-based caps
+ * (analyses, answers, roadmaps, jobSearches — never resumes or courses,
+ * which are bounded at write time, never refused up front). A refusal that
+ * says "quota exceeded" is the failure F15 removed once; PAY-5 says every
+ * cap refusal carries this value so the UI never has to guess which wall it
+ * is rendering.
+ *
+ * Built in `lib/auth.ts#buildCapWall`, which has the I/O (`listAdmins`,
+ * `planAbove`) this type deliberately does not — this file stays PURE.
+ */
+export interface CapWall {
+  key: QuotaKey;
+  label: string;
+  period: QuotaPeriod;
+  cap: number;
+  used: number;
+  /** Cycle caps only. Empty string for `resumes`/`courses`, which never wall. */
+  resetDate: string;
+  resetIn: string;
+  /** The plan above this member's, and what it would carry for this key. Null at the top. */
+  upgrade: CapWallOffer | null;
+  /** Admin names who can raise the cap by hand. Empty when none are configured. */
+  admins: string[];
 }

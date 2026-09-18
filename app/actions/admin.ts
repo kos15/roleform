@@ -47,6 +47,8 @@ const CapsShape = z.object({
   resumes: z.number().int(),
   answers: z.number().int(),
   courses: z.number().int(),
+  roadmaps: z.number().int(),
+  jobSearches: z.number().int(),
 });
 
 const CapsSchema = z.object({

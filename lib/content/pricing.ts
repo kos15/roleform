@@ -13,8 +13,9 @@
 
 import { QUOTAS, displayCap, type QuotaKey } from "@/lib/domain/quotas";
 import { RUN_ESTIMATE, formatCount } from "@/lib/domain/tokens";
+import type { PlanId } from "@/lib/domain/types";
 
-export type PlanId = "free" | "pro" | "ultra";
+export type { PlanId };
 
 export interface Plan {
   id: PlanId;
@@ -41,7 +42,7 @@ export const PLANS: Plan[] = [
     unit: "forever",
     tagline:
       "Enough to tailor a résumé against a posting properly, and to see whether the gap list tells you anything you didn't know.",
-    caps: { tokens: 60_000, analyses: 3, resumes: 2, answers: 3, courses: 2 },
+    caps: { tokens: 60_000, analyses: 3, resumes: 2, answers: 3, courses: 2, roadmaps: 1, jobSearches: 0 },
     cta: "Start free",
   },
   {
@@ -51,8 +52,8 @@ export const PLANS: Plan[] = [
     pricePaise: 49_900,
     unit: "per month",
     tagline:
-      "For an actual search — several postings a week, all eleven templates, and a worked answer for every question rather than a framework.",
-    caps: { tokens: 800_000, analyses: 40, resumes: 11, answers: 40, courses: 4 },
+      "For an actual search — several postings a week, all eleven templates, a worked answer for every question, a roadmap on every analysis, and job search.",
+    caps: { tokens: 800_000, analyses: 40, resumes: 11, answers: 40, courses: 4, roadmaps: 40, jobSearches: 60 },
     cta: "Go Pro",
     featured: true,
   },
@@ -64,7 +65,7 @@ export const PLANS: Plan[] = [
     unit: "per month",
     tagline:
       "For coaches and career centres running many searches at once, where the meter is the thing that actually binds.",
-    caps: { tokens: 3_000_000, analyses: 150, resumes: 11, answers: 200, courses: 6 },
+    caps: { tokens: 3_000_000, analyses: 150, resumes: 11, answers: 200, courses: 6, roadmaps: 150, jobSearches: 200 },
     cta: "Go Ultra",
   },
 ];
@@ -157,6 +158,8 @@ const NOTES: Record<QuotaKey, string> = {
   resumes: "Below eleven is fewer drafts, never worse ones — highest-ATS first.",
   answers: "Every question keeps its framework and its source bullets, at every cap including zero.",
   courses: "The gap is always shown, with or without a course beside it.",
+  roadmaps: "A roadmap you have built stays readable and tickable at any cap.",
+  jobSearches: "Saved jobs and their statuses stay at any cap, including Off.",
 };
 
 export const PLAN_ROWS: PlanRow[] = QUOTAS.map((q) => ({
@@ -219,5 +222,6 @@ export const PRICING_REFUSALS: string[] = [
   "Paying does not change the match score. It is requirement coverage — a fact about your own document — and money cannot move it.",
   "Paying does not add experience to your profile. Nothing is invented on either plan.",
   "No plan gets a better model, a better parser or a nicer rewrite. The pipeline is the same one.",
-  "Cancel whenever, from your profile. You keep read access to everything already generated.",
+  "Nothing renews itself. A plan lasts 30 days from payment; renew when you want another 30. You keep read access to everything already generated.",
+  "The roadmap and job search are gated by plan, not by quality. The analysis underneath is the same one.",
 ];

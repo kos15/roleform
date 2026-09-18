@@ -12,6 +12,7 @@ import {
 } from "@/lib/domain/tokens";
 import { planById } from "@/lib/content/pricing";
 import { isUncapped } from "@/lib/domain/entitlements";
+import { settlePlan } from "@/lib/db/queries/plan";
 import { Tag } from "@/components/ui";
 
 /**
@@ -27,13 +28,18 @@ import { Tag } from "@/components/ui";
  * numbers on one screen rather than wondering which one we meant.
  */
 export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
+  // Settled first (F23, PAY-2): a lapsed member reads Free here, not a plan
+  // they stopped paying for. `accountTokens` below reads the same row, so the
+  // balance and the plan name are guaranteed to agree with each other.
+  await settlePlan(clerkUserId);
+
   const account = await accountTokens(clerkUserId);
   if (!account) return null;
 
   const { balance } = account;
   const user = await db.user.findUnique({
     where: { clerkUserId },
-    select: { plan: true, quotaResetsAt: true, role: true },
+    select: { plan: true, quotaResetsAt: true, role: true, planExpiresAt: true },
   });
   const plan = planById(user?.plan ?? "free");
 
@@ -97,9 +103,17 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
               </>
             ) : (
               <>
-                {plan.name} · resets {formatResetDate(account.resetsAt)},{" "}
-                {formatResetIn(account.resetsAt)} · about {balance.runsLeft}{" "}
-                {balance.runsLeft === 1 ? "run" : "runs"} at today&rsquo;s rate
+                {plan.name}
+                {user?.planExpiresAt ? (
+                  <>
+                    {" "}
+                    until{" "}
+                    {user.planExpiresAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                  </>
+                ) : null}{" "}
+                · resets {formatResetDate(account.resetsAt)}, {formatResetIn(account.resetsAt)} ·
+                about {balance.runsLeft} {balance.runsLeft === 1 ? "run" : "runs"} at
+                today&rsquo;s rate
               </>
             )}
           </p>

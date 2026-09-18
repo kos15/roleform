@@ -5,9 +5,11 @@ import { useState } from "react";
 import { FileUp } from "lucide-react";
 import { Button, ErrorRegion, Textarea } from "@/components/ui";
 import { TokenWallDialog } from "@/components/token-wall";
+import { CapWallDialog } from "@/components/cap-wall";
 import { createAnalysis } from "@/app/actions/analysis";
 import { SAMPLE_JD } from "@/lib/sample-jd";
 import type { TokenWall } from "@/lib/domain/tokens";
+import type { CapWall } from "@/lib/domain/quotas";
 
 /**
  * F2 — JD input. Segmented control: Upload file / Paste text.
@@ -24,6 +26,7 @@ export function JdInput() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [wall, setWall] = useState<TokenWall | null>(null);
+  const [capWall, setCapWall] = useState<CapWall | null>(null);
 
   const devAffordances = process.env.NEXT_PUBLIC_DEV_AFFORDANCES === "true";
   const canSubmit = mode === "paste" ? text.trim().length >= 120 : file !== null;
@@ -46,10 +49,13 @@ export function JdInput() {
 
     const result = await createAnalysis(await payload(false));
     if (!result.ok) {
-      // The meter is the one refusal with somewhere to go, so it opens the
-      // dialog instead of printing a sentence into the error region (F19).
+      // The meter and the analyses cap are the two refusals with somewhere to
+      // go, so both open a dialog instead of printing a sentence into the
+      // error region (F19, F23 PAY-4/PAY-5).
       if (result.error.code === "token_wall" && result.error.wall) {
         setWall(result.error.wall);
+      } else if (result.error.capWall) {
+        setCapWall(result.error.capWall);
       } else {
         setError(result.error.message);
       }
@@ -84,6 +90,7 @@ export function JdInput() {
           resumeLabel="Analyse the posting"
         />
       ) : null}
+      {capWall ? <CapWallDialog wall={capWall} onClose={() => setCapWall(null)} /> : null}
       <div className="seg" role="tablist" aria-label="Job description input method">
         <button
           role="tab"
