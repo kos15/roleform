@@ -67,8 +67,10 @@ milestone, at the gate. These are the commands behind it.
 | `pnpm check:fabrication` | ★ Fabrication eval — 30 bullets vs postings demanding absent skills | M4 gate |
 | `pnpm check:roundtrip` | ★ DOCX round-trip — render, re-import, compare (bar: 95%) | M6 gate |
 | `pnpm check:coverage` | Score fixtures, by hand, written down. Pure — no DB, no keys | anytime |
+| `pnpm check:jdstrip` | Boilerplate pre-strip fixtures (F24). Pure — no DB, no keys | anytime |
 | `pnpm render:samples` | Renders all eleven templates to `.samples/`. Open them | anytime |
 | `pnpm check:links` | Catalog link check, refreshes `verified_at` | quarterly |
+| `pnpm tokens:calibrate` | Measured p50/p95 tokens per purpose, for hand-recalibrating `TOKEN_STAGES` (F24) | after a prompt change, or quarterly |
 
 The three ★ checks are the ones that survive the light-testing policy, because each catches a
 failure that would otherwise be expensive and silent.

@@ -76,6 +76,17 @@ export const DOCS: Record<DocSlug, Doc> = {
         ],
       },
       {
+        heading: "Then: the roadmap and the search",
+        body: [
+          "The roadmap compiles the questions, bullets and courses this analysis already produced into one ordered checklist — nothing new is generated, so it's free and instant.",
+          "Job search, on your own plan, queries a small set of documented job-board APIs and ranks what comes back against your profile. We never scrape a site that doesn't offer an API.",
+        ],
+        list: [
+          "Won't tick a step for you — the roadmap tracks what you've done, it doesn't decide for you",
+          "Won't invent a listing link — every result and every link comes from the job board's own API response",
+        ],
+      },
+      {
         heading: "What we can't tell you",
         body: [
           "Whether you'll get an interview. Coverage measures how much of a posting your profile can evidence today — it isn't a prediction, and it says nothing about how a particular employer screens.",
