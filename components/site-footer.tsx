@@ -84,7 +84,7 @@ export function SiteFooter() {
 
       <div className="mx-auto mt-6 flex max-w-[1180px] flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-[var(--color-line)] pt-4">
         <span className="text-xs text-[var(--color-text-muted)]">
-          Made by Kos in Bengaluru · © {new Date().getFullYear()} Roleform
+          Made by Kos in Pune · © {new Date().getFullYear()} Roleform
         </span>
         <div className="flex flex-wrap gap-4.5">
           <FooterLink href="/terms" muted>
