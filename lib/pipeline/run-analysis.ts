@@ -16,7 +16,7 @@ import { buildRenderModel, type RenderModel } from "@/lib/render/model";
 import { renderFitted } from "@/lib/render/pdf";
 import { getBullets, toDomainBullets } from "@/lib/db/queries/profile";
 import { getCoverage, getProfileById, getRequirements } from "@/lib/db/queries/analysis";
-import { progressFor, readStageState, type StageEmitter } from "./stages";
+import { progressFor, progressWithin, readStageState, type StageEmitter } from "./stages";
 import type { AtsRating, DomainBullet, DomainCoverageItem, DomainRequirement } from "@/lib/domain/types";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 
@@ -54,7 +54,101 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
  * complete only at the full count — and a partial set is deleted before the
  * redo, because the unique constraint leaves no other way through.
  */
+/**
+ * Past this age an unreleased claim is treated as abandoned rather than live
+ * — longer than `maxDuration` (300s) on the route this runs behind, so a
+ * claim only goes stale after an invocation that could not possibly still be
+ * running has had time to be killed and its `finally` skipped.
+ */
+const RUN_LOCK_STALE_MS = 6 * 60_000;
+
+/**
+ * Claims this analysis for the caller, atomically. `updateMany`'s WHERE and
+ * SET run as one statement, so there is no read-then-write gap for a second,
+ * genuinely concurrent invocation (a reload mid-run re-POSTing the same
+ * pipeline route) to land in — the ordinary resume-vs-restart logic below
+ * only guards a retry after a PRIOR attempt ended, not two attempts racing
+ * each other right now.
+ */
+async function claimRun(clerkUserId: string, analysisId: string): Promise<boolean> {
+  const staleCutoff = new Date(Date.now() - RUN_LOCK_STALE_MS);
+  const claimed = await db.analysis.updateMany({
+    where: {
+      id: analysisId,
+      clerkUserId,
+      OR: [{ runningAt: null }, { runningAt: { lt: staleCutoff } }],
+    },
+    data: { runningAt: new Date() },
+  });
+  return claimed.count > 0;
+}
+
+async function releaseRun(clerkUserId: string, analysisId: string): Promise<void> {
+  await db.analysis.updateMany({
+    where: { id: analysisId, clerkUserId },
+    data: { runningAt: null },
+  });
+}
+
+/**
+ * A second connection for an analysis another invocation is already driving
+ * — a reload of the parsing screen mid-run, in practice. Duplicating the
+ * pipeline would double-write `jd_requirements`, `coverage_items` and
+ * `interview_questions` (none carry a unique constraint — see `resumeState`
+ * below), so this connection mirrors the real run's progress from the row
+ * instead of starting a second one.
+ *
+ * Bounded rather than infinite: a poll that outlived the run it was
+ * following would hold its own function open for nothing.
+ */
+async function followExistingRun(
+  clerkUserId: string,
+  analysisId: string,
+  emit: StageEmitter,
+): Promise<void> {
+  const deadline = Date.now() + 280_000;
+  while (Date.now() < deadline) {
+    const row = await db.analysis.findFirst({
+      where: { clerkUserId, id: analysisId },
+      select: { status: true, scoreNote: true },
+    });
+    if (!row || row.status === "ready") {
+      emit({ stage: "preparing", state: "done", progressPct: 100 });
+      return;
+    }
+    if (row.status === "failed") {
+      emit({
+        stage: "reading",
+        state: "failed",
+        progressPct: 0,
+        message: row.scoreNote ?? "This analysis didn't finish.",
+      });
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+  }
+}
+
 export async function runAnalysis(args: {
+  clerkUserId: string;
+  analysisId: string;
+  emit: StageEmitter;
+}): Promise<void> {
+  const { clerkUserId, analysisId, emit } = args;
+
+  const claimed = await claimRun(clerkUserId, analysisId);
+  if (!claimed) {
+    await followExistingRun(clerkUserId, analysisId, emit);
+    return;
+  }
+  try {
+    await executeAnalysis(args);
+  } finally {
+    await releaseRun(clerkUserId, analysisId);
+  }
+}
+
+async function executeAnalysis(args: {
   clerkUserId: string;
   analysisId: string;
   emit: StageEmitter;
@@ -304,7 +398,7 @@ export async function runAnalysis(args: {
       // One call per bullet, each scoped to its single best-matching requirement.
       // Sequential rather than parallel: the per-user rate limit matters more here
       // than latency, and the pipeline already streams progress.
-      for (const entry of ranked) {
+      for (const [i, entry] of ranked.entries()) {
         if (budget.exceeded()) {
           ceilingHit = true;
           tailored.push({
@@ -337,6 +431,19 @@ export async function runAnalysis(args: {
           tailored.push(result.value);
           budget.add(result.value.tokensUsed);
         }
+
+        // This is the run's slowest stretch — one sequential model call per
+        // bullet, often 20–30 of them — and until now the progress bar sat
+        // at 45% for the whole thing with nothing moving. A parsing screen
+        // that stops advancing for the majority of a multi-minute run reads
+        // as broken, not slow, and is exactly what sends a member reloading
+        // mid-run (which is its own bug — see `claimRun` above). Interpolated
+        // across the stage's own 45–80% band, not just start/end.
+        emit({
+          stage: "rewriting",
+          state: "running",
+          progressPct: progressWithin("rewriting", i + 1, ranked.length),
+        });
       }
 
       const summary = await tailorSummary({
