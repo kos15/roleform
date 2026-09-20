@@ -66,6 +66,19 @@ export function progressFor(stage: StageKey, state: StageState): number {
 }
 
 /**
+ * A point partway through a stage's own band, for a stage whose "running"
+ * state can honestly last minutes — currently only `rewriting`'s per-bullet
+ * loop. `done` of `total` never reaches `end` itself; the stage's own
+ * `state: "done"` emit still owns that value, so this can't race it.
+ */
+export function progressWithin(stage: StageKey, done: number, total: number): number {
+  const { start, end } = PROGRESS[stage];
+  if (total <= 0) return start;
+  const fraction = Math.min(done, total) / total;
+  return Math.round(start + (end - start) * fraction * 0.98);
+}
+
+/**
  * What `analyses.stage_state` can honestly say (G4). Written across three
  * places in the pipeline (`createAnalysis`'s injection scan, stage ①'s
  * usedRegions/truncated/protectedNotice) and read here in the one shape the

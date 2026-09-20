@@ -578,6 +578,24 @@ model Analysis {
   /// only the cross-reference goes.
   listingId String? @map("listing_id") @db.Uuid
 
+  /// The pipeline's own claim on this row, held for the duration of one
+  /// `runAnalysis` call (lib/pipeline/run-analysis.ts).
+  ///
+  /// A reload of the parsing screen while a run is still in flight re-POSTs
+  /// `/api/analyze/[id]` for an analysis still `parsing` — the ordinary
+  /// "resume, not restart" path only guards a SECOND attempt after the first
+  /// one ended, not a genuinely concurrent one. Without this, two invocations
+  /// racing the same analysis both read the same `resumeState` and both write
+  /// it: `jd_requirements`, `coverage_items` and `interview_questions` carry
+  /// no unique constraint, so the posting's requirements and the Prep tab's
+  /// questions would each show up twice.
+  ///
+  /// Cleared the moment a run finishes, so a legitimate retry never waits.
+  /// The stale-after-six-minutes fallback (past `maxDuration`'s five) is what
+  /// lets a genuinely crashed invocation's claim be retaken rather than
+  /// stranding the row forever behind a lock nothing will ever release.
+  runningAt DateTime? @map("running_at") @db.Timestamptz
+
   profile            MasterProfile       @relation(fields: [profileId], references: [id], onDelete: Restrict)
   listing            JobListing?         @relation(fields: [listingId], references: [id], onDelete: SetNull)
   jdRequirements     JdRequirement[]
