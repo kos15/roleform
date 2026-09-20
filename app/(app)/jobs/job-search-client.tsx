@@ -85,7 +85,7 @@ export function JobSearchClient({ baseQuery }: { baseQuery: JobQuery }) {
             <span className="mb-1 block text-xs font-semibold text-[var(--color-text-muted)]">
               Location
             </span>
-            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Bengaluru" />
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Pune" />
           </label>
           <div className="flex items-end">
             <Button onClick={search} disabled={pending} busy={pending} className="w-full sm:w-auto">
