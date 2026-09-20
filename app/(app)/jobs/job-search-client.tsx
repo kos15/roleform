@@ -10,6 +10,7 @@ import { searchJobs, saveJob } from "@/app/actions/jobs";
 import type { JobQuery } from "@/lib/domain/job-query";
 import type { SearchListingView, SearchOutcome } from "@/lib/jobs/search";
 import type { CapWall } from "@/lib/domain/quotas";
+import { JOB_PORTALS } from "@/lib/domain/job-portals";
 
 /**
  * The query editor and results (F22). Fit is shown as named skill chips —
@@ -65,6 +66,15 @@ export function JobSearchClient({ baseQuery }: { baseQuery: JobQuery }) {
 
   const configuredSources = outcome?.sourcesQueried.filter((s) => s.configured) ?? [];
 
+  // Same split/trim/filter `search()` sends the server — the portal links
+  // stay in sync with whatever's in the boxes right now, not the last query
+  // that actually ran (JOB_PORTALS needs no result to build a URL from).
+  const portalQuery: Pick<JobQuery, "titles" | "location" | "remote"> = {
+    titles: titles.split(",").map((t) => t.trim()).filter(Boolean),
+    location,
+    remote,
+  };
+
   return (
     <div className="mb-10">
       {capWall ? <CapWallDialog wall={capWall} onClose={() => setCapWall(null)} /> : null}
@@ -98,6 +108,26 @@ export function JobSearchClient({ baseQuery }: { baseQuery: JobQuery }) {
           <input type="checkbox" checked={remote} onChange={(e) => setRemote(e.target.checked)} />
           Remote only
         </label>
+
+        {/* Deep links, not results (lib/domain/job-portals.ts) — nothing here
+            was fetched, matched or scored, so it carries no skill chip and no
+            "Sources:" attribution the way a real JobSource's listings do. */}
+        <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-line)] pt-3">
+          <span className="text-xs text-[var(--color-text-muted)]">
+            Or search directly — opens their own results, not run through Roleform:
+          </span>
+          {JOB_PORTALS.map((portal) => (
+            <a
+              key={portal.id}
+              href={portal.url(portalQuery)}
+              target="_blank"
+              rel="noopener nofollow"
+              className="btn btn-ghost btn-sm no-underline"
+            >
+              {portal.label} <ExternalLink className="lucide h-3.5 w-3.5" />
+            </a>
+          ))}
+        </div>
       </Card>
 
       {error ? <ErrorRegion title="That search didn't come back">{error}</ErrorRegion> : null}
