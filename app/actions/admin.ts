@@ -9,16 +9,15 @@ import { currentRole } from "@/lib/admin/role";
 import { clampCap, QUOTAS, QUOTA_BY_KEY } from "@/lib/domain/quotas";
 import { formatCount } from "@/lib/domain/tokens";
 import { deliver } from "@/lib/mail/deliver";
-import { SUPPORT_EMAIL } from "@/lib/mail/addresses";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 /**
  * Admin actions (F15).
  *
- * Every one of these re-checks the role from the database. The link in the nav
- * is visible to everyone and the client can send whatever it likes, so the
- * server-side role read is the only thing standing between a member and another
- * member's caps — the same reasoning as CLAUDE.md §7 on scoping every query by
+ * Every one of these re-checks the role from Clerk. The admin UI is hidden from
+ * members and /admin 404s for them, but a server action is an endpoint the
+ * client can call with whatever it likes, so this role read is the lock that
+ * actually stands between a member and another member's caps — the same reasoning as CLAUDE.md §7 on scoping every query by
  * the session subject.
  */
 
@@ -122,61 +121,6 @@ export async function updateWorkspaceDefaults(input: DefaultsInput): Promise<Res
   return ok(null);
 }
 
-/**
- * A member asking to be let in (F15).
- *
- * Filed as a support message rather than as a new table and a new notification
- * path. It reaches the same two people, and a request that sits in a queue
- * nobody reads is worse than an email.
- */
-export async function requestAdminAccess(): Promise<Result<null>> {
-  const user = await requireUser();
-  if (!user.ok) return user;
-
-  const existing = await db.contactMessage.findFirst({
-    where: { clerkUserId: user.value, subject: ACCESS_SUBJECT },
-    orderBy: { createdAt: "desc" },
-  });
-
-  // Asking twice is not an escalation. Treat a repeat as the same request.
-  if (existing && Date.now() - existing.createdAt.getTime() < 24 * 3600 * 1000) return ok(null);
-
-  const row = await db.contactMessage.create({
-    data: {
-      clerkUserId: user.value,
-      // N7: the subject id is not an address, and this table is never joined to
-      // a profile. The admins resolve who it is through Clerk, as they do in
-      // the panel itself.
-      name: "A workspace member",
-      // A placeholder, and the CHECK requires a non-empty one. On a domain we
-      // actually hold, so an accidental reply bounces honestly rather than
-      // leaving for a stranger's mail server.
-      email: `noreply@${SUPPORT_EMAIL.split("@")[1] ?? "localhost"}`,
-      subject: ACCESS_SUBJECT,
-      body: `A member requested the workspace.generation.manage permission. Clerk subject: ${user.value}`,
-    },
-  });
-
-  // Mailed like any other support message, which is what makes the comment
-  // above true rather than aspirational. No receipt: the address on this row is
-  // a placeholder, not somewhere a person reads — the requester already has the
-  // panel's own confirmation.
-  await deliver(
-    {
-      id: row.id,
-      name: row.name,
-      email: row.email,
-      subject: row.subject,
-      body: row.body,
-      clerkUserId: row.clerkUserId,
-    },
-    { receipt: false },
-  );
-
-  return ok(null);
-}
-
-const ACCESS_SUBJECT = "Admin access request";
 
 /* ------------------------------------------------------------- token grants */
 

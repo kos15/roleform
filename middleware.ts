@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkClient, clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 /**
  * Everything under (app) requires a session. The marketing route, the auth
@@ -81,9 +81,40 @@ function markdownRewrite(request: NextRequest): NextResponse | null {
   return response;
 }
 
+/** The admin section: invisible, not merely forbidden, to everyone else. */
+const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
+
 export default clerkMiddleware(async (auth, request) => {
   const markdown = markdownRewrite(request);
   if (markdown) return markdown;
+
+  // Anyone who is not an admin gets the plain root 404 — the same page any
+  // unknown URL gets. Signed out, that is instead of a sign-in redirect (which
+  // would confirm the route exists); signed in as a member, it is decided here
+  // rather than in the page so no app chrome is rendered around it. The role is
+  // read from Clerk (publicMetadata.role, the source of truth — lib/admin/role.ts;
+  // that module is not imported because it reaches the database). The admin
+  // layout asserts the role again (lib/admin/guard.ts), and every admin action
+  // re-checks it, so this is the first lock, not the only one.
+  if (isAdminRoute(request)) {
+    const { userId } = await auth();
+    let admin = false;
+    if (userId) {
+      try {
+        const user = await (await clerkClient()).users.getUser(userId);
+        admin = (user.publicMetadata as { role?: unknown } | null)?.role === "admin";
+      } catch {
+        admin = false; // Fail closed.
+      }
+    }
+    if (!admin) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/_admin-not-found";
+      url.search = "";
+      return NextResponse.rewrite(url);
+    }
+    return;
+  }
 
   if (!isPublic(request)) {
     await auth.protect();

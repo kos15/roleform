@@ -75,7 +75,9 @@ export default async function MarketingLayout({ children }: { children: React.Re
 
       {signedIn ? (
         <MobileTabBar
-          isAdmin={isAdmin}
+          extraLinks={
+          isAdmin ? [{ href: "/admin", label: "Admin", hint: "Members, caps and the support inbox" }] : []
+        }
           account={
             <Suspense fallback={null}>
               <SheetAccount />

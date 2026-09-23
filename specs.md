@@ -486,9 +486,8 @@ Profile · Pricing` (plus `Admin` for admins), the token balance pill (F19), the
 (F20) and the Clerk user button with the member's name beside it on wide screens. The page you are
 on is set in the heavy weight — the only active treatment.
 
-`Admin` is listed in the header only for admins (Sep 2026 redesign). `/admin` still enforces the role
-on its own, and a member who reaches it directly gets the 403 that names the missing permission and
-the people who hold it (F15).
+`Admin` is listed in the header and the mobile sheet only for admins. For everyone else the admin
+section does not exist: `/admin` (any sub-path, any query) returns the ordinary 404 (F15).
 
 **Footer**, on every surface including the public ones: the mark and the one-line promise, then three
 columns — Product (`New analysis · History · Profile · Status`), Company (`How it works · Privacy ·
@@ -933,8 +932,7 @@ reason is stored on its own row, where only an admin sees it.
 message, whether it was mailed or not, with a resend for the ones that weren't and a handled flag
 that carries the admin's subject beside it. It is what makes "stored, not lost" true rather than
 aspirational — an undelivered message is announced on the admin header, because it exists nowhere
-else. Admin access requests (F15) are filed and mailed the same way, with no receipt: the address on
-that row is a placeholder, not a person.
+else.
 
 **Acceptance:** a message under 20 characters is refused with a reason; six in an hour is refused with
 the direct address; the row survives with `clerk_user_id` null for a signed-out sender; with mail
@@ -983,10 +981,7 @@ settings blob.
 permissions already work, and it keeps the privileged bit with the identity rather than beside the
 usage counters. `users.role` is a **write-behind mirror**, refreshed whenever a request resolves a
 role and written by nothing else — it exists so SQL can reason about roles, never so it can decide
-anything. Both the gate and the member list read Clerk directly; the 403's "who can grant it" list
-reads Clerk too, because the mirror only refreshes when a person visits and an admin who hasn't
-signed in since being granted the role would otherwise be missing from exactly the screen that
-points at them.
+anything. Both the gate and the member list read Clerk directly.
 
 `pnpm grant:admin <clerk_user_id> [--revoke]` does the same thing from a terminal, for scripting a
 new environment or fixing an instance you can only reach over ssh. It writes Clerk, then nudges the
@@ -1020,22 +1015,30 @@ already their own, and an admin who wants to move one has the per-member panel, 
 are moving the line across is on screen beside it. A "defaults" control that silently re-capped the
 workspace would be the unexplained refusal this feature exists to remove, delivered a day later.
 
-**View as a member.** `/admin?view=member` renders the 403 for someone who holds the permission, so
-an admin can read what a refusal actually says before a member does. The request-access button is
-inert there — filing a request against yourself would put a lie in the other admins' inbox.
+**Workspace name.** `NEXT_PUBLIC_WORKSPACE_NAME` names the admin kicker ("Admin · Acme workspace").
+Unset is a supported state: it falls back to generic wording.
 
-**Workspace name.** `NEXT_PUBLIC_WORKSPACE_NAME` names the admin kicker ("Admin · Acme workspace")
-and the 403's admin list ("Admins on Acme"). Unset is a supported state, not a placeholder: both
-fall back to generic wording rather than print an invented company name onto someone's 403.
+**Admin-only visibility.** The admin section is invisible to anyone who is not an admin — no link, no
+button, no redirect, no 403. Three independent locks:
 
-**403.** A member reaching `/admin` gets a screen naming the permission, what they can still do with
-their own numbers in it, and which admins can grant it — plus a request button that files a support
-message rather than inventing a notification path. Once filed, the confirmation names the admins it
-went to rather than saying only "Sent".
+1. **Navigation.** The header link and the mobile-sheet row render only when the server resolved the
+   role as admin. No member-facing surface (cap walls, notices, emails to members) links to `/admin`.
+2. **Routes.** `middleware.ts` answers a signed-out `/admin` request with the 404 page rather than a
+   sign-in redirect (a redirect would confirm the route exists), and `app/(app)/admin/layout.tsx`
+   calls `assertAdminOr404()` (`lib/admin/guard.ts`) before any admin skeleton or data is streamed,
+   so a signed-in member gets the same 404. The page asserts again.
+3. **Actions.** Every admin server action re-reads the role from Clerk (`requireAdmin`), so a forged
+   request from a member is refused even though no UI offers it. There is no member-callable
+   "request admin access" action; admins are granted in the Clerk dashboard or with
+   `pnpm grant:admin`.
 
-**Acceptance:** a member cannot change another member's caps through the action even with a forged
-payload (the role is re-read server-side); a cap of 0 renders as "Off" and refuses with a sentence,
-not an error code.
+`/admin` is also absent from `robots.txt` — listing it there would publish its existence — and the
+admin layout sends `noindex`.
+
+**Acceptance:** signed out, and signed in as a member, `/admin`, `/admin?panel=inbox` and any
+`/admin/*` path return the 404 page with a 404 status; no admin link appears anywhere for a member;
+a member cannot change another member's caps through the action even with a forged payload; a cap of
+0 renders as "Off" and refuses with a sentence, not an error code.
 
 ### F16 — Loading states
 

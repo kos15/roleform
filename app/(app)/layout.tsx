@@ -18,8 +18,8 @@ import { currentRole } from "@/lib/admin/role";
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  // Only decides whether the sheet lists Admin. /admin enforces it on its own —
-  // this is the difference between a door that 403s and no door.
+  // Decides whether the header and the sheet list Admin at all. For anyone else
+  // the admin section is invisible: /admin 404s (lib/admin/guard.ts).
   const { userId } = await auth();
   const isAdmin = userId ? (await currentRole(userId)) === "admin" : false;
 
@@ -106,7 +106,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <ProductTour />
 
       <MobileTabBar
-        isAdmin={isAdmin}
+        extraLinks={
+          isAdmin ? [{ href: "/admin", label: "Admin", hint: "Members, caps and the support inbox" }] : []
+        }
         account={
           <Suspense fallback={null}>
             <SheetAccount />

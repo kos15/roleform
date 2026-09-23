@@ -4,7 +4,9 @@ import { SITE_URL, absoluteUrl } from "@/lib/seo/site";
 /**
  * Public pages are open to every crawler, including the AI search and
  * assistant crawlers by name — an engine that is blocked cannot cite us. The
- * signed-in app is closed to all of them: those pages are a person's résumé
+ * signed-in app is closed to all of them. /admin is deliberately NOT listed:
+ * robots.txt is public, and naming it would advertise that it exists (it 404s
+ * for everyone but admins and sends noindex). The rest of the app is closed: those pages are a person's résumé
  * and analyses (N7), and they redirect to sign-in anyway.
  */
 const PRIVATE = [
@@ -14,7 +16,6 @@ const PRIVATE = [
   "/history",
   "/jobs",
   "/onboarding",
-  "/admin",
   "/api/",
   "/md/",
 ];

@@ -27,12 +27,13 @@ import { Briefcase, ChevronRight, CircleDollarSign, FilePlus2, Menu, UserRound }
  * desktop header is untouched.
  */
 export function MobileTabBar({
-  isAdmin,
+  extraLinks = [],
   account,
 }: {
-  /** Decides whether the sheet lists Admin. The route still enforces it — this
-      only avoids showing a member a door that answers 403. */
-  isAdmin: boolean;
+  /** Rows only some accounts get (the admin row), prepended to the sheet. Passed
+      from the server layout so the admin link never ships in a member's
+      JavaScript — it exists only in the payload of an admin's request. */
+  extraLinks?: SheetLink[];
   /** Rendered at the top of the sheet. A server node so the balance and the
       name stay server-read; this component never learns what's in it. */
   account?: React.ReactNode;
@@ -70,7 +71,7 @@ export function MobileTabBar({
   // would be a lie about where you are.
   const working = pathname.startsWith("/analyze") || pathname.startsWith("/analysis");
 
-  const links = sheetLinks(isAdmin);
+  const links = [...extraLinks, ...sheetLinks()];
 
   return (
     <>
@@ -172,13 +173,12 @@ function Tab({
  * navigation the header dropped at this width; the documents trail because they
  * are read once.
  */
-function sheetLinks(isAdmin: boolean): { href: string; label: string; hint: string }[] {
+export type SheetLink = { href: string; label: string; hint: string };
+
+function sheetLinks(): SheetLink[] {
   return [
     { href: "/history", label: "History", hint: "Every analysis you have run" },
     { href: "/status", label: "Status", hint: "Live system health" },
-    ...(isAdmin
-      ? [{ href: "/admin", label: "Admin", hint: "Members, caps and coupons" }]
-      : []),
     { href: "/how-it-works", label: "How it works", hint: "What we do with your words" },
     { href: "/support", label: "Support us", hint: "Independent and ad-free" },
     { href: "/contact", label: "Contact", hint: "A person answers" },
