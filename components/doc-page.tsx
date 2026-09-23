@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { DOCS, type Doc } from "@/lib/content/docs";
+import { breadcrumbSchema, graph } from "@/lib/seo/schema";
+import { absoluteUrl } from "@/lib/seo/site";
+import { JsonLd } from "@/components/json-ld";
 
 /**
  * One renderer for all three written documents. They differ in words, not in
@@ -17,8 +20,42 @@ export function DocPage({ doc }: { doc: Doc }) {
   const listTint =
     doc.slug === "privacy" ? "bg-[var(--color-sage-200)]" : "bg-[var(--color-accent-100)]";
 
+  // The numbered sections of How it works are a real process — expose them as
+  // HowTo steps so an engine can quote the pipeline in order.
+  const numberedSteps = doc.sections
+    .map((s) => ({ s, m: /^(\d\d) · (.*)$/.exec(s.heading) }))
+    .filter((x) => x.m);
+  const schema = graph(
+    {
+      "@type": "WebPage",
+      name: doc.title,
+      description: doc.intro,
+      url: absoluteUrl(`/${doc.slug}`),
+    },
+    breadcrumbSchema([
+      { name: "Home", path: "/" },
+      { name: doc.kicker, path: `/${doc.slug}` },
+    ]),
+    ...(numberedSteps.length >= 3
+      ? [
+          {
+            "@type": "HowTo",
+            name: doc.title,
+            description: doc.intro,
+            step: numberedSteps.map(({ s, m }, i) => ({
+              "@type": "HowToStep",
+              position: i + 1,
+              name: m![2],
+              text: (s.body ?? []).join(" "),
+            })),
+          },
+        ]
+      : []),
+  );
+
   return (
     <article>
+      <JsonLd data={schema} />
       <div className="mb-[clamp(2.5rem,5vw,4.5rem)] max-w-[64ch]">
         <p className="eyebrow mb-3.5">{doc.kicker}</p>
         <h1 className="mb-5">{doc.title}</h1>

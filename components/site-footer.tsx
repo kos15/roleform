@@ -60,6 +60,8 @@ export function SiteFooter() {
           <div className="flex flex-col gap-2">
             <FooterHeading>Company</FooterHeading>
             <FooterLink href="/how-it-works">How it works</FooterLink>
+            <FooterLink href="/templates">Résumé templates</FooterLink>
+            <FooterLink href="/guides">Guides</FooterLink>
             <FooterLink href="/pricing">Pricing</FooterLink>
             <FooterLink href="/privacy">Privacy</FooterLink>
             <FooterLink href="/contact">Contact</FooterLink>

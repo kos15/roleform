@@ -14,7 +14,7 @@ import { TokenPanel } from "./token-panel";
 import { ProfileEditor } from "./profile-editor";
 import { DeleteAccount } from "./delete-account";
 
-export const metadata = { title: "Your profile · Roleform" };
+export const metadata = { title: "Your profile" };
 
 export default async function ProfilePage() {
   const { userId } = await auth();

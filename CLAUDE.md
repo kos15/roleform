@@ -252,6 +252,8 @@ lib/
   db/
     index.ts · policies.sql · queries/
   generated/prisma/          Prisma client output — generated, gitignored, never hand-edited
+  seo/                       site facts, metadata, JSON-LD, Markdown mirrors, llms.txt (docs/seo-strategy.md)
+  content/guides.ts          public guides — every claim must match the rules the code enforces
 components/
 prisma/
   schema.prisma              the truth · migrations/

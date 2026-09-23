@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AuthSplit } from "@/components/auth-split";
 import { SignIn } from "@clerk/nextjs";
 
-export const metadata: Metadata = { title: "Sign in · Roleform" };
+export const metadata: Metadata = { title: "Sign in" };
 
 /**
  * The routed sign-in, alongside the modal the marketing header opens.

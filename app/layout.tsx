@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Anton, Figtree } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
+import { AgentTools } from "@/components/agent-tools";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/seo/site";
 
 /**
  * Anton is the only display voice; Figtree carries body copy (CLAUDE.md §9).
@@ -20,11 +22,53 @@ const figtree = Figtree({
   display: "swap",
 });
 
+/**
+ * Site-wide search and share metadata. Pages set their own title (joined by
+ * the template), description and canonical; everything else inherits. The
+ * values come from lib/seo/site so JSON-LD, llms.txt and these tags agree.
+ */
 export const metadata: Metadata = {
-  title: "Roleform",
-  description:
-    "Eleven tailored résumés, the questions you'll be asked, and the gaps to close — from your own experience. Nothing is invented.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: `%s | ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  category: "Career",
+  keywords: [
+    "tailor resume to job description",
+    "ATS friendly resume",
+    "resume templates",
+    "resume keywords",
+    "AI resume builder",
+    "interview questions from job description",
+    "skill gap analysis",
+  ],
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
+  creator: SITE_NAME,
+  alternates: {
+    canonical: "/",
+    types: { "text/markdown": "/index.md", "text/plain": "/llms.txt" },
+  },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: "/",
+    locale: "en_IN",
+  },
+  twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION },
+  robots: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+  formatDetection: { telephone: false },
+  // Search Console / Bing Webmaster ownership, set per deployment.
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+      ? { "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION }
+      : undefined,
+  },
 };
+
+export const viewport: Viewport = { themeColor: "#f8f0e3" };
 
 /**
  * Clerk's own screens (the sign-in modal, the routed pages, the user menu),
@@ -73,7 +117,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <ClerkProvider appearance={clerkAppearance}>
       <html lang="en" className={`${anton.variable} ${figtree.variable}`}>
-        <body>{children}</body>
+        <body>
+          {children}
+          <AgentTools />
+        </body>
       </html>
     </ClerkProvider>
   );

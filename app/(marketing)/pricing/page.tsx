@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { PageIntro, Bullet } from "@/components/page-intro";
@@ -10,12 +11,15 @@ import { RUN_ESTIMATE, TOKEN_STAGES, formatCount } from "@/lib/domain/tokens";
 import { CheckoutButton } from "@/components/checkout-button";
 import { db } from "@/lib/db";
 import { settlePlan } from "@/lib/db/queries/plan";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbSchema, graph, softwareSchema } from "@/lib/seo/schema";
 
-export const metadata: Metadata = {
-  title: "Pricing · Roleform",
+export const metadata: Metadata = pageMetadata({
+  title: "Pricing: free resume tailoring, Pro ₹499/month",
   description:
-    "Three plans, metered in tokens rather than in features. Nothing behind the paywall changes what the product will say about you.",
-};
+    "Tailor your résumé free — 3 analyses a month. Pro (₹499/month) unlocks all 11 ATS-rated templates, job search and more; Ultra (₹1,299) for coaches.",
+  path: "/pricing",
+});
 
 /**
  * F17 — pricing.
@@ -38,6 +42,15 @@ export default async function PricingPage() {
 
   return (
     <div>
+      <JsonLd
+        data={graph(
+          softwareSchema(),
+          breadcrumbSchema([
+            { name: "Home", path: "/" },
+            { name: "Pricing", path: "/pricing" },
+          ]),
+        )}
+      />
       <PageIntro kicker="Pricing" title="Pay for the runs, not for the seat">
         Every plan does the same four-stage analysis with the same fabrication boundary. What
         changes is how much of it you can do — metered in tokens, measured from what the models

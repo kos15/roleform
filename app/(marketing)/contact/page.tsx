@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
 import { currentUser } from "@clerk/nextjs/server";
 import { PageIntro } from "@/components/page-intro";
 import { CATALOG_EMAIL, PRIVACY_EMAIL, SUPPORT_EMAIL } from "@/lib/mail/addresses";
 import { ContactForm } from "./contact-form";
 
-export const metadata: Metadata = {
-  title: "Contact · Roleform",
-  description: "A person reads every one of these. No ticket queue and no bot.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Contact",
+  description:
+    "Reach a person at Roleform — no ticket queue, no bot. Support, privacy and catalog corrections, usually answered within a working day.",
+  path: "/contact",
+});
 
 export default async function ContactPage() {
   // Public route, so there may be no session at all. When there is one, the

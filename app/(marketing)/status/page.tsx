@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { BrandMark } from "@/components/brand";
@@ -8,10 +9,13 @@ import { stalledRun } from "@/lib/status/stalled";
 import { STAGES } from "@/lib/pipeline/stages";
 import { RefreshRing } from "./refresh-ring";
 
-export const metadata: Metadata = {
-  title: "Status · Roleform",
-  description: "Per-stage health for the four-stage pipeline, and whether your run stopped part-way.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "System status",
+  description:
+    "Live, per-stage health of the Roleform pipeline — and whether your own run stopped part-way.",
+  path: "/status",
+  markdown: false,
+});
 
 /** Health is a live read; a cached status page is a contradiction. */
 export const dynamic = "force-dynamic";

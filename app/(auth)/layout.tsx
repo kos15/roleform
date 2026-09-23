@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Brand } from "@/components/brand";
 
@@ -8,6 +9,9 @@ import { Brand } from "@/components/brand";
  * in" button to someone already on the sign-in page, the other assumes a
  * session. So this is the brand and a way back.
  */
+/** Signed-in and auth surfaces are a person's own data, not search results. */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">

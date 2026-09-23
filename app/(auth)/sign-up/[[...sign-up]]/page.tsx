@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AuthSplit } from "@/components/auth-split";
 import { SignUp } from "@clerk/nextjs";
 
-export const metadata: Metadata = { title: "Create an account · Roleform" };
+export const metadata: Metadata = { title: "Create an account" };
 
 /**
  * The routed sign-up. Paired with /sign-in so the "no account yet?" link inside

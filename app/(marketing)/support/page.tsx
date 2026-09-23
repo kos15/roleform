@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
 import { PageIntro } from "@/components/page-intro";
 import { SPEND_BASIS, SUPPORT_SPEND, SUPPORT_TIERS } from "@/lib/content/support";
 
-export const metadata: Metadata = {
-  title: "Support us · Roleform",
+export const metadata: Metadata = pageMetadata({
+  title: "Support Roleform",
   description:
-    "Independent, ad-free, and paid for by people who use it. No recruiter side, no affiliate links.",
-};
+    "Roleform is independent and ad-free — no recruiter side, no affiliate links. See how it is funded and where the money goes.",
+  path: "/support",
+});
 
 /** One bar colour per line, so the three read as separate slices. */
 const SPEND_COLOURS = [

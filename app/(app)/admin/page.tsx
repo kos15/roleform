@@ -17,7 +17,7 @@ import { PlansPanel } from "./plans-panel";
 import { rollUpPlans } from "@/lib/admin/plans";
 import { WorkspaceDefaultsPanel } from "./workspace-defaults";
 
-export const metadata: Metadata = { title: "Admin · Roleform" };
+export const metadata: Metadata = { title: "Admin" };
 
 /** Caps and usage change under you; a cached admin panel is a wrong one. */
 export const dynamic = "force-dynamic";

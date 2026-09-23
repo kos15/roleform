@@ -25,7 +25,8 @@
     "render:samples": "pnpm script scripts/render-samples.ts",
     "check:links": "pnpm script scripts/link-check.ts",
     "check:corpus": "pnpm script scripts/corpus-health.ts",
-    "tokens:calibrate": "pnpm script scripts/tokens-calibrate.ts"
+    "tokens:calibrate": "pnpm script scripts/tokens-calibrate.ts",
+    "seo:indexnow": "pnpm script scripts/indexnow.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.20",

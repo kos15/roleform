@@ -40,7 +40,16 @@ export function ContactForm({
   }
 
   return (
-    <form action={action} className="flex flex-col gap-1">
+    <form
+      action={action}
+      className="flex flex-col gap-1"
+      // Declarative WebMCP: an agent may fill this in, and the person submits.
+      {...({
+        toolname: "send_roleform_message",
+        tooldescription:
+          "Send a message to the people who run Roleform (support, billing, privacy, catalog corrections). Needs name, email, subject and a message of at least 20 characters.",
+      } as Record<string, string>)}
+    >
       <div className="grid gap-x-4 [grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))]">
         <Field label="Your name">
           <Input name="name" defaultValue={defaultName} required maxLength={120} />

@@ -1,3 +1,4 @@
+import { NextResponse, type NextRequest } from "next/server";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 /**
@@ -30,10 +31,75 @@ const isPublic = createRouteMatcher([
   "/pricing",
   "/status",
   "/appearance",
+  // Search and agent surfaces (lib/seo): the guides, the template shelf, the
+  // machine-readable files and every page's Markdown mirror.
+  "/guides(.*)",
+  "/templates",
+  "/robots.txt",
+  "/sitemap.xml",
+  "/manifest.webmanifest",
+  "/llms.txt",
+  "/llms-full.txt",
+  "/indexnow.txt",
+  "/opengraph-image(.*)",
+  "/icon.svg",
+  "/md(.*)",
+  "/(.*).md",
 ]);
 
+/**
+ * Public pages that have a Markdown mirror (lib/seo/markdown.ts). Kept as a
+ * pattern here rather than imported, because middleware runs on the edge and
+ * should not pull the content modules into its bundle.
+ */
+const MIRRORED = /^\/(?:|pricing|templates|guides(?:\/[a-z0-9-]+)?|how-it-works|privacy|terms|support|contact)$/;
+
+/**
+ * Agents get Markdown two ways without guessing URLs: `/<path>.md`, or the
+ * canonical URL with `Accept: text/markdown`. Both rewrite to the /md route.
+ * Returns null when the request is an ordinary page view.
+ */
+function markdownRewrite(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl;
+  let target: string | null = null;
+
+  if (pathname.endsWith(".md")) {
+    const page = pathname === "/index.md" ? "/" : pathname.slice(0, -3);
+    if (MIRRORED.test(page)) target = page;
+  } else if (
+    MIRRORED.test(pathname) &&
+    (request.headers.get("accept") ?? "").includes("text/markdown")
+  ) {
+    target = pathname;
+  }
+
+  if (target === null) return null;
+  const url = request.nextUrl.clone();
+  url.pathname = target === "/" ? "/md" : `/md${target}`;
+  const response = NextResponse.rewrite(url);
+  response.headers.set("Vary", "Accept");
+  return response;
+}
+
 export default clerkMiddleware(async (auth, request) => {
-  if (!isPublic(request)) await auth.protect();
+  const markdown = markdownRewrite(request);
+  if (markdown) return markdown;
+
+  if (!isPublic(request)) {
+    await auth.protect();
+    return;
+  }
+
+  // Advertise the Markdown alternate on every mirrored HTML page, so an agent
+  // that lands on the HTML learns where the compact version is.
+  const { pathname } = request.nextUrl;
+  if (MIRRORED.test(pathname)) {
+    const response = NextResponse.next();
+    const md = pathname === "/" ? "/index.md" : `${pathname}.md`;
+    response.headers.set("Link", `<${md}>; rel="alternate"; type="text/markdown"`);
+    response.headers.set("Vary", "Accept");
+    return response;
+  }
 });
 
 export const config = {

@@ -7,6 +7,13 @@ import { hasProfile } from "@/lib/db/queries/profile";
 import { TEMPLATES, ratingFor, templateById } from "@/lib/render/templates";
 import { Button } from "@/components/ui";
 import { InfoNote } from "@/components/info-note";
+import { JsonLd } from "@/components/json-ld";
+import { FaqList } from "@/components/faq-list";
+import { GUIDES, HOME_FAQS } from "@/lib/content/guides";
+import { faqSchema, graph, organizationSchema, softwareSchema, websiteSchema } from "@/lib/seo/schema";
+import { pageMetadata } from "@/lib/seo/metadata";
+import { SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo/site";
+import type { Metadata } from "next";
 import { TemplatePaper } from "@/components/template-thumb";
 
 /**
@@ -15,6 +22,12 @@ import { TemplatePaper } from "@/components/template-thumb";
  * with their computed ATS ratings (N5 — read through `ratingFor`, never typed).
  */
 const SHOWCASE = ["clean-slate", "ledger", "atlas", "keystone"] as const;
+
+export const metadata: Metadata = {
+  ...pageMetadata({ title: SITE_TITLE, description: SITE_DESCRIPTION, path: "/" }),
+  // The home title stands alone rather than going through "%s | Roleform".
+  title: { absolute: SITE_TITLE },
+};
 
 export default async function MarketingPage() {
   // A member who already imported a résumé is not here to import one again.
@@ -42,6 +55,9 @@ export default async function MarketingPage() {
 
   return (
     <div>
+      <JsonLd
+        data={graph(organizationSchema(), websiteSchema(), softwareSchema(), faqSchema(HOME_FAQS))}
+      />
       <div className="grid items-center gap-[clamp(2.25rem,5vw,4.5rem)] [grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr))]">
         {/* Left-aligned and asymmetric — whitespace on the right (CLAUDE.md §9). */}
         <div>
@@ -121,6 +137,35 @@ export default async function MarketingPage() {
         can honestly sell you that number.{" "}
         <Link href="/how-it-works">Read how the four stages work</Link>.
       </InfoNote>
+
+      <section aria-labelledby="guides-heading" className="mt-[clamp(3rem,6vw,4.5rem)]">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <h2 id="guides-heading" className="text-[clamp(2rem,4vw,3rem)] leading-none">
+            Tailoring, explained
+          </h2>
+          <Link href="/guides" className="btn btn-secondary btn-sm no-underline">
+            All guides
+          </Link>
+        </div>
+        <ul className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))]">
+          {GUIDES.slice(0, 3).map((g) => (
+            <li key={g.slug}>
+              <Link
+                href={`/guides/${g.slug}`}
+                className="card card-link flex h-full flex-col gap-2 rounded-[22px] no-underline"
+              >
+                <span className="eyebrow">{g.kicker}</span>
+                <span className="text-lg font-extrabold leading-snug">{g.title}</span>
+                <span className="text-sm leading-relaxed text-[var(--color-text-muted)]">
+                  {g.description}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <FaqList faqs={HOME_FAQS} />
     </div>
   );
 }

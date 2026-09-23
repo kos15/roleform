@@ -46,6 +46,8 @@ export default async function MarketingLayout({ children }: { children: React.Re
           className={signedIn ? "wide-only" : undefined}
           links={[
             { href: "/how-it-works", label: "How it works" },
+            { href: "/templates", label: "Templates" },
+            { href: "/guides", label: "Guides" },
             { href: "/pricing", label: "Pricing" },
             { href: "/status", label: "Status" },
           ]}

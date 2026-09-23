@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { auth } from "@clerk/nextjs/server";
@@ -12,6 +13,9 @@ import { MobileTabBar } from "@/components/mobile-tabbar";
 import { SheetAccount } from "@/components/sheet-account";
 import { ProductTour, TourLauncher } from "@/components/product-tour";
 import { currentRole } from "@/lib/admin/role";
+
+/** Signed-in and auth surfaces are a person's own data, not search results. */
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Only decides whether the sheet lists Admin. /admin enforces it on its own —
