@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
+import { FileText, GraduationCap, ListChecks, MessageSquareText, type LucideIcon } from "lucide-react";
 
 /**
  * The three surfaces. Real links rather than client state, so a tab is
@@ -37,12 +38,13 @@ export function AnalysisTabs({
   const pathname = usePathname();
 
   const tabs = [
-    { slug: "resumes", label: "Résumés", count: String(counts.resumes) },
-    { slug: "prep", label: "Interview prep", count: String(counts.questions) },
+    { slug: "resumes", label: "Résumés", count: String(counts.resumes), icon: FileText },
+    { slug: "prep", label: "Interview prep", count: String(counts.questions), icon: MessageSquareText },
     {
       slug: "learning",
       label: "Learning",
       count: `${counts.gaps} gap${counts.gaps === 1 ? "" : "s"}`,
+      icon: GraduationCap,
     },
     {
       slug: "roadmap",
@@ -51,6 +53,7 @@ export function AnalysisTabs({
       count: counts.roadmapProgress
         ? `${counts.roadmapProgress.done}/${counts.roadmapProgress.total}`
         : "—",
+      icon: ListChecks,
     },
   ];
 
@@ -66,7 +69,7 @@ export function AnalysisTabs({
           (tab.slug === "resumes" && pathname.startsWith(`/analysis/${analysisId}/preview/`));
         return (
           <Link key={tab.slug} href={href} role="tab" aria-selected={selected} tabIndex={0}>
-            <TabButton label={tab.label} count={tab.count} selected={selected} />
+            <TabButton label={tab.label} count={tab.count} icon={tab.icon} selected={selected} />
           </Link>
         );
       })}
@@ -78,10 +81,12 @@ export function AnalysisTabs({
 function TabButton({
   label,
   count,
+  icon: Icon,
   selected,
 }: {
   label: string;
   count: string;
+  icon: LucideIcon;
   selected: boolean;
 }) {
   const { pending } = useLinkStatus();
@@ -93,8 +98,13 @@ function TabButton({
       className={pending ? "opacity-70" : undefined}
       tabIndex={-1}
     >
-      {label}
-      <span className="tab-count">{count}</span>
+      <span className="tab-dot" aria-hidden>
+        <Icon className="lucide h-4 w-4" />
+      </span>
+      <span>
+        <span className="tab-label">{label}</span>
+        <span className="tab-count">{count}</span>
+      </span>
     </button>
   );
 }

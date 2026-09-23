@@ -481,13 +481,13 @@ deterministic, reproducible and explainable line by line.
 
 ### F0 — Shell and theme
 
-Sticky header on the ground (not a raised surface): brand mark, `New analysis · History · Profile ·
-Pricing · Admin · Status`, the token balance pill (F19), the walkthrough button (F20), the appearance
-link (F18), theme switch, role label, Clerk user button.
+Sticky header on the ground (not a raised surface): brand mark, `New analysis · Jobs · History ·
+Profile · Pricing` (plus `Admin` for admins), the token balance pill (F19), the walkthrough button
+(F20) and the Clerk user button with the member's name beside it on wide screens. The page you are
+on is set in the heavy weight — the only active treatment.
 
-`Admin` is shown to every member, not only to admins. A link that quietly isn't there teaches nobody
-anything; a 403 that names the missing permission and the people who hold it (F15) is the more useful
-outcome of the same click.
+`Admin` is listed in the header and the mobile sheet only for admins. For everyone else the admin
+section does not exist: `/admin` (any sub-path, any query) returns the ordinary 404 (F15).
 
 **Footer**, on every surface including the public ones: the mark and the one-line promise, then three
 columns — Product (`New analysis · History · Profile · Status`), Company (`How it works · Privacy ·
@@ -495,22 +495,13 @@ Contact`) and Support us — over a rule carrying `Terms · Privacy`. The dot be
 is live: it renders only when a stage is actually degraded, from the same aggregate F14 reads. A
 decorative pulse next to the word "Status" would be the exact lie that page exists to prevent.
 
-**Theme.** Light and dark, switched by `data-theme` on the html element, *within* whichever palette
-`data-palette` names (F18). Dark is the same roles at the same ramp steps re-derived on a dark ground
-— a variable override in `globals.css`, never a `dark:` variant in components, so anything reading a
-token is theme-agnostic by construction (N9). Ramps keep their direction in both themes: `100` is
-always the tinted-fill end, `900` always the text-on-tint end.
+**Theme.** One palette, light only — cream ground, maroon ink, marigold accent, pink second accent
+(CLAUDE.md §9). Every colour is a token in `app/globals.css` (N9); base and DS rules live in cascade
+layers so a Tailwind utility can refine a DS default. Dark mode and the palette picker (F18) were
+retired with the Sep 2026 redesign; `/appearance` redirects to `/profile`.
 
-- `--color-on-accent` carries the ink that sits *on* the accent. It has to invert: white on the
-  lighter dark-mode accent is ~2:1.
-- Preference is stored in `localStorage` and resolved by a synchronous script in `<head>`, alongside
-  the palette. No stored theme falls through to `prefers-color-scheme`, not to light; no stored
-  palette falls through to Ember.
-- Only the ground and the ink cross-fade. Nothing else transitions colour, so the switch reads as one
-  movement.
-
-**Acceptance:** no flash of the wrong theme on hard reload; the switch survives navigation and reload;
-export output is unaffected (a résumé is the user's document, not a Roleform surface).
+**Acceptance:** `--color-text-muted` on the ground clears 4.5:1; ink on marigold and ink on pink
+clear 4.5:1.
 
 ### F1 — Onboarding: profile import
 
@@ -941,8 +932,7 @@ reason is stored on its own row, where only an admin sees it.
 message, whether it was mailed or not, with a resend for the ones that weren't and a handled flag
 that carries the admin's subject beside it. It is what makes "stored, not lost" true rather than
 aspirational — an undelivered message is announced on the admin header, because it exists nowhere
-else. Admin access requests (F15) are filed and mailed the same way, with no receipt: the address on
-that row is a placeholder, not a person.
+else.
 
 **Acceptance:** a message under 20 characters is refused with a reason; six in an hour is refused with
 the direct address; the row survives with `clerk_user_id` null for a signed-out sender; with mail
@@ -991,10 +981,7 @@ settings blob.
 permissions already work, and it keeps the privileged bit with the identity rather than beside the
 usage counters. `users.role` is a **write-behind mirror**, refreshed whenever a request resolves a
 role and written by nothing else — it exists so SQL can reason about roles, never so it can decide
-anything. Both the gate and the member list read Clerk directly; the 403's "who can grant it" list
-reads Clerk too, because the mirror only refreshes when a person visits and an admin who hasn't
-signed in since being granted the role would otherwise be missing from exactly the screen that
-points at them.
+anything. Both the gate and the member list read Clerk directly.
 
 `pnpm grant:admin <clerk_user_id> [--revoke]` does the same thing from a terminal, for scripting a
 new environment or fixing an instance you can only reach over ssh. It writes Clerk, then nudges the
@@ -1028,22 +1015,30 @@ already their own, and an admin who wants to move one has the per-member panel, 
 are moving the line across is on screen beside it. A "defaults" control that silently re-capped the
 workspace would be the unexplained refusal this feature exists to remove, delivered a day later.
 
-**View as a member.** `/admin?view=member` renders the 403 for someone who holds the permission, so
-an admin can read what a refusal actually says before a member does. The request-access button is
-inert there — filing a request against yourself would put a lie in the other admins' inbox.
+**Workspace name.** `NEXT_PUBLIC_WORKSPACE_NAME` names the admin kicker ("Admin · Acme workspace").
+Unset is a supported state: it falls back to generic wording.
 
-**Workspace name.** `NEXT_PUBLIC_WORKSPACE_NAME` names the admin kicker ("Admin · Acme workspace")
-and the 403's admin list ("Admins on Acme"). Unset is a supported state, not a placeholder: both
-fall back to generic wording rather than print an invented company name onto someone's 403.
+**Admin-only visibility.** The admin section is invisible to anyone who is not an admin — no link, no
+button, no redirect, no 403. Three independent locks:
 
-**403.** A member reaching `/admin` gets a screen naming the permission, what they can still do with
-their own numbers in it, and which admins can grant it — plus a request button that files a support
-message rather than inventing a notification path. Once filed, the confirmation names the admins it
-went to rather than saying only "Sent".
+1. **Navigation.** The header link and the mobile-sheet row render only when the server resolved the
+   role as admin. No member-facing surface (cap walls, notices, emails to members) links to `/admin`.
+2. **Routes.** `middleware.ts` answers a signed-out `/admin` request with the 404 page rather than a
+   sign-in redirect (a redirect would confirm the route exists), and `app/(app)/admin/layout.tsx`
+   calls `assertAdminOr404()` (`lib/admin/guard.ts`) before any admin skeleton or data is streamed,
+   so a signed-in member gets the same 404. The page asserts again.
+3. **Actions.** Every admin server action re-reads the role from Clerk (`requireAdmin`), so a forged
+   request from a member is refused even though no UI offers it. There is no member-callable
+   "request admin access" action; admins are granted in the Clerk dashboard or with
+   `pnpm grant:admin`.
 
-**Acceptance:** a member cannot change another member's caps through the action even with a forged
-payload (the role is re-read server-side); a cap of 0 renders as "Off" and refuses with a sentence,
-not an error code.
+`/admin` is also absent from `robots.txt` — listing it there would publish its existence — and the
+admin layout sends `noindex`.
+
+**Acceptance:** signed out, and signed in as a member, `/admin`, `/admin?panel=inbox` and any
+`/admin/*` path return the 404 page with a 404 status; no admin link appears anywhere for a member;
+a member cannot change another member's caps through the action even with a forged payload; a cap of
+0 renders as "Off" and refuses with a sentence, not an error code.
 
 ### F16 — Loading states
 
@@ -1138,52 +1133,11 @@ displayed price and the charged amount come from one constant; a signed-out visi
 is sent to sign in and returned to `/pricing`, not shown an error; every cap printed in the admin
 plan strip equals the one on `/pricing` for that plan.
 
-### F18 — Appearance: six palettes
+### F18 — Appearance (retired)
 
-`/appearance`, public (a palette is a browser preference, not account state, and someone struggling
-to read `/privacy` in the dark should be able to fix the contrast without first creating an account).
-
-**A palette is four colours** — ground, ink, accent, second accent, per mode. Nothing else. The
-nine-step neutral, accent and second-accent ramps, the surfaces, the dividers and the shadows are
-all mixed from those four in `app/globals.css`, in oklab. Six palettes × two modes × 54 ramp steps
-would be 648 hexes nobody can hold in step, and the first one that drifts is a contrast bug shipped
-to a stranger. Four values each, derived identically, means a palette **cannot be internally
-inconsistent** — it can only be a different four values (N9).
-
-| id | Ground | Accent | Second accent |
-|---|---|---|---|
-| `ember` | cream | terracotta | sage |
-| `ink` | cool paper | indigo | teal |
-| `harbour` | chalky blue-grey | deep cyan | coral |
-| `orchard` | green-ivory | plum | old gold |
-| `dusk` | lavender | violet | rose |
-| `pine` | cold green | forest | mustard |
-
-Every ramp keeps its direction in both modes — 100 is the tinted-fill end, 900 the text-on-tint end
-— because the low steps mix toward the ground and the high steps toward the ink, and both of those
-swap with the mode on their own. Nothing that reads a token has to know which theme it is in, and
-there is no `dark:` variant anywhere in the components.
-
-**Warn and danger keep their own hue in every palette**; only their tints are mixed onto the ground.
-A caution that turned violet in Dusk would be a palette overriding a meaning, which is the one thing
-a palette must not do.
-
-Selectors are element-agnostic (`[data-palette]`, not `html[data-palette]`) so each card in the
-picker is genuinely painted in the palette it is offering rather than approximating it. Tailwind
-emits `@theme` into `@layer theme`; unlayered rules beat every layer, so the derivation wins without
-depending on source order.
-
-Both `data-theme` and `data-palette` are set by the bootstrap script in `app/layout.tsx` before
-first paint. The wrong palette flashing is louder than the wrong mode, so it cannot wait for an
-effect. No stored theme falls through to the OS setting; no stored palette falls through to Ember.
-
-**The résumé templates are exempt.** They stay black on white in every palette, because they are the
-user's document going into a stranger's ATS and printer (§9, F9). The picker says so, with a swatch
-that is deliberately hard-coded — painting *that* from tokens would make it a lie.
-
-**Acceptance:** switching palette repaints the mark, the coverage buckets, the meters and every tag
-without a reload; a rendered PDF is byte-identical across palettes; `--color-text-muted` on the
-ground clears 4.5:1 in all twelve palette/mode combinations.
+Retired in the Sep 2026 redesign. The product ships one light palette (F0, CLAUDE.md §9); the
+picker, the six palettes and dark mode were removed, and `/appearance` redirects to `/profile`.
+The résumé templates remain exempt from the brand and render black on white (§9, F9).
 
 ### F19 — The token meter
 

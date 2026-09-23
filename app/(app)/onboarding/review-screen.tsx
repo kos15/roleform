@@ -68,28 +68,28 @@ export function ReviewScreen({
   const canSave = bulletCount > 0 && resume.basics.name.trim().length > 0;
 
   return (
-    <div className="space-y-5">
-      <Card flat className="flex flex-wrap items-center gap-3">
-        <strong>{filename}</strong>
-        <Tag tone="sage">Read</Tag>
-        <Tag tone="muted">
+    <div className="space-y-[18px]">
+      <div className="flex flex-wrap items-center gap-2.5 rounded-[22px] bg-[var(--color-accent-500)] px-5 py-4">
+        <strong className="text-base">{filename}</strong>
+        <Tag tone="ink" className="min-h-[30px] font-extrabold">
+          Read
+        </Tag>
+        <Tag tone="outline" className="min-h-[30px]">
           {resume.work.length} role{resume.work.length === 1 ? "" : "s"}
         </Tag>
-        <Tag tone="muted">
+        <Tag tone="outline" className="min-h-[30px]">
           {bulletCount} bullet{bulletCount === 1 ? "" : "s"}
         </Tag>
-        <span className="ml-auto text-sm text-[var(--color-text-muted)]">
-          Check it, fix anything we misread, then save.
-        </span>
-      </Card>
+        <span className="ml-auto text-sm">Check it, fix anything we misread, then save.</span>
+      </div>
 
       {draft.notices.ambiguousDates.length > 0 || draft.notices.careerGaps.length > 0 ? (
-        <Card flat>
-          <div className="mb-2 flex items-center gap-2 font-semibold">
-            <AlertTriangle className="lucide h-4 w-4 text-[var(--color-warn-500)]" />
+        <div className="rounded-[22px] bg-[var(--color-sage-200)] px-[22px] py-5">
+          <div className="mb-2.5 flex items-center gap-2 text-base font-extrabold">
+            <AlertTriangle className="lucide h-[17px] w-[17px]" />
             Worth a look
           </div>
-          <ul className="space-y-1 text-sm text-[var(--color-text-muted)]">
+          <ul className="list-disc space-y-1.5 pl-[18px] text-[15px] leading-normal">
             {draft.notices.ambiguousDates.map((d) => (
               <li key={d.path}>
                 We couldn&rsquo;t read a date confidently near <code>{d.path}</code> (
@@ -103,11 +103,11 @@ export function ReviewScreen({
               </li>
             ))}
           </ul>
-        </Card>
+        </div>
       ) : null}
 
-      <Card>
-        <h3 className="mb-4">You</h3>
+      <Card className="p-[clamp(1.25rem,2.6vw,1.75rem)]">
+        <h3 className="display mb-4 text-[30px] font-normal">You</h3>
         <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr))]">
           <Input
             aria-label="Full name"
@@ -145,8 +145,8 @@ export function ReviewScreen({
       </Card>
 
       {resume.work.map((work, wi) => (
-        <Card key={wi}>
-          <div className="mb-3 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr))]">
+        <Card key={wi} className="p-[clamp(1.25rem,2.6vw,1.75rem)]">
+          <div className="mb-4 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr))]">
             <Input
               aria-label="Position"
               placeholder="Position"
@@ -173,9 +173,9 @@ export function ReviewScreen({
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {work.highlights.map((highlight, hi) => (
-              <div key={hi} className="flex gap-2">
+              <div key={hi} className="flex items-start gap-2">
                 <Textarea
                   aria-label={`Bullet ${hi + 1}`}
                   rows={2}
@@ -184,8 +184,8 @@ export function ReviewScreen({
                 />
                 <Button
                   variant="ghost"
-                  size="sm"
                   aria-label="Remove bullet"
+                  className="h-11 w-11 flex-none px-0 hover:bg-[var(--color-sage-200)]"
                   onClick={() => removeHighlight(wi, hi)}
                 >
                   <Trash2 className="lucide h-4 w-4" />
@@ -199,11 +199,11 @@ export function ReviewScreen({
         </Card>
       ))}
 
-      <div className="flex items-center gap-3">
-        <Button onClick={() => onCommit(resume)} disabled={!canSave}>
+      <div className="flex flex-wrap items-center gap-3 pt-1.5">
+        <Button size="lg" onClick={() => onCommit(resume)} disabled={!canSave}>
           Save profile
         </Button>
-        <Button variant="secondary" onClick={onStartOver}>
+        <Button variant="secondary" size="lg" onClick={onStartOver}>
           Upload a different file
         </Button>
         {!canSave ? (

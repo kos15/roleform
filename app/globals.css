@@ -1,980 +1,957 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   organic — design tokens (CLAUDE.md §9, N9)
+   marigold — design tokens (CLAUDE.md §9, N9)
    Every colour, font, radius and shadow used in the app comes from here.
    Export templates are exempt (they follow ats-rules, not the brand).
+
+   One palette, one mode. Cream ground, maroon ink, marigold accent, pink second
+   accent. The six-palette picker and dark mode were retired with this palette:
+   a single, deliberate combination reads as a brand, and every contrast pair
+   below is checked once rather than across twelve grounds.
 --------------------------------------------------------------------------- */
 
 @theme {
   /* ground + text */
-  --color-bg: #f5ead8;
-  --color-bg-raised: #fbf5ea;
-  --color-bg-sunken: #eddfc8;
-  --color-text: #201e1d;
-  --color-text-muted: #6b625a;
-  --color-line: #e0cfb2;
+  --color-bg: #f8f0e3;
+  --color-bg-raised: #fffbf4;
+  --color-bg-sunken: #f3e6cf;
+  --color-bg-tint: #f7ecd6;
+  --color-text: #4a0d0d;
+  --color-text-muted: #7a5647;
+  --color-line: rgb(74 13 13 / 0.14);
+  --color-line-strong: rgb(74 13 13 / 0.3);
+  /* A wash of ink for soft chips and hover states on the ground. */
+  --color-hover: rgb(74 13 13 / 0.06);
+  --color-chip: rgb(74 13 13 / 0.07);
+  --color-link-hover: #8a2a1f;
+  --color-scrim: rgb(74 13 13 / 0.45);
 
-  /* accent — terracotta */
-  --color-accent-100: #fbeade;
-  --color-accent-200: #f4d2bb;
-  --color-accent-300: #e9b492;
-  --color-accent-400: #d99465;
-  --color-accent-500: #c67139;
-  --color-accent-600: #ab5c2b;
-  --color-accent-700: #8b4820;
-  --color-accent-800: #6b3719;
-  --color-accent-900: #4a2611;
+  /* accent — marigold. 100–300 are tinted fills, 500 the fill itself, 600 the
+     deeper marigold used for numerals, 700–900 walk toward the ink for text. */
+  --color-accent-100: #fcefcb;
+  --color-accent-200: #fce3a6;
+  --color-accent-300: #fbcf73;
+  --color-accent-400: #fabf4f;
+  --color-accent-500: #f9b130;
+  --color-accent-600: #e8971a;
+  --color-accent-700: #8f5208;
+  --color-accent-800: #6b2a0e;
+  --color-accent-900: #4a0d0d;
   --color-accent: var(--color-accent-500);
 
-  /* second accent — sage */
-  --color-sage-100: #eef1e6;
-  --color-sage-200: #dae1c8;
-  --color-sage-300: #c2cda6;
-  --color-sage-400: #a2b382;
-  --color-sage-500: #7a8a5e;
-  --color-sage-600: #66744e;
-  --color-sage-700: #515d3e;
-  --color-sage-800: #3d462f;
-  --color-sage-900: #29301f;
+  /* second accent — pink. Still named `sage` because that is what every
+     component reads; a rename would be a rename, not a feature. */
+  --color-sage-100: #fff0f5;
+  --color-sage-200: #ffd6e4;
+  --color-sage-300: #ffc7da;
+  --color-sage-400: #ffb3cd;
+  --color-sage-500: #ff9dc0;
+  --color-sage-600: #ff5c93;
+  --color-sage-700: #a8284f;
+  --color-sage-800: #7a1838;
+  --color-sage-900: #4a0d0d;
   --color-accent-2: var(--color-sage-500);
 
   /* state — kept inside the warm family on purpose */
-  --color-warn-100: #fbf0d5;
-  --color-warn-200: #e8d5a4;
-  --color-warn-500: #b8892a;
-  --color-warn-700: #7d5c17;
-  --color-danger-100: #f8ded9;
-  --color-danger-200: #edbfb5;
-  --color-danger-500: #b4462f;
-  --color-danger-700: #7d2f1f;
+  --color-warn-100: #fcefcb;
+  --color-warn-200: #fce3a6;
+  --color-warn-500: #e8971a;
+  --color-warn-700: #8f5208;
+  --color-danger-100: #fff0f5;
+  --color-danger-200: #ffd6e4;
+  --color-danger-500: #d6336c;
+  --color-danger-700: #8a1538;
 
-  /* Ink that sits ON the accent — a fill, so it inverts with the theme rather
-     than staying white and dropping to 2:1 on the lighter dark-mode accent. */
-  --color-on-accent: #ffffff;
+  /* Ink that sits ON the accent. Maroon on marigold is 7.9:1. */
+  --color-on-accent: #4a0d0d;
+  /* Muted ink on the maroon surfaces (the tab bar, inverted chips). */
+  --color-on-ink-muted: #e8c9b8;
 
   /* type */
-  --font-heading: var(--font-caprasimo), Georgia, serif;
+  --font-heading: var(--font-anton), Impact, "Arial Narrow", sans-serif;
   --font-body: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
 
   /* radius */
-  --radius-sm: 12px;
+  --radius-sm: 14px;
   --radius-md: 18px;
-  --radius-lg: 28px;
+  --radius-lg: 24px;
+  --radius-xl: 28px;
   --radius-pill: 999px;
 
-  /* elevation */
-  --shadow-sm: 0 1px 2px rgb(32 30 29 / 0.06), 0 2px 6px rgb(32 30 29 / 0.05);
-  --shadow-md: 0 2px 6px rgb(32 30 29 / 0.07), 0 10px 24px rgb(32 30 29 / 0.08);
-  --shadow-lg: 0 4px 12px rgb(32 30 29 / 0.08), 0 24px 48px rgb(32 30 29 / 0.12);
+  /* elevation — mostly flat; shadows only where paper lifts off the ground */
+  --shadow-sm: 0 1px 0 rgb(74 13 13 / 0.04);
+  --shadow-md: 0 20px 40px -24px rgb(74 13 13 / 0.4);
+  --shadow-lg: 0 30px 60px -30px rgb(74 13 13 / 0.45);
 }
-
-/* ---------------------------------------------------------------------------
-   organic — palettes (F18, N9)
-
-   The block above is the Ember light palette written out longhand, because
-   Tailwind's `@theme` needs literal values to generate `bg-accent-100` and
-   friends at build time. What follows is where those values actually come
-   from at runtime.
-
-   **A palette sets four colours.** Ground, ink, accent, second accent — per
-   mode, and nothing else. Every other token is mixed from those four in the
-   single `[data-palette]` block below, in perceptual space (oklab), so a
-   palette cannot drift internally: it can only be a different four values.
-   Six palettes × two modes × 54 ramp steps would be 648 hexes nobody can keep
-   in step, and the first one that drifts is a contrast bug shipped to a
-   stranger.
-
-   Every ramp keeps its direction in both modes — 100 is the tinted-fill end,
-   900 is the text-on-tint end — because it is mixed toward the ground at the
-   bottom and toward the ink at the top, and both of those swap with the mode
-   on their own. Nothing reading a token has to know which theme it is in, and
-   there is no `dark:` variant anywhere in the components.
-
-   Selectors are element-agnostic — `[data-palette]`, not `html[data-palette]`
-   — so a card in the picker can preview a palette it is not sitting in, by
-   carrying the two attributes itself. That is also why this cascade is safe
-   against Tailwind: `@theme` emits into `@layer theme`, and unlayered rules
-   beat every layer regardless of specificity, so these win without depending
-   on source order. `[data-palette][data-theme="dark"]` then beats the light
-   bases on specificity in the usual way.
-
-   The four bases per palette live in lib/design/palettes.ts as well — that is
-   the module the picker reads. These two lists are the same six palettes; the
-   TS one carries the names and the copy, this one carries the paint.
---------------------------------------------------------------------------- */
-
-[data-palette="ember"]   { --color-bg: #f5ead8; --color-text: #201e1d; --color-accent-base: #c67139; --color-accent-2-base: #7a8a5e; }
-[data-palette="ink"]     { --color-bg: #f0f1f5; --color-text: #1b1d26; --color-accent-base: #4b53c9; --color-accent-2-base: #1f8f86; }
-[data-palette="harbour"] { --color-bg: #e8eef1; --color-text: #10222b; --color-accent-base: #0f7391; --color-accent-2-base: #d4654a; }
-[data-palette="orchard"] { --color-bg: #eef2e8; --color-text: #1f2418; --color-accent-base: #8a3f6b; --color-accent-2-base: #a8811f; }
-[data-palette="dusk"]    { --color-bg: #eae8f5; --color-text: #221b2b; --color-accent-base: #6d4bb8; --color-accent-2-base: #c4577b; }
-[data-palette="pine"]    { --color-bg: #e9f0ea; --color-text: #14201a; --color-accent-base: #2f6b4a; --color-accent-2-base: #b3811a; }
-
-[data-palette="ember"][data-theme="dark"]   { --color-bg: #191512; --color-text: #f4ead9; --color-accent-base: #e08a52; --color-accent-2-base: #9fb27f; }
-[data-palette="ink"][data-theme="dark"]     { --color-bg: #12141c; --color-text: #e6e8f2; --color-accent-base: #7d84ee; --color-accent-2-base: #45b8ad; }
-[data-palette="harbour"][data-theme="dark"] { --color-bg: #0d1a21; --color-text: #e2eef3; --color-accent-base: #3aa6c4; --color-accent-2-base: #f0876a; }
-[data-palette="orchard"][data-theme="dark"] { --color-bg: #151a12; --color-text: #eaf0e2; --color-accent-base: #cd77a6; --color-accent-2-base: #dcb44e; }
-[data-palette="dusk"][data-theme="dark"]    { --color-bg: #16111d; --color-text: #eee6f5; --color-accent-base: #a58af0; --color-accent-2-base: #ef8aa9; }
-[data-palette="pine"][data-theme="dark"]    { --color-bg: #0f1712; --color-text: #e4efe7; --color-accent-base: #57a97c; --color-accent-2-base: #dfae4a; }
-
-/* The derivation. One block, both modes, every palette. */
-[data-palette] {
-  /* Surfaces and rules — steps along the ground→ink axis. In light they sit
-     just under the ground, in dark just over it, which is what "raised" has
-     always meant on each. */
-  --color-bg-raised: color-mix(in oklab, var(--color-text) 4%, var(--color-bg));
-  --color-bg-sunken: color-mix(in oklab, var(--color-text) 9%, var(--color-bg));
-  --color-line: color-mix(in oklab, var(--color-text) 17%, var(--color-bg));
-  --color-text-muted: color-mix(in oklab, var(--color-text) 60%, var(--color-bg));
-
-  /* The scrim behind a sheet or a modal. It has to read dark in BOTH modes,
-     which is why it is the only token that swaps which end of the axis it mixes
-     from: in light the ink is the dark value, in dark the ground is. Mixing the
-     ink in dark mode would put a cream veil over the page. */
-  --color-scrim: color-mix(in oklab, var(--color-text) 48%, transparent);
-
-  /* Accent ramp. 100–400 mix toward the ground (tinted fills, hovers, borders),
-     500 IS the accent, 600–900 mix toward the ink (text on those tints). */
-  --color-accent-100: color-mix(in oklab, var(--color-accent-base) 13%, var(--color-bg));
-  --color-accent-200: color-mix(in oklab, var(--color-accent-base) 24%, var(--color-bg));
-  --color-accent-300: color-mix(in oklab, var(--color-accent-base) 38%, var(--color-bg));
-  --color-accent-400: color-mix(in oklab, var(--color-accent-base) 62%, var(--color-bg));
-  --color-accent-500: var(--color-accent-base);
-  --color-accent-600: color-mix(in oklab, var(--color-accent-base) 84%, var(--color-text));
-  --color-accent-700: color-mix(in oklab, var(--color-accent-base) 62%, var(--color-text));
-  --color-accent-800: color-mix(in oklab, var(--color-accent-base) 44%, var(--color-text));
-  --color-accent-900: color-mix(in oklab, var(--color-accent-base) 28%, var(--color-text));
-
-  /* Second accent. Still named `sage` because that is what every component
-     already reads and a rename would be a rename, not a feature — in Ink it is
-     teal, in Harbour coral, in Pine mustard. */
-  --color-sage-100: color-mix(in oklab, var(--color-accent-2-base) 13%, var(--color-bg));
-  --color-sage-200: color-mix(in oklab, var(--color-accent-2-base) 24%, var(--color-bg));
-  --color-sage-300: color-mix(in oklab, var(--color-accent-2-base) 38%, var(--color-bg));
-  --color-sage-400: color-mix(in oklab, var(--color-accent-2-base) 62%, var(--color-bg));
-  --color-sage-500: var(--color-accent-2-base);
-  --color-sage-600: color-mix(in oklab, var(--color-accent-2-base) 84%, var(--color-text));
-  --color-sage-700: color-mix(in oklab, var(--color-accent-2-base) 62%, var(--color-text));
-  --color-sage-800: color-mix(in oklab, var(--color-accent-2-base) 44%, var(--color-text));
-  --color-sage-900: color-mix(in oklab, var(--color-accent-2-base) 28%, var(--color-text));
-
-  /* Warn and danger keep their own hue in every palette, and only their tints
-     are mixed onto the ground. A caution that turned violet in Dusk would be a
-     palette overriding a meaning, which is the one thing a palette must not do. */
-  --color-warn-base: #b8892a;
-  --color-danger-base: #b4462f;
-  --color-warn-100: color-mix(in oklab, var(--color-warn-base) 16%, var(--color-bg));
-  --color-warn-200: color-mix(in oklab, var(--color-warn-base) 30%, var(--color-bg));
-  --color-warn-500: var(--color-warn-base);
-  --color-warn-700: color-mix(in oklab, var(--color-warn-base) 58%, var(--color-text));
-  --color-danger-100: color-mix(in oklab, var(--color-danger-base) 16%, var(--color-bg));
-  --color-danger-200: color-mix(in oklab, var(--color-danger-base) 30%, var(--color-bg));
-  --color-danger-500: var(--color-danger-base);
-  --color-danger-700: color-mix(in oklab, var(--color-danger-base) 58%, var(--color-text));
-
-  /* Ink on an accent fill. White beats the ground on every light palette we
-     ship — Ember's cream on terracotta is 3.4:1, white is 3.6:1 — so this is
-     one of the few places the mix isn't the answer. */
-  --color-on-accent: #ffffff;
-}
-
-[data-palette][data-theme="dark"] {
-  /* The dark accents are lighter than the ground, so the ink on them inverts. */
-  --color-on-accent: color-mix(in oklab, var(--color-bg) 88%, #000000);
-  --color-warn-base: #d8a94a;
-  --color-danger-base: #d9755b;
-
-  /* Mixed from the ground here, not the ink — see the note on the light value. */
-  --color-scrim: color-mix(in oklab, var(--color-bg) 68%, transparent);
-
-  /* On a dark ground the shadow is ambient darkness plus the hairline edge the
-     raised surfaces already carry — the light-theme ink tint disappears. */
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
-  --shadow-md: 0 3px 12px rgb(0 0 0 / 0.55);
-  --shadow-lg: 0 14px 36px rgb(0 0 0 / 0.6);
-}
-
-/* The ground and the ink cross-fade; nothing else in the app transitions colour,
-   so the switch reads as one movement rather than forty. */
-html {
-  transition: background-color 300ms ease, color 300ms ease;
-}
-html[data-theme] body {
-  transition: background-color 300ms ease, color 300ms ease;
-}
-
-/* ---------------------------------------------------------------------------
-   base
---------------------------------------------------------------------------- */
-
-html,
-body {
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-family: var(--font-body);
-  -webkit-font-smoothing: antialiased;
-}
-
-h1,
-h2,
-h3 {
-  font-family: var(--font-heading);
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  line-height: 1.12;
-}
-
-h1 { font-size: 2.75rem; }
-h2 { font-size: 1.9rem; }
-h3 { font-size: 1.3rem; }
-
-/* accent on the ground is only 3:1 — body copy in accent uses the 700 step */
-.text-accent-body { color: var(--color-accent-700); }
-
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-::selection { background: var(--color-accent-200); }
-
-/* ---------------------------------------------------------------------------
-   DS classes — use these rather than inventing parallels (CLAUDE.md §9)
---------------------------------------------------------------------------- */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: var(--radius-pill);
-  padding: 0.7rem 1.35rem;
-  font-weight: 600;
-  font-size: 0.95rem;
-  line-height: 1.2;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
-}
-.btn:active { transform: translateY(1px); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.btn-primary { background: var(--color-accent-500); color: var(--color-on-accent); }
-.btn-primary:hover:not(:disabled) { background: var(--color-accent-600); }
-
-.btn-secondary {
-  background: var(--color-bg-raised);
-  color: var(--color-text);
-  border-color: var(--color-line);
-}
-.btn-secondary:hover:not(:disabled) { background: var(--color-bg-sunken); }
-
-.btn-ghost { background: transparent; color: var(--color-accent-700); }
-.btn-ghost:hover:not(:disabled) { background: var(--color-accent-100); }
-
-.btn-sm { padding: 0.45rem 0.9rem; font-size: 0.85rem; }
-
-.card {
-  background: var(--color-bg-raised);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  padding: 1.5rem;
-}
-.card-flat { box-shadow: none; }
-
-/* The small-caps label at the top of a card, above its title. */
-.card-kicker {
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-accent-700);
-}
-
-.tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border-radius: var(--radius-pill);
-  padding: 0.25rem 0.7rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  background: var(--color-bg-sunken);
-  color: var(--color-text);
-  border: 1px solid var(--color-line);
-  white-space: nowrap;
-}
-/* A tag carrying a sentence rather than a label.
-   A requirement only has a short skill name when it maps to the catalog; when
-   it doesn't, the pill holds the posting's own wording, which can run to a
-   couple of hundred characters. `nowrap` would push that straight out of its
-   card, so this variant wraps and squares off — a three-line lozenge at pill
-   radius reads as a mistake. */
-.tag-long {
-  display: block;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  text-align: left;
-  max-width: 100%;
-  border-radius: var(--radius-md);
-  line-height: 1.4;
-}
-
-.tag-accent { background: var(--color-accent-100); color: var(--color-accent-800); border-color: var(--color-accent-200); }
-.tag-sage { background: var(--color-sage-100); color: var(--color-sage-800); border-color: var(--color-sage-200); }
-.tag-warn { background: var(--color-warn-100); color: var(--color-warn-700); border-color: var(--color-warn-200); }
-.tag-muted { background: transparent; color: var(--color-text-muted); }
-
-/* Sticky, and on the ground rather than a raised surface — the header is chrome
-   the page scrolls under, not a card sitting on top of it. */
-.nav {
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  /* Wraps rather than overflows. The header carries a brand, five links and
-     four controls; on a phone that is wider than the screen, and a sticky bar
-     that scrolls sideways takes the whole page with it. Row gap is tighter
-     than column gap so a wrapped second row reads as one bar, not two. */
-  flex-wrap: wrap;
-  gap: 0.6rem 1.25rem;
-  padding: 0.8rem clamp(1rem, 4vw, 2.5rem);
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-line);
-}
-
-/* The link group inside the header. `flex: 0 1 20rem` is the whole responsive
-   rule: line-breaking measures the 20rem flex basis, so the group drops to its
-   own row as soon as less than that is free, and shrinks to fit once there.
-   No breakpoint — it responds to the space it actually has, which is how every
-   grid in the design works too.
-   Grow is 0 on purpose: with grow 1 the group would absorb the free space that
-   the brand's `mr-auto` uses to push the controls right, and the desktop header
-   would silently relayout. */
-.nav-links {
-  display: flex;
-  flex: 0 1 20rem;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1rem;
-  min-width: 0;
-}
-
-/* ---------------------------------------------------------------------------
-   Mobile tab bar, and the sheet behind "More"
-
-   860px is the one hard breakpoint in the product, and it earns the exception:
-   below it the header is being asked to hold a brand, five links and four
-   controls, and no amount of flex-basis makes that one bar. So it stops trying.
-   The links move to a fixed bar at the thumb end, the long tail moves into a
-   sheet, and the header keeps only what has to be reachable from every scroll
-   position — the balance and the mode.
-
-   `.wide-only` marks what the header drops. It sets no display of its own, so
-   whatever each element already is (flex row, inline chip) survives above the
-   breakpoint; only the hiding is centralised.
---------------------------------------------------------------------------- */
-
-.tabbar,
-.tabbar-spacer {
-  display: none;
-}
-
-@media (max-width: 860px) {
-  .wide-only {
-    display: none !important;
-  }
-  .tabbar {
-    display: grid;
-  }
-  .tabbar-spacer {
-    display: block;
-  }
-  /* The two controls that survive into the bar grow to a thumb target. */
-  .hdr-btn {
-    width: 40px;
-    height: 40px;
-  }
-}
-
-/* Above the sheet's own scrim would be wrong: the bar is chrome, the sheet is a
-   surface on top of it. Hence 60 here and 70 there. */
-.tabbar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 60;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 2px;
-  padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
-  background: var(--color-bg);
-  border-top: 1px solid var(--color-line);
-  /* The one shadow in the app that is not a token: every `--shadow-*` casts
-     downward, and this surface is lit from below. The colour is still the ink
-     token — only the geometry is inverted. */
-  box-shadow: 0 -8px 24px color-mix(in oklab, var(--color-text) 8%, transparent);
-}
-
-/* Reserves the bar's height at the end of the flow so the footer's last line
-   isn't sitting under it. Matches min-height + padding + the safe area. */
-.tabbar-spacer {
-  height: calc(66px + env(safe-area-inset-bottom));
-  flex: none;
-}
-
-.tabbar-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-height: 52px;
-  padding: 6px 2px;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-text-muted);
-  font: inherit;
-  font-size: 10.5px;
-  font-weight: 600;
-  line-height: 1.2;
-  text-align: center;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 180ms ease, color 180ms ease;
-}
-
-/* `aria-current` for the four that are destinations, `data-on` for More, which
-   is a disclosure rather than a place — same paint, different meaning. */
-.tabbar-btn[aria-current="page"],
-.tabbar-btn[data-on="true"] {
-  background: var(--color-accent-100);
-  color: var(--color-accent-700);
-}
-
-.sheet-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  display: flex;
-  align-items: flex-end;
-  background: var(--color-scrim);
-  backdrop-filter: blur(3px);
-  animation: fade-in 180ms ease both;
-}
-
-.sheet {
-  width: 100%;
-  max-height: 82vh;
-  overflow: auto;
-  padding: 10px 16px calc(18px + env(safe-area-inset-bottom));
-  background: var(--color-bg);
-  color: var(--color-text);
-  border-top: 1px solid var(--color-line);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  box-shadow: var(--shadow-lg);
-  animation: sheet-up 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* The grab handle. Decorative — the sheet closes on the scrim, on Escape and on
-   any link inside it, so this promises nothing it can't do. */
-.sheet-grip {
-  width: 38px;
-  height: 4px;
-  margin: 0 auto 16px;
-  border-radius: var(--radius-pill);
-  background: var(--color-bg-sunken);
-}
-
-.sheet-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 52px;
-  padding: 10px 14px;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 160ms ease;
-}
-.sheet-row:hover {
-  background: var(--color-bg-raised);
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes sheet-up {
-  from { transform: translateY(100%); }
-  to { transform: none; }
-}
-
-/* ---------------------------------------------------------------------------
-   The walkthrough
-
-   A spotlight and a card, over the real surface rather than a screenshot of it.
-   The scrim is painted by the spotlight's own outer shadow, which is why the
-   layer itself is transparent and click-through: everything except the card
-   stays inert, so the tour can never swallow a click it didn't earn.
-
-   Both elements are positioned in viewport space by the component, which
-   re-measures on scroll and resize.
---------------------------------------------------------------------------- */
-
-.tour-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  pointer-events: none;
-}
-
-.tour-spot {
-  position: absolute;
-  border: 2px solid var(--color-accent-500);
-  /* The 9999px ring IS the scrim — one element, so the hole can never drift
-     away from the thing it is cut around. */
-  box-shadow:
-    0 0 0 9999px var(--color-scrim),
-    0 0 0 6px var(--color-accent-200);
-  transition:
-    top 340ms var(--ease-out-quint),
-    left 340ms var(--ease-out-quint),
-    width 340ms var(--ease-out-quint),
-    height 340ms var(--ease-out-quint);
-}
-
-.tour-tip {
-  position: absolute;
-  pointer-events: auto;
-  padding: 20px 22px 18px;
-  background: var(--color-bg);
-  color: var(--color-text);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  transition:
-    top 340ms var(--ease-out-quint),
-    left 340ms var(--ease-out-quint);
-  animation: pop-in 260ms var(--ease-out-quint) both;
-}
-.tour-tip:focus-visible {
-  outline: 2px solid var(--color-accent-500);
-  outline-offset: 2px;
-}
-
-/* Progress, without a number to read. The current step is a bar, the rest are
-   dots — the same trick the step counter beside it uses, in less space. */
-.tour-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--radius-pill);
-  /* The line tone rather than the sunken ground: on a dark palette a 6px dot in
-     the ground's own family is invisible, and then the row says nothing. */
-  background: var(--color-line);
-  transition:
-    width 300ms var(--ease-out-quint),
-    background-color 300ms ease;
-}
-.tour-dot[data-active="true"] {
-  width: 18px;
-  background: var(--color-accent-500);
-}
-
-/* ---------------------------------------------------------------------------
-   Tab bar — the three analysis surfaces
-
-   Distinct from `.seg` on purpose. `.seg` is a filter inside one surface (the
-   prep families); this is navigation between surfaces, and it carries a count
-   per tab. Underline rather than pill, because six items with counts do not fit
-   a pill row at any width worth designing for.
---------------------------------------------------------------------------- */
-
-.tab-bar {
-  display: flex;
-  gap: 0.25rem;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--color-line);
-}
-.tab-bar a {
-  text-decoration: none;
-  color: inherit;
-  white-space: nowrap;
-}
-.tab-bar button {
-  font-family: var(--font-heading);
-  font-size: 0.95rem;
-  padding: 0.75rem 1rem;
-  color: var(--color-text-muted);
-  border-bottom: 2px solid transparent;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color 180ms ease;
-}
-.tab-bar button[aria-selected="true"] {
-  color: var(--color-text);
-  border-bottom-color: var(--color-accent);
-}
-.tab-bar .tab-count {
-  font-family: var(--font-body);
-  font-size: 0.72rem;
-  margin-left: 0.45rem;
-  color: var(--color-text-muted);
-}
-
-/* ---------------------------------------------------------------------------
-   Meter — "where you are" against "what the posting asks"
-
-   Two facts in one track: a filled bar for the level the profile evidences, and
-   a tick for the level the posting requires. The gap between them is the point,
-   so it is drawn rather than described.
---------------------------------------------------------------------------- */
-
-.meter {
-  position: relative;
-  height: 8px;
-  border-radius: var(--radius-pill);
-  background: var(--color-bg-sunken);
-}
-.meter-have {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: var(--radius-pill);
-  background: var(--color-sage-500);
-  transition: width 800ms var(--ease-out-quint);
-}
-.meter-need {
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  width: 2px;
-  background: var(--color-accent);
-}
-
-.field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
-.field > label { font-size: 0.85rem; font-weight: 600; color: var(--color-text-muted); }
-
-.input {
-  width: 100%;
-  background: var(--color-bg-raised);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-pill);
-  padding: 0.65rem 1.1rem;
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  color: var(--color-text);
-}
-textarea.input { border-radius: var(--radius-md); resize: vertical; }
-.input::placeholder { color: var(--color-text-muted); }
-
-/* `.input` sets width:100%, which is right for a field in a stack and wrong for
-   the few that sit inline — a years box, a page number. Both are one class deep,
-   so a Tailwind width utility loses to source order and the field silently
-   spans its row. This variant is the way to opt out: size the wrapper, and the
-   input fills it. */
-.input-inline { width: 100%; }
-.field-inline { display: inline-flex; }
-
-.seg {
-  display: inline-flex;
-  padding: 0.25rem;
-  gap: 0.25rem;
-  background: var(--color-bg-sunken);
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-line);
-}
-.seg > button {
-  border-radius: var(--radius-pill);
-  padding: 0.45rem 1.1rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-.seg > button[aria-selected="true"] {
-  background: var(--color-bg-raised);
-  color: var(--color-text);
-  box-shadow: var(--shadow-sm);
-}
-
-/* A segmented control carrying more than three or four choices. The pill
-   silhouette survives one line; past that it has to wrap, and a wrapped pill
-   reads as a mistake — so this variant squares off to container radius. */
-.seg-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  border-radius: var(--radius-lg);
-}
-.seg > button > .seg-count {
-  margin-left: 0.4rem;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.6;
-}
-
-/* A table is the one layout that genuinely cannot reflow — five columns of
-   related values stop meaning anything stacked. So it scrolls inside its own
-   box rather than widening the page: the row keeps its shape, and only the
-   table moves. `max-width: 100%` matters as much as the overflow, because a
-   grid or flex child defaults to min-width:auto and would otherwise be sized
-   by the table instead of the other way round. */
-.table-scroll {
-  max-width: 100%;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-}
-.table-scroll > .table { min-width: 34rem; }
-
-.table { width: 100%; border-collapse: separate; border-spacing: 0; }
-.table th {
-  text-align: left;
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-text-muted);
-  padding: 0.6rem 1rem;
-  font-weight: 600;
-}
-.table td { padding: 0.85rem 1rem; border-top: 1px solid var(--color-line); }
-
-.dialog {
-  background: var(--color-bg-raised);
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  padding: 1.75rem;
-}
-
-/* F2: errors render inline in accent-800 on accent-100, never a toast */
-.error-region {
-  background: var(--color-accent-100);
-  color: var(--color-accent-800);
-  border: 1px solid var(--color-accent-200);
-  border-radius: var(--radius-md);
-  padding: 0.9rem 1.15rem;
-}
-
-/* ---------------------------------------------------------------------------
-   Prep tab typography (F7)
-   A question is a sentence, not a label. It was set in semibold body copy at
-   body size, which read as shouting and left nothing louder for the answer
-   underneath it. Medium weight, a step up in size and a real line-height give
-   the accordion an actual hierarchy: question → eyebrow → prose.
---------------------------------------------------------------------------- */
-
-.q-text {
-  font-size: 1.0625rem;
-  font-weight: 500;
-  line-height: 1.5;
-  letter-spacing: -0.005em;
-}
-
-/* The small caps label above a block of prose. Replaces bold body text, which
-   competed with the question above it for the same emphasis. */
-.eyebrow {
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-/* Answer prose. Long-form reading, so it gets a measure and a looser leading
-   than the rest of the app's UI copy. */
-.answer-prose {
-  font-size: 0.95rem;
-  line-height: 1.7;
-  max-width: 68ch;
-  color: var(--color-text);
-}
-
-/* Where the candidate's own words enter the answer. The rule on the left is
-   the provenance made visible — this block, and only this block, speaks in
-   the first person (CLAUDE.md §3). */
-.hook {
-  border-left: 3px solid var(--color-accent-300);
-  padding-left: 1rem;
-}
-
-/* ---------------------------------------------------------------------------
-   Motion
-   Every navigation in the app is a server round trip. Without a state between
-   "clicked" and "rendered" that trip reads as a lag, so the fix is half real
-   (route-level loading boundaries, which also make prefetch useful) and half
-   perceptual (something moves the instant you click).
-   One easing curve and three durations. Nothing here animates layout it
-   doesn't own, and all of it collapses under prefers-reduced-motion.
---------------------------------------------------------------------------- */
 
 @theme {
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Radix publishes the measured height as a custom property, which is what makes
-   an accordion animate to `auto` at all. */
-@keyframes accordion-down {
-  from { height: 0; opacity: 0; }
-  to   { height: var(--radix-accordion-content-height); opacity: 1; }
-}
-@keyframes accordion-up {
-  from { height: var(--radix-accordion-content-height); opacity: 1; }
-  to   { height: 0; opacity: 0; }
-}
-.accordion-content[data-state="open"] {
-  animation: accordion-down 240ms var(--ease-out-quint);
-}
-.accordion-content[data-state="closed"] {
-  animation: accordion-up 180ms var(--ease-out-quint);
+/* Everything below lives in cascade layers so a Tailwind utility on an element
+   always wins over the DS default it is refining — `h1 className="text-5xl"`
+   or `tag text-sm` would otherwise be silently ignored, because unlayered
+   rules beat every layer regardless of specificity. */
+@layer base {
+  /* ---------------------------------------------------------------------------
+     base
+  --------------------------------------------------------------------------- */
+
+  html {
+    background: var(--color-bg);
+  }
+
+  body {
+    min-height: 100vh;
+    /* The ground warms toward marigold as the page runs on. */
+    background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-tint) 50%, #f8e4b4 100%);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--color-text); text-underline-offset: 3px; }
+  a:hover { color: var(--color-link-hover); }
+
+  /* Anton is the display voice: condensed, uppercase, set tight. h3 stays in the
+     body face — it titles cards, and a wall of condensed caps at 18px shouts. */
+  h1,
+  h2,
+  .display {
+    font-family: var(--font-heading);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.002em;
+  }
+
+  h1 { font-size: clamp(3rem, 7vw, 6.75rem); line-height: 0.9; }
+  h2 { font-size: clamp(2.25rem, 4.8vw, 4.25rem); line-height: 0.95; }
+  h3 { font-size: 1.2rem; font-weight: 800; line-height: 1.3; }
+
+  /* A heading-sized numeral or section title in the display face. */
+  .display { line-height: 1; }
+
+  /* accent on the ground is not for body copy — use the 700 step */
+  .text-accent-body { color: var(--color-accent-700); }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent-600);
+    outline-offset: 2px;
+  }
+
+  ::selection { background: var(--color-accent-200); }
+
 }
 
-/* Content arriving from the server, rather than appearing at full opacity as
-   if it had been there all along. */
-@keyframes rise-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: none; }
-}
-.rise-in { animation: rise-in 260ms var(--ease-out-quint) both; }
+@layer components {
+  /* ---------------------------------------------------------------------------
+     DS classes — use these rather than inventing parallels (CLAUDE.md §9)
+  --------------------------------------------------------------------------- */
 
-/* The skeleton's sweep. Two tones from the ramp, no ad-hoc colour. */
-@keyframes shimmer {
-  from { background-position: 200% 0; }
-  to   { background-position: -200% 0; }
-}
-.skeleton {
-  border-radius: var(--radius-sm);
-  background: linear-gradient(
-    90deg,
-    var(--color-bg-sunken) 25%,
-    var(--color-bg-raised) 50%,
-    var(--color-bg-sunken) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s linear infinite;
-}
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    border-radius: var(--radius-pill);
+    padding: 0 1.4rem;
+    font-weight: 800;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-decoration: none;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-/* Something arriving one item at a time. Delay is set per element in JSX; the
-   curve and the distance live here so the whole app pops in identically. */
-@keyframes pop-in {
-  from { opacity: 0; transform: translateY(10px) scale(0.94); }
-  to   { opacity: 1; transform: none; }
-}
-.pop-in { animation: pop-in 450ms var(--ease-out-quint) both; }
+  /* Maroon with marigold type — the one filled button. */
+  .btn-primary { background: var(--color-text); color: var(--color-accent-500); }
+  .btn-primary:hover:not(:disabled) { background: var(--color-accent-800); color: var(--color-accent-500); }
 
-/* ---------------------------------------------------------------------------
-   The parsing figures
+  .btn-secondary {
+    background: transparent;
+    color: var(--color-text);
+    border-color: var(--color-text);
+    font-weight: 700;
+  }
+  .btn-secondary:hover:not(:disabled) { background: var(--color-hover); color: var(--color-text); }
 
-   Each stage of the analysis gets a small diagram of the work it is actually
-   doing — a page being read, requirements being matched, bullets being lifted,
-   questions forming. They're decorative and they loop, which is exactly what a
-   progress bar can't say: WHAT is taking the time.
+  .btn-ghost { background: transparent; color: var(--color-text); }
+  .btn-ghost:hover:not(:disabled) { background: var(--color-hover); color: var(--color-text); }
 
-   They are the only looping animations in the app. Every one of them stops
-   under prefers-reduced-motion, including the inline delays, via the
-   `.stage-figure` reset at the bottom of this file.
---------------------------------------------------------------------------- */
+  .btn-sm { min-height: 38px; padding: 0 1rem; font-size: 0.85rem; }
+  .btn-lg { min-height: 56px; padding: 0 1.9rem; font-size: 1.06rem; }
 
-@keyframes fig-scan {
-  0%        { transform: translateY(0); opacity: 0; }
-  8%, 92%   { opacity: 1; }
-  100%      { transform: translateY(148px); opacity: 0; }
-}
-@keyframes fig-read {
-  0%, 40%   { opacity: 0.35; }
-  55%, 100% { opacity: 1; }
-}
-@keyframes fig-draw {
-  0%        { stroke-dashoffset: 120; }
-  45%, 100% { stroke-dashoffset: 0; }
-}
-@keyframes fig-lock {
-  0%, 30%   { opacity: 0.3; transform: scale(0.94); }
-  45%, 100% { opacity: 1; transform: none; }
-}
-@keyframes fig-lift-down {
-  0%, 20%   { transform: translateY(0); }
-  45%, 100% { transform: translateY(26px); }
-}
-@keyframes fig-lift-up {
-  0%, 20%   { transform: translateY(0); }
-  45%, 100% { transform: translateY(-26px); }
-}
-@keyframes fig-type {
-  0%        { width: 8%; }
-  70%, 100% { width: 88%; }
-}
-@keyframes fig-caret {
-  50% { opacity: 0; }
-}
-@keyframes fig-float {
-  50% { transform: translateY(-4px); }
-}
+  .card {
+    background: var(--color-bg-raised);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+  }
+  .card-flat { box-shadow: none; }
+  /* A card that is an outline on the ground rather than a raised surface. */
+  .card-outline { background: transparent; border: 1.5px solid var(--color-line); }
+  .card-accent { background: var(--color-accent-500); }
+  .card-pink { background: var(--color-sage-200); }
 
-.fig-scan      { animation: fig-scan 2s linear infinite; }
-.fig-read      { animation: fig-read 2s var(--ease-out-quint) infinite; }
-.fig-draw      { animation: fig-draw 2.2s var(--ease-out-quint) infinite; }
-.fig-lock      { animation: fig-lock 2.2s var(--ease-out-quint) infinite; }
-.fig-lift-down { animation: fig-lift-down 2.4s var(--ease-out-quint) infinite; }
-.fig-lift-up   { animation: fig-lift-up 2.4s var(--ease-out-quint) infinite; }
-.fig-type      { animation: fig-type 2.4s var(--ease-out-quint) infinite; }
-.fig-caret     { animation: fig-caret 700ms steps(1) infinite; }
-.fig-float     { animation: fig-float 3s ease-in-out infinite; }
+  /* The small-caps label at the top of a card, above its title. */
+  .card-kicker,
+  .eyebrow {
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
 
-/* A button whose work is server-side and slow enough to doubt. */
-@keyframes breathe {
-  50% { opacity: 0.62; }
-}
-.btn[data-busy="true"] { animation: breathe 1.3s ease-in-out infinite; }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 28px;
+    border-radius: var(--radius-pill);
+    padding: 0 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    background: var(--color-chip);
+    color: var(--color-text);
+    border: 1.5px solid transparent;
+    white-space: nowrap;
+  }
+  /* A tag carrying a sentence rather than a label.
+     A requirement only has a short skill name when it maps to the catalog; when
+     it doesn't, the pill holds the posting's own wording, which can run to a
+     couple of hundred characters. `nowrap` would push that straight out of its
+     card, so this variant wraps and squares off — a three-line lozenge at pill
+     radius reads as a mistake. */
+  .tag-long {
+    display: block;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+    max-width: 100%;
+    padding: 0.35rem 0.8rem;
+    border-radius: var(--radius-md);
+    line-height: 1.4;
+  }
 
-/* A tab that has been clicked but whose segment hasn't arrived. Fires from
-   next/link's own pending state, so it is the real navigation, not a guess. */
-.seg > button[data-pending="true"],
-.tab-bar button[data-pending="true"] { animation: breathe 1s ease-in-out infinite; }
+  .tag-outline { background: transparent; border-color: var(--color-text); }
+  .tag-ink { background: var(--color-text); color: var(--color-accent-500); border-color: var(--color-text); }
+  .tag-accent { background: var(--color-accent-500); color: var(--color-on-accent); }
+  .tag-sage { background: var(--color-sage-500); color: var(--color-text); }
+  .tag-warn { background: var(--color-accent-200); color: var(--color-text); }
+  .tag-muted { background: var(--color-chip); color: var(--color-text-muted); }
+  .tag-pink { background: var(--color-sage-200); color: var(--color-text); }
 
-.card { transition: border-color 160ms ease, box-shadow 160ms ease; }
+  /* Sticky, and on the ground rather than a raised surface — the header is chrome
+     the page scrolls under, not a card sitting on top of it. */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    /* Wraps rather than overflows. On a phone the header is wider than the
+       screen, and a sticky bar that scrolls sideways takes the whole page with
+       it. Row gap is tighter than column gap so a wrapped second row reads as
+       one bar, not two. */
+    flex-wrap: wrap;
+    gap: 0.6rem clamp(0.9rem, 3vw, 2.5rem);
+    padding: clamp(0.85rem, 1.6vw, 1.5rem) clamp(1.1rem, 4.5vw, 3.75rem);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-line);
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  .accordion-content[data-state="open"],
-  .accordion-content[data-state="closed"],
-  .rise-in,
-  .pop-in,
-  .skeleton,
-  .btn[data-busy="true"],
+  /* The link group inside the header. `flex: 0 1 auto` with wrapping lets the
+     group drop to its own row when space runs out, without a breakpoint. */
+  .nav-links {
+    display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem clamp(1.1rem, 3vw, 3rem);
+    min-width: 0;
+    font-size: 1rem;
+  }
+  .nav-links a {
+    padding: 6px 0;
+    white-space: nowrap;
+    text-decoration: none;
+    font-weight: 500;
+    color: var(--color-text);
+  }
+  .nav-links a[aria-current="page"] { font-weight: 800; }
+
+  /* ---------------------------------------------------------------------------
+     Mobile tab bar, and the sheet behind "More"
+
+     860px is the one hard breakpoint in the product, and it earns the exception:
+     below it the header is being asked to hold a brand, five links and four
+     controls, and no amount of flex-basis makes that one bar. So it stops trying.
+     The links move to a fixed bar at the thumb end, the long tail moves into a
+     sheet, and the header keeps only what has to be reachable from every scroll
+     position — the balance and the mode.
+
+     `.wide-only` marks what the header drops. It sets no display of its own, so
+     whatever each element already is (flex row, inline chip) survives above the
+     breakpoint; only the hiding is centralised.
+  --------------------------------------------------------------------------- */
+
+  .tabbar,
+  .tabbar-spacer {
+    display: none;
+  }
+
+  @media (max-width: 860px) {
+    .wide-only {
+      display: none !important;
+    }
+    .tabbar {
+      display: grid;
+    }
+    .tabbar-spacer {
+      display: block;
+    }
+    /* The two controls that survive into the bar grow to a thumb target. */
+    .hdr-btn {
+      width: 40px;
+      height: 40px;
+    }
+  }
+
+  /* Above the sheet's own scrim would be wrong: the bar is chrome, the sheet is a
+     surface on top of it. Hence 60 here and 70 there. */
+  .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+    padding: 8px 10px calc(14px + env(safe-area-inset-bottom));
+    background: var(--color-text);
+    border-radius: 22px 22px 0 0;
+  }
+
+  /* Reserves the bar's height at the end of the flow so the footer's last line
+     isn't sitting under it. Matches min-height + padding + the safe area. */
+  .tabbar-spacer {
+    height: calc(66px + env(safe-area-inset-bottom));
+    flex: none;
+  }
+
+  .tabbar-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 52px;
+    padding: 6px 2px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-on-ink-muted);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 180ms ease, color 180ms ease;
+  }
+
+  /* `aria-current` for the four that are destinations, `data-on` for More, which
+     is a disclosure rather than a place — same paint, different meaning. */
+  .tabbar-btn[aria-current="page"],
+  .tabbar-btn[data-on="true"] {
+    color: var(--color-accent-500);
+  }
+  .tabbar-btn:hover { color: var(--color-accent-500); }
+
+  .sheet-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: flex-end;
+    background: var(--color-scrim);
+    backdrop-filter: blur(3px);
+    animation: fade-in 180ms ease both;
+  }
+
+  .sheet {
+    width: 100%;
+    max-height: 82vh;
+    overflow: auto;
+    padding: 12px 20px calc(18px + env(safe-area-inset-bottom));
+    background: var(--color-bg-raised);
+    color: var(--color-text);
+    border-radius: 26px 26px 0 0;
+    box-shadow: 0 -20px 50px -20px var(--color-scrim);
+    animation: sheet-up 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* The grab handle. Decorative — the sheet closes on the scrim, on Escape and on
+     any link inside it, so this promises nothing it can't do. */
+  .sheet-grip {
+    width: 38px;
+    height: 4px;
+    margin: 0 auto 16px;
+    border-radius: var(--radius-pill);
+    background: var(--color-line-strong);
+  }
+
+  .sheet-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 52px;
+    padding: 10px 14px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 160ms ease;
+  }
+  .sheet-row:hover {
+    background: var(--color-hover);
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes sheet-up {
+    from { transform: translateY(100%); }
+    to { transform: none; }
+  }
+
+  /* ---------------------------------------------------------------------------
+     The walkthrough
+
+     A spotlight and a card, over the real surface rather than a screenshot of it.
+     The scrim is painted by the spotlight's own outer shadow, which is why the
+     layer itself is transparent and click-through: everything except the card
+     stays inert, so the tour can never swallow a click it didn't earn.
+
+     Both elements are positioned in viewport space by the component, which
+     re-measures on scroll and resize.
+  --------------------------------------------------------------------------- */
+
+  .tour-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    pointer-events: none;
+  }
+
+  .tour-spot {
+    position: absolute;
+    border: 2px solid var(--color-accent-600);
+    /* The 9999px ring IS the scrim — one element, so the hole can never drift
+       away from the thing it is cut around. */
+    box-shadow:
+      0 0 0 9999px var(--color-scrim),
+      0 0 0 6px var(--color-accent-200);
+    transition:
+      top 340ms var(--ease-out-quint),
+      left 340ms var(--ease-out-quint),
+      width 340ms var(--ease-out-quint),
+      height 340ms var(--ease-out-quint);
+  }
+
+  .tour-tip {
+    position: absolute;
+    pointer-events: auto;
+    padding: 20px 22px 18px;
+    background: var(--color-bg-raised);
+    color: var(--color-text);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    transition:
+      top 340ms var(--ease-out-quint),
+      left 340ms var(--ease-out-quint);
+    animation: pop-in 260ms var(--ease-out-quint) both;
+  }
+  .tour-tip:focus-visible {
+    outline: 2px solid var(--color-accent-500);
+    outline-offset: 2px;
+  }
+
+  /* Progress, without a number to read. The current step is a bar, the rest are
+     dots — the same trick the step counter beside it uses, in less space. */
+  .tour-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-pill);
+    background: var(--color-line-strong);
+    transition:
+      width 300ms var(--ease-out-quint),
+      background-color 300ms ease;
+  }
+  .tour-dot[data-active="true"] {
+    width: 18px;
+    background: var(--color-accent-500);
+  }
+
+  /* ---------------------------------------------------------------------------
+     Tab cards — the analysis surfaces
+
+     Distinct from `.seg` on purpose. `.seg` is a filter inside one surface (the
+     prep families); this is navigation between surfaces, and it carries a count
+     per tab. Cards rather than an underline: each one is a destination with an
+     icon, a name and a count, and the row wraps into two when space is tight
+     instead of scrolling sideways with the last tab cut off.
+  --------------------------------------------------------------------------- */
+
+  .tab-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+    gap: 18px;
+  }
+  .tab-bar a {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+  .tab-bar button {
+    display: flex;
+    width: 100%;
+    min-height: 142px;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 18px 20px 22px;
+    border-radius: 22px;
+    background: var(--color-bg-raised);
+    text-align: left;
+    cursor: pointer;
+    transition: transform 180ms var(--ease-out-quint), background-color 180ms ease;
+  }
+  .tab-bar button:hover { transform: translateY(-2px); }
+  .tab-bar button[aria-selected="true"] { background: var(--color-sage-500); }
+  .tab-bar .tab-dot {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-pill);
+    background: var(--color-bg-tint);
+  }
+  .tab-bar button[aria-selected="true"] .tab-dot { background: var(--color-sage-300); }
+  .tab-bar .tab-label {
+    display: block;
+    font-size: 1.125rem;
+    font-weight: 800;
+  }
+  .tab-bar .tab-count {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.94rem;
+    color: var(--color-text-muted);
+  }
+
+  /* ---------------------------------------------------------------------------
+     Meter — "where you are" against "what the posting asks"
+
+     Two facts in one track: a filled bar for the level the profile evidences, and
+     a tick for the level the posting requires. The gap between them is the point,
+     so it is drawn rather than described.
+  --------------------------------------------------------------------------- */
+
+  .meter {
+    position: relative;
+    height: 12px;
+    border-radius: var(--radius-pill);
+    background: var(--color-bg-sunken);
+  }
+  .meter-have {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: var(--radius-pill);
+    background: var(--color-text);
+    transition: width 800ms var(--ease-out-quint);
+  }
+  .meter-need {
+    position: absolute;
+    top: -5px;
+    bottom: -5px;
+    width: 4px;
+    border-radius: 4px;
+    background: var(--color-sage-600);
+  }
+
+  /* A plain progress track — parsing, roadmap, token allowance. */
+  .progress {
+    height: 10px;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: rgb(74 13 13 / 0.1);
+  }
+  .progress > span {
+    display: block;
+    height: 100%;
+    border-radius: var(--radius-pill);
+    background: var(--color-accent-500);
+    transition: width 600ms var(--ease-out-quint);
+  }
+
+  .field { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+  .field > label { font-size: 0.8rem; font-weight: 800; color: var(--color-text); }
+
+  .input {
+    width: 100%;
+    min-height: 48px;
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    padding: 0 1rem;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text);
+    outline: none;
+    transition: border-color 140ms ease;
+  }
+  .input:focus { border-color: var(--color-accent-600); }
+  textarea.input { padding: 0.75rem 1rem; line-height: 1.6; resize: vertical; font-weight: 500; }
+  .input::placeholder { color: var(--color-text-muted); font-weight: 500; }
+  /* The pill field that sits on a marigold panel (job search). */
+  .input-pill { border-radius: var(--radius-pill); border-color: transparent; background: var(--color-bg-raised); padding: 0 1.25rem; }
+
+  /* `.input` sets width:100%, which is right for a field in a stack and wrong for
+     the few that sit inline — a years box, a page number. Both are one class deep,
+     so a Tailwind width utility loses to source order and the field silently
+     spans its row. This variant is the way to opt out: size the wrapper, and the
+     input fills it. */
+  .input-inline { width: 100%; }
+  .field-inline { display: inline-flex; }
+
+  .seg {
+    display: inline-flex;
+    padding: 4px;
+    gap: 4px;
+    background: transparent;
+    border-radius: var(--radius-pill);
+    border: 1.5px solid var(--color-text);
+  }
+  .seg > button {
+    min-height: 36px;
+    border-radius: var(--radius-pill);
+    padding: 0 1rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background-color 140ms ease;
+  }
+  .seg > button:hover { background: var(--color-hover); }
+  .seg > button[aria-selected="true"] {
+    background: var(--color-text);
+    color: var(--color-accent-500);
+  }
+
+  /* A segmented control carrying more than three or four choices: the choices
+     become a row of separate outlined pills that wraps cleanly. */
+  .seg-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+  }
+  .seg-wrap > button {
+    min-height: 40px;
+    border: 1.5px solid var(--color-text);
+  }
+  .seg > button > .seg-count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 24px;
+    height: 24px;
+    margin-left: 0.5rem;
+    padding: 0 7px;
+    border-radius: var(--radius-pill);
+    background: var(--color-chip);
+    color: var(--color-text);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .seg > button[aria-selected="true"] > .seg-count { background: var(--color-accent-500); }
+
+  /* A table is the one layout that genuinely cannot reflow — five columns of
+     related values stop meaning anything stacked. So it scrolls inside its own
+     box rather than widening the page: the row keeps its shape, and only the
+     table moves. `max-width: 100%` matters as much as the overflow, because a
+     grid or flex child defaults to min-width:auto and would otherwise be sized
+     by the table instead of the other way round. */
+  .table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+  .table-scroll > .table { min-width: 40rem; }
+
+  .table { width: 100%; border-collapse: separate; border-spacing: 0; }
+  .table th {
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-text-muted);
+    padding: 1.1rem 1.6rem;
+    border-bottom: 1px solid var(--color-line);
+  }
+  .table td { padding: 1.1rem 1.6rem; border-top: 1px solid rgb(74 13 13 / 0.08); }
+  .table tbody tr:first-child td { border-top: 0; }
+  .table tbody tr:hover td { background: var(--color-accent-100); }
+
+  .dialog {
+    background: var(--color-bg-raised);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    padding: 1.75rem;
+  }
+
+  /* F2: errors render inline on the pink tint, never a toast */
+  .error-region {
+    background: var(--color-sage-200);
+    color: var(--color-text);
+    border-radius: var(--radius-md);
+    padding: 0.9rem 1.15rem;
+  }
+
+  /* The dark info dot + note that closes a section. */
+  .note {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    max-width: 760px;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--color-text-muted);
+  }
+
+  /* ---------------------------------------------------------------------------
+     Prep tab typography (F7)
+     A question is a sentence, not a label: bold body type a step up in size,
+     with a real line-height, so the accordion reads question → eyebrow → prose.
+  --------------------------------------------------------------------------- */
+
+  .q-text {
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: -0.005em;
+  }
+
+  /* Answer prose. Long-form reading, so it gets a measure and a looser leading
+     than the rest of the app's UI copy. */
+  .answer-prose {
+    font-size: 0.97rem;
+    line-height: 1.65;
+    max-width: 68ch;
+    color: var(--color-text);
+  }
+
+  /* Where the candidate's own words enter the answer. The rule on the left is
+     the provenance made visible — this block, and only this block, speaks in
+     the first person (CLAUDE.md §3). */
+  .hook {
+    border-left: 3px solid var(--color-sage-500);
+    padding-left: 1rem;
+  }
+
+  /* ---------------------------------------------------------------------------
+     Motion
+     Every navigation in the app is a server round trip. Without a state between
+     "clicked" and "rendered" that trip reads as a lag, so the fix is half real
+     (route-level loading boundaries, which also make prefetch useful) and half
+     perceptual (something moves the instant you click).
+     One easing curve and three durations. Nothing here animates layout it
+     doesn't own, and all of it collapses under prefers-reduced-motion.
+  --------------------------------------------------------------------------- */
+
+
+  /* Radix publishes the measured height as a custom property, which is what makes
+     an accordion animate to `auto` at all. */
+  @keyframes accordion-down {
+    from { height: 0; opacity: 0; }
+    to   { height: var(--radix-accordion-content-height); opacity: 1; }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); opacity: 1; }
+    to   { height: 0; opacity: 0; }
+  }
+  .accordion-content[data-state="open"] {
+    animation: accordion-down 240ms var(--ease-out-quint);
+  }
+  .accordion-content[data-state="closed"] {
+    animation: accordion-up 180ms var(--ease-out-quint);
+  }
+
+  /* Content arriving from the server, rather than appearing at full opacity as
+     if it had been there all along. */
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .rise-in { animation: rise-in 260ms var(--ease-out-quint) both; }
+
+  /* The skeleton's sweep. Two tones from the ramp, no ad-hoc colour. */
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to   { background-position: -200% 0; }
+  }
+  .skeleton {
+    border-radius: var(--radius-sm);
+    background: linear-gradient(
+      90deg,
+      var(--color-bg-sunken) 25%,
+      var(--color-bg-raised) 50%,
+      var(--color-bg-sunken) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+
+  /* Something arriving one item at a time. Delay is set per element in JSX; the
+     curve and the distance live here so the whole app pops in identically. */
+  @keyframes pop-in {
+    from { opacity: 0; transform: translateY(10px) scale(0.94); }
+    to   { opacity: 1; transform: none; }
+  }
+  .pop-in { animation: pop-in 450ms var(--ease-out-quint) both; }
+
+  /* ---------------------------------------------------------------------------
+     The parsing figures
+
+     Each stage of the analysis gets a small diagram of the work it is actually
+     doing — a page being read, requirements being matched, bullets being lifted,
+     questions forming. They're decorative and they loop, which is exactly what a
+     progress bar can't say: WHAT is taking the time.
+
+     They are the only looping animations in the app. Every one of them stops
+     under prefers-reduced-motion, including the inline delays, via the
+     `.stage-figure` reset at the bottom of this file.
+  --------------------------------------------------------------------------- */
+
+  @keyframes fig-scan {
+    0%        { transform: translateY(0); opacity: 0; }
+    8%, 92%   { opacity: 1; }
+    100%      { transform: translateY(148px); opacity: 0; }
+  }
+  @keyframes fig-read {
+    0%, 40%   { opacity: 0.35; }
+    55%, 100% { opacity: 1; }
+  }
+  @keyframes fig-draw {
+    0%        { stroke-dashoffset: 120; }
+    45%, 100% { stroke-dashoffset: 0; }
+  }
+  @keyframes fig-lock {
+    0%, 30%   { opacity: 0.3; transform: scale(0.94); }
+    45%, 100% { opacity: 1; transform: none; }
+  }
+  @keyframes fig-lift-down {
+    0%, 20%   { transform: translateY(0); }
+    45%, 100% { transform: translateY(26px); }
+  }
+  @keyframes fig-lift-up {
+    0%, 20%   { transform: translateY(0); }
+    45%, 100% { transform: translateY(-26px); }
+  }
+  @keyframes fig-type {
+    0%        { width: 8%; }
+    70%, 100% { width: 88%; }
+  }
+  @keyframes fig-caret {
+    50% { opacity: 0; }
+  }
+  @keyframes fig-float {
+    50% { transform: translateY(-4px); }
+  }
+
+  .fig-scan      { animation: fig-scan 2s linear infinite; }
+  .fig-read      { animation: fig-read 2s var(--ease-out-quint) infinite; }
+  .fig-draw      { animation: fig-draw 2.2s var(--ease-out-quint) infinite; }
+  .fig-lock      { animation: fig-lock 2.2s var(--ease-out-quint) infinite; }
+  .fig-lift-down { animation: fig-lift-down 2.4s var(--ease-out-quint) infinite; }
+  .fig-lift-up   { animation: fig-lift-up 2.4s var(--ease-out-quint) infinite; }
+  .fig-type      { animation: fig-type 2.4s var(--ease-out-quint) infinite; }
+  .fig-caret     { animation: fig-caret 700ms steps(1) infinite; }
+  .fig-float     { animation: fig-float 3s ease-in-out infinite; }
+
+  /* A button whose work is server-side and slow enough to doubt. */
+  @keyframes breathe {
+    50% { opacity: 0.62; }
+  }
+  .btn[data-busy="true"] { animation: breathe 1.3s ease-in-out infinite; }
+
+  /* A tab that has been clicked but whose segment hasn't arrived. Fires from
+     next/link's own pending state, so it is the real navigation, not a guess. */
   .seg > button[data-pending="true"],
-  .tab-bar button[data-pending="true"] {
-    animation: none;
+  .tab-bar button[data-pending="true"] { animation: breathe 1s ease-in-out infinite; }
+
+  .card { transition: transform 200ms var(--ease-out-quint), box-shadow 200ms ease; }
+  /* A card that is a link lifts on hover. */
+  .card-link:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .accordion-content[data-state="open"],
+    .accordion-content[data-state="closed"],
+    .rise-in,
+    .pop-in,
+    .skeleton,
+    .btn[data-busy="true"],
+    .seg > button[data-pending="true"],
+    .tab-bar button[data-pending="true"] {
+      animation: none;
+    }
+    .rise-in,
+    .pop-in { opacity: 1; transform: none; }
+
+    .sheet-scrim,
+    .sheet { animation: none; opacity: 1; transform: none; }
+
+    /* The spotlight jumps rather than glides, and the card arrives at rest. The
+       tour still works — it just stops sliding a rectangle across the screen. */
+    .tour-spot,
+    .tour-tip,
+    .tour-dot { transition: none; }
+    .tour-tip { animation: none; opacity: 1; transform: none; }
+
+    /* The figures animate per-element with delays set in JSX, so the reset has to
+       reach inside them rather than name each class. */
+    .stage-figure,
+    .stage-figure * {
+      animation: none !important;
+      transition: none !important;
+    }
   }
-  .rise-in,
-  .pop-in { opacity: 1; transform: none; }
 
-  .sheet-scrim,
-  .sheet { animation: none; opacity: 1; transform: none; }
+  /* Lucide ships at stroke-width 2.25 across the app */
+  .lucide { stroke-width: 2.25; }
 
-  /* The spotlight jumps rather than glides, and the card arrives at rest. The
-     tour still works — it just stops sliding a rectangle across the screen. */
-  .tour-spot,
-  .tour-tip,
-  .tour-dot { transition: none; }
-  .tour-tip { animation: none; opacity: 1; transform: none; }
-
-  /* The figures animate per-element with delays set in JSX, so the reset has to
-     reach inside them rather than name each class. */
-  .stage-figure,
-  .stage-figure * {
-    animation: none !important;
-    transition: none !important;
+  /* Clerk's user button carries the member's name beside the avatar; the header
+     drops it before it crowds the links. */
+  @media (max-width: 1180px) {
+    .cl-userButtonOuterIdentifier { display: none; }
   }
-  html,
-  html[data-theme] body { transition: none; }
 }
-
-/* Lucide ships at stroke-width 2.75 across the app */
-.lucide { stroke-width: 2.75; }

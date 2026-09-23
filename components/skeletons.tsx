@@ -45,7 +45,7 @@ function PageIntroSkeleton() {
  */
 export function HomeSkeleton() {
   return (
-    <div className="mx-auto max-w-5xl px-6 py-20">
+    <div>
       <div className="max-w-2xl space-y-4">
         <Skeleton className="mb-6 h-6 w-52 rounded-[var(--radius-pill)]" />
         <Skeleton className="h-11 w-[26rem] max-w-full" />
@@ -247,7 +247,7 @@ export function AdminSkeleton() {
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="space-y-2.5 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] px-[1.125rem] py-4"
+            className="space-y-2.5 rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] px-[1.125rem] py-4"
           >
             <Skeleton className="h-3 w-28" />
             <Skeleton className="h-7 w-20" />
@@ -310,7 +310,7 @@ export function AdminSkeleton() {
           {[0, 1].map((i) => (
             <div
               key={i}
-              className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[1.125rem_1.25rem]"
+              className="space-y-3 rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] p-[1.125rem_1.25rem]"
             >
               <Skeleton className="h-5 w-32" />
               <Skeleton className="h-7 w-24" />
@@ -404,7 +404,7 @@ export function ProfileSkeleton() {
           ))}
         </div>
         <aside className="min-w-[min(262px,100%)] max-w-[330px] flex-1 basis-[280px] space-y-4">
-          <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-5">
+          <div className="rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] p-5">
             <Skeleton className="mx-auto mb-3.5 h-[132px] w-[132px] rounded-[var(--radius-pill)]" />
             <Skeleton className="h-3 w-full" />
           </div>
@@ -481,7 +481,7 @@ export function AnalysisSkeleton() {
 /** how-it-works · privacy · terms — one shape, three documents. */
 export function DocSkeleton() {
   return (
-    <article className="mx-auto w-full max-w-[760px] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.75rem,5vw,3.5rem)] pb-16">
+    <article>
       <PageIntroSkeleton />
       <div className="mt-8 space-y-6">
         {[0, 1, 2, 3].map((i) => (
@@ -499,7 +499,7 @@ export function DocSkeleton() {
 
 export function StatusSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-[860px] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.75rem,5vw,3.75rem)] pb-16">
+    <div className="max-w-[980px]">
       <div className="mb-7 flex flex-wrap items-center gap-6">
         <Skeleton className="h-[76px] w-[76px] shrink-0 rounded-[var(--radius-pill)]" />
         <div className="min-w-[min(260px,100%)] flex-1 space-y-2.5">
@@ -533,13 +533,13 @@ export function StatusSkeleton() {
 
 export function SupportSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-[1000px] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.75rem,5vw,3.5rem)] pb-16">
+    <div>
       <PageIntroSkeleton />
       <div className="mb-9 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr))]">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[1.375rem]"
+            className="space-y-3 rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] p-[1.375rem]"
           >
             <Skeleton className="h-5 w-24" />
             <Skeleton className="h-8 w-28" />
@@ -566,10 +566,10 @@ export function SupportSkeleton() {
 
 export function ContactSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-[1000px] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.75rem,5vw,3.5rem)] pb-16">
+    <div>
       <PageIntroSkeleton />
       <div className="flex flex-wrap items-start gap-6">
-        <section className="min-w-[min(290px,100%)] flex-1 basis-[400px] space-y-3.5 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[clamp(1.25rem,3vw,1.625rem)]">
+        <section className="min-w-[min(290px,100%)] flex-1 basis-[400px] space-y-3.5 rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] p-[clamp(1.25rem,3vw,1.625rem)]">
           <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))]">
             <Skeleton className="h-16 rounded-[var(--radius-lg)]" />
             <Skeleton className="h-16 rounded-[var(--radius-lg)]" />
@@ -620,13 +620,13 @@ export function FooterSkeleton() {
 
 export function PricingSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-[1000px] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.75rem,5vw,3.5rem)] pb-16">
+    <div>
       <PageIntroSkeleton />
       <div className="mb-10 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))]">
         {[0, 1].map((i) => (
           <div
             key={i}
-            className="space-y-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[clamp(1.25rem,3vw,1.625rem)]"
+            className="space-y-4 rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] p-[clamp(1.25rem,3vw,1.625rem)]"
           >
             <Skeleton className="h-5 w-28" />
             <Skeleton className="h-9 w-32" />
@@ -654,37 +654,6 @@ export function PricingSkeleton() {
           </div>
         ))}
       </section>
-    </div>
-  );
-}
-
-/**
- * Appearance (F18). Six cards, because six is what always arrives — the
- * palettes are a compile-time list, not a query.
- */
-export function AppearanceSkeleton() {
-  return (
-    <div className="mx-auto w-full max-w-[72rem] px-6 py-12">
-      <PageIntroSkeleton />
-      <div className="mb-7 flex justify-end">
-        <Skeleton className="h-10 w-40 rounded-[var(--radius-pill)]" />
-      </div>
-      <div className="mb-8 grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr))]">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <div
-            key={i}
-            className="space-y-3.5 rounded-[30px] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-5"
-          >
-            <div className="flex items-center gap-2.5">
-              <Skeleton className="h-[27px] w-[27px] rounded-[var(--radius-pill)]" />
-              <Skeleton className="h-5 w-24" />
-            </div>
-            <Skeleton className="h-3.5 w-full" />
-            <Skeleton className="h-[34px] w-full rounded-xl" />
-            <Skeleton className="h-8 w-3/4 rounded-[var(--radius-pill)]" />
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

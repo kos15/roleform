@@ -81,8 +81,8 @@ export function OnboardingFlow() {
 
   if (step === "extracting" || step === "saving" || pending) {
     return (
-      <Card className="flex items-center gap-3">
-        <Loader2 className="lucide h-5 w-5 animate-spin text-[var(--color-accent-600)]" />
+      <Card className="flex max-w-[860px] items-center gap-3.5 px-[26px] py-6 text-[17px] font-semibold">
+        <Loader2 className="lucide h-5 w-5 animate-spin" />
         <span>
           {step === "saving" ? "Saving your profile…" : `Reading ${filename}…`}
         </span>
@@ -91,7 +91,7 @@ export function OnboardingFlow() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="max-w-[860px] space-y-[18px]">
       {error ? <ErrorRegion title={error.title} /> : null}
 
       <label
@@ -106,19 +106,23 @@ export function OnboardingFlow() {
           const file = e.dataTransfer.files[0];
           if (file) void handleFile(file);
         }}
-        className="block cursor-pointer rounded-[var(--radius-lg)] border-2 border-dashed p-12 text-center transition-colors"
+        className="block cursor-pointer rounded-[var(--radius-xl)] border-2 border-dashed px-7 py-[clamp(2.5rem,6vw,4.5rem)] text-center transition-colors"
         style={{
-          borderColor: dragging ? "var(--color-accent-500)" : "var(--color-line)",
+          borderColor: dragging ? "var(--color-accent-600)" : "var(--color-line-strong)",
           background: dragging ? "var(--color-accent-100)" : "var(--color-bg-raised)",
         }}
       >
-        <Upload className="lucide mx-auto mb-4 h-7 w-7 text-[var(--color-accent-600)]" />
-        <span className="mb-1 block text-lg font-semibold">
+        <span className="mx-auto mb-5 grid h-[68px] w-[68px] place-items-center rounded-[var(--radius-pill)] bg-[var(--color-accent-500)]">
+          <Upload className="lucide h-[26px] w-[26px]" />
+        </span>
+        <span className="display block text-[clamp(1.6rem,3vw,2.15rem)] leading-[1.05]">
           Drop your résumé here, or choose a file
         </span>
-        <span className="block text-sm text-[var(--color-text-muted)]">
+        <span className="mb-[22px] mt-2.5 block text-[15px] text-[var(--color-text-muted)]">
           PDF, DOCX or TXT · up to 5 MB
         </span>
+        {/* A span, not a button: the whole label is the control. */}
+        <span className="btn btn-primary">Choose a file</span>
         <input
           type="file"
           accept=".pdf,.docx,.txt,application/pdf,text/plain"
@@ -130,17 +134,20 @@ export function OnboardingFlow() {
         />
       </label>
 
-      <Card flat className="text-sm text-[var(--color-text-muted)]">
-        <div className="mb-2 flex items-center gap-2 font-semibold text-[var(--color-text)]">
-          <CheckCircle2 className="lucide h-4 w-4" /> You review everything before it saves
+      <Card
+        flat
+        className="card-outline px-6 py-[22px] text-[15px] leading-relaxed text-[var(--color-text-muted)]"
+      >
+        <div className="mb-2 flex items-center gap-2 text-base font-extrabold text-[var(--color-text)]">
+          <CheckCircle2 className="lucide h-[18px] w-[18px]" /> You review everything before it saves
         </div>
         We show you what we read, next to what you uploaded. Nothing enters your profile until
         you confirm it.
         {/* Two pills of `nowrap` text: without wrapping they push the whole
             onboarding page into a sideways scroll on any phone. */}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Tag tone="muted">No training on your documents</Tag>
-          <Tag tone="muted">Delete removes the file too</Tag>
+        <div className="mt-3.5 flex flex-wrap gap-2">
+          <Tag className="min-h-8 px-3.5">No training on your documents</Tag>
+          <Tag className="min-h-8 px-3.5">Delete removes the file too</Tag>
         </div>
       </Card>
     </div>

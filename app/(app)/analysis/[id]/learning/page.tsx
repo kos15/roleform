@@ -88,11 +88,11 @@ export default async function LearningTab({
   return (
     <section>
       {/* ------------------------------------------------------------ header */}
-      <div className="mb-6">
-        <h2>
+      <div className="mb-[22px] max-w-[780px]">
+        <h2 className="mb-2.5">
           {shown.length} thing{shown.length === 1 ? "" : "s"} to close before this interview
         </h2>
-        <p className="mt-1 max-w-[64ch] text-[var(--color-text-muted)]">
+        <p className="max-w-[64ch] text-base leading-relaxed text-[var(--color-text-muted)]">
           {plan.opening ||
             "Ordered by how much of this posting each one unlocks. Where we can tie one to a " +
               "bullet on your résumé or a question you're likely to be asked, we show that too."}
@@ -106,16 +106,16 @@ export default async function LearningTab({
             // Keeps the budget: clearing the skills filter shouldn't also throw
             // away how much time the reader said they have.
             href={`/analysis/${id}/learning${budgetMin ? `?budget=${budgetMin}` : ""}`}
-            className="mt-2 inline-block text-sm text-accent-body"
+            className="mt-2 inline-block text-sm font-bold"
           >
             Show every gap
           </Link>
         ) : null}
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-3">
+      <div className="mb-7 flex flex-wrap items-center gap-x-[22px] gap-y-3.5">
         <BudgetPicker selected={plan.budgetMin} />
-        <p className="text-sm text-[var(--color-text-muted)]">
+        <p className="text-[15px] text-[var(--color-text-muted)]">
           {scheduled.length === 0
             ? "Nothing fits that budget — try a longer one."
             : `${scheduled.length} step${scheduled.length === 1 ? "" : "s"}, ${formatMinutes(plan.totalMin)} of study.`}
@@ -124,13 +124,15 @@ export default async function LearningTab({
       </div>
 
       {/* ------------------------------------------------------------- gaps */}
-      <div className="space-y-4">
+      <div className="space-y-5">
         {shown.map((gap) => (
-          <Card key={gap.id}>
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-5">
-              <div className="max-w-[58ch]">
-                <div className="mb-2 flex flex-wrap items-center gap-2.5">
-                  <h3>{gap.skillName}</h3>
+          <Card key={gap.id} className="rounded-[26px] p-[clamp(1.25rem,2.6vw,2rem)]">
+            <div className="mb-5 flex flex-wrap items-start justify-between gap-[22px]">
+              <div className="max-w-[60ch]">
+                <div className="mb-2.5 flex flex-wrap items-center gap-2.5">
+                  <h3 className="display mr-1.5 text-[clamp(1.75rem,3vw,2.4rem)] font-normal">
+                    {gap.skillName}
+                  </h3>
                   {/* The number the ranking is actually made of. Named honestly:
                       it is how much of THIS posting the skill accounts for, not
                       a score about the person.
@@ -141,19 +143,27 @@ export default async function LearningTab({
                       absent score — so they keep the mention count the old tab
                       ranked by, which is what they were actually ordered on. */}
                   {gap.severity > 0 ? (
-                    <Tag tone="accent">{Math.round(gap.severity)} / 100 of this posting</Tag>
+                    <Tag tone="accent" className="font-extrabold">
+                      {Math.round(gap.severity)} / 100 of this posting
+                    </Tag>
                   ) : null}
                   <Tag tone="muted">Mentioned {gap.mentionCount}×</Tag>
                 </div>
 
                 {gap.whyItMatters ? (
-                  <p className="mb-2">{gap.whyItMatters}</p>
+                  <p className="mb-1.5 text-base leading-relaxed">{gap.whyItMatters}</p>
                 ) : null}
-                <p className="text-[var(--color-text-muted)]">{gap.note}</p>
+                <p className="text-[15px] leading-relaxed text-[var(--color-text-muted)]">{gap.note}</p>
 
                 {gap.jdQuote ? (
-                  <blockquote className="mt-3 border-l-2 border-[var(--color-accent-300)] pl-3 text-sm italic text-[var(--color-text-muted)]">
-                    &ldquo;{gap.jdQuote}&rdquo;
+                  <blockquote className="mt-3 flex gap-2 text-sm italic text-[var(--color-text-muted)]">
+                    <span
+                      aria-hidden
+                      className="display text-2xl not-italic leading-[0.9] text-[var(--color-accent-600)]"
+                    >
+                      &ldquo;
+                    </span>
+                    {gap.jdQuote}
                   </blockquote>
                 ) : null}
               </div>
@@ -161,8 +171,8 @@ export default async function LearningTab({
               {/* The distance, drawn. The bar is what the profile evidences,
                   the tick is what the posting asks for. Both come from the same
                   deterministic evidence value as the prose above (OUT-5). */}
-              <div className="w-full min-w-[11rem] max-w-[14rem] flex-1">
-                <div className="mb-1.5 flex justify-between text-xs text-[var(--color-text-muted)]">
+              <div className="w-full min-w-[11rem] max-w-[15rem] flex-[1_1_11rem] self-center">
+                <div className="mb-2 flex justify-between text-xs font-bold text-[var(--color-text-muted)]">
                   <span>You</span>
                   <span>Required</span>
                 </div>
@@ -190,15 +200,15 @@ export default async function LearningTab({
                         href={step.entryUrl ?? step.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg-sunken)] p-4 ${
-                          step.deferred ? "opacity-60" : ""
+                        className={`block rounded-[var(--radius-md)] bg-[var(--color-bg-tint)] px-[18px] py-4 no-underline transition-transform hover:-translate-y-0.5 ${
+                          step.deferred ? "opacity-50" : ""
                         }`}
                       >
                         <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <span className="flex h-7 w-7 items-center justify-center rounded-[var(--radius-pill)] bg-[var(--color-accent-200)] text-xs font-bold text-[var(--color-accent-800)]">
+                          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-[var(--radius-pill)] bg-[var(--color-accent-500)] text-xs font-extrabold">
                             {step.mark}
                           </span>
-                          <span className="text-sm font-semibold">
+                          <span className="text-sm font-extrabold">
                             {step.author ?? step.provider}
                           </span>
                           {step.deferred ? (
@@ -210,27 +220,31 @@ export default async function LearningTab({
                           )}
                         </div>
 
-                        <p className="mb-1 font-semibold">{step.title}</p>
+                        <p className="mb-1.5 text-base font-extrabold">{step.title}</p>
 
                         {/* Spec §8 — the differentiator is WHERE you land.
                             "Watch minutes 14:20–26:05" beats "watch this
                             eight-hour course", and the timestamp was computed
                             once at bundle-build time, never here. */}
                         {step.entryLabel ? (
-                          <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-accent-body">
-                            <Play className="lucide h-3.5 w-3.5" />
+                          <p className="mb-1.5 flex items-center gap-1.5 text-sm font-extrabold">
+                            <Play className="lucide h-3.5 w-3.5 fill-current" />
                             Start at {step.entryLabel}
                           </p>
                         ) : null}
 
                         {step.note ? (
-                          <p className="mb-2 text-sm text-[var(--color-text-muted)]">{step.note}</p>
+                          <p className="mb-2.5 text-sm leading-normal text-[var(--color-text-muted)]">{step.note}</p>
                         ) : null}
 
                         <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <Tag tone={step.isFree ? "sage" : "muted"}>{step.priceLabel}</Tag>
+                          <Tag
+                            className={`font-extrabold ${step.isFree ? "bg-[var(--color-bg-raised)]" : ""}`}
+                          >
+                            {step.priceLabel}
+                          </Tag>
                           <Tag tone="muted">{formatMinutes(step.durationMin)}</Tag>
-                          <span className="inline-flex items-center gap-1 font-semibold text-accent-body">
+                          <span className="ml-1 inline-flex items-center gap-1 text-[13px] font-extrabold">
                             Open <ExternalLink className="lucide h-3.5 w-3.5" />
                           </span>
                         </div>
@@ -242,17 +256,17 @@ export default async function LearningTab({
 
             {/* ------------------------------------ the proof-of-learning loop */}
             {gap.unlocksBullet || gap.answersQuestion ? (
-              <div className="mt-4 space-y-3 rounded-[var(--radius-md)] bg-[var(--color-accent-100)] p-4">
+              <div className="mt-3.5 grid gap-[18px] rounded-[var(--radius-md)] bg-[var(--color-sage-200)] px-5 py-[18px] [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
                 {gap.unlocksBullet ? (
                   <div>
-                    <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-[var(--color-accent-800)]">
+                    <p className="mb-1.5 flex items-center gap-1.5 text-sm font-extrabold">
                       <PenLine className="lucide h-4 w-4" />
                       What it unlocks on your résumé
                     </p>
-                    <p className="text-sm text-[var(--color-text-muted)]">
+                    <p className="text-sm leading-normal">
                       Today: &ldquo;{gap.unlocksBullet.text}&rdquo;
                     </p>
-                    <p className="mt-1 flex items-start gap-1.5 text-sm">
+                    <p className="mt-1.5 flex items-start gap-1.5 text-sm font-semibold leading-normal">
                       <ArrowRight className="lucide mt-0.5 h-4 w-4 shrink-0" />
                       <span>{gap.unlocksBullet.draft}</span>
                     </p>
@@ -261,13 +275,13 @@ export default async function LearningTab({
 
                 {gap.answersQuestion ? (
                   <div>
-                    <p className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-[var(--color-accent-800)]">
+                    <p className="mb-1.5 flex items-center gap-1.5 text-sm font-extrabold">
                       <MessageCircleQuestion className="lucide h-4 w-4" />
                       The question it answers
                     </p>
                     <Link
                       href={`/analysis/${id}/prep#q-${gap.answersQuestion.id}`}
-                      className="text-sm text-accent-body underline underline-offset-2"
+                      className="text-sm leading-normal underline underline-offset-[3px]"
                     >
                       &ldquo;{gap.answersQuestion.text}&rdquo;
                     </Link>
@@ -280,7 +294,7 @@ export default async function LearningTab({
       </div>
 
       {plan.fallbackCount > 0 ? (
-        <p className="mt-6 max-w-[62ch] text-sm text-[var(--color-text-muted)]">
+        <p className="mt-6 max-w-[62ch] text-sm leading-relaxed text-[var(--color-text-muted)]">
           {plan.fallbackCount} of these has no vetted material in our catalog yet, so it points at
           a roadmap instead. We log every one of those — it&rsquo;s how we decide what to add next.
         </p>
@@ -308,7 +322,7 @@ function FallbackNote({ fallback }: { fallback: { url: string; label: string } |
       href={fallback.url}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent-body"
+      className="inline-flex items-center gap-1.5 text-sm font-extrabold"
     >
       {fallback.label} <ExternalLink className="lucide h-3.5 w-3.5" />
     </a>

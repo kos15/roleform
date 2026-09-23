@@ -208,8 +208,8 @@ async function creditTopup(
  *
  * The money already moved; this endpoint cannot reverse it, and it must not
  * grant something the amount does not back either. So it grants nothing and
- * files the discrepancy to the same support inbox `requestAdminAccess`
- * writes to (app/actions/admin.ts) — a person resolves it, by hand, once.
+ * files the discrepancy to the support inbox (the contact_messages table the
+ * admin panel reads) — a person resolves it, by hand, once.
  * The Clerk subject is included so an admin can find the account without a
  * second round trip, and no payment method detail or card data ever reaches
  * this function to begin with (Razorpay does not send it).

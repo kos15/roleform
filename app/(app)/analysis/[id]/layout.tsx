@@ -50,7 +50,7 @@ export default async function AnalysisLayout({
   const stageState = readStageState(analysis.stageState);
 
   return (
-    <div className="space-y-8">
+    <div>
       <ResultsHeader
         analysis={{
           jdSource: analysis.jdSource,
@@ -72,8 +72,9 @@ export default async function AnalysisLayout({
         coverage={coverage}
         bulletTexts={Object.fromEntries(bulletTexts)}
       />
+      <div className="mb-[clamp(1.75rem,3vw,2.5rem)] mt-[clamp(2.75rem,5vw,4rem)] h-px bg-[var(--color-line)]" />
       <AnalysisTabs analysisId={id} counts={counts} />
-      {children}
+      <div className="mt-[clamp(2.25rem,4vw,3.5rem)]">{children}</div>
     </div>
   );
 }

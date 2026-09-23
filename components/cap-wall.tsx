@@ -127,7 +127,7 @@ function Exit({
       style={skin}
     >
       <div className="min-w-0 flex-[1_1_14rem]">
-        <div className="mb-0.5 font-[family-name:var(--font-heading)] text-[1.05rem]">{title}</div>
+        <div className="mb-0.5 display text-[1.05rem]">{title}</div>
         <p className="text-xs leading-relaxed text-[var(--color-text-muted)]">{body}</p>
       </div>
       {action ? <div className="flex-none">{action}</div> : null}

@@ -20,17 +20,17 @@ export function ContactForm({
       <div className="rise-in">
         <div
           aria-hidden
-          className="mb-3.5 grid h-11 w-11 place-items-center rounded-[var(--radius-pill)] bg-[var(--color-sage-100)] text-lg text-[var(--color-sage-800)]"
+          className="mb-[18px] grid h-14 w-14 place-items-center rounded-[var(--radius-pill)] bg-[var(--color-accent-500)] text-2xl font-extrabold"
         >
           ✓
         </div>
-        <h3 className="mb-2">Filed — we&rsquo;ll reply to {state.email}</h3>
+        <h3 className="display mb-2.5 text-[34px]">Filed — we&rsquo;ll reply to {state.email}</h3>
         {/* Two sentences, because they are two different facts. The receipt
             either reached that address or it did not, and telling someone to
             check an inbox we never sent to is the small lie this product
             doesn't tell. Either way the message itself is filed — that part
             is written before any mail is attempted. */}
-        <p className="text-[0.95rem] leading-[1.65] text-[var(--color-text-muted)]">
+        <p className="text-base leading-[1.65] text-[var(--color-text-muted)]">
           {state.receipted
             ? "A copy is already in your inbox. A reply usually follows within a working day, always from a person's address rather than no-reply."
             : "We couldn't put a copy in your inbox, but the message is filed and a person reads it — usually within a working day."}
@@ -40,8 +40,17 @@ export function ContactForm({
   }
 
   return (
-    <form action={action} className="flex flex-col gap-3.5">
-      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))]">
+    <form
+      action={action}
+      className="flex flex-col gap-1"
+      // Declarative WebMCP: an agent may fill this in, and the person submits.
+      {...({
+        toolname: "send_roleform_message",
+        tooldescription:
+          "Send a message to the people who run Roleform (support, billing, privacy, catalog corrections). Needs name, email, subject and a message of at least 20 characters.",
+      } as Record<string, string>)}
+    >
+      <div className="grid gap-x-4 [grid-template-columns:repeat(auto-fit,minmax(min(180px,100%),1fr))]">
         <Field label="Your name">
           <Input name="name" defaultValue={defaultName} required maxLength={120} />
         </Field>
@@ -81,10 +90,10 @@ export function ContactForm({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2.5">
-        <Button type="submit" busy={pending} disabled={pending}>
+        <Button type="submit" busy={pending} disabled={pending} className="min-h-[50px] px-[26px]">
           {pending ? "Sending…" : "Send message"}
         </Button>
-        <span className="text-xs text-[var(--color-text-muted)]">
+        <span className="text-[13px] text-[var(--color-text-muted)]">
           We never attach your profile or résumés to a support thread.
         </span>
       </div>

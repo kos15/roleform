@@ -36,7 +36,7 @@ export function RefreshRing() {
   const swept = ((PERIOD - left) / PERIOD) * CIRCUMFERENCE;
 
   return (
-    <div className="flex min-w-[min(250px,100%)] flex-1 basis-60 items-center gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] p-5">
+    <div className="flex min-w-0 flex-[1_1_260px] sm:flex-[0_1_300px] items-center gap-4 rounded-[var(--radius-lg)] border-[1.5px] border-[var(--color-line)] px-6 py-[22px]">
       <div className="relative h-[78px] w-[78px] flex-none">
         <svg width="78" height="78" viewBox="0 0 78 78" aria-hidden>
           <circle
@@ -44,7 +44,7 @@ export function RefreshRing() {
             cy="39"
             r="22"
             fill="none"
-            stroke="var(--color-bg-sunken)"
+            stroke="rgb(74 13 13 / 0.1)"
             strokeWidth="8"
           />
           <circle
@@ -52,7 +52,7 @@ export function RefreshRing() {
             cy="39"
             r="22"
             fill="none"
-            stroke="var(--color-accent)"
+            stroke="var(--color-accent-500)"
             strokeWidth="8"
             strokeLinecap="round"
             strokeDasharray={`${swept.toFixed(0)} ${CIRCUMFERENCE}`}
@@ -60,14 +60,14 @@ export function RefreshRing() {
             style={{ transition: "stroke-dasharray 900ms linear" }}
           />
         </svg>
-        <div className="absolute inset-0 grid place-items-center font-[family-name:var(--font-heading)] text-lg tabular-nums">
+        <div className="absolute inset-0 grid place-items-center display text-xl tabular-nums">
           {left}
         </div>
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="mb-1 text-[0.9rem] font-semibold">Re-reading automatically</div>
-        <p className="mb-3 text-xs leading-snug text-[var(--color-text-muted)]">
+        <div className="mb-1 text-base font-extrabold">Re-reading automatically</div>
+        <p className="mb-3 text-[13.5px] leading-normal text-[var(--color-text-muted)]">
           No need to keep this open. A parked run resumes on its own.
         </p>
         <Button

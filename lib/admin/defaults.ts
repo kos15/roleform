@@ -6,8 +6,7 @@ import { planById } from "@/lib/content/pricing";
 /**
  * The caps a new account is provisioned with (F15).
  *
- * The design's admin header carries a "Workspace defaults" control beside
- * "View as a member". This is what it edits: the seven numbers a member
+ * The admin header carries a "Workspace defaults" control. This is what it edits: the seven numbers a member
  * starts with, separate from the seven numbers each member currently holds.
  *
  * Reading is an upsert rather than a findUnique so the row exists from the

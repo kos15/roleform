@@ -176,9 +176,10 @@ export function ProfileEditor({
                 return (
                   <span
                     key={`${skill.name}-${si}`}
-                    className="rounded-[var(--radius-pill)] border border-[var(--color-line)] bg-[var(--color-bg)] px-3 py-1 text-xs"
+                    className="inline-flex min-h-8 items-center rounded-[var(--radius-pill)] border-[1.5px] border-[var(--color-text)] px-3 text-[13px] font-bold"
                     style={{
-                      color: evidenced ? "var(--color-sage-700)" : "var(--color-text-muted)",
+                      color: evidenced ? "var(--color-text)" : "var(--color-text-muted)",
+                      borderColor: evidenced ? "var(--color-text)" : "var(--color-line-strong)",
                     }}
                   >
                     {skill.name}
@@ -197,7 +198,7 @@ export function ProfileEditor({
             {resume.skills.map((skill, si) => (
               <div
                 key={`${skill.name}-${si}`}
-                className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg)] px-3.5 py-2.5"
+                className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] bg-[var(--color-bg)] px-3.5 py-2.5"
               >
                 <div className="min-w-0 flex-1 basis-40">
                   <div className="text-[0.9rem] font-semibold">{skill.name}</div>
@@ -254,7 +255,7 @@ export function ProfileEditor({
                   onClick={() =>
                     patch((r) => ({ ...r, skills: r.skills.filter((_, j) => j !== si) }))
                   }
-                  className="ml-auto grid h-7 w-7 flex-none place-items-center rounded-[var(--radius-pill)] border border-[var(--color-line)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-accent-100)] hover:text-[var(--color-accent-800)]"
+                  className="ml-auto grid h-7 w-7 flex-none place-items-center rounded-[var(--radius-pill)] border border-[var(--color-line)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text)]"
                 >
                   <X className="lucide h-3.5 w-3.5" />
                 </button>
@@ -265,7 +266,7 @@ export function ProfileEditor({
           <div className="mt-4 border-t border-[var(--color-line)] pt-4">
             <div className="eyebrow mb-2.5">Suggested from your recent analyses</div>
             {suggestions.length === 0 ? (
-              <p className="text-[0.8rem] leading-snug text-[var(--color-sage-700)]">
+              <p className="text-[0.8rem] leading-snug text-[var(--color-text)]">
                 Every gap from your recent analyses is already on your profile. Add evidence to a
                 bullet next — a skill on its own is a claim, not proof.
               </p>
@@ -278,7 +279,7 @@ export function ProfileEditor({
                     key={name}
                     type="button"
                     onClick={() => patch((r) => addSkill(r, name))}
-                    className="inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] border border-dashed border-[var(--color-accent-400)] px-3.5 py-1.5 text-xs font-semibold text-[var(--color-accent-700)] transition-colors hover:bg-[var(--color-accent-100)]"
+                    className="inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] border-[1.5px] border-dashed border-[rgb(74_13_13/0.4)] px-3.5 py-1.5 text-[13px] font-bold transition-colors hover:bg-[var(--color-hover)]"
                   >
                     <Plus className="lucide h-3 w-3" />
                     {name}
@@ -347,7 +348,7 @@ export function ProfileEditor({
               return (
                 <div
                   key={wi}
-                  className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg)]"
+                  className="overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-bg)]"
                 >
                   <button
                     type="button"
@@ -492,7 +493,7 @@ export function ProfileEditor({
               {resume.education.map((edu, i) => (
                 <div
                   key={i}
-                  className="flex flex-col gap-2.5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg)] p-3"
+                  className="flex flex-col gap-2.5 rounded-[var(--radius-md)] bg-[var(--color-bg)] p-3"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-xs font-semibold text-[var(--color-text-muted)]">
@@ -570,7 +571,7 @@ export function ProfileEditor({
               {resume.certificates.map((cert, i) => (
                 <div
                   key={i}
-                  className="flex flex-col gap-2.5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg)] p-3"
+                  className="flex flex-col gap-2.5 rounded-[var(--radius-md)] bg-[var(--color-bg)] p-3"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <span className="text-xs font-semibold text-[var(--color-text-muted)]">
@@ -635,7 +636,7 @@ export function ProfileEditor({
                 {resume.languages.map((lang, i) => (
                   <div
                     key={i}
-                    className="flex justify-between gap-2.5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg)] px-3.5 py-2.5 text-[0.85rem]"
+                    className="flex justify-between gap-2.5 rounded-[var(--radius-md)] bg-[var(--color-bg)] px-3.5 py-2.5 text-[0.85rem]"
                   >
                     <span className="font-semibold">{lang.language}</span>
                     <span className="text-[var(--color-text-muted)]">{lang.fluency || "—"}</span>
@@ -703,7 +704,7 @@ export function ProfileEditor({
       {/* ------------------------------------------------------------ aside */}
 
       <aside className="flex min-w-[min(262px,100%)] max-w-[330px] flex-1 basis-[280px] flex-col gap-4">
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-5 text-center">
+        <div className="rounded-[26px] bg-[var(--color-bg-raised)] p-5 text-center">
           <StrengthRing score={strength.score} />
           <p className="text-left text-[0.8rem] leading-relaxed text-[var(--color-text-muted)]">
             Strength is how much of a posting we can actually evidence — not how full the form
@@ -720,10 +721,8 @@ export function ProfileEditor({
                   aria-hidden
                   className="mt-px grid h-[18px] w-[18px] flex-none place-items-center rounded-[var(--radius-pill)] text-[10px] font-bold"
                   style={{
-                    background: check.done
-                      ? "var(--color-sage-100)"
-                      : "var(--color-accent-100)",
-                    color: check.done ? "var(--color-sage-800)" : "var(--color-accent-800)",
+                    background: check.done ? "var(--color-accent-500)" : "var(--color-sage-200)",
+                    color: "var(--color-text)",
                   }}
                 >
                   {check.done ? "✓" : "—"}
@@ -796,16 +795,16 @@ function IdentitySection({
     });
 
   return (
-    <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[clamp(1.125rem,3vw,1.5rem)]">
+    <section className="rounded-[26px] bg-[var(--color-bg-raised)] p-[clamp(1.125rem,3vw,1.5rem)]">
       {/* The design's identity row is avatar + text; ours carries a third
           element, and without a basis on the text it was the text that gave way
           — 130px of column beside a button that won't shrink. It wraps now. */}
       <div className="mb-5 flex flex-wrap items-center gap-4">
-        <span className="grid h-[60px] w-[60px] flex-none place-items-center rounded-[var(--radius-pill)] bg-[var(--color-sage-600)] font-[family-name:var(--font-heading)] text-[1.375rem] text-[var(--color-bg)]">
+        <span className="grid h-[60px] w-[60px] flex-none place-items-center rounded-[var(--radius-pill)] bg-[var(--color-sage-500)] text-[1.375rem] font-extrabold text-[var(--color-text)]">
           {initialsOf(basics.name)}
         </span>
         <div className="min-w-[min(15rem,100%)] flex-1">
-          <h3 className="mb-1">Identity &amp; contact</h3>
+          <h3 className="display mb-1 text-[30px] font-normal">Identity &amp; contact</h3>
           <p className="text-xs text-[var(--color-text-muted)]">
             {sourceFilename ? `Parsed from ${sourceFilename}` : "Entered by hand"} · {bulletCount}{" "}
             bullets · last saved {relativeTime(updatedAt)}
@@ -925,7 +924,7 @@ function Section({
 
   return (
     <section
-      className={`rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] ${
+      className={`rounded-[26px] bg-[var(--color-bg-raised)] ${
         compact ? "p-[clamp(1.125rem,3vw,1.375rem)]" : "p-[clamp(1.125rem,3vw,1.5rem)]"
       }`}
     >
@@ -947,13 +946,13 @@ function StrengthRing({ score }: { score: number }) {
   return (
     <div className="relative mx-auto mb-3.5 h-[132px] w-[132px]">
       <svg width="132" height="132" viewBox="0 0 132 132" aria-hidden>
-        <circle cx="66" cy="66" r="42" fill="none" stroke="var(--color-bg-sunken)" strokeWidth="11" />
+        <circle cx="66" cy="66" r="42" fill="none" stroke="var(--color-bg-tint)" strokeWidth="11" />
         <circle
           cx="66"
           cy="66"
           r="42"
           fill="none"
-          stroke="var(--color-sage-600)"
+          stroke="var(--color-accent-500)"
           strokeWidth="11"
           strokeLinecap="round"
           strokeDasharray={`${((score / 100) * CIRCUMFERENCE).toFixed(0)} ${CIRCUMFERENCE}`}
@@ -965,7 +964,7 @@ function StrengthRing({ score }: { score: number }) {
           diameter is ~73px, and at 10.5px "profile strength" runs wider than
           that and clips against the stroke. */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-[family-name:var(--font-heading)] text-[1.75rem] leading-none">
+        <span className="display text-[1.75rem] leading-none">
           {score}
         </span>
         <span className="max-w-[72px] text-center text-[9px] leading-tight text-[var(--color-text-muted)]">
@@ -982,7 +981,7 @@ function EvidenceLabel({ count }: { count: number }) {
   return (
     <div
       className="mt-1 text-[11.5px]"
-      style={{ color: count > 0 ? "var(--color-sage-700)" : "var(--color-text-muted)" }}
+      style={{ color: count > 0 ? "var(--color-text)" : "var(--color-sage-700)" }}
     >
       {count > 0 ? `Used as evidence ${count}×` : "Not yet used as evidence"}
     </div>
@@ -1042,7 +1041,7 @@ function SkillEvidence({
   return (
     <div
       className="text-[11.5px]"
-      style={{ color: evidencing > 0 ? "var(--color-sage-700)" : "var(--color-text-muted)" }}
+      style={{ color: evidencing > 0 ? "var(--color-text)" : "var(--color-sage-700)" }}
     >
       {label}
     </div>
@@ -1076,7 +1075,7 @@ function IconButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="grid h-7 w-7 place-items-center rounded-[var(--radius-pill)] border border-[var(--color-line)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-accent-100)] hover:text-[var(--color-accent-800)] disabled:opacity-40 disabled:hover:bg-transparent"
+      className="grid h-7 w-7 place-items-center rounded-[var(--radius-pill)] border border-[var(--color-line)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text)] disabled:opacity-40 disabled:hover:bg-transparent"
     >
       {children}
     </button>

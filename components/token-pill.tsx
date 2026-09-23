@@ -35,31 +35,31 @@ export async function TokenPill() {
       href="/profile"
       data-tour="tokens"
       title={`${formatCount(balance.left)} tokens left of ${formatCount(balance.total)} · resets ${formatResetDate(account.resetsAt)}`}
-      className="flex flex-none items-center gap-2 rounded-[var(--radius-pill)] border py-1 pl-2 pr-3 no-underline transition-colors"
+      className="flex h-[38px] flex-none items-center gap-2 rounded-[var(--radius-pill)] border-[1.5px] pl-[9px] pr-3.5 no-underline transition-colors"
       style={{
-        // Accent only when it is nearly gone, and it stays accent from then on.
+        // Pink only when it is nearly gone, and it stays pink from then on.
         // A pill that changed colour every few runs would be chrome that cries
         // wolf; this one changes once, at the point it is worth reading.
-        borderColor: balance.low ? "var(--color-accent-400)" : "var(--color-line)",
-        background: balance.low ? "var(--color-accent-100)" : "transparent",
+        borderColor: "var(--color-text)",
+        background: balance.low ? "var(--color-sage-200)" : "transparent",
       }}
     >
       <svg width="19" height="19" viewBox="0 0 18 18" aria-hidden className="flex-none">
-        <circle cx="9" cy="9" r="7" fill="none" stroke="var(--color-bg-sunken)" strokeWidth="3" />
+        <circle cx="9" cy="9" r="7" fill="none" stroke="var(--color-line)" strokeWidth="3" />
         <circle
           cx="9"
           cy="9"
           r="7"
           fill="none"
-          stroke={balance.low ? "var(--color-accent-500)" : "var(--color-sage-600)"}
+          stroke={balance.low ? "var(--color-sage-600)" : "var(--color-accent-600)"}
           strokeWidth="3"
           strokeLinecap="round"
           strokeDasharray={dash}
           transform="rotate(-90 9 9)"
         />
       </svg>
-      <span className="text-xs font-bold tabular-nums">{formatTokens(balance.left)}</span>
-      <span className="hidden text-xs text-[var(--color-text-muted)] sm:inline">left</span>
+      <span className="text-[13px] font-extrabold tabular-nums">{formatTokens(balance.left)}</span>
+      <span className="hidden text-[13px] text-[var(--color-text-muted)] sm:inline">left</span>
     </Link>
   );
 }

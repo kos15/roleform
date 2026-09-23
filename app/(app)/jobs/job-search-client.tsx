@@ -79,41 +79,51 @@ export function JobSearchClient({ baseQuery }: { baseQuery: JobQuery }) {
     <div className="mb-10">
       {capWall ? <CapWallDialog wall={capWall} onClose={() => setCapWall(null)} /> : null}
 
-      <Card className="mb-6 space-y-4">
-        <div className="grid gap-3 sm:grid-cols-[2fr_1.3fr_auto]">
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-[var(--color-text-muted)]">
-              Titles
-            </span>
+      <div className="mb-7 rounded-[var(--radius-xl)] bg-[var(--color-accent-500)] p-[clamp(1.25rem,2.6vw,1.9rem)]">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-[2_1_16rem] flex-col gap-1.5">
+            <span className="text-xs font-extrabold uppercase tracking-[0.06em]">Titles</span>
             <Input
+              className="input-pill min-h-[50px]"
               value={titles}
               onChange={(e) => setTitles(e.target.value)}
               placeholder="Frontend Engineer, React Developer"
             />
           </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-[var(--color-text-muted)]">
-              Location
-            </span>
-            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Pune" />
+          <label className="flex flex-[1.3_1_11rem] flex-col gap-1.5">
+            <span className="text-xs font-extrabold uppercase tracking-[0.06em]">Location</span>
+            <Input
+              className="input-pill min-h-[50px]"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Pune"
+            />
           </label>
-          <div className="flex items-end">
-            <Button onClick={search} disabled={pending} busy={pending} className="w-full sm:w-auto">
-              <Search className="lucide h-4 w-4" />
-              {pending ? "Searching…" : "Search"}
-            </Button>
-          </div>
+          <Button
+            onClick={search}
+            disabled={pending}
+            busy={pending}
+            className="min-h-[50px] flex-none px-[26px]"
+          >
+            <Search className="lucide h-[17px] w-[17px]" />
+            {pending ? "Searching…" : "Search"}
+          </Button>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={remote} onChange={(e) => setRemote(e.target.checked)} />
+        <label className="mt-3.5 flex cursor-pointer items-center gap-2.5 text-[15px] font-bold">
+          <input
+            type="checkbox"
+            checked={remote}
+            onChange={(e) => setRemote(e.target.checked)}
+            className="h-6 w-6 accent-[var(--color-text)]"
+          />
           Remote only
         </label>
 
         {/* Deep links, not results (lib/domain/job-portals.ts) — nothing here
             was fetched, matched or scored, so it carries no skill chip and no
             "Sources:" attribution the way a real JobSource's listings do. */}
-        <div className="flex flex-wrap items-center gap-2 border-t border-[var(--color-line)] pt-3">
-          <span className="text-xs text-[var(--color-text-muted)]">
+        <div className="mt-[18px] flex flex-wrap items-center gap-2 border-t-[1.5px] border-[rgb(74_13_13/0.18)] pt-4">
+          <span className="mr-1 text-[13px]">
             Or search directly — opens their own results, not run through Roleform:
           </span>
           {JOB_PORTALS.map((portal) => (
@@ -122,20 +132,20 @@ export function JobSearchClient({ baseQuery }: { baseQuery: JobQuery }) {
               href={portal.url(portalQuery)}
               target="_blank"
               rel="noopener nofollow"
-              className="btn btn-ghost btn-sm no-underline"
+              className="btn btn-secondary btn-sm min-h-[34px] px-3.5 text-[13px] no-underline"
             >
-              {portal.label} <ExternalLink className="lucide h-3.5 w-3.5" />
+              {portal.label} <ExternalLink className="lucide h-3 w-3" />
             </a>
           ))}
         </div>
-      </Card>
+      </div>
 
       {error ? <ErrorRegion title="That search didn't come back">{error}</ErrorRegion> : null}
 
       {outcome ? (
         <>
           {configuredSources.length > 0 ? (
-            <p className="mb-4 text-xs text-[var(--color-text-muted)]">
+            <p className="mb-4 text-[13px] text-[var(--color-text-muted)]">
               {outcome.fromCache ? "From your last search · " : ""}
               Sources:{" "}
               {configuredSources.map((s, i) => (
@@ -158,7 +168,7 @@ export function JobSearchClient({ baseQuery }: { baseQuery: JobQuery }) {
               Nothing came back for this query. Try widening the location or titles.
             </p>
           ) : (
-            <div className="space-y-3">
+            <div className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr))]">
               {outcome.listings.map((listing) => (
                 <ListingCard
                   key={listing.id}
@@ -185,11 +195,11 @@ function ListingCard({
   onSave: () => void;
 }) {
   return (
-    <Card className="space-y-2">
+    <Card className="flex flex-col gap-3 px-6 py-[22px]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="text-[1.05rem]">{listing.title}</h3>
-          <p className="text-sm text-[var(--color-text-muted)]">
+          <h3 className="mb-1 text-[19px]">{listing.title}</h3>
+          <p className="text-[14.5px] text-[var(--color-text-muted)]">
             {listing.company || "—"} · {listing.location || "—"}
           </p>
         </div>
@@ -197,24 +207,32 @@ function ListingCard({
 
       {listing.matchedSkills.length > 0 ? (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-[var(--color-text-muted)]">
+          <span className="mr-0.5 text-[13px] text-[var(--color-text-muted)]">
             Mentions {listing.matchedSkills.length} of your skills:
           </span>
           {listing.matchedSkills.map((skill) => (
-            <Tag key={skill} tone="sage">
+            <Tag key={skill} tone="outline">
               {skill}
             </Tag>
           ))}
         </div>
       ) : null}
 
-      <p className="line-clamp-2 text-sm text-[var(--color-text-muted)]">{listing.snippet}</p>
+      <p className="line-clamp-2 text-[14.5px] leading-normal text-[var(--color-text-muted)]">
+        {listing.snippet}
+      </p>
 
-      <div className="flex flex-wrap gap-2 pt-1">
+      <div className="mt-auto flex flex-wrap gap-2 pt-1">
         <a href={listing.url} target="_blank" rel="noopener nofollow" className="btn btn-secondary btn-sm no-underline">
           Open <ExternalLink className="lucide h-3.5 w-3.5" />
         </a>
-        <Button variant="ghost" size="sm" onClick={onSave} disabled={saved}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onSave}
+          disabled={saved}
+          className={saved ? "bg-[var(--color-accent-200)] disabled:opacity-100" : "bg-[var(--color-chip)]"}
+        >
           {saved ? "Saved" : "Save"}
         </Button>
         <Link href={`/analyze?listing=${listing.id}`} className="btn btn-ghost btn-sm no-underline">

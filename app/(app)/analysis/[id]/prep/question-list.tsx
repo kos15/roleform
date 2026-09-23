@@ -131,15 +131,15 @@ export function QuestionList({
 
   return (
     <section>
-      <div className="mb-5">
-        <h2>{questions.length} questions this posting suggests</h2>
-        <p className="mt-1 max-w-[62ch] text-[var(--color-text-muted)]">
+      <div className="mb-6 max-w-[760px]">
+        <h2 className="mb-2.5">{questions.length} questions this posting suggests</h2>
+        <p className="max-w-[62ch] text-base leading-relaxed text-[var(--color-text-muted)]">
           Each framework is scaffolding for your own answer, not a script — and never a claim you
           can&rsquo;t make. Open one and ask for the full answer when you want to rehearse it.
         </p>
       </div>
 
-      <div className="seg seg-wrap mb-6" role="tablist" aria-label="Question families">
+      <div className="seg seg-wrap mb-[26px]" role="tablist" aria-label="Question families">
         {visibleTabs.map((t) => {
           const selected = t.key === tab.key;
           return (
@@ -172,23 +172,21 @@ export function QuestionList({
                   // answers" link (RLE spec §1). The proof-of-learning loop is
                   // only worth binding if the user can actually walk it.
                   id={`q-${q.id}`}
-                  className={
-                    isOpen ? "border-[var(--color-accent-200)] shadow-[var(--shadow-md)]" : undefined
-                  }
+                  className={`rounded-[22px] px-[22px] py-5 ${isOpen ? "shadow-[var(--shadow-md)]" : ""}`}
                 >
                   <Accordion.Header>
                     <Accordion.Trigger className="group flex w-full items-start gap-4 text-left">
-                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-pill)] bg-[var(--color-bg-sunken)] text-xs font-semibold tabular-nums text-[var(--color-text-muted)] group-data-[state=open]:bg-[var(--color-accent-100)] group-data-[state=open]:text-[var(--color-accent-800)]">
+                      <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[var(--radius-pill)] bg-[var(--color-bg-tint)] text-[13px] font-extrabold tabular-nums group-data-[state=open]:bg-[var(--color-sage-500)]">
                         {i + 1}
                       </span>
 
-                      <span className="flex-1">
-                        <span className="q-text block">{q.text}</span>
-                        <span className="mt-2.5 flex flex-wrap items-center gap-2">
-                          <Tag tone={q.type === "gap" ? "warn" : "muted"}>{LABEL[q.type]}</Tag>
+                      <span className="min-w-0 flex-1">
+                        <span className="q-text block [text-wrap:pretty]">{q.text}</span>
+                        <span className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                          <Tag tone={q.type === "gap" ? "pink" : "default"}>{LABEL[q.type]}</Tag>
                           {q.likely ? <Tag tone="accent">Most likely</Tag> : null}
                           {answered.has(q.id) ? (
-                            <Tag tone="sage">
+                            <Tag tone="outline" className="font-extrabold">
                               <CircleCheck className="lucide h-3 w-3" />
                               Answer ready
                             </Tag>
@@ -196,12 +194,12 @@ export function QuestionList({
                         </span>
                       </span>
 
-                      <ChevronDown className="lucide mt-1 h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-transform group-data-[state=open]:rotate-180" />
+                      <ChevronDown className="lucide mt-1.5 h-[18px] w-[18px] shrink-0 text-[var(--color-text-muted)] transition-transform group-data-[state=open]:rotate-180" />
                     </Accordion.Trigger>
                   </Accordion.Header>
 
                   <Accordion.Content className="accordion-content overflow-hidden">
-                    <div className="mt-5 space-y-5 pl-11">
+                    <div className="mt-5 space-y-5 pl-[50px]">
                       <div>
                         <p className="eyebrow mb-1.5">Why they ask</p>
                         <p className="answer-prose text-[var(--color-text-muted)]">{q.whyTheyAsk}</p>
@@ -212,7 +210,7 @@ export function QuestionList({
                         <ol className="space-y-2">
                           {q.frame.map((point, n) => (
                             <li key={n} className="flex gap-3">
-                              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-[var(--radius-pill)] bg-[var(--color-accent-300)]" />
+                              <span className="mt-2 h-2 w-2 shrink-0 rounded-[var(--radius-pill)] bg-[var(--color-accent-500)]" />
                               <span className="answer-prose">{point}</span>
                             </li>
                           ))}
@@ -220,7 +218,7 @@ export function QuestionList({
                       </div>
 
                       {q.type === "gap" ? (
-                        <p className="max-w-[62ch] text-sm text-accent-body">
+                        <p className="max-w-[62ch] rounded-[var(--radius-sm)] bg-[var(--color-sage-200)] px-3.5 py-3 text-[14.5px] leading-relaxed">
                           This one probes something your profile can&rsquo;t evidence. The
                           framework above is about positioning honestly — what you lean on
                           instead, and what you&rsquo;re doing about it.
@@ -232,7 +230,7 @@ export function QuestionList({
                           <ul className="space-y-1.5">
                             {q.evidence.map((text, n) => (
                               <li key={n} className="flex gap-3">
-                                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-[var(--radius-pill)] bg-[var(--color-sage-400)]" />
+                                <span className="mt-2 h-2 w-2 shrink-0 rounded-[var(--radius-pill)] bg-[var(--color-sage-500)]" />
                                 <span className="answer-prose text-[var(--color-text-muted)]">
                                   {text}
                                 </span>

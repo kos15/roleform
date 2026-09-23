@@ -28,24 +28,31 @@ export function SavedStatus({ savedJobId, status }: { savedJobId: string; status
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <select
-        value={current}
-        onChange={(e) => change(e.target.value as SavedJobStatus)}
-        disabled={pending}
-        className="input h-auto py-1.5 text-sm"
-      >
-        {STATUSES.map((s) => (
-          <option key={s} value={s}>
+    <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Application status">
+      {STATUSES.map((s) => {
+        const on = s === current;
+        return (
+          <button
+            key={s}
+            type="button"
+            aria-pressed={on}
+            disabled={pending}
+            onClick={() => change(s)}
+            className={`min-h-8 rounded-[var(--radius-pill)] border-[1.5px] px-3 text-[12.5px] font-bold capitalize transition-colors ${
+              on
+                ? "border-[var(--color-text)] bg-[var(--color-text)] text-[var(--color-accent-500)]"
+                : "border-[rgb(74_13_13/0.2)] hover:bg-[var(--color-hover)]"
+            }`}
+          >
             {s}
-          </option>
-        ))}
-      </select>
+          </button>
+        );
+      })}
       <button
         type="button"
         onClick={remove}
         disabled={pending}
-        className="text-xs text-[var(--color-text-muted)] underline"
+        className="px-2 text-[12.5px] text-[var(--color-text-muted)] underline underline-offset-[3px]"
       >
         Remove
       </button>

@@ -42,7 +42,7 @@ export default async function AnalyzePage({
           nothing to match — and nothing we&rsquo;d be willing to invent.
         </EmptyState>
         <div className="mt-5">
-          <Link href="/onboarding" className="btn btn-primary">
+          <Link href="/onboarding" className="btn btn-primary no-underline">
             Import résumé
           </Link>
         </div>
@@ -52,10 +52,14 @@ export default async function AnalyzePage({
 
   return (
     <div>
-      <div className="rise-in mb-8 max-w-[620px]">
-        <p className="eyebrow mb-2.5 text-[var(--color-accent-700)]">Step 1 of 3 · The posting</p>
-        <h1 className="mb-3">One résumé in. {drafts} tailored out.</h1>
-        <p className="text-[var(--color-text-muted)]">
+      <div className="rise-in mb-[clamp(2rem,4vw,3rem)] max-w-[760px]">
+        <p className="eyebrow mb-3.5">Step 1 of 3 · The posting</p>
+        <h1 className="mb-5 text-[clamp(3rem,6.4vw,6rem)] leading-[0.92]">
+          One résumé in.
+          <br />
+          {drafts} tailored out.
+        </h1>
+        <p className="max-w-[62ch] text-[17px] leading-relaxed text-[var(--color-text-muted)] [text-wrap:pretty]">
           Paste or drop the posting. Roleform reads it, scores how much of it your own profile can
           evidence, and returns {drafts} draft{drafts === 1 ? "" : "s"}, the questions this posting
           invites, and the gaps it exposes. Nothing is invented — every bullet traces back to
@@ -74,7 +78,7 @@ export default async function AnalyzePage({
       {/* The aside carries the corpus and the contract; the posting goes in the
           left column. Keeping them side by side is the point — you can see what
           we'll be drawing on while you paste the thing we'll draw against. */}
-      <div className="flex flex-wrap items-start gap-7">
+      <div className="flex flex-wrap items-start gap-[clamp(1.5rem,3vw,2.5rem)]">
         {/* min-w-0 because a flex child defaults to min-width:auto, and the
             textarea inside would otherwise set the column's floor. */}
         <div className="min-w-0 flex-[1_1_30rem]">
@@ -85,19 +89,16 @@ export default async function AnalyzePage({
           />
         </div>
 
-        <aside className="flex min-w-0 flex-[0_1_22rem] flex-col gap-4">
+        <aside className="flex min-w-0 flex-[0_1_22rem] flex-col gap-[18px] pt-[58px]">
           {/* The profile card: filename · Parsed · N yrs · N skills (F1). */}
-          <Card flat>
-            <p className="card-kicker mb-3 text-[var(--color-accent-700)]">Your profile</p>
-            <div className="mb-3 flex items-center gap-3">
-              <span
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--radius-sm)]"
-                style={{ background: "var(--color-accent-200)" }}
-              >
-                <FileText className="lucide h-4 w-4 text-[var(--color-accent-800)]" />
+          <Card flat className="p-6">
+            <p className="eyebrow mb-3.5">Your profile</p>
+            <div className="mb-3.5 flex items-center gap-3">
+              <span className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[12px] bg-[var(--color-accent-500)]">
+                <FileText className="lucide h-[18px] w-[18px]" />
               </span>
               <span className="min-w-0">
-                <span className="block truncate font-semibold">
+                <span className="block truncate text-base font-extrabold">
                   {profile.document?.filename ?? "Your profile"}
                 </span>
                 <span className="block text-sm text-[var(--color-text-muted)]">
@@ -106,27 +107,27 @@ export default async function AnalyzePage({
                 </span>
               </span>
             </div>
-            <p className="mb-4 text-sm text-[var(--color-text-muted)]">
+            <p className="mb-[18px] text-sm leading-normal text-[var(--color-text-muted)]">
               This is the only corpus we draw on. Bullets get reordered, reworded and re-weighted —
               never invented.
             </p>
             {/* The DS classes rather than <Button> — a <button> inside an <a> is
                 invalid, and this is a link that happens to look like a button. */}
-            <Link href="/profile" className="btn btn-secondary w-full">
+            <Link href="/profile" className="btn btn-secondary w-full no-underline">
               Replace résumé
             </Link>
           </Card>
 
-          <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] p-5">
-            <p className="card-kicker mb-3 text-[var(--color-sage-700)]">What comes back</p>
-            <ol className="flex flex-col gap-2.5 text-sm">
+          <div className="rounded-[var(--radius-lg)] border-[1.5px] border-[var(--color-line)] p-6">
+            <p className="eyebrow mb-4">What comes back</p>
+            <ol className="flex flex-col gap-3.5 text-[15px] leading-normal">
               {[
                 `${drafts} drafts across classic, sidebar and creative — each with a computed ATS rating`,
                 "The questions this posting suggests, by family, with frameworks not scripts",
                 "Requirements you can't yet evidence, and vetted courses that close them",
               ].map((text, i) => (
-                <li key={i} className="flex gap-2.5">
-                  <span className="font-[family-name:var(--font-heading)] text-[var(--color-sage-600)]">
+                <li key={i} className="flex gap-3.5">
+                  <span className="display text-[22px] leading-[1.1] text-[var(--color-accent-600)]">
                     0{i + 1}
                   </span>
                   <span>{text}</span>

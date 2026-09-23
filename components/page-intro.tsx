@@ -15,11 +15,11 @@ export function PageIntro({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="mb-8 max-w-[62ch]">
-      <div className="card-kicker mb-2.5">{kicker}</div>
-      <h1 className="mb-3.5 text-[clamp(1.75rem,4.5vw,2.5rem)]">{title}</h1>
+    <div className="mb-[clamp(2rem,4vw,3rem)] max-w-[62ch]">
+      <p className="eyebrow mb-3.5">{kicker}</p>
+      <h1 className="mb-[18px]">{title}</h1>
       {children ? (
-        <p className="text-base leading-relaxed text-[var(--color-text-muted)]">{children}</p>
+        <p className="text-[17px] leading-relaxed text-[var(--color-text-muted)]">{children}</p>
       ) : null}
     </div>
   );
@@ -31,9 +31,9 @@ export function Bullet({ children }: { children: React.ReactNode }) {
     <div className="flex gap-2.5">
       <span
         aria-hidden
-        className="mt-[9px] h-1.5 w-1.5 flex-none rounded-[var(--radius-pill)] bg-[var(--color-accent-300)]"
+        className="mt-[9px] h-2 w-2 flex-none rounded-[var(--radius-pill)] bg-[var(--color-sage-600)]"
       />
-      <span className="text-[0.95rem] leading-[1.7]">{children}</span>
+      <span className="text-[15px] leading-[1.65]">{children}</span>
     </div>
   );
 }

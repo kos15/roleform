@@ -1,16 +1,18 @@
-import type { Metadata } from "next";
-import { Caprasimo, Figtree } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Anton, Figtree } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
+import { AgentTools } from "@/components/agent-tools";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/seo/site";
 
 /**
- * Caprasimo is the only display voice; Figtree carries body copy (CLAUDE.md §9).
+ * Anton is the only display voice; Figtree carries body copy (CLAUDE.md §9).
  * Both are wired to the token names the DS classes read.
  */
-const caprasimo = Caprasimo({
+const anton = Anton({
   weight: "400",
   subsets: ["latin"],
-  variable: "--font-caprasimo",
+  variable: "--font-anton",
   display: "swap",
 });
 
@@ -20,50 +22,105 @@ const figtree = Figtree({
   display: "swap",
 });
 
+/**
+ * Site-wide search and share metadata. Pages set their own title (joined by
+ * the template), description and canonical; everything else inherits. The
+ * values come from lib/seo/site so JSON-LD, llms.txt and these tags agree.
+ */
 export const metadata: Metadata = {
-  title: "Roleform",
-  description:
-    "Eleven tailored résumés, the questions you'll be asked, and the gaps to close — from your own experience. Nothing is invented.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: `%s | ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  category: "Career",
+  keywords: [
+    "tailor resume to job description",
+    "ATS friendly resume",
+    "resume templates",
+    "resume keywords",
+    "AI resume builder",
+    "interview questions from job description",
+    "skill gap analysis",
+  ],
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
+  creator: SITE_NAME,
+  alternates: {
+    canonical: "/",
+    types: { "text/markdown": "/index.md", "text/plain": "/llms.txt" },
+  },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: "/",
+    locale: "en_IN",
+  },
+  twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION },
+  robots: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+  formatDetection: { telephone: false },
+  // Search Console / Bing Webmaster ownership, set per deployment.
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+      ? { "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION }
+      : undefined,
+  },
 };
 
+export const viewport: Viewport = { themeColor: "#f8f0e3" };
+
 /**
- * Sets `data-theme` and `data-palette` before first paint.
- *
- * Both live on the html element, so React can't set them without a flash: the
- * server has no way to know the stored preference, and by the time an effect
- * runs the ground has already been painted — in the wrong palette, which is a
- * far louder flash than the wrong mode. This runs synchronously in head, ahead
- * of the first paint, which is the only place it can run.
- *
- * No stored theme falls through to the OS setting rather than to light. No
- * stored palette falls through to Ember, because there is no OS signal for it
- * and Ember is the house palette (lib/design/palettes.ts).
+ * Clerk's own screens (the sign-in modal, the routed pages, the user menu),
+ * dressed in the house style. Clerk derives its hover and border shades from
+ * the `variables` block, so those have to be literal colours — they are the
+ * same values as the tokens in globals.css. Everything under `elements` is
+ * plain CSS and reads the tokens directly.
  */
-const APPEARANCE_BOOTSTRAP = `(function(){var d=document.documentElement;try{
-var t=localStorage.getItem("roleform-theme");
-if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";
-var p=localStorage.getItem("roleform-palette");
-if(["ember","ink","harbour","orchard","dusk","pine"].indexOf(p)<0)p="ember";
-d.dataset.theme=t;d.dataset.palette=p;
-}catch(e){d.dataset.theme="light";d.dataset.palette="ember"}})()`;
+const clerkAppearance = {
+  variables: {
+    colorPrimary: "#4a0d0d",
+    colorText: "#4a0d0d",
+    colorTextSecondary: "#7a5647",
+    colorBackground: "#fffbf4",
+    colorInputBackground: "#f8f0e3",
+    colorInputText: "#4a0d0d",
+    borderRadius: "14px",
+    fontFamily: "var(--font-figtree), ui-sans-serif, system-ui, sans-serif",
+  },
+  elements: {
+    card: { boxShadow: "none", borderRadius: "30px" },
+    cardBox: { boxShadow: "none", borderRadius: "30px" },
+    headerTitle: { fontWeight: 800, fontSize: "24px" },
+    formButtonPrimary: {
+      minHeight: "50px",
+      borderRadius: "999px",
+      background: "var(--color-text)",
+      color: "var(--color-accent-500)",
+      fontWeight: 800,
+      fontSize: "15px",
+      boxShadow: "none",
+      textTransform: "none" as const,
+    },
+    socialButtonsBlockButton: {
+      minHeight: "50px",
+      borderRadius: "999px",
+      border: "1.5px solid var(--color-text)",
+      fontWeight: 700,
+    },
+    formFieldInput: { minHeight: "50px", border: "1.5px solid var(--color-line)" },
+    footerActionLink: { fontWeight: 800, color: "var(--color-text)" },
+  },
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider>
-      {/* The bootstrap script mutates data-theme and data-palette before
-          hydration, which React would otherwise report as a server/client
-          mismatch on this element. */}
-      <html
-        lang="en"
-        data-theme="light"
-        data-palette="ember"
-        suppressHydrationWarning
-        className={`${caprasimo.variable} ${figtree.variable}`}
-      >
-        <head>
-          <script dangerouslySetInnerHTML={{ __html: APPEARANCE_BOOTSTRAP }} />
-        </head>
-        <body>{children}</body>
+    <ClerkProvider appearance={clerkAppearance}>
+      <html lang="en" className={`${anton.variable} ${figtree.variable}`}>
+        <body>
+          {children}
+          <AgentTools />
+        </body>
       </html>
     </ClerkProvider>
   );

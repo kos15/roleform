@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ChevronRight, CircleDollarSign, FilePlus2, Menu, Palette, UserRound } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { PALETTES } from "@/lib/design/palettes";
+import { Briefcase, ChevronRight, CircleDollarSign, FilePlus2, Menu, UserRound } from "lucide-react";
 
 /**
  * The bottom tab bar, and the sheet behind "More" (F18 chrome, ≤860px).
@@ -14,6 +12,9 @@ import { PALETTES } from "@/lib/design/palettes";
  * links and four controls is two rows of chrome above every page, and the two
  * things worth reaching mid-scroll end up at the top of the screen where a
  * thumb isn't. So below 860px the links come down here.
+ *
+ * The bar is the maroon slab from the design: marigold for where you are,
+ * muted rose for everywhere else.
  *
  * **Five slots, and the fifth is a door.** Four destinations plus "More",
  * because the product has eleven surfaces and eleven is not a tab bar. The four
@@ -26,12 +27,13 @@ import { PALETTES } from "@/lib/design/palettes";
  * desktop header is untouched.
  */
 export function MobileTabBar({
-  isAdmin,
+  extraLinks = [],
   account,
 }: {
-  /** Decides whether the sheet lists Admin. The route still enforces it — this
-      only avoids showing a member a door that answers 403. */
-  isAdmin: boolean;
+  /** Rows only some accounts get (the admin row), prepended to the sheet. Passed
+      from the server layout so the admin link never ships in a member's
+      JavaScript — it exists only in the payload of an admin's request. */
+  extraLinks?: SheetLink[];
   /** Rendered at the top of the sheet. A server node so the balance and the
       name stay server-read; this component never learns what's in it. */
   account?: React.ReactNode;
@@ -69,7 +71,7 @@ export function MobileTabBar({
   // would be a lie about where you are.
   const working = pathname.startsWith("/analyze") || pathname.startsWith("/analysis");
 
-  const links = sheetLinks(isAdmin);
+  const links = [...extraLinks, ...sheetLinks()];
 
   return (
     <>
@@ -78,6 +80,12 @@ export function MobileTabBar({
 
       <nav className="tabbar" aria-label="Primary">
         <Tab href="/analyze" label="New" on={working} icon={<FilePlus2 className="lucide h-5 w-5" />} />
+        <Tab
+          href="/jobs"
+          label="Jobs"
+          on={pathname.startsWith("/jobs")}
+          icon={<Briefcase className="lucide h-5 w-5" />}
+        />
         <Tab
           href="/profile"
           label="Profile"
@@ -89,12 +97,6 @@ export function MobileTabBar({
           label="Tokens"
           on={pathname.startsWith("/pricing")}
           icon={<CircleDollarSign className="lucide h-5 w-5" />}
-        />
-        <Tab
-          href="/appearance"
-          label="Theme"
-          on={pathname.startsWith("/appearance")}
-          icon={<Palette className="lucide h-5 w-5" />}
         />
         <button
           type="button"
@@ -126,13 +128,11 @@ export function MobileTabBar({
 
             {account}
 
-            <AppearanceRow />
-
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col divide-y divide-[rgb(74_13_13/0.08)]">
               {links.map((link) => (
                 <Link key={link.href} href={link.href} className="sheet-row">
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-semibold">{link.label}</span>
+                    <span className="block text-[15px] font-bold">{link.label}</span>
                     <span className="block text-xs text-[var(--color-text-muted)]">
                       {link.hint}
                     </span>
@@ -168,63 +168,17 @@ function Tab({
 }
 
 /**
- * Appearance, stated rather than hidden behind a swatch. The palette name is
- * read off the DOM for the same reason the theme toggle reads it there — the
- * bootstrap script in app/layout.tsx resolved both before hydration, and a
- * second opinion in React state would fight it. The observer keeps the line
- * honest when the toggle beside it flips the mode.
- */
-function AppearanceRow() {
-  const [appearance, setAppearance] = useState<{ palette: string; mode: string } | null>(null);
-
-  useEffect(() => {
-    const root = document.documentElement;
-
-    function read() {
-      const id = root.dataset.palette;
-      const palette = PALETTES.find((p) => p.id === id);
-      setAppearance({
-        palette: palette ? palette.name : "Ember",
-        mode: root.dataset.theme === "dark" ? "Dark" : "Light",
-      });
-    }
-
-    read();
-    const observer = new MutationObserver(read);
-    observer.observe(root, { attributes: true, attributeFilter: ["data-theme", "data-palette"] });
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div className="mb-3.5 flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] px-4 py-3">
-      <div className="min-w-0">
-        <div className="text-[14.5px] font-semibold">Appearance</div>
-        {/* Empty until mounted rather than guessed: the server cannot know the
-            stored palette, and a wrong name that corrects itself is worse than
-            a beat of nothing. */}
-        <div className="text-xs text-[var(--color-text-muted)]">
-          {appearance ? `${appearance.palette} · ${appearance.mode}` : " "}
-        </div>
-      </div>
-      <ThemeToggle withLabel />
-    </div>
-  );
-}
-
-/**
  * Everything the tab bar didn't have room for, in the order it matters to
  * someone who opened the sheet on purpose. History leads because it is product
  * navigation the header dropped at this width; the documents trail because they
  * are read once.
  */
-function sheetLinks(isAdmin: boolean): { href: string; label: string; hint: string }[] {
+export type SheetLink = { href: string; label: string; hint: string };
+
+function sheetLinks(): SheetLink[] {
   return [
-    { href: "/jobs", label: "Jobs", hint: "Listings matched to your profile" },
     { href: "/history", label: "History", hint: "Every analysis you have run" },
     { href: "/status", label: "Status", hint: "Live system health" },
-    ...(isAdmin
-      ? [{ href: "/admin", label: "Admin", hint: "Members, caps and coupons" }]
-      : []),
     { href: "/how-it-works", label: "How it works", hint: "What we do with your words" },
     { href: "/support", label: "Support us", hint: "Independent and ad-free" },
     { href: "/contact", label: "Contact", hint: "A person answers" },

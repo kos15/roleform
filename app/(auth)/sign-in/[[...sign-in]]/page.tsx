@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { AuthSplit } from "@/components/auth-split";
 import { SignIn } from "@clerk/nextjs";
 
-export const metadata: Metadata = { title: "Sign in · Roleform" };
+export const metadata: Metadata = { title: "Sign in" };
 
 /**
  * The routed sign-in, alongside the modal the marketing header opens.
@@ -20,5 +21,9 @@ export const metadata: Metadata = { title: "Sign in · Roleform" };
  * destination is correct for both.
  */
 export default function SignInPage() {
-  return <SignIn fallbackRedirectUrl="/analyze" signUpUrl="/sign-up" />;
+  return (
+    <AuthSplit kicker="Sign in" title="Your own words, retargeted.">
+      <SignIn fallbackRedirectUrl="/analyze" signUpUrl="/sign-up" />
+    </AuthSplit>
+  );
 }

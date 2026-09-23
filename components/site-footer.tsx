@@ -27,23 +27,24 @@ import { anyDegraded, pipelineHealth } from "@/lib/status/health";
  */
 export function SiteFooter() {
   return (
-    <footer className="mt-auto border-t border-[var(--color-line)] px-[clamp(1rem,4vw,2.5rem)] py-[clamp(1.6rem,4vw,2.25rem)]">
-      <div className="mx-auto flex max-w-[1180px] flex-wrap items-start justify-between gap-7">
+    <footer className="mt-auto border-t border-[var(--color-line)] px-[clamp(1.1rem,6vw,6rem)] pb-[clamp(1.5rem,3vw,2rem)] pt-[clamp(1.75rem,4vw,2.5rem)]">
+      <div className="mx-auto flex max-w-[1320px] flex-wrap items-start justify-between gap-8">
         <div className="max-w-[34ch]">
           <div className="mb-2.5 flex items-center gap-[9px]">
             <BrandMark size={24} />
-            <Wordmark size={16} />
+            <Wordmark size={20} />
           </div>
-          <p className="text-xs leading-relaxed text-[var(--color-text-muted)]">
+          <p className="text-[13px] leading-relaxed text-[var(--color-text-muted)]">
             Your own words, retargeted. We reorder and reword what you wrote — we don&rsquo;t
             invent experience you don&rsquo;t have.
           </p>
         </div>
 
-        <nav aria-label="Footer" className="flex flex-wrap gap-9">
+        <nav aria-label="Footer" className="flex flex-wrap gap-10">
           <div className="flex flex-col gap-2">
             <FooterHeading>Product</FooterHeading>
             <FooterLink href="/analyze">New analysis</FooterLink>
+            <FooterLink href="/jobs">Jobs</FooterLink>
             <FooterLink href="/history">History</FooterLink>
             <FooterLink href="/profile">Profile</FooterLink>
             <FooterLink href="/status">
@@ -59,6 +60,8 @@ export function SiteFooter() {
           <div className="flex flex-col gap-2">
             <FooterHeading>Company</FooterHeading>
             <FooterLink href="/how-it-works">How it works</FooterLink>
+            <FooterLink href="/templates">Résumé templates</FooterLink>
+            <FooterLink href="/guides">Guides</FooterLink>
             <FooterLink href="/pricing">Pricing</FooterLink>
             <FooterLink href="/privacy">Privacy</FooterLink>
             <FooterLink href="/contact">Contact</FooterLink>
@@ -66,7 +69,7 @@ export function SiteFooter() {
 
           <div className="flex max-w-[26ch] flex-col gap-2.5">
             <FooterHeading>Support us</FooterHeading>
-            <p className="text-xs leading-snug text-[var(--color-text-muted)]">
+            <p className="text-[13px] leading-snug text-[var(--color-text-muted)]">
               Roleform is independent and ad-free. The vetted course catalog carries no
               affiliate links.
             </p>
@@ -82,7 +85,7 @@ export function SiteFooter() {
         </nav>
       </div>
 
-      <div className="mx-auto mt-6 flex max-w-[1180px] flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-[var(--color-line)] pt-4">
+      <div className="mx-auto mt-6 flex max-w-[1320px] flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-[var(--color-line)] pt-4">
         <span className="text-xs text-[var(--color-text-muted)]">
           Made by Kos in Pune · © {new Date().getFullYear()} Roleform
         </span>
@@ -107,14 +110,14 @@ async function DegradedDot() {
   return (
     <span
       aria-label="a stage is degraded"
-      className="ml-1.5 inline-block h-1.5 w-1.5 rounded-[var(--radius-pill)] bg-[var(--color-accent)] align-middle [animation:breathe_1.6s_ease-in-out_infinite]"
+      className="ml-1.5 inline-block h-1.5 w-1.5 rounded-[var(--radius-pill)] bg-[var(--color-sage-600)] align-middle [animation:breathe_1.6s_ease-in-out_infinite]"
     />
   );
 }
 
 function FooterHeading({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[10.5px] uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
+    <div className="text-[11px] uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
       {children}
     </div>
   );
@@ -135,7 +138,7 @@ function FooterLink({
       className={
         muted
           ? "text-xs text-[var(--color-text-muted)] no-underline hover:text-[var(--color-text)]"
-          : "text-[13px] no-underline hover:text-[var(--color-accent-700)]"
+          : "text-sm no-underline hover:text-[var(--color-link-hover)]"
       }
     >
       {children}

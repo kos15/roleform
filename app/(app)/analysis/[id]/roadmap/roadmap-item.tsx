@@ -40,32 +40,34 @@ export function RoadmapItem({
   }
 
   return (
-    <div className="flex items-center gap-3 border-t border-[var(--color-line)] py-2.5 first:border-t-0">
+    <div className="flex items-center gap-3.5 border-t border-[rgb(74_13_13/0.08)] py-3">
       <button
         type="button"
         onClick={toggle}
         disabled={pending}
         aria-pressed={done}
         aria-label={done ? `Mark "${label}" not done` : `Mark "${label}" done`}
-        className="grid h-6 w-6 flex-none place-items-center rounded-[var(--radius-pill)] border transition-colors"
+        className="grid h-7 w-7 flex-none place-items-center rounded-[var(--radius-pill)] border-[1.5px] transition-colors"
         style={{
-          borderColor: done ? "var(--color-sage-500)" : "var(--color-line)",
-          background: done ? "var(--color-sage-500)" : "transparent",
+          borderColor: done ? "var(--color-accent-500)" : "var(--color-line-strong)",
+          background: done ? "var(--color-accent-500)" : "transparent",
         }}
       >
-        {done ? <Check className="lucide h-3.5 w-3.5 text-white" strokeWidth={3} /> : null}
+        {done ? <Check className="lucide h-3.5 w-3.5" strokeWidth={3.2} /> : null}
       </button>
 
       <div className="min-w-0 flex-1">
         {href ? (
           <Link
             href={href}
-            className={`block truncate text-sm ${done ? "text-[var(--color-text-muted)] line-through" : ""}`}
+            className={`block text-[15px] font-semibold leading-snug no-underline ${done ? "text-[var(--color-text-muted)] line-through" : ""}`}
           >
             {label}
           </Link>
         ) : (
-          <span className={`block truncate text-sm ${done ? "text-[var(--color-text-muted)] line-through" : ""}`}>
+          <span
+            className={`block text-[15px] font-semibold leading-snug ${done ? "text-[var(--color-text-muted)] line-through" : ""}`}
+          >
             {label}
           </span>
         )}

@@ -171,13 +171,13 @@ export function AdminPanel({ members }: { members: Member[] }) {
       </div>
 
       <aside className="flex min-w-[min(290px,100%)] max-w-[440px] flex-1 basis-[330px] flex-col gap-3.5">
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[1.125rem]">
+        <div className="rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] p-[1.125rem]">
           <div className="mb-4 flex items-center gap-3">
             <span className="grid h-[42px] w-[42px] flex-none place-items-center rounded-[var(--radius-pill)] bg-[var(--color-accent-500)] text-sm font-bold text-[var(--color-on-accent)]">
               {selected.initials}
             </span>
             <div className="min-w-0">
-              <div className="font-[family-name:var(--font-heading)] text-lg">{selected.name}</div>
+              <div className="display text-lg">{selected.name}</div>
               <div className="truncate text-xs text-[var(--color-text-muted)]">
                 {selected.email} · {selected.plan}
                 {selected.planExpiresAt ? ` until ${selected.planExpiresAt}` : ""} · joined{" "}
