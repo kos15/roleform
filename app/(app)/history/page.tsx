@@ -31,8 +31,13 @@ export default async function HistoryPage() {
 
   return (
     <section>
-      <h1 className="mb-6">History</h1>
-      <Card className="p-0">
+      <div className="mb-[clamp(1.5rem,3vw,2.25rem)] flex flex-wrap items-end justify-between gap-[18px]">
+        <h1 className="text-[clamp(3.5rem,8vw,7.75rem)]">History</h1>
+        <Link href="/analyze" className="btn btn-primary min-h-[50px] px-6 no-underline">
+          New analysis
+        </Link>
+      </div>
+      <Card className="overflow-hidden rounded-[26px] p-0">
         <div className="table-scroll">
           <table className="table">
             <thead>
@@ -48,15 +53,27 @@ export default async function HistoryPage() {
               {rows.map((row) => (
                 <tr key={row.id}>
                   <td>
-                    <Link href={`/analysis/${row.id}`} className="font-semibold text-accent-body">
+                    <Link
+                      href={`/analysis/${row.id}`}
+                      className="font-extrabold decoration-[var(--color-line-strong)]"
+                    >
                       {row.title ?? "Untitled posting"}
                     </Link>
                   </td>
                   <td>{row.company ?? "—"}</td>
-                  <td>{row.score ? Number(row.score).toFixed(0) : "—"}</td>
+                  <td className="display text-2xl">{row.score ? Number(row.score).toFixed(0) : "—"}</td>
                   <td>
                     <Tag
-                      tone={row.status === "ready" ? "sage" : row.status === "failed" ? "accent" : "muted"}
+                      className="min-h-[30px] px-3 font-extrabold"
+                      tone={
+                        row.queuedAt
+                          ? "default"
+                          : row.status === "ready"
+                            ? "ink"
+                            : row.status === "failed"
+                              ? "pink"
+                              : "warn"
+                      }
                     >
                       {row.queuedAt ? "Parked" : STATUS_LABEL[row.status]}
                     </Tag>
@@ -74,6 +91,10 @@ export default async function HistoryPage() {
           </table>
         </div>
       </Card>
+      <p className="mt-[18px] max-w-[64ch] text-sm leading-relaxed text-[var(--color-text-muted)]">
+        Opening a past analysis shows what was stored — nothing is regenerated and nothing is billed
+        again. Editing your profile never rewrites these.
+      </p>
     </section>
   );
 }

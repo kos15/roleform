@@ -11,8 +11,8 @@ export function SavedJobsPanel({ jobs }: { jobs: SavedJobView[] }) {
   if (jobs.length === 0) {
     return (
       <div>
-        <h2 className="mb-2 text-[1.1rem]">Saved</h2>
-        <p className="text-sm text-[var(--color-text-muted)]">
+        <h2 className="mb-4 text-[40px] leading-none">Saved</h2>
+        <p className="text-[15px] text-[var(--color-text-muted)]">
           Nothing saved yet. Save a listing above to track it here.
         </p>
       </div>
@@ -21,23 +21,31 @@ export function SavedJobsPanel({ jobs }: { jobs: SavedJobView[] }) {
 
   return (
     <div>
-      <h2 className="mb-3 text-[1.1rem]">Saved</h2>
+      <h2 className="mb-4 text-[40px] leading-none">Saved</h2>
       <div className="space-y-3">
         {jobs.map((job) => (
-          <Card key={job.id} className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <a href={job.url} target="_blank" rel="noopener nofollow" className="font-semibold">
+          <Card
+            key={job.id}
+            className="flex flex-wrap items-center justify-between gap-3.5 rounded-[22px] px-[22px] py-[18px]"
+          >
+            <div className="min-w-0 flex-[1_1_16rem]">
+              <a
+                href={job.url}
+                target="_blank"
+                rel="noopener nofollow"
+                className="text-base font-extrabold no-underline"
+              >
                 {job.title}
               </a>
-              <p className="text-sm text-[var(--color-text-muted)]">
+              <p className="mb-1.5 mt-0.5 text-sm text-[var(--color-text-muted)]">
                 {job.company || "—"} · {job.location || "—"}
               </p>
               {job.analysisId ? (
-                <Link href={`/analysis/${job.analysisId}`} className="text-xs underline">
+                <Link href={`/analysis/${job.analysisId}`} className="text-[13px] font-bold">
                   View analysis
                 </Link>
               ) : (
-                <Link href={`/analyze?listing=${job.listingId}`} className="text-xs underline">
+                <Link href={`/analyze?listing=${job.listingId}`} className="text-[13px] font-bold">
                   Analyse this listing
                 </Link>
               )}

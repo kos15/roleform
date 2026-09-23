@@ -30,9 +30,9 @@ export function DeleteAccount() {
   }
 
   return (
-    <Card>
-      <h3 className="mb-2">Delete everything</h3>
-      <p className="mb-4 text-sm text-[var(--color-text-muted)]">
+    <Card className="rounded-[26px] bg-[var(--color-sage-200)] p-6">
+      <h3 className="mb-2 text-[17px]">Delete everything</h3>
+      <p className="mb-3.5 text-sm leading-normal">
         Removes your profile, every analysis, and the résumé files themselves from storage.
         Immediate and irreversible. Backups purge within 30 days.
       </p>
@@ -41,7 +41,7 @@ export function DeleteAccount() {
         <Input
           aria-label="Type DELETE to confirm"
           placeholder="Type DELETE to confirm"
-          className="max-w-xs"
+          className="max-w-xs bg-[var(--color-bg-raised)]"
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
         />

@@ -86,16 +86,16 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
   return (
     // No width or top margin of its own: it is the first card in the editor's
     // left column now, and it takes that column's measure.
-    <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[clamp(1.125rem,3vw,1.5rem)]">
+    <section className="rounded-[26px] bg-[var(--color-accent-500)] p-[clamp(1.25rem,2.6vw,1.9rem)]">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="card-kicker mb-2">Token allowance</p>
-          <h3 className="mb-1">
+          <p className="eyebrow mb-2 text-[var(--color-text)]">Token allowance</p>
+          <h3 className="display mb-2 text-[clamp(2.1rem,3.8vw,3.1rem)] font-normal">
             {uncapped
               ? `${formatCount(balance.used)} drawn this cycle`
               : `${formatCount(balance.left)} left of ${formatCount(balance.total)}`}
           </h3>
-          <p className="text-sm text-[var(--color-text-muted)]">
+          <p className="text-[14.5px] leading-normal">
             {uncapped ? (
               <>
                 Admin · no allowance ceiling · still measured on every run, and counted in the
@@ -119,11 +119,13 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
           </p>
         </div>
         {uncapped ? (
-          <Tag tone="sage">Unlimited</Tag>
+          <Tag tone="outline" className="min-h-8 px-3.5 font-extrabold">Unlimited</Tag>
         ) : balance.low ? (
-          <Tag tone="accent">{balance.empty ? "Not enough for a run" : "Running low"}</Tag>
+          <Tag tone="sage" className="min-h-8 px-3.5 font-extrabold">
+            {balance.empty ? "Not enough for a run" : "Running low"}
+          </Tag>
         ) : (
-          <Tag tone="sage">Healthy</Tag>
+          <Tag tone="outline" className="min-h-8 px-3.5 font-extrabold">Healthy</Tag>
         )}
       </div>
 
@@ -132,17 +134,17 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
       {uncapped ? null : (
         <>
           <div
-            className="mb-2 flex h-2.5 overflow-hidden rounded-[var(--radius-pill)]"
-            style={{ background: "var(--color-bg-sunken)" }}
+            className="mb-2 flex h-3 overflow-hidden rounded-[var(--radius-pill)]"
+            style={{ background: "rgb(74 13 13 / 0.14)" }}
           >
             <span
               style={{
                 width: `${((balance.used / (balance.total || 1)) * 100).toFixed(1)}%`,
-                background: balance.low ? "var(--color-accent-500)" : "var(--color-sage-500)",
+                background: balance.low ? "var(--color-sage-600)" : "var(--color-text)",
               }}
             />
           </div>
-          <p className="mb-6 text-xs text-[var(--color-text-muted)]">
+          <p className="mb-[22px] text-[12.5px]">
             {formatCount(balance.used)} drawn this cycle
             {balance.topups > 0
               ? ` · ${formatCount(balance.topups)} of that allowance is unspent top-up, which carries over`
@@ -152,8 +154,8 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
       )}
       {uncapped ? <div className="mb-6" /> : null}
 
-      <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(17rem,100%),1fr))]">
-        <div>
+      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(15rem,100%),1fr))]">
+        <div className="rounded-[18px] bg-[var(--color-bg-raised)] px-[18px] py-4">
           <p className="eyebrow mb-2.5">What things cost</p>
           <ul className="flex list-none flex-col gap-1.5 p-0 text-sm">
             {TOKEN_STAGES.map((s) => (
@@ -162,7 +164,7 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
                 <span className="tabular-nums">{formatCount(s.estimate)}</span>
               </li>
             ))}
-            <li className="flex justify-between gap-3 border-t border-[var(--color-line)] pt-1.5 font-semibold">
+            <li className="flex justify-between gap-3 border-t border-[var(--color-line)] pt-2 font-extrabold">
               <span>A full analysis</span>
               <span className="tabular-nums">{formatCount(RUN_ESTIMATE)}</span>
             </li>
@@ -177,7 +179,7 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
           </p>
         </div>
 
-        <div>
+        <div className="rounded-[18px] bg-[var(--color-bg-raised)] px-[18px] py-4">
           <p className="eyebrow mb-2.5">What you actually drew</p>
           {ledger.length === 0 ? (
             <p className="text-sm text-[var(--color-text-muted)]">
@@ -204,8 +206,8 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-2 border-t border-[var(--color-line)] pt-4">
-        <Link href="/pricing" className="btn btn-secondary btn-sm no-underline">
+      <div className="mt-[18px] flex flex-wrap gap-2">
+        <Link href="/pricing" className="btn btn-primary btn-sm no-underline">
           Compare plans
         </Link>
       </div>

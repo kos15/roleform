@@ -11,14 +11,13 @@ import type { CapWall } from "@/lib/domain/quotas";
 export function CapNotice({ wall }: { wall: CapWall }) {
   return (
     <section
-      className="mb-8 rounded-[var(--radius-lg)] border p-[clamp(1.25rem,3vw,1.75rem)]"
-      style={{ borderColor: "var(--color-accent-300)", background: "var(--color-accent-100)" }}
+      className="mb-8 rounded-[var(--radius-xl)] bg-[var(--color-accent-500)] p-[clamp(1.25rem,3vw,1.9rem)]"
     >
       <div className="mb-3 flex flex-wrap items-center gap-2.5">
-        <Tag tone="accent">Off on your plan</Tag>
+        <Tag tone="ink">Off on your plan</Tag>
       </div>
-      <h2 className="mb-2 text-[1.3rem]">Job search is a Pro feature</h2>
-      <p className="mb-4 max-w-[56ch] text-sm leading-relaxed text-[var(--color-accent-800)]">
+      <h2 className="mb-2.5 text-[40px] leading-none">Job search is a Pro feature</h2>
+      <p className="mb-4 max-w-[56ch] text-[15px] leading-relaxed">
         The analysis underneath — coverage, résumés, prep, the roadmap — is the same on every plan.
         Job search is gated by plan, not by quality.
       </p>
