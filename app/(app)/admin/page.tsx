@@ -151,7 +151,7 @@ export default async function AdminPage({
                 {stat.label}
               </div>
               <div className="mb-2.5 flex items-baseline gap-2">
-                <span className="font-[family-name:var(--font-heading)] text-[1.625rem] leading-none">
+                <span className="display text-[1.625rem] leading-none">
                   {stat.value}
                 </span>
                 <span className="text-xs text-[var(--color-text-muted)]">{stat.sub}</span>

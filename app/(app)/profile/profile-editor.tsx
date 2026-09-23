@@ -801,7 +801,7 @@ function IdentitySection({
           element, and without a basis on the text it was the text that gave way
           — 130px of column beside a button that won't shrink. It wraps now. */}
       <div className="mb-5 flex flex-wrap items-center gap-4">
-        <span className="grid h-[60px] w-[60px] flex-none place-items-center rounded-[var(--radius-pill)] bg-[var(--color-sage-600)] font-[family-name:var(--font-heading)] text-[1.375rem] text-[var(--color-bg)]">
+        <span className="grid h-[60px] w-[60px] flex-none place-items-center rounded-[var(--radius-pill)] bg-[var(--color-sage-600)] display text-[1.375rem] text-[var(--color-bg)]">
           {initialsOf(basics.name)}
         </span>
         <div className="min-w-[min(15rem,100%)] flex-1">
@@ -965,7 +965,7 @@ function StrengthRing({ score }: { score: number }) {
           diameter is ~73px, and at 10.5px "profile strength" runs wider than
           that and clips against the stroke. */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-[family-name:var(--font-heading)] text-[1.75rem] leading-none">
+        <span className="display text-[1.75rem] leading-none">
           {score}
         </span>
         <span className="max-w-[72px] text-center text-[9px] leading-tight text-[var(--color-text-muted)]">

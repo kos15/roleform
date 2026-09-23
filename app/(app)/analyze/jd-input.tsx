@@ -94,7 +94,7 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
     // The walkthrough points at the whole block rather than one mode's control:
     // which of the two is showing is the member's choice, and a spotlight that
     // moved when they switched tabs would be pointing at the tab, not the task.
-    <div className="space-y-4" data-tour="jd">
+    <div className="space-y-[18px]" data-tour="jd">
       {wall ? (
         <TokenWallDialog
           wall={wall}
@@ -127,8 +127,8 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
       {error ? <ErrorRegion title="We couldn't use that">{error}</ErrorRegion> : null}
 
       {initialListing ? (
-        <p className="mb-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] px-4 py-3 text-sm leading-relaxed text-[var(--color-text-muted)]">
-          <strong className="font-semibold text-[var(--color-text)]">
+        <p className="mb-3 rounded-[var(--radius-md)] bg-[var(--color-accent-100)] px-4 py-3 text-sm leading-relaxed">
+          <strong className="font-extrabold">
             {initialListing.title} at {initialListing.company}.
           </strong>{" "}
           This is the summary the job board gave us. Paste the full posting from the listing for a
@@ -144,9 +144,9 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
             placeholder="Paste the full posting — responsibilities, requirements, the lot."
             value={text}
             onChange={(e) => setText(e.target.value)}
-            className="min-h-[16.5rem]"
+            className="min-h-[22rem] rounded-[var(--radius-lg)] border-transparent bg-[var(--color-bg-raised)] px-[26px] py-6 text-[15px] leading-[1.65]"
           />
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-[18px] flex flex-wrap items-center justify-between gap-3.5">
             <span className="text-sm text-[var(--color-text-muted)]">
               {text.length.toLocaleString()} characters
               {/* The floor is quoted only once there is something to measure —
@@ -154,7 +154,7 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
               {text.length > 0 && text.trim().length < JD_MIN_CHARS ? ` · we need at least ${JD_MIN_CHARS}` : ""}
             </span>
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" size="sm" onClick={() => setText(SAMPLE_JD)}>
+              <Button variant="secondary" onClick={() => setText(SAMPLE_JD)}>
                 Load sample posting
               </Button>
               {devAffordances ? (
@@ -186,27 +186,27 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
               const dropped = e.dataTransfer.files[0];
               if (dropped) setFile(dropped);
             }}
-            className="block cursor-pointer rounded-[var(--radius-lg)] border-2 border-dashed px-7 py-10 text-center transition-[background-color,border-color,transform] duration-200"
+            className="block cursor-pointer rounded-[var(--radius-lg)] border-2 border-dashed px-7 py-14 text-center transition-[background-color,border-color,transform] duration-200"
             style={{
-              borderColor: dragging ? "var(--color-accent-500)" : "var(--color-line)",
+              borderColor: dragging ? "var(--color-accent-600)" : "var(--color-line-strong)",
               background: dragging ? "var(--color-accent-100)" : "var(--color-bg-raised)",
               transform: dragging ? "scale(1.012)" : undefined,
             }}
           >
             <span
-              className={`mx-auto mb-4 grid h-[58px] w-[58px] place-items-center rounded-[var(--radius-pill)] ${dragging ? "fig-float" : ""}`}
-              style={{ background: "var(--color-accent-200)" }}
+              className={`mx-auto mb-[18px] grid h-[62px] w-[62px] place-items-center rounded-[var(--radius-pill)] ${dragging ? "fig-float" : ""}`}
+              style={{ background: "var(--color-accent-500)" }}
             >
-              <FileUp className="lucide h-6 w-6 text-[var(--color-accent-800)]" />
+              <FileUp className="lucide h-6 w-6" />
             </span>
-            <span className="block font-[family-name:var(--font-heading)] text-xl">
+            <span className="display block text-[28px] leading-[1.05]">
               {file
                 ? file.name
                 : dragging
                   ? "Drop it — we'll take it from here"
                   : "Drop the posting here, or choose a file"}
             </span>
-            <span className="mb-4 mt-1.5 block text-sm text-[var(--color-text-muted)]">
+            <span className="mb-5 mt-2 block text-sm text-[var(--color-text-muted)]">
               PDF, DOCX or TXT · up to 5 MB
             </span>
             {/* A span, not a button: the whole label is the control, and a nested

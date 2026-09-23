@@ -42,7 +42,7 @@ export async function SheetAccount() {
         {initialsOf(name)}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="truncate font-[family-name:var(--font-heading)] text-[19px] uppercase leading-tight">
+        <div className="truncate display text-[19px] uppercase leading-tight">
           {name}
         </div>
         <div className="truncate text-xs text-[var(--color-text-muted)]">{line}</div>

@@ -38,7 +38,7 @@ export function BrandMark({ size = 34, faded }: { size?: number; faded?: boolean
 export function Wordmark({ size = 27 }: { size?: number }) {
   return (
     <span
-      className="font-[family-name:var(--font-heading)] uppercase leading-none tracking-[0.01em] text-[var(--color-text)]"
+      className="display uppercase leading-none tracking-[0.01em] text-[var(--color-text)]"
       style={{ fontSize: size }}
     >
       Roleform<span style={{ color: "var(--color-accent-600)" }}>.</span>

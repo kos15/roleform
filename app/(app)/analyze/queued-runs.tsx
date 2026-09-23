@@ -61,19 +61,18 @@ export function QueuedRuns({ runs }: { runs: QueuedRunView[] }) {
 
   return (
     <div
-      className="rise-in mb-7 rounded-[var(--radius-lg)] border p-5"
-      style={{ borderColor: "var(--color-accent-300)", background: "var(--color-accent-100)" }}
+      className="rise-in mb-7 rounded-[var(--radius-lg)] bg-[var(--color-accent-500)] p-6"
     >
       {wall ? <TokenWallDialog wall={wall} onClose={() => setWall(null)} /> : null}
 
       <div className="mb-2.5 flex items-center gap-2.5">
-        <Clock className="lucide h-4 w-4 text-[var(--color-accent-800)]" />
-        <span className="eyebrow text-[var(--color-accent-800)]">
+        <Clock className="lucide h-4 w-4 text-[var(--color-text)]" />
+        <span className="eyebrow text-[var(--color-text)]">
           {runs.length === 1 ? "One posting is waiting" : `${runs.length} postings are waiting`}
         </span>
       </div>
 
-      <p className="mb-4 max-w-[62ch] text-sm leading-relaxed text-[var(--color-accent-800)]">
+      <p className="mb-4 max-w-[62ch] text-sm leading-relaxed text-[var(--color-text)]">
         Parked when your allowance ran out. Nothing has been read, matched or rewritten, and nothing
         has been charged — these start when you say so, not on a timer.
       </p>
@@ -84,10 +83,10 @@ export function QueuedRuns({ runs }: { runs: QueuedRunView[] }) {
         {runs.map((run) => (
           <li
             key={run.id}
-            className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg)] px-4 py-3"
+            className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] bg-[var(--color-bg-raised)] px-4 py-3"
           >
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-semibold">{run.label}</span>
+              <span className="block truncate font-extrabold">{run.label}</span>
               <span className="block text-xs text-[var(--color-text-muted)]">
                 Parked {run.queued}
               </span>

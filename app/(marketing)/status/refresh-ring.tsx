@@ -60,7 +60,7 @@ export function RefreshRing() {
             style={{ transition: "stroke-dasharray 900ms linear" }}
           />
         </svg>
-        <div className="absolute inset-0 grid place-items-center font-[family-name:var(--font-heading)] text-xl tabular-nums">
+        <div className="absolute inset-0 grid place-items-center display text-xl tabular-nums">
           {left}
         </div>
       </div>

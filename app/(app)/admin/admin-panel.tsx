@@ -177,7 +177,7 @@ export function AdminPanel({ members }: { members: Member[] }) {
               {selected.initials}
             </span>
             <div className="min-w-0">
-              <div className="font-[family-name:var(--font-heading)] text-lg">{selected.name}</div>
+              <div className="display text-lg">{selected.name}</div>
               <div className="truncate text-xs text-[var(--color-text-muted)]">
                 {selected.email} · {selected.plan}
                 {selected.planExpiresAt ? ` until ${selected.planExpiresAt}` : ""} · joined{" "}

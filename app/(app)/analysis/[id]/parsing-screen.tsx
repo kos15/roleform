@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, CircleDashed, Loader2, TriangleAlert } from "lucide-react";
 import { Button, ErrorRegion } from "@/components/ui";
 import { StageFigure } from "@/components/stage-figure";
+import { InfoNote } from "@/components/info-note";
 import { TokenWallDialog } from "@/components/token-wall";
 import { STAGES, type StageKey, type StageState, type StageUpdate } from "@/lib/pipeline/stages";
 import type { AppError } from "@/lib/domain/types";
@@ -153,9 +154,11 @@ export function ParsingScreen({
             resumeLabel="Start the analysis"
           />
         )}
-        <div className="max-w-2xl space-y-4">
-          <h1 className="text-4xl">This run is waiting on your allowance</h1>
-          <p className="text-[var(--color-text-muted)]">
+        <div className="max-w-[760px] space-y-5">
+          <h1 className="text-[clamp(2.75rem,5.5vw,5rem)] leading-[0.92]">
+            This run is waiting on your allowance
+          </h1>
+          <p className="text-[17px] leading-relaxed text-[var(--color-text-muted)]">
             The posting is stored — nothing has been read, matched or rewritten, and nothing has
             been charged. It will be here when the balance is.
           </p>
@@ -172,8 +175,9 @@ export function ParsingScreen({
 
   if (failed) {
     return (
-      <div className="max-w-2xl space-y-4">
-        <ErrorRegion title="This analysis stopped">{failed}</ErrorRegion>
+      <div className="max-w-[760px] space-y-5">
+        <h1 className="text-[clamp(2.75rem,5.5vw,5rem)] leading-[0.92]">This analysis stopped</h1>
+        <ErrorRegion title="What failed">{failed}</ErrorRegion>
         <p className="text-sm text-[var(--color-text-muted)]">
           Whatever finished before the failure was kept — we resume rather than restart. Picking it
           up again starts at the first stage with nothing to show for it, and the stages that
@@ -211,74 +215,68 @@ export function ParsingScreen({
     STAGES[0];
 
   return (
-    <div className="max-w-3xl">
-      <div className="rise-in">
-        <p className="eyebrow mb-2.5 text-[var(--color-accent-700)]">
-          Step 2 of 3 · {progressPct}% complete
+    <div>
+      <div className="rise-in max-w-[980px]">
+        <p className="eyebrow mb-3.5">Step 2 of 3 · {progressPct}% complete</p>
+        <h1 className="mb-[18px] text-[clamp(2.9rem,6vw,5.75rem)] leading-[0.92]">{current.label}</h1>
+        <p className="mb-7 max-w-[60ch] text-[17px] leading-relaxed text-[var(--color-text-muted)]">
+          {current.description}
         </p>
-        <h1 className="mb-2 text-4xl">{current.label}</h1>
-        <p className="mb-6 max-w-[60ch] text-[var(--color-text-muted)]">{current.description}</p>
 
         <div
-          className="mb-7 h-2 w-full overflow-hidden rounded-[var(--radius-pill)]"
-          style={{ background: "var(--color-bg-sunken)" }}
+          className="progress mb-8"
           role="progressbar"
           aria-valuenow={progressPct}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-label="Analysis progress"
         >
-          <div
-            className="h-full rounded-[var(--radius-pill)] transition-[width] duration-500"
-            style={{ width: `${progressPct}%`, background: "var(--color-accent-500)" }}
-          />
+          <span style={{ width: `${progressPct}%` }} />
         </div>
       </div>
 
       {/* Not a Card: the figure needs to clip its own animation, and a card's
           shadow around a looping diagram reads as a second progress widget. */}
-      <div
-        className="mb-6 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] p-5 sm:p-6"
-        style={{ background: "var(--color-bg-raised)" }}
-      >
+      <div className="mb-10 overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] p-5 sm:p-7">
         <StageFigure stage={current.key} />
       </div>
 
-      <ol className="mb-7">
+      {/* The four stages as a row of cards: the running one in pink, the
+          finished ones on paper, the ones still to come on marigold tint. */}
+      <ol className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))]">
         {STAGES.map((stage) => {
           const state = states[stage.key];
-          const active = state === "running";
+          const tone =
+            state === "running"
+              ? { card: "bg-[var(--color-sage-500)]", dot: "bg-[var(--color-sage-300)]" }
+              : state === "pending"
+                ? { card: "bg-[var(--color-accent-100)]", dot: "bg-[var(--color-bg-raised)]" }
+                : { card: "bg-[var(--color-bg-raised)]", dot: "bg-[var(--color-bg-tint)]" };
           return (
             <li
               key={stage.key}
-              className="flex flex-wrap items-center gap-3 border-b border-[var(--color-line)] py-2.5"
+              className={`flex min-h-[150px] flex-col justify-between gap-4 rounded-[22px] px-5 pb-[22px] pt-[18px] ${tone.card}`}
             >
-              <StageIcon state={state} />
-              <span
-                className={
-                  state === "pending"
-                    ? "text-[var(--color-text-muted)]"
-                    : active
-                      ? "font-semibold"
-                      : undefined
-                }
-              >
-                {stage.label}
+              <span className={`grid h-9 w-9 place-items-center rounded-[var(--radius-pill)] ${tone.dot}`}>
+                <StageIcon state={state} />
               </span>
-              {messages[stage.key] ? (
-                <span className="text-sm text-[var(--color-warn-700)]">{messages[stage.key]}</span>
-              ) : null}
-              <span className="ml-auto text-xs text-[var(--color-text-muted)]">
-                {STATUS_LABEL[state]}
+              <span>
+                <span className="block text-[17px] font-extrabold leading-snug">{stage.label}</span>
+                <span className="mt-1 block text-[15px] text-[var(--color-text-muted)]">
+                  {STATUS_LABEL[state]}
+                </span>
+                {messages[stage.key] ? (
+                  <span className="mt-1 block text-sm">{messages[stage.key]}</span>
+                ) : null}
               </span>
             </li>
           );
         })}
       </ol>
 
-      <p className="max-w-[60ch] text-sm text-[var(--color-text-muted)]">
+      <InfoNote className="mt-9">
         A stage that fails stops there and says what failed — we resume rather than restart.
-      </p>
+      </InfoNote>
     </div>
   );
 }
@@ -293,13 +291,13 @@ const STATUS_LABEL: Record<StageState, string> = {
 
 function StageIcon({ state }: { state: StageState }) {
   if (state === "running") {
-    return <Loader2 className="lucide h-5 w-5 animate-spin text-[var(--color-accent-600)]" />;
+    return <Loader2 className="lucide h-4 w-4 animate-spin" />;
   }
   if (state === "done") {
-    return <Check className="lucide h-5 w-5 text-[var(--color-sage-600)]" />;
+    return <Check className="lucide h-4 w-4" strokeWidth={3.2} />;
   }
   if (state === "degraded" || state === "failed") {
-    return <TriangleAlert className="lucide h-5 w-5 text-[var(--color-warn-500)]" />;
+    return <TriangleAlert className="lucide h-4 w-4" />;
   }
-  return <CircleDashed className="lucide h-5 w-5 text-[var(--color-text-muted)]" />;
+  return <CircleDashed className="lucide h-4 w-4" />;
 }
