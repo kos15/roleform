@@ -2,7 +2,7 @@
 
 > Operating contract for any AI agent working in this repo. Read fully before the first edit.
 > Uppercase filename because that is what Claude Code loads. Do not rename.
-> Design source of truth: `JD Resume Builder.dc.html` + `_ds/organic-*`.
+> Design source of truth: `Roleform Prototype.dc.html` (Claude Design handoff, Sep 2026).
 
 ---
 
@@ -39,7 +39,7 @@ analysis as much as to résumé bullets.
 | N8 | Course recommendations come from a curated catalog. Never a model-generated URL. The learning plan's Zod schema has no URL field at all, so the model has nowhere to put one; the serialiser reads every URL from the database. | A hallucinated course link destroys the Learning tab's credibility in one click. |
 | N11 | A `SkillGap` may carry `unlocksBulletDraft` only when `unlocksBulletId` is set (CHECK). Bindings are written **only** by the deterministic binder in `lib/domain/binding.ts`, which returns null rather than reaching for something plausible — never by a model. | A staged rewrite with no source bullet is a claim about a bullet the user never wrote. This was first built as `NOT NULL` bindings on `LearningStep`; measured end to end that withheld vetted material for 5 of 6 gaps while guarding against the wrong thing. The risk is a **false** binding, not an absent one. |
 | N12 | The learning engine makes exactly **one** model call per run, and no LLM call in any stage that is a pure function or a DB read. Its retrieval is a primary-key lookup against precomputed bundles, never a search. | Request-time work is billed on every run forever; ingest-time work is amortised across all users. Moving work the wrong way across that line is the one change that breaks the cost model silently. |
-| N9 | Every color, font, radius and shadow comes from the `organic` DS tokens. Never hard-code a hex or a px the tokens carry. | The DS readme requires it. |
+| N9 | Every color, font, radius and shadow comes from the `marigold` DS tokens. Never hard-code a hex or a px the tokens carry. | The DS readme requires it. |
 | N10 | Every table carrying user data has RLS enabled with a policy keyed on the Clerk subject. Server-side scoping is not a substitute. | We test lightly (§11) — structural guarantees carry the load instead. |
 | N13 | No model call in the roadmap or the job search. Both are pure functions over rows and one outbound API call. `ai_runs` does not move when either runs. | Request-time cost is billed on every run forever (N12). Neither feature needs a model, so neither gets one. |
 | N14 | Every non-fixed `roadmap_items` row carries exactly the foreign key its `kind` names (CHECK). A step about a question points at that question. | A step that names nothing is a claim about work the user never generated. |
@@ -181,7 +181,7 @@ Rules:
 | Layer | Choice | Reason | Reversal |
 |---|---|---|---|
 | Framework | Next.js 15 App Router, TS strict | Server Actions remove most API boilerplate | High |
-| UI | Tailwind + shadcn/ui, restyled to `organic` tokens | DS bundle is authoritative | Low |
+| UI | Tailwind + shadcn/ui, restyled to `marigold` tokens | DS bundle is authoritative | Low |
 | ORM | Prisma over Supabase Postgres | Typed schema; migrations in-repo, not dashboard-clicked; swapping the underlying database later is a datasource/adapter change, not a query rewrite | Medium |
 | LLM | Vercel AI SDK, `generateObject` + Zod | Provider-agnostic; swap by changing one import | Low — the point |
 | PDF | `@react-pdf/renderer` | Chromium ~100 MB vs Vercel's 50 MB function limit; renders <500ms vs 2–5s | Medium |
@@ -194,25 +194,27 @@ Rules:
 corpus is one user's résumé — there is no retrieval problem), Supabase Auth (Clerk was chosen; don't
 run two auth systems), Supabase Edge Functions (the app is on Vercel — keep compute in one place).
 
-## 9. Design system — `organic`
+## 9. Design system — `marigold`
 
-Warm, rounded, a little playful: cream ground, terracotta accent, sage second accent, over-rounded
-containers.
+Warm, confident, generous with whitespace: cream ground, maroon ink, marigold accent, pink second
+accent, over-rounded containers, and condensed uppercase display type. One palette, light only —
+the six-palette picker and dark mode were retired with it.
 
-- Ground `--color-bg` #f5ead8 · text `--color-text` #201e1d · accent `--color-accent` #c67139 · second accent `--color-accent-2` #7a8a5e
-- Ramps 100–900 per role. Light steps (100–300) for tinted fills and hovers, 500 as base, 700–900 for text on tints. **Prefer ramp steps over ad-hoc `color-mix()`.**
-- Type: Caprasimo headings (`--font-heading`) over Figtree body (`--font-body`). Caprasimo is the only display voice.
-- Radius: `--radius-lg` 28px for containers, `999px` for buttons, inputs and pills.
-- Elevation: `--shadow-sm/md/lg` only. No ad-hoc box-shadows.
-- Icons: Lucide at **stroke-width 2.75**.
-- Focus: `:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px }`. Never the default blue ring.
-- Accent-on-ground is tuned to 3:1 — fine for chrome and large text, **not for body copy**. Use `--color-accent-700` for paragraph text in the accent.
+- Ground `--color-bg` #f8f0e3 (the body fades toward marigold down the page) · raised `--color-bg-raised` #fffbf4 · text `--color-text` #4a0d0d · muted `--color-text-muted` #7a5647 · accent `--color-accent` #f9b130 · second accent `--color-accent-2` (the `sage-*` ramp) #ff9dc0
+- Ramps 100–900 per role. Light steps (100–300) for tinted fills, 500 as the fill, 600 for the deeper marigold / hot pink, 700–900 walk toward the ink. **Prefer ramp steps over ad-hoc `color-mix()`.**
+- Type: Anton headings (`--font-heading`), uppercase, set tight, over Figtree body (`--font-body`). `h1`/`h2`/`.display` are Anton; `h3` stays in Figtree 800 because it titles cards.
+- The filled button is maroon with marigold type (`.btn-primary`). Outlined pills and chips use a 1.5px ink border.
+- Radius: `--radius-lg` 24px / `--radius-xl` 28px for containers, `--radius-sm` 14px for inputs, `999px` for buttons and pills.
+- Elevation: mostly flat. `--shadow-md/lg` only where paper lifts off the ground (résumé thumbnails, hover lift). No ad-hoc box-shadows.
+- Icons: Lucide at **stroke-width 2.25**.
+- Focus: `:focus-visible { outline: 2px solid var(--color-accent-600); outline-offset: 2px }`. Never the default blue ring.
+- Marigold is a fill, not a text colour. Text on marigold or pink is the ink; paragraph text in the accent uses `--color-accent-700`.
 - Direction: left-aligned and asymmetric, flush-left headings, whitespace on the right. Don't crowd — rounded shapes need air.
 
-Use the DS classes (`.btn`, `.tag`, `.card`, `.nav`, `.field`, `.input`, `.seg`, `.table`, `.dialog`)
+Use the DS classes (`.btn`, `.tag`, `.card`, `.nav`, `.field`, `.input`, `.seg`, `.table`, `.dialog`, `.eyebrow`, `.progress`, `.note`)
 rather than inventing parallels.
 
-**Export templates are exempt from `organic`.** A résumé is not a Roleform surface — it is the user's
+**Export templates are exempt from `marigold`.** A résumé is not a Roleform surface — it is the user's
 document going to a stranger. Export templates follow §5, not the brand.
 
 ## 10. Repo layout

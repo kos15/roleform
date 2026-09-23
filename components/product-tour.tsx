@@ -63,7 +63,7 @@ export function TourLauncher() {
       onClick={() => window.dispatchEvent(new CustomEvent(START_EVENT))}
       title="Replay the walkthrough"
       aria-label="Replay the walkthrough"
-      className="hdr-btn flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[var(--radius-pill)] border border-[var(--color-line)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-accent-100)] hover:text-[var(--color-accent-800)]"
+      className="hdr-btn flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[var(--radius-pill)] border-[1.5px] border-[var(--color-line-strong)] text-[var(--color-text)] transition-colors hover:bg-[var(--color-hover)]"
     >
       <HelpCircle className="lucide h-4 w-4" />
     </button>

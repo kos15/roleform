@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AuthSplit } from "@/components/auth-split";
 import { SignUp } from "@clerk/nextjs";
 
 export const metadata: Metadata = { title: "Create an account · Roleform" };
@@ -12,5 +13,9 @@ export const metadata: Metadata = { title: "Create an account · Roleform" };
  * after onboarding.
  */
 export default function SignUpPage() {
-  return <SignUp fallbackRedirectUrl="/analyze" signInUrl="/sign-in" />;
+  return (
+    <AuthSplit kicker="Sign up" title="Your own words, retargeted.">
+      <SignUp fallbackRedirectUrl="/analyze" signInUrl="/sign-in" />
+    </AuthSplit>
+  );
 }

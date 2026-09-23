@@ -4,9 +4,8 @@ import { Suspense } from "react";
 import { Show, SignInButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { Brand } from "@/components/brand";
-import { AppearanceLink } from "@/components/appearance-link";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { SiteFooter } from "@/components/site-footer";
+import { NavLinks } from "@/components/nav-links";
 import { MobileTabBar } from "@/components/mobile-tabbar";
 import { SheetAccount } from "@/components/sheet-account";
 import { Button } from "@/components/ui";
@@ -32,53 +31,43 @@ export default async function MarketingLayout({ children }: { children: React.Re
   return (
     <div className="flex min-h-screen flex-col">
       <header className="nav">
-        {/* Signed in, the mark goes back to the work rather than to the pitch.
-            The mobile bar sends members here for Tokens and Appearance, and
+        {/* Signed in, the mark goes back to the work rather than to the pitch:
             landing on the marketing page from inside a session — with its
             "Get started" and its explanation of what Roleform is — reads as
             having been logged out. */}
         <Link
           href={signedIn ? "/analyze" : "/"}
-          className="mr-auto flex items-center gap-2.5 no-underline"
+          className="mr-auto flex items-center no-underline"
         >
           <Brand />
         </Link>
 
-        <nav
-          aria-label="Main"
-          className={`nav-links text-sm${signedIn ? " wide-only" : ""}`}
-        >
-          <Link href="/how-it-works" className="text-[var(--color-text-muted)]">
-            How it works
-          </Link>
-          <Link href="/pricing" className="text-[var(--color-text-muted)]">
-            Pricing
-          </Link>
-          <Link href="/status" className="text-[var(--color-text-muted)]">
-            Status
-          </Link>
-        </nav>
+        <NavLinks
+          className={signedIn ? "wide-only" : undefined}
+          links={[
+            { href: "/how-it-works", label: "How it works" },
+            { href: "/pricing", label: "Pricing" },
+            { href: "/status", label: "Status" },
+          ]}
+        />
 
-        <span className={signedIn ? "wide-only contents" : "contents"}>
-          <AppearanceLink />
-        </span>
-        <ThemeToggle />
-
-        <Show when="signed-out">
-          <SignInButton mode="modal">
-            <Button variant="secondary" size="sm">
-              Sign in
-            </Button>
-          </SignInButton>
-        </Show>
-        <Show when="signed-in">
-          <Link href="/analyze" className="no-underline">
-            <Button size="sm">Open Roleform</Button>
+        <div className="ml-auto flex flex-none items-center gap-2">
+          <Show when="signed-out">
+            <SignInButton mode="modal">
+              <Button variant="ghost" className="wide-only">
+                Sign in
+              </Button>
+            </SignInButton>
+          </Show>
+          <Link href="/analyze" className="btn btn-primary no-underline">
+            Open Roleform
           </Link>
-        </Show>
+        </div>
       </header>
 
-      <main className="w-full flex-1">{children}</main>
+      <main className="mx-auto w-full max-w-[1320px] flex-1 px-[clamp(1.1rem,6vw,6rem)] pb-[clamp(3rem,7vw,6.5rem)] pt-[clamp(1.75rem,5vw,4.5rem)]">
+        {children}
+      </main>
 
       <SiteFooter />
 

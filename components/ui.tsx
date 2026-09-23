@@ -6,7 +6,7 @@ import type { AtsRating } from "@/lib/domain/types";
  * Thin wrappers over the DS classes in globals.css (CLAUDE.md §9).
  *
  * These add no colours, radii or shadows of their own — every value comes from
- * an organic token (N9). If a component here needs a new visual, the token goes
+ * a marigold token (N9). If a component here needs a new visual, the token goes
  * in globals.css first.
  */
 
@@ -18,7 +18,7 @@ export function Button({
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost";
-  size?: "sm";
+  size?: "sm" | "lg";
   /** Server-side work is under way. Drives the breathe animation, nothing else. */
   busy?: boolean;
 }) {
@@ -26,7 +26,7 @@ export function Button({
     <button
       data-busy={busy ? "true" : undefined}
       aria-busy={busy || undefined}
-      className={cn("btn", `btn-${variant}`, size === "sm" && "btn-sm", className)}
+      className={cn("btn", `btn-${variant}`, size && `btn-${size}`, className)}
       {...props}
     />
   );
@@ -52,7 +52,7 @@ export function Tag({
   className,
   ...props
 }: React.HTMLAttributes<HTMLSpanElement> & {
-  tone?: "default" | "accent" | "sage" | "warn" | "muted";
+  tone?: "default" | "accent" | "sage" | "warn" | "muted" | "ink" | "outline" | "pink";
 }) {
   return (
     <span
@@ -97,7 +97,7 @@ export function ErrorRegion({ title, children }: { title: string; children?: Rea
  * opinion and no way to express one.
  */
 export function AtsBadge({ rating }: { rating: AtsRating }) {
-  const tone = rating === "High" ? "sage" : rating === "Medium" ? "warn" : "muted";
+  const tone = rating === "High" ? "ink" : rating === "Medium" ? "warn" : "pink";
   return (
     <Tag tone={tone} title="How reliably applicant tracking systems parse this layout">
       ATS {rating}
@@ -107,9 +107,9 @@ export function AtsBadge({ rating }: { rating: AtsRating }) {
 
 export function SectionTitle({ children, sub }: { children: React.ReactNode; sub?: string }) {
   return (
-    <div className="mb-5">
-      <h2>{children}</h2>
-      {sub ? <p className="mt-1 text-[var(--color-text-muted)]">{sub}</p> : null}
+    <div className="mb-7 max-w-[760px]">
+      <h2 className="mb-2.5">{children}</h2>
+      {sub ? <p className="text-base leading-relaxed text-[var(--color-text-muted)]">{sub}</p> : null}
     </div>
   );
 }
@@ -117,7 +117,7 @@ export function SectionTitle({ children, sub }: { children: React.ReactNode; sub
 export function EmptyState({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <Card flat className="text-center">
-      <h3 className="mb-2">{title}</h3>
+      <h3 className="display mb-2 text-[30px]">{title}</h3>
       {children ? <p className="text-[var(--color-text-muted)]">{children}</p> : null}
     </Card>
   );

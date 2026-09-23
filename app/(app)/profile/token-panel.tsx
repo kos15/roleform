@@ -208,9 +208,6 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
         <Link href="/pricing" className="btn btn-secondary btn-sm no-underline">
           Compare plans
         </Link>
-        <Link href="/appearance" className="btn btn-ghost btn-sm no-underline">
-          Appearance
-        </Link>
       </div>
     </section>
   );

@@ -657,34 +657,3 @@ export function PricingSkeleton() {
     </div>
   );
 }
-
-/**
- * Appearance (F18). Six cards, because six is what always arrives — the
- * palettes are a compile-time list, not a query.
- */
-export function AppearanceSkeleton() {
-  return (
-    <div className="mx-auto w-full max-w-[72rem] px-6 py-12">
-      <PageIntroSkeleton />
-      <div className="mb-7 flex justify-end">
-        <Skeleton className="h-10 w-40 rounded-[var(--radius-pill)]" />
-      </div>
-      <div className="mb-8 grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr))]">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <div
-            key={i}
-            className="space-y-3.5 rounded-[30px] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-5"
-          >
-            <div className="flex items-center gap-2.5">
-              <Skeleton className="h-[27px] w-[27px] rounded-[var(--radius-pill)]" />
-              <Skeleton className="h-5 w-24" />
-            </div>
-            <Skeleton className="h-3.5 w-full" />
-            <Skeleton className="h-[34px] w-full rounded-xl" />
-            <Skeleton className="h-8 w-3/4 rounded-[var(--radius-pill)]" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}

@@ -37,12 +37,12 @@ export async function SheetAccount() {
     : roleLabel;
 
   return (
-    <div className="mb-3.5 flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] px-3.5 py-3">
-      <div className="grid h-10 w-10 flex-none place-items-center rounded-[var(--radius-pill)] bg-[var(--color-sage-600)] text-[13px] font-bold text-[var(--color-bg)]">
+    <div className="mb-3.5 flex items-center gap-3 rounded-[var(--radius-lg)] bg-[var(--color-bg-tint)] px-3.5 py-3">
+      <div className="grid h-10 w-10 flex-none place-items-center rounded-[var(--radius-pill)] bg-[var(--color-sage-500)] text-[13px] font-extrabold text-[var(--color-text)]">
         {initialsOf(name)}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="truncate font-[family-name:var(--font-heading)] text-[17px] leading-tight">
+        <div className="truncate font-[family-name:var(--font-heading)] text-[19px] uppercase leading-tight">
           {name}
         </div>
         <div className="truncate text-xs text-[var(--color-text-muted)]">{line}</div>
