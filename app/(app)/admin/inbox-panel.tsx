@@ -41,7 +41,7 @@ export function InboxPanel({
   }
 
   return (
-    <section className="rise-in mb-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[clamp(1.125rem,3vw,1.5rem)]">
+    <section className="rise-in mb-6 rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] p-[clamp(1.125rem,3vw,1.5rem)]">
       <div className="mb-4 max-w-[62ch]">
         <h3 className="mb-1.5">Support inbox</h3>
         <p className="text-[0.85rem] leading-relaxed text-[var(--color-text-muted)]">

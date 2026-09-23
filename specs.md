@@ -481,13 +481,14 @@ deterministic, reproducible and explainable line by line.
 
 ### F0 — Shell and theme
 
-Sticky header on the ground (not a raised surface): brand mark, `New analysis · History · Profile ·
-Pricing · Admin · Status`, the token balance pill (F19), the walkthrough button (F20), the appearance
-link (F18), theme switch, role label, Clerk user button.
+Sticky header on the ground (not a raised surface): brand mark, `New analysis · Jobs · History ·
+Profile · Pricing` (plus `Admin` for admins), the token balance pill (F19), the walkthrough button
+(F20) and the Clerk user button with the member's name beside it on wide screens. The page you are
+on is set in the heavy weight — the only active treatment.
 
-`Admin` is shown to every member, not only to admins. A link that quietly isn't there teaches nobody
-anything; a 403 that names the missing permission and the people who hold it (F15) is the more useful
-outcome of the same click.
+`Admin` is listed in the header only for admins (Sep 2026 redesign). `/admin` still enforces the role
+on its own, and a member who reaches it directly gets the 403 that names the missing permission and
+the people who hold it (F15).
 
 **Footer**, on every surface including the public ones: the mark and the one-line promise, then three
 columns — Product (`New analysis · History · Profile · Status`), Company (`How it works · Privacy ·
@@ -495,22 +496,13 @@ Contact`) and Support us — over a rule carrying `Terms · Privacy`. The dot be
 is live: it renders only when a stage is actually degraded, from the same aggregate F14 reads. A
 decorative pulse next to the word "Status" would be the exact lie that page exists to prevent.
 
-**Theme.** Light and dark, switched by `data-theme` on the html element, *within* whichever palette
-`data-palette` names (F18). Dark is the same roles at the same ramp steps re-derived on a dark ground
-— a variable override in `globals.css`, never a `dark:` variant in components, so anything reading a
-token is theme-agnostic by construction (N9). Ramps keep their direction in both themes: `100` is
-always the tinted-fill end, `900` always the text-on-tint end.
+**Theme.** One palette, light only — cream ground, maroon ink, marigold accent, pink second accent
+(CLAUDE.md §9). Every colour is a token in `app/globals.css` (N9); base and DS rules live in cascade
+layers so a Tailwind utility can refine a DS default. Dark mode and the palette picker (F18) were
+retired with the Sep 2026 redesign; `/appearance` redirects to `/profile`.
 
-- `--color-on-accent` carries the ink that sits *on* the accent. It has to invert: white on the
-  lighter dark-mode accent is ~2:1.
-- Preference is stored in `localStorage` and resolved by a synchronous script in `<head>`, alongside
-  the palette. No stored theme falls through to `prefers-color-scheme`, not to light; no stored
-  palette falls through to Ember.
-- Only the ground and the ink cross-fade. Nothing else transitions colour, so the switch reads as one
-  movement.
-
-**Acceptance:** no flash of the wrong theme on hard reload; the switch survives navigation and reload;
-export output is unaffected (a résumé is the user's document, not a Roleform surface).
+**Acceptance:** `--color-text-muted` on the ground clears 4.5:1; ink on marigold and ink on pink
+clear 4.5:1.
 
 ### F1 — Onboarding: profile import
 
@@ -1138,52 +1130,11 @@ displayed price and the charged amount come from one constant; a signed-out visi
 is sent to sign in and returned to `/pricing`, not shown an error; every cap printed in the admin
 plan strip equals the one on `/pricing` for that plan.
 
-### F18 — Appearance: six palettes
+### F18 — Appearance (retired)
 
-`/appearance`, public (a palette is a browser preference, not account state, and someone struggling
-to read `/privacy` in the dark should be able to fix the contrast without first creating an account).
-
-**A palette is four colours** — ground, ink, accent, second accent, per mode. Nothing else. The
-nine-step neutral, accent and second-accent ramps, the surfaces, the dividers and the shadows are
-all mixed from those four in `app/globals.css`, in oklab. Six palettes × two modes × 54 ramp steps
-would be 648 hexes nobody can hold in step, and the first one that drifts is a contrast bug shipped
-to a stranger. Four values each, derived identically, means a palette **cannot be internally
-inconsistent** — it can only be a different four values (N9).
-
-| id | Ground | Accent | Second accent |
-|---|---|---|---|
-| `ember` | cream | terracotta | sage |
-| `ink` | cool paper | indigo | teal |
-| `harbour` | chalky blue-grey | deep cyan | coral |
-| `orchard` | green-ivory | plum | old gold |
-| `dusk` | lavender | violet | rose |
-| `pine` | cold green | forest | mustard |
-
-Every ramp keeps its direction in both modes — 100 is the tinted-fill end, 900 the text-on-tint end
-— because the low steps mix toward the ground and the high steps toward the ink, and both of those
-swap with the mode on their own. Nothing that reads a token has to know which theme it is in, and
-there is no `dark:` variant anywhere in the components.
-
-**Warn and danger keep their own hue in every palette**; only their tints are mixed onto the ground.
-A caution that turned violet in Dusk would be a palette overriding a meaning, which is the one thing
-a palette must not do.
-
-Selectors are element-agnostic (`[data-palette]`, not `html[data-palette]`) so each card in the
-picker is genuinely painted in the palette it is offering rather than approximating it. Tailwind
-emits `@theme` into `@layer theme`; unlayered rules beat every layer, so the derivation wins without
-depending on source order.
-
-Both `data-theme` and `data-palette` are set by the bootstrap script in `app/layout.tsx` before
-first paint. The wrong palette flashing is louder than the wrong mode, so it cannot wait for an
-effect. No stored theme falls through to the OS setting; no stored palette falls through to Ember.
-
-**The résumé templates are exempt.** They stay black on white in every palette, because they are the
-user's document going into a stranger's ATS and printer (§9, F9). The picker says so, with a swatch
-that is deliberately hard-coded — painting *that* from tokens would make it a lie.
-
-**Acceptance:** switching palette repaints the mark, the coverage buckets, the meters and every tag
-without a reload; a rendered PDF is byte-identical across palettes; `--color-text-muted` on the
-ground clears 4.5:1 in all twelve palette/mode combinations.
+Retired in the Sep 2026 redesign. The product ships one light palette (F0, CLAUDE.md §9); the
+picker, the six palettes and dark mode were removed, and `/appearance` redirects to `/profile`.
+The résumé templates remain exempt from the brand and render black on white (§9, F9).
 
 ### F19 — The token meter
 

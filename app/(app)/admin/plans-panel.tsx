@@ -43,7 +43,7 @@ export function PlansPanel({ rollup }: { rollup: PlanRollup[] }) {
         {rollup.map(({ plan, members, overridden }) => (
           <div
             key={plan.id}
-            className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] p-[1.125rem_1.25rem]"
+            className="rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] p-[1.125rem_1.25rem]"
           >
             <div className="mb-2.5 flex flex-wrap items-center gap-2.5">
               <span className="display text-[1.1875rem]">

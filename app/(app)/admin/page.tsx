@@ -145,7 +145,7 @@ export default async function AdminPage({
           return (
             <div
               key={stat.label}
-              className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] px-[1.125rem] py-4"
+              className="rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] px-[1.125rem] py-4"
             >
               <div className="mb-2 text-[11px] uppercase tracking-[0.09em] text-[var(--color-text-muted)]">
                 {stat.label}

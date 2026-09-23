@@ -154,7 +154,7 @@ function HeroCollage() {
         </span>
       </div>
 
-      <div className="relative top-[50px] min-h-[360px] flex-[1.35_1_280px] rounded-[26px] bg-[var(--color-accent-500)] px-[26px] py-[30px]">
+      <div className="relative mt-10 min-h-[360px] sm:top-[50px] sm:mt-0 flex-[1.35_1_280px] rounded-[26px] bg-[var(--color-accent-500)] px-[26px] py-[30px]">
         <div className="relative z-[2] flex flex-col items-start gap-3.5">
           {showcase.map((t) => (
             <span key={t.id} className="tag tag-outline min-h-[38px] bg-[var(--color-accent-500)] px-4 text-[15px]">
