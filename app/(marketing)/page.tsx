@@ -15,6 +15,7 @@ import { pageMetadata } from "@/lib/seo/metadata";
 import { SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo/site";
 import type { Metadata } from "next";
 import { TemplatePaper } from "@/components/template-thumb";
+import { LandingIntro } from "@/components/landing-intro";
 
 /**
  * The hero's right-hand illustration is a worked example, not a claim about
@@ -28,6 +29,9 @@ export const metadata: Metadata = {
   // The home title stands alone rather than going through "%s | Roleform".
   title: { absolute: SITE_TITLE },
 };
+
+/** A hero element's place in the entrance that follows the landing intro. */
+const introAt = (i: number) => ({ "--i": i }) as React.CSSProperties;
 
 export default async function MarketingPage() {
   // A member who already imported a résumé is not here to import one again.
@@ -55,34 +59,45 @@ export default async function MarketingPage() {
 
   return (
     <div>
+      <LandingIntro drafts={TEMPLATES.length} />
       <JsonLd
         data={graph(organizationSchema(), websiteSchema(), softwareSchema(), faqSchema(HOME_FAQS))}
       />
       <div className="grid items-center gap-[clamp(2.25rem,5vw,4.5rem)] [grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr))]">
         {/* Left-aligned and asymmetric — whitespace on the right (CLAUDE.md §9). */}
         <div>
-          <span className="tag tag-outline min-h-9 px-4 text-sm">One profile · every posting</span>
+          <span className="intro-item tag tag-outline min-h-9 px-4 text-sm" style={introAt(1)}>
+            One profile · every posting
+          </span>
           {/* The catalog size, read from the catalog. A member's own run returns
               as many as their cap allows (F15); this is the default and the most
               anyone gets. */}
-          <h1 className="mb-[30px] mt-7 text-[clamp(3.4rem,6vw,6.75rem)]">
+          <h1 className="intro-item mb-[30px] mt-7 text-[clamp(3.4rem,6vw,6.75rem)]" style={introAt(2)}>
             One résumé in.
             <br />
             {TEMPLATES.length} tailored out.
           </h1>
-          <p className="mb-3.5 max-w-[46ch] text-[clamp(17px,1.5vw,19px)] leading-[1.55] [text-wrap:pretty]">
+          <p
+            className="intro-item mb-3.5 max-w-[46ch] text-[clamp(17px,1.5vw,19px)] leading-[1.55] [text-wrap:pretty]"
+            style={introAt(3)}
+          >
             Roleform reads a job posting, works out how much of it your own experience can
             evidence, and rewrites your résumé to say so in the posting&rsquo;s language.
           </p>
           {/* The product's law, in the product's own copy. */}
-          <p className="mb-9 max-w-[46ch] text-[clamp(17px,1.5vw,19px)] leading-[1.55] [text-wrap:pretty]">
+          <p
+            className="intro-item mb-9 max-w-[46ch] text-[clamp(17px,1.5vw,19px)] leading-[1.55] [text-wrap:pretty]"
+            style={introAt(4)}
+          >
             <strong className="rounded-[6px] bg-[var(--color-accent-500)] px-1.5 py-px">
               Nothing is invented
             </strong>{" "}
             — bullets are reordered, reworded and re-weighted. What you can&rsquo;t evidence
             becomes the gap list, not a lie.
           </p>
-          {cta}
+          <div className="intro-item" style={introAt(5)}>
+            {cta}
+          </div>
         </div>
 
         <HeroCollage />
@@ -177,7 +192,10 @@ function HeroCollage() {
 
   return (
     <div aria-hidden className="flex flex-wrap items-stretch gap-[22px] pt-11">
-      <div className="relative flex min-h-[360px] flex-[1_1_220px] flex-col items-center rounded-[26px] bg-[var(--color-bg-raised)] px-6 pb-11 pt-[34px] text-center">
+      <div
+        style={introAt(6)}
+        className="intro-item relative flex min-h-[360px] flex-[1_1_220px] flex-col items-center rounded-[26px] bg-[var(--color-bg-raised)] px-6 pb-11 pt-[34px] text-center"
+      >
         <span className="tag tag-outline absolute -top-[52px] left-1/2 min-h-10 -translate-x-1/2 bg-[var(--color-bg)] px-4 text-[15px] font-extrabold">
           № Senior Frontend
         </span>
@@ -199,7 +217,10 @@ function HeroCollage() {
         </span>
       </div>
 
-      <div className="relative mt-10 min-h-[360px] sm:top-[50px] sm:mt-0 flex-[1.35_1_280px] rounded-[26px] bg-[var(--color-accent-500)] px-[26px] py-[30px]">
+      <div
+        style={introAt(7)}
+        className="intro-item relative mt-10 min-h-[360px] sm:top-[50px] sm:mt-0 flex-[1.35_1_280px] rounded-[26px] bg-[var(--color-accent-500)] px-[26px] py-[30px]"
+      >
         <div className="relative z-[2] flex flex-col items-start gap-3.5">
           {showcase.map((t) => (
             <span key={t.id} className="tag tag-outline min-h-[38px] bg-[var(--color-accent-500)] px-4 text-[15px]">
@@ -210,19 +231,22 @@ function HeroCollage() {
         {back ? (
           <TemplatePaper
             template={back}
-            className="absolute bottom-[22px] right-[18px] h-[200px] w-[150px] rotate-[9deg] rounded-[10px] shadow-[var(--shadow-lg)]"
+            style={introAt(8)}
+            className="intro-fan absolute bottom-[22px] right-[18px] h-[200px] w-[150px] rotate-[9deg] rounded-[10px] shadow-[var(--shadow-lg)]"
           />
         ) : null}
         {middle ? (
           <TemplatePaper
             template={middle}
-            className="absolute bottom-16 right-[92px] h-[200px] w-[150px] -rotate-[4deg] rounded-[10px] shadow-[var(--shadow-lg)]"
+            style={introAt(9)}
+            className="intro-fan absolute bottom-16 right-[92px] h-[200px] w-[150px] -rotate-[4deg] rounded-[10px] shadow-[var(--shadow-lg)]"
           />
         ) : null}
         {front ? (
           <TemplatePaper
             template={front}
-            className="absolute -top-10 right-10 z-[1] h-[208px] w-[156px] rotate-[3deg] rounded-[10px] shadow-[var(--shadow-lg)]"
+            style={introAt(10)}
+            className="intro-fan absolute -top-10 right-10 z-[1] h-[208px] w-[156px] rotate-[3deg] rounded-[10px] shadow-[var(--shadow-lg)]"
           />
         ) : null}
       </div>

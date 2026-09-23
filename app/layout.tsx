@@ -3,6 +3,7 @@ import { Anton, Figtree } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { AgentTools } from "@/components/agent-tools";
+import { INTRO_SCRIPT } from "@/components/landing-intro";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/seo/site";
 
 /**
@@ -116,7 +117,13 @@ const clerkAppearance = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider appearance={clerkAppearance}>
-      <html lang="en" className={`${anton.variable} ${figtree.variable}`}>
+      {/* The head script may set data-intro on <html> before hydration, so
+          React is told not to expect the server's attributes there. */}
+      <html lang="en" className={`${anton.variable} ${figtree.variable}`} suppressHydrationWarning>
+        <head>
+          {/* Decides the landing intro before first paint (landing-intro.tsx). */}
+          <script dangerouslySetInnerHTML={{ __html: INTRO_SCRIPT }} />
+        </head>
         <body>
           {children}
           <AgentTools />
