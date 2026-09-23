@@ -8,10 +8,9 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
  * what we do with a résumé — a promise you must create an account to read is
  * not one you can act on. Status is public for the same reason: the people most
  * likely to need it are the ones who can't get in. Pricing joins them: a price
- * you have to sign up to read is not a price you can compare. Appearance is
- * public because a palette is a browser preference, not account state — and
- * someone struggling to read the privacy page in the dark should be able to
- * fix the contrast without first creating an account.
+ * you have to sign up to read is not a price you can compare. /appearance is
+ * public only so its redirect (next.config.ts) reaches the visitor rather
+ * than bouncing through sign-in first.
  *
  * Both webhooks are public because they are called by a machine that has no
  * session. Each verifies its own signature — that is what stands in for the
