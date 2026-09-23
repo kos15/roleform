@@ -30,7 +30,8 @@ export default async function MarketingLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="nav">
+      {/* intro-item: the first thing to rise after the landing intro (globals.css). */}
+      <header className="nav intro-item">
         {/* Signed in, the mark goes back to the work rather than to the pitch:
             landing on the marketing page from inside a session — with its
             "Get started" and its explanation of what Roleform is — reads as
