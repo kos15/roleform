@@ -39,7 +39,7 @@ export function DownloadButtons({ draftId }: { draftId: string }) {
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2.5">
         {/* DOCX first: it extracted more reliably than PDF in 6 of 8 tested ATS
             platforms (specs §1), so it is the submission artifact. */}
         <Button size="sm" onClick={() => download("docx")} disabled={busy !== null} busy={busy === "docx"}>

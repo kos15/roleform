@@ -28,11 +28,7 @@ export function TemplateSwitcher({
   const options = TEMPLATES.filter((t) => available.includes(t.id));
 
   return (
-    <div
-      className="flex flex-wrap gap-1.5 rounded-[var(--radius-lg)] border border-[var(--color-line)] p-3"
-      style={{ background: "var(--color-bg-sunken)" }}
-      aria-busy={pending || undefined}
-    >
+    <div className="flex flex-wrap gap-1.5" aria-busy={pending || undefined}>
       {options.map((t) => {
         const selected = t.id === current;
         return (
@@ -44,11 +40,10 @@ export function TemplateSwitcher({
             onClick={() =>
               startTransition(() => router.push(`/analysis/${analysisId}/preview/${t.id}`))
             }
-            className="rounded-[var(--radius-pill)] border px-3 py-1.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed"
+            className="min-h-8 rounded-[var(--radius-pill)] border-[1.5px] border-[var(--color-text)] px-3 text-[13px] font-bold transition-colors disabled:cursor-not-allowed"
             style={{
-              borderColor: selected ? "var(--color-accent-500)" : "var(--color-line)",
-              background: selected ? "var(--color-accent-500)" : "var(--color-bg)",
-              color: selected ? "var(--color-on-accent)" : "var(--color-text)",
+              background: selected ? "var(--color-text)" : "transparent",
+              color: selected ? "var(--color-accent-500)" : "var(--color-text)",
             }}
           >
             {t.name}

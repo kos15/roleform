@@ -24,8 +24,8 @@ export function DownloadAll({ analysisId }: { analysisId: string }) {
 
   return (
     <div>
-      <Button onClick={run} disabled={busy} busy={busy}>
-        <Download className="lucide h-4 w-4" />
+      <Button onClick={run} disabled={busy} busy={busy} className="min-h-[52px] px-[26px] text-base">
+        <Download className="lucide h-[18px] w-[18px]" />
         {busy ? "Building 12 files…" : "Download all"}
       </Button>
       {error ? (

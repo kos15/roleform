@@ -194,7 +194,7 @@ export function AnswerPanel({
                 href={course.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-[var(--radius-pill)] border border-[var(--color-line)] bg-[var(--color-bg-sunken)] px-3 py-1.5 text-xs font-semibold"
+                className="inline-flex min-h-[34px] items-center gap-2 rounded-[var(--radius-pill)] border-[1.5px] border-[var(--color-text)] px-3.5 text-[13px] font-bold no-underline"
               >
                 <BookOpen className="lucide h-3.5 w-3.5" />
                 {course.title}

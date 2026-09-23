@@ -764,8 +764,8 @@
   /* Answer prose. Long-form reading, so it gets a measure and a looser leading
      than the rest of the app's UI copy. */
   .answer-prose {
-    font-size: 0.95rem;
-    line-height: 1.7;
+    font-size: 0.97rem;
+    line-height: 1.65;
     max-width: 68ch;
     color: var(--color-text);
   }

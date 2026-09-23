@@ -40,14 +40,34 @@ export function Checklist({ items }: { items: RoadmapItemView[] }) {
 
   return (
     <div>
-      <p className="mb-5 text-sm text-[var(--color-text-muted)]">
-        {doneIds.size} of {items.length} done
-      </p>
+      <div className="mb-[18px] flex flex-wrap items-end justify-between gap-[18px]">
+        {/* N16: a count, never a percentage and never "ready". The bar below
+            draws the same count; it carries no number of its own. */}
+        <h2>
+          {doneIds.size} of {items.length} done
+        </h2>
+        <p className="max-w-[44ch] text-[15px] text-[var(--color-text-muted)]">
+          Assembled from what this analysis already made. Building it cost zero tokens; ticking is
+          your own record.
+        </p>
+      </div>
+      <div className="progress mb-8" aria-hidden>
+        <span style={{ width: `${items.length ? (doneIds.size / items.length) * 100 : 0}%` }} />
+      </div>
 
-      <div className="flex flex-col gap-6">
+      <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))]">
         {SECTION_ORDER.filter((s) => bySection.has(s)).map((section) => (
-          <section key={section}>
-            <h3 className="mb-1 text-[0.95rem]">{SECTION_LABEL[section] ?? section}</h3>
+          <section
+            key={section}
+            className="rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] px-6 pb-3 pt-[22px]"
+          >
+            <div className="mb-1.5 flex items-baseline justify-between gap-2.5">
+              <h3 className="display text-[28px] font-normal">{SECTION_LABEL[section] ?? section}</h3>
+              <span className="text-[13px] font-bold text-[var(--color-text-muted)]">
+                {bySection.get(section)!.filter((i) => doneIds.has(i.id)).length} /{" "}
+                {bySection.get(section)!.length}
+              </span>
+            </div>
             <div>
               {bySection.get(section)!.map((item) => (
                 <RoadmapItem

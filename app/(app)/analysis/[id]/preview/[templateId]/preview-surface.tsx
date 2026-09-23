@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui";
+import { Check } from "lucide-react";
 import { diffWords } from "@/lib/domain/diff";
 import type { RenderModel } from "@/lib/render/model";
 import type { TemplateDef } from "@/lib/render/templates";
@@ -86,23 +86,32 @@ export function PreviewSurface({
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-[18px] flex flex-wrap items-center gap-2.5">
         {actions}
-        <Button
-          variant="secondary"
-          size="sm"
+        <button
+          type="button"
           aria-pressed={showChanges}
           onClick={() => setShowChanges((v) => !v)}
+          className="ml-auto flex min-h-10 items-center gap-2 rounded-[var(--radius-pill)] border-[1.5px] border-[var(--color-line)] bg-[var(--color-bg-raised)] py-0 pl-1.5 pr-3.5 text-sm font-bold"
         >
-          {showChanges ? "Hide what changed" : "Show what changed"}
-        </Button>
+          <span
+            className={`grid h-[30px] w-[30px] place-items-center rounded-[var(--radius-pill)] ${
+              showChanges ? "bg-[var(--color-accent-500)]" : "bg-[var(--color-chip)]"
+            }`}
+          >
+            <Check className="lucide h-[13px] w-[13px]" strokeWidth={3} />
+          </span>
+          Changes highlighted
+        </button>
       </div>
 
-      <div
-        className="overflow-hidden rounded-[4px] shadow-[var(--shadow-lg)]"
-        style={{ background: PAPER, color: INK, fontFamily: template.fontStack }}
-      >
-        <Layout model={model} template={template} bullet={bullet} />
+      <div className="rounded-[var(--radius-xl)] bg-[var(--color-bg-sunken)] p-[clamp(1rem,3vw,2.5rem)]">
+        <div
+          className="mx-auto max-w-[720px] overflow-hidden rounded-[6px] shadow-[var(--shadow-lg)]"
+          style={{ background: PAPER, color: INK, fontFamily: template.fontStack }}
+        >
+          <Layout model={model} template={template} bullet={bullet} />
+        </div>
       </div>
     </div>
   );
@@ -170,7 +179,11 @@ function Bullet({
         op.kind === "same" ? (
           <span key={k}>{op.text}</span>
         ) : op.kind === "added" ? (
-          <mark key={k} style={{ background: "#e1eecc", color: "#272e1b" }}>
+          <mark
+            key={k}
+            className="rounded-[3px] px-0.5"
+            style={{ background: "var(--color-accent-200)", color: INK }}
+          >
             {op.text}
           </mark>
         ) : (

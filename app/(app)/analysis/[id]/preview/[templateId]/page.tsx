@@ -66,7 +66,7 @@ export default async function PreviewPage({
   const violations = atsViolations(template.structuralFlags);
 
   return (
-    <div className="flex flex-wrap items-start gap-8">
+    <div className="flex flex-wrap items-start gap-[clamp(1.5rem,3vw,2.5rem)]">
       {/* The paper has its own intrinsic width; min-w-0 keeps it from setting
           the column floor and pushing the aside off the line. */}
       <div className="min-w-0 flex-[1_1_32rem]">
@@ -83,7 +83,7 @@ export default async function PreviewPage({
               {/* The count is read off the drafts that exist, not written into
                   the copy: it is `capResumes` per member (F15), so any fixed
                   number here is wrong for somebody. */}
-              <Link href={`/analysis/${id}/resumes`} className="btn btn-ghost btn-sm">
+              <Link href={`/analysis/${id}/resumes`} className="btn btn-ghost btn-sm no-underline">
                 <ArrowLeft className="lucide h-4 w-4" /> All {drafts.length} drafts
               </Link>
               <DownloadButtons draftId={draft.id} />
@@ -92,12 +92,16 @@ export default async function PreviewPage({
         />
       </div>
 
-      <aside className="min-w-0 flex-[0_1_21rem] space-y-5">
+      <aside className="flex min-w-0 flex-[0_1_21rem] flex-col gap-5">
         <div>
-          <h3 className="mb-1">{template.name}</h3>
-          <p className="mb-3 text-sm text-[var(--color-text-muted)]">{template.blurb}</p>
-          <div className="flex flex-wrap gap-2">
-            <Tag>{template.kind}</Tag>
+          <h2 className="mb-2.5 text-[40px] leading-none">{template.name}</h2>
+          <p className="mb-3.5 text-[15px] leading-normal text-[var(--color-text-muted)]">
+            {template.blurb}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            <Tag tone="outline" className="border-[var(--color-line-strong)] capitalize">
+              {template.kind}
+            </Tag>
             <AtsBadge rating={draft.atsRating} />
             <Tag tone="muted">
               {draft.pageCount} page{draft.pageCount === 1 ? "" : "s"}
@@ -107,7 +111,7 @@ export default async function PreviewPage({
           {/* The rating's own reasons, read off the structural flags the rating
               was computed from (N5) — never a hand-written justification, which
               would be free to drift away from the badge beside it. */}
-          <div className="mt-3 text-xs text-[var(--color-text-muted)]">
+          <div className="mt-3.5 text-[13px] leading-normal text-[var(--color-text-muted)]">
             {/* The sentence version, in the template's own terms. It cannot
                 contradict the list below it: `assertTemplates()` checks the
                 violation count it claims against the flags, and the seed script
@@ -131,15 +135,18 @@ export default async function PreviewPage({
           </div>
         </div>
 
-        <TemplateSwitcher
+        <div>
+          <p className="eyebrow mb-2.5">Switch template</p>
+          <TemplateSwitcher
           analysisId={id}
           current={templateId}
           available={drafts.map((d) => d.templateId)}
-        />
+          />
+        </div>
 
-        <Card>
-          <h3 className="mb-2">What changed for this posting</h3>
-          <ul className="list-disc space-y-1 pl-4 text-sm text-[var(--color-text-muted)]">
+        <Card className="rounded-[22px] px-[22px] py-5">
+          <h3 className="mb-2.5 text-[17px]">What changed for this posting</h3>
+          <ul className="list-disc space-y-1.5 pl-[18px] text-sm leading-normal text-[var(--color-text-muted)]">
             {draft.changes.map((change, i) => (
               <li key={i}>{change}</li>
             ))}
@@ -147,30 +154,30 @@ export default async function PreviewPage({
         </Card>
 
         {draft.missing.length > 0 ? (
-          <Card>
-            <h3 className="mb-2">Still not evidenced</h3>
-            <p className="mb-3 text-sm text-[var(--color-text-muted)]">
+          <div className="rounded-[22px] bg-[var(--color-sage-200)] px-[22px] py-5">
+            <h3 className="mb-2 text-[17px]">Still not evidenced</h3>
+            <p className="mb-3 text-sm leading-normal">
               This posting asks for these, and nothing in your profile evidences them. We
               didn&rsquo;t add them.
             </p>
-            <div className="mb-4 flex flex-wrap gap-2">
+            <div className="mb-3.5 flex flex-wrap gap-1.5">
               {draft.missing.map((m) => (
                 // `missing` is skillName ?? the requirement's own text, so an
                 // entry is either a short skill or a whole sentence. Only the
                 // latter needs to wrap; forcing every pill full-width would
                 // lose the scannable row.
-                <Tag key={m} tone="accent" className={m.length > 28 ? "tag-long" : undefined}>
+                <Tag key={m} tone="sage" className={m.length > 28 ? "tag-long" : undefined}>
                   {m}
                 </Tag>
               ))}
             </div>
             <Link
               href={`/analysis/${id}/learning?skills=${encodeURIComponent(draft.missing.join(","))}`}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-accent-body"
+              className="inline-flex items-center gap-1.5 text-sm font-extrabold underline underline-offset-[3px]"
             >
               <GraduationCap className="lucide h-4 w-4" /> See courses for these
             </Link>
-          </Card>
+          </div>
         ) : null}
       </aside>
     </div>
