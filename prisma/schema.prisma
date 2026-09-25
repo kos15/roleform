@@ -1354,6 +1354,7 @@ model RoadmapItem {
 enum JobProvider {
   adzuna
   jooble
+  jsearch
 
   @@map("job_provider")
 }

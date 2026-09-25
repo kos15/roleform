@@ -39,6 +39,7 @@ Do not start a task whose done-state you cannot state in one sentence.
 lib/domain/                 PURE, no I/O
   roadmap.ts                compileRoadmap · roadmapProgress
   job-query.ts              buildJobQuery(profile) → JobQuery
+  job-intent.ts             parseJobIntent(description) → titles, canonical skills, city, remote (no model)
   job-rank.ts               rankListings(listings, profileSkills)
   jd-segment.ts             stripBoilerplate(jdText) — the deterministic pre-strip
   entitlements.ts           + effectivePlan(row, now) · + capWall helpers
@@ -49,6 +50,7 @@ lib/jobs/                   SERVER — the I/O half of job search
   sources/types.ts          JobSource, JobQuery, JobListingIn, JobListingInSchema
   sources/adzuna.ts         one adapter; header comment carries terms, attribution, limits
   sources/jooble.ts         same
+  sources/jsearch.ts        same — Google for Jobs via RapidAPI, queried first (docs/prd-jsearch.md)
   search.ts                 fan-out, timeout, cache by query_hash, hit rows
 lib/db/queries/
   roadmap.ts · jobs.ts      reads; every function takes clerkUserId first

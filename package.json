@@ -20,6 +20,7 @@
     "check:constraints": "pnpm script scripts/smoke-constraints.ts",
     "check:coverage": "pnpm script scripts/coverage-fixtures.ts",
     "check:jdstrip": "pnpm script scripts/jd-strip-fixtures.ts",
+    "check:jobintent": "pnpm script scripts/job-intent-fixtures.ts",
     "check:fabrication": "pnpm script scripts/fabrication-eval.ts",
     "check:roundtrip": "pnpm script scripts/docx-roundtrip.ts",
     "render:samples": "pnpm script scripts/render-samples.ts",

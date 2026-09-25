@@ -1617,7 +1617,7 @@ setSavedJobStatus({ listingId, status, appliedAt? })         // F22, CHECK requi
 | D7 | Adding automated tests | Add if the same bug is fixed twice | A second regression |
 | D10 | Admin cap overrides on a lapsed account | Lost on lapse — the row resets to Free caps, same as it's replaced on upgrade | An admin asks twice |
 | D11 | Razorpay Subscriptions | No in v1; manual renew with a banner | Renewal rate < 50% after two cycles |
-| D12 | JSearch (paid) as a third job source | Off until Adzuna + Jooble coverage for the top 20 India target titles is measured < 70% | The R4 measurement |
+| D12 | JSearch as a third job source | **Decided Sep 2026: built, on when keyed** (docs/prd-jsearch.md) | — |
 | D13 | Auto-build the roadmap for Pro at run end | No; on demand for everyone, one click, zero cost | Pro members ask for it |
 
 ## 16. What would make this fail
