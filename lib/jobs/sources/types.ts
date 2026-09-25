@@ -9,13 +9,10 @@
 import "server-only";
 import { z } from "zod";
 
-/** What leaves this server toward a provider (N19). Nothing else. */
-export interface JobQuery {
-  titles: string[];
-  skills: string[];
-  location: string;
-  remote: boolean;
-}
+import type { JobQuery } from "@/lib/domain/job-query";
+
+/** What leaves this server toward a provider (N19) — defined once, in lib/domain. */
+export type { JobQuery };
 
 /**
  * One listing, as a provider returns it, crossing the boundary through this
@@ -40,7 +37,7 @@ export const JobListingInSchema = z.object({
 export type JobListingIn = z.infer<typeof JobListingInSchema>;
 
 export interface JobSource {
-  id: "adzuna" | "jooble";
+  id: "jsearch" | "adzuna" | "jooble";
   /** Shown on every results view carrying at least one listing from this source (JS-6/JS-8). */
   attribution: { label: string; url: string };
   /**

@@ -5,7 +5,8 @@ import { db } from "@/lib/db";
 import { requireUser, checkJobSearchAllowance } from "@/lib/auth";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { getProfile } from "@/lib/db/queries/profile";
-import { buildJobQuery, type JobQuery } from "@/lib/domain/job-query";
+import { buildJobQuery, queryIsEmpty, type JobQuery } from "@/lib/domain/job-query";
+import { parseJobIntent } from "@/lib/domain/job-intent";
 import { findCachedSearch, runSearch, type SearchOutcome } from "@/lib/jobs/search";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 import type { SavedJobStatus } from "@/lib/generated/prisma/enums";
@@ -23,6 +24,12 @@ export async function searchJobs(overrides?: {
   titles?: string[];
   location?: string;
   remote?: boolean;
+  /**
+   * A described search ("senior React developer in Pune, remote is fine").
+   * Parsed here, server-side, into titles/keywords/city/remote
+   * (lib/domain/job-intent.ts); the text itself is never stored or sent on.
+   */
+  description?: string;
 }): Promise<Result<SearchOutcome>> {
   const user = await requireUser();
   if (!user.ok) return user;
@@ -34,12 +41,37 @@ export async function searchJobs(overrides?: {
 
   const resume = profile.resumeJson as unknown as StoredResume;
   const base = buildJobQuery(resume);
-  const query: JobQuery = {
+  let query: JobQuery = {
     titles: overrides?.titles ?? base.titles,
     skills: base.skills,
+    keywords: [],
     location: overrides?.location ?? base.location,
     remote: overrides?.remote ?? base.remote,
   };
+
+  const description = overrides?.description?.trim();
+  if (description) {
+    const intent = parseJobIntent(description);
+    if (intent.titles.length === 0 && intent.keywords.length === 0) {
+      return err(
+        appError(
+          "invalid_input",
+          "Name a role or a skill in the description — for example “backend developer, Go and Postgres, in Bengaluru”.",
+        ),
+      );
+    }
+    query = {
+      titles: intent.titles,
+      skills: base.skills,
+      keywords: intent.keywords,
+      location: intent.location ?? query.location,
+      remote: intent.remote || query.remote,
+    };
+  }
+
+  if (queryIsEmpty(query)) {
+    return err(appError("invalid_input", "Add a title, or some skills to your profile, to search with."));
+  }
 
   // JS-4: a cache hit costs nothing — checked before the cap and before any
   // outbound request, the same "free path first" shape the token wall uses.

@@ -4,13 +4,14 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ExternalLink, Search } from "lucide-react";
-import { Button, Card, ErrorRegion, Input, Tag } from "@/components/ui";
+import { Button, Card, ErrorRegion, Input, Tag, Textarea } from "@/components/ui";
 import { CapWallDialog } from "@/components/cap-wall";
 import { searchJobs, saveJob } from "@/app/actions/jobs";
 import type { JobQuery } from "@/lib/domain/job-query";
 import type { SearchListingView, SearchOutcome } from "@/lib/jobs/search";
 import type { CapWall } from "@/lib/domain/quotas";
 import { JOB_PORTALS } from "@/lib/domain/job-portals";
+import { MAX_DESCRIPTION_CHARS } from "@/lib/domain/job-intent";
 
 /**
  * The query editor and results (F22). Fit is shown as named skill chips —
@@ -22,6 +23,10 @@ export function JobSearchClient({ baseQuery }: { baseQuery: JobQuery }) {
   const [titles, setTitles] = useState(baseQuery.titles.join(", "));
   const [location, setLocation] = useState(baseQuery.location);
   const [remote, setRemote] = useState(baseQuery.remote);
+  // Two ways in: the titles/location boxes, or a sentence the server parses
+  // into the same fields (lib/domain/job-intent.ts).
+  const [mode, setMode] = useState<"titles" | "describe">("titles");
+  const [description, setDescription] = useState("");
   const [outcome, setOutcome] = useState<SearchOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [capWall, setCapWall] = useState<CapWall | null>(null);
@@ -31,14 +36,18 @@ export function JobSearchClient({ baseQuery }: { baseQuery: JobQuery }) {
   function search() {
     setError(null);
     startTransition(async () => {
-      const result = await searchJobs({
-        titles: titles
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean),
-        location,
-        remote,
-      });
+      const result = await searchJobs(
+        mode === "describe"
+          ? { description, location, remote }
+          : {
+              titles: titles
+                .split(",")
+                .map((t) => t.trim())
+                .filter(Boolean),
+              location,
+              remote,
+            },
+      );
       if (!result.ok) {
         if (result.error.capWall) setCapWall(result.error.capWall);
         else setError(result.error.message);
@@ -80,16 +89,55 @@ export function JobSearchClient({ baseQuery }: { baseQuery: JobQuery }) {
       {capWall ? <CapWallDialog wall={capWall} onClose={() => setCapWall(null)} /> : null}
 
       <div className="mb-7 rounded-[var(--radius-xl)] bg-[var(--color-accent-500)] p-[clamp(1.25rem,2.6vw,1.9rem)]">
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="flex flex-[2_1_16rem] flex-col gap-1.5">
-            <span className="text-xs font-extrabold uppercase tracking-[0.06em]">Titles</span>
-            <Input
-              className="input-pill min-h-[50px]"
-              value={titles}
-              onChange={(e) => setTitles(e.target.value)}
-              placeholder="Frontend Engineer, React Developer"
+        <div role="tablist" aria-label="Search by" className="mb-4 inline-flex gap-1 rounded-[var(--radius-pill)] border-[1.5px] border-[var(--color-text)] p-1">
+          {(
+            [
+              ["titles", "By title"],
+              ["describe", "Describe it"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={mode === value}
+              onClick={() => setMode(value)}
+              className={`min-h-9 rounded-[var(--radius-pill)] px-4 text-sm font-bold ${
+                mode === value ? "bg-[var(--color-text)] text-[var(--color-accent-500)]" : ""
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {mode === "describe" ? (
+          <label className="mb-3 flex flex-col gap-1.5">
+            <span className="text-xs font-extrabold uppercase tracking-[0.06em]">What are you looking for?</span>
+            <Textarea
+              className="min-h-[92px] rounded-[var(--radius-lg)]"
+              value={description}
+              maxLength={MAX_DESCRIPTION_CHARS}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Senior React developer in Pune, TypeScript and Node, remote is fine"
             />
+            <span className="text-[13px]">
+              Only the role, skills, city and “remote” we pick out of this are searched — the sentence
+              itself isn&rsquo;t sent anywhere or kept.
+            </span>
           </label>
+        ) : null}
+        <div className="flex flex-wrap items-end gap-3">
+          {mode === "titles" ? (
+            <label className="flex flex-[2_1_16rem] flex-col gap-1.5">
+              <span className="text-xs font-extrabold uppercase tracking-[0.06em]">Titles</span>
+              <Input
+                className="input-pill min-h-[50px]"
+                value={titles}
+                onChange={(e) => setTitles(e.target.value)}
+                placeholder="Frontend Engineer, React Developer"
+              />
+            </label>
+          ) : null}
           <label className="flex flex-[1.3_1_11rem] flex-col gap-1.5">
             <span className="text-xs font-extrabold uppercase tracking-[0.06em]">Location</span>
             <Input
@@ -101,7 +149,7 @@ export function JobSearchClient({ baseQuery }: { baseQuery: JobQuery }) {
           </label>
           <Button
             onClick={search}
-            disabled={pending}
+            disabled={pending || (mode === "describe" && !description.trim())}
             busy={pending}
             className="min-h-[50px] flex-none px-[26px]"
           >
@@ -144,6 +192,17 @@ export function JobSearchClient({ baseQuery }: { baseQuery: JobQuery }) {
 
       {outcome ? (
         <>
+          <p className="mb-2 text-[13px]">
+            <span className="font-bold">Searched for:</span>{" "}
+            {[
+              ...outcome.searched.titles.slice(0, 1),
+              ...outcome.searched.keywords,
+              outcome.searched.location,
+              outcome.searched.remote ? "Remote" : "",
+            ]
+              .filter(Boolean)
+              .join(" · ") || "your profile's skills"}
+          </p>
           {configuredSources.length > 0 ? (
             <p className="mb-4 text-[13px] text-[var(--color-text-muted)]">
               {outcome.fromCache ? "From your last search · " : ""}

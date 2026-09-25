@@ -12,6 +12,7 @@
  * the fine print differently per provider.
  */
 import "server-only";
+import { primaryTerms } from "@/lib/domain/job-query";
 import { parseListings, type JobListingIn, type JobQuery, type JobSource } from "./types";
 
 const RESULTS_LIMIT = 25;
@@ -24,7 +25,7 @@ async function search(query: JobQuery, signal: AbortSignal): Promise<JobListingI
   const key = process.env.JOOBLE_API_KEY;
   if (!key) return [];
 
-  const keywords = query.titles[0] ?? query.skills.slice(0, 3).join(" ");
+  const keywords = primaryTerms(query);
   if (!keywords) return [];
 
   let response: Response;

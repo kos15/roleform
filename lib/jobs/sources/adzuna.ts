@@ -15,6 +15,7 @@
  * snippet as something it can honestly score.
  */
 import "server-only";
+import { primaryTerms } from "@/lib/domain/job-query";
 import { parseListings, type JobListingIn, type JobQuery, type JobSource } from "./types";
 
 const BASE = "https://api.adzuna.com/v1/api/jobs";
@@ -30,7 +31,7 @@ async function search(query: JobQuery, signal: AbortSignal): Promise<JobListingI
   if (!appId || !appKey) return [];
 
   const country = process.env.ADZUNA_COUNTRY?.trim() || "in";
-  const what = query.titles[0] ?? query.skills.slice(0, 3).join(" ");
+  const what = primaryTerms(query);
   if (!what) return [];
 
   const params = new URLSearchParams({

@@ -11,7 +11,14 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 
 export interface JobQuery {
   titles: string[];
+  /** The profile's own skills. Used to rank and label fit ("of your skills"). */
   skills: string[];
+  /**
+   * Canonical skill names the member typed into a described search
+   * (lib/domain/job-intent.ts). Sent to providers as search terms only —
+   * never shown as "your skills", because they may not be on the profile.
+   */
+  keywords: string[];
   location: string;
   remote: boolean;
 }
@@ -48,7 +55,7 @@ export function buildJobQuery(resume: StoredResume): JobQuery {
 
   const remote = /remote/i.test(resume.x_roleform?.preferences?.workMode ?? "");
 
-  return { titles, skills, location, remote };
+  return { titles, skills, keywords: [], location, remote };
 }
 
 function latestPosition(resume: StoredResume): string[] {
@@ -61,7 +68,19 @@ function latestPosition(resume: StoredResume): string[] {
   return sorted[0] ? [sorted[0].position] : [];
 }
 
+/**
+ * The words a provider's search box gets: the first title, else the typed
+ * keywords, else the profile's top skills. Every source uses this, so a
+ * described search and a skills-only search reach all of them the same way.
+ */
+export function primaryTerms(query: JobQuery): string {
+  const title = query.titles[0]?.trim();
+  if (title) return title;
+  const terms = query.keywords.length > 0 ? query.keywords : query.skills;
+  return terms.slice(0, 3).join(" ");
+}
+
 /** A short, honest label for the empty state and the query editor's placeholder. */
 export function queryIsEmpty(query: JobQuery): boolean {
-  return query.titles.length === 0 && query.skills.length === 0;
+  return query.titles.length === 0 && query.skills.length === 0 && query.keywords.length === 0;
 }

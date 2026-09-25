@@ -171,7 +171,7 @@ interface JobSource {
 |---|---|---|---|
 | **Adzuna** (v1, primary) | Free key, `in` and 15 other countries, JSON, `redirect_url` per listing | free, rate-limited | Requires "Jobs by Adzuna" attribution; descriptions are snippets |
 | **Jooble** (v1, second) | Free key, broad India coverage, one POST | free | Snippets only |
-| JSearch (RapidAPI) | Aggregates Google for Jobs (LinkedIn, Indeed, Glassdoor) | paid per call | Optional adapter, off unless keyed |
+| **JSearch** (RapidAPI, queried first) | Google for Jobs (LinkedIn, Indeed, Glassdoor, Naukri, career pages), full descriptions, employer apply links | 200 free requests/month, then paid | Off unless keyed. See [docs/prd-jsearch.md](docs/prd-jsearch.md), which also adds described search |
 
 Before an adapter is enabled its terms are read once and its attribution and rate limits are
 recorded in the adapter file. An adapter with no documented terms does not ship.
@@ -471,7 +471,7 @@ email or push reminders for roadmap steps.
 |---|---|---|---|
 | D10 | Admin cap overrides on a lapsed account | Lost on lapse (row reset to Free caps), same as they are replaced on upgrade | An admin asks twice |
 | D11 | Razorpay Subscriptions | No in v1; manual renew with a banner | Renewal rate < 50% after two cycles |
-| D12 | JSearch (paid) as a third source | Off until Adzuna + Jooble coverage for the top 20 target titles in India is measured < 70% | The measurement |
+| D12 | JSearch as a third source | **Decided Sep 2026: built, on when keyed** ([docs/prd-jsearch.md](docs/prd-jsearch.md)) | — |
 | D13 | Auto-build roadmap for Pro at run end | No; on demand for everyone, one click, zero cost | Pro members ask for it |
 
 ---

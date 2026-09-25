@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
 import { adzuna } from "./sources/adzuna";
 import { jooble } from "./sources/jooble";
+import { jsearch } from "./sources/jsearch";
 import type { JobListingIn, JobQuery, JobSource } from "./sources/types";
 import { rankListings, type RankableListing } from "@/lib/domain/job-rank";
 import type { JobProvider } from "@/lib/generated/prisma/enums";
@@ -13,10 +14,15 @@ import type { JobProvider } from "@/lib/generated/prisma/enums";
  * One call per configured source, 8s timeout each, the results merged and
  * capped at 50 listings total, cached for 12h so a repeat of the same query
  * costs neither an API call nor a cap unit (JS-4). Nothing here scrapes —
- * every source is one of the two adapters below, each behind a documented
- * API (N17).
+ * every source is one of the adapters below, each behind a documented API
+ * (N17).
+ *
+ * Order matters twice: results are interleaved source by source before the
+ * cap, and when two sources carry the same job the earlier one's copy is
+ * kept. JSearch goes first — it has the full description and the employer's
+ * own apply link (docs/prd-jsearch.md).
  */
-const SOURCES: JobSource[] = [adzuna, jooble];
+const SOURCES: JobSource[] = [jsearch, adzuna, jooble];
 const SOURCE_TIMEOUT_MS = 8_000;
 const MAX_LISTINGS = 50;
 const CACHE_WINDOW_MS = 12 * 60 * 60 * 1000;
@@ -26,6 +32,7 @@ export function queryHash(query: JobQuery): string {
   const normalised = JSON.stringify({
     titles: [...query.titles].map((t) => t.toLowerCase().trim()).sort(),
     skills: [...query.skills].map((s) => s.toLowerCase().trim()).sort(),
+    keywords: [...query.keywords].map((s) => s.toLowerCase().trim()).sort(),
     location: query.location.toLowerCase().trim(),
     remote: query.remote,
   });
@@ -52,6 +59,8 @@ export interface SearchOutcome {
   listings: SearchListingView[];
   sourcesQueried: Array<{ id: string; label: string; url: string; configured: boolean }>;
   fromCache: boolean;
+  /** What was actually sent — shown back so a described search can be checked. */
+  searched: Pick<JobQuery, "titles" | "keywords" | "location" | "remote">;
 }
 
 /**
@@ -91,6 +100,7 @@ export async function findCachedSearch(
       configured: s.configured(),
     })),
     fromCache: true,
+    searched: searchedOf(query),
   };
 }
 
@@ -110,21 +120,28 @@ export async function runSearch(clerkUserId: string, query: JobQuery): Promise<S
     }),
   );
 
-  const bySourceListings: Array<{ source: JobProvider; listing: JobListingIn }> = [];
+  const bySource: Array<Array<{ source: JobProvider; listing: JobListingIn }>> = [];
   for (const result of perSource) {
     if (result.status !== "fulfilled") continue;
-    for (const listing of result.value.listings) {
-      bySourceListings.push({ source: result.value.source as JobProvider, listing });
-    }
+    bySource.push(
+      result.value.listings.map((listing) => ({ source: result.value.source as JobProvider, listing })),
+    );
   }
 
+  // Round-robin across sources so the cap can't be filled by whichever one
+  // happens to return the most rows.
+  const bySourceListings = interleave(bySource);
+
   // Dedupe by (source, externalId) — a provider can legitimately repeat a
-  // listing across pages within one response in rare cases.
+  // listing across pages — and across sources by title + company, since
+  // JSearch and the boards behind Adzuna/Jooble often carry the same job.
   const seen = new Set<string>();
   const deduped = bySourceListings.filter(({ source, listing }) => {
-    const key = `${source}:${listing.externalId}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
+    const keys = [`${source}:${listing.externalId}`, sameJobKey(listing)].filter(
+      (k): k is string => k !== null,
+    );
+    if (keys.some((k) => seen.has(k))) return false;
+    keys.forEach((k) => seen.add(k));
     return true;
   });
 
@@ -212,7 +229,29 @@ export async function runSearch(clerkUserId: string, query: JobQuery): Promise<S
       configured: s.configured(),
     })),
     fromCache: false,
+    searched: searchedOf(query),
   };
+}
+
+function searchedOf(query: JobQuery): SearchOutcome["searched"] {
+  return { titles: query.titles, keywords: query.keywords, location: query.location, remote: query.remote };
+}
+
+function interleave<T>(lists: T[][]): T[] {
+  const out: T[] = [];
+  const longest = Math.max(0, ...lists.map((l) => l.length));
+  for (let i = 0; i < longest; i++) {
+    for (const list of lists) if (i < list.length) out.push(list[i]);
+  }
+  return out;
+}
+
+/** Title + company, normalised. Null without a company — too weak to call two listings the same job. */
+function sameJobKey(listing: JobListingIn): string | null {
+  const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const company = norm(listing.company);
+  if (!company) return null;
+  return `job:${norm(listing.title)}|${company}`;
 }
 
 function toView(
