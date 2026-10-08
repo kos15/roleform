@@ -31,7 +31,7 @@ export function BudgetPicker({ selected }: { selected: number | null }) {
   }
 
   return (
-    <div className="seg" role="tablist" aria-label="How much time you have">
+    <div data-help="budget" className="seg" role="tablist" aria-label="How much time you have">
       {OPTIONS.map((option) => (
         <button
           key={option.label}

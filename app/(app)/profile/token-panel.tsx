@@ -86,7 +86,7 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
   return (
     // No width or top margin of its own: it is the first card in the editor's
     // left column now, and it takes that column's measure.
-    <section className="rounded-[26px] bg-[var(--color-accent-500)] p-[clamp(1.25rem,2.6vw,1.9rem)]">
+    <section data-help="token-panel" className="rounded-[26px] bg-[var(--color-accent-500)] p-[clamp(1.25rem,2.6vw,1.9rem)]">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="eyebrow mb-2 text-[var(--color-text)]">Token allowance</p>

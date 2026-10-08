@@ -90,6 +90,7 @@ export function PreviewSurface({
         {actions}
         <button
           type="button"
+          data-help="diff-toggle"
           aria-pressed={showChanges}
           onClick={() => setShowChanges((v) => !v)}
           className="ml-auto flex min-h-10 items-center gap-2 rounded-[var(--radius-pill)] border-[1.5px] border-[var(--color-line)] bg-[var(--color-bg-raised)] py-0 pl-1.5 pr-3.5 text-sm font-bold"

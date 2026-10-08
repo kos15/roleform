@@ -154,7 +154,7 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
               {text.length > 0 && text.trim().length < JD_MIN_CHARS ? ` · we need at least ${JD_MIN_CHARS}` : ""}
             </span>
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" onClick={() => setText(SAMPLE_JD)}>
+              <Button variant="secondary" data-help="load-sample" onClick={() => setText(SAMPLE_JD)}>
                 Load sample posting
               </Button>
               {devAffordances ? (
@@ -166,7 +166,7 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
                   Try: an unreadable input
                 </Button>
               ) : null}
-              <Button onClick={submit} disabled={!canSubmit || busy} busy={busy}>
+              <Button data-help="analyze-btn" onClick={submit} disabled={!canSubmit || busy} busy={busy}>
                 {busy ? "Starting…" : "Analyse posting"}
               </Button>
             </div>
@@ -221,7 +221,7 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
           </label>
 
           <div className="mt-3 flex justify-end">
-            <Button onClick={submit} disabled={!canSubmit || busy} busy={busy}>
+            <Button data-help="analyze-btn" onClick={submit} disabled={!canSubmit || busy} busy={busy}>
               {busy ? "Starting…" : "Analyse posting"}
             </Button>
           </div>

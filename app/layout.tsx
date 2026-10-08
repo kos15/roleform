@@ -3,6 +3,7 @@ import { Anton, Figtree } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { AgentTools } from "@/components/agent-tools";
+import { RoleformGuide } from "@/components/roleform-guide";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/seo/site";
 
 /**
@@ -116,10 +117,13 @@ const clerkAppearance = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider appearance={clerkAppearance}>
-      <html lang="en" className={`${anton.variable} ${figtree.variable}`}>
+      {/* suppressHydrationWarning: the landing page's intro sets
+          data-intro on <html> from an inline script before React hydrates. */}
+      <html lang="en" className={`${anton.variable} ${figtree.variable}`} suppressHydrationWarning>
         <body>
           {children}
           <AgentTools />
+          <RoleformGuide />
         </body>
       </html>
     </ClerkProvider>

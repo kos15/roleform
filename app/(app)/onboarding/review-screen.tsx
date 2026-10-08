@@ -84,7 +84,7 @@ export function ReviewScreen({
       </div>
 
       {draft.notices.ambiguousDates.length > 0 || draft.notices.careerGaps.length > 0 ? (
-        <div className="rounded-[22px] bg-[var(--color-sage-200)] px-[22px] py-5">
+        <div data-help="ob-flags" className="rounded-[22px] bg-[var(--color-sage-200)] px-[22px] py-5">
           <div className="mb-2.5 flex items-center gap-2 text-base font-extrabold">
             <AlertTriangle className="lucide h-[17px] w-[17px]" />
             Worth a look
@@ -200,7 +200,7 @@ export function ReviewScreen({
       ))}
 
       <div className="flex flex-wrap items-center gap-3 pt-1.5">
-        <Button size="lg" onClick={() => onCommit(resume)} disabled={!canSave}>
+        <Button size="lg" data-help="ob-save" onClick={() => onCommit(resume)} disabled={!canSave}>
           Save profile
         </Button>
         <Button variant="secondary" size="lg" onClick={onStartOver}>

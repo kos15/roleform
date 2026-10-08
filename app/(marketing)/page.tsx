@@ -15,6 +15,7 @@ import { pageMetadata } from "@/lib/seo/metadata";
 import { SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo/site";
 import type { Metadata } from "next";
 import { TemplatePaper } from "@/components/template-thumb";
+import { IntroCurtain } from "@/components/intro-curtain";
 
 /**
  * The hero's right-hand illustration is a worked example, not a claim about
@@ -58,31 +59,36 @@ export default async function MarketingPage() {
       <JsonLd
         data={graph(organizationSchema(), websiteSchema(), softwareSchema(), faqSchema(HOME_FAQS))}
       />
+      {/* First visit only, and never under reduced motion. Before the hero in
+          the DOM so its inline script decides before the hero paints. */}
+      <IntroCurtain tagline={`One résumé in · ${TEMPLATES.length} tailored out`} />
       <div className="grid items-center gap-[clamp(2.25rem,5vw,4.5rem)] [grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr))]">
         {/* Left-aligned and asymmetric — whitespace on the right (CLAUDE.md §9). */}
         <div>
-          <span className="tag tag-outline min-h-9 px-4 text-sm">One profile · every posting</span>
+          <span data-intro style={{ "--i": 0 } as React.CSSProperties} className="tag tag-outline min-h-9 px-4 text-sm">One profile · every posting</span>
           {/* The catalog size, read from the catalog. A member's own run returns
               as many as their cap allows (F15); this is the default and the most
               anyone gets. */}
-          <h1 className="mb-[30px] mt-7 text-[clamp(3.4rem,6vw,6.75rem)]">
+          <h1 data-intro style={{ "--i": 1 } as React.CSSProperties} className="mb-[30px] mt-7 text-[clamp(3.4rem,6vw,6.75rem)]">
             One résumé in.
             <br />
             {TEMPLATES.length} tailored out.
           </h1>
-          <p className="mb-3.5 max-w-[46ch] text-[clamp(17px,1.5vw,19px)] leading-[1.55] [text-wrap:pretty]">
+          <p data-intro style={{ "--i": 2 } as React.CSSProperties} className="mb-3.5 max-w-[46ch] text-[clamp(17px,1.5vw,19px)] leading-[1.55] [text-wrap:pretty]">
             Roleform reads a job posting, works out how much of it your own experience can
             evidence, and rewrites your résumé to say so in the posting&rsquo;s language.
           </p>
           {/* The product's law, in the product's own copy. */}
-          <p className="mb-9 max-w-[46ch] text-[clamp(17px,1.5vw,19px)] leading-[1.55] [text-wrap:pretty]">
+          <p data-intro style={{ "--i": 3 } as React.CSSProperties} className="mb-9 max-w-[46ch] text-[clamp(17px,1.5vw,19px)] leading-[1.55] [text-wrap:pretty]">
             <strong className="rounded-[6px] bg-[var(--color-accent-500)] px-1.5 py-px">
               Nothing is invented
             </strong>{" "}
             — bullets are reordered, reworded and re-weighted. What you can&rsquo;t evidence
             becomes the gap list, not a lie.
           </p>
-          {cta}
+          <div data-intro data-help="landing-cta" style={{ "--i": 4 } as React.CSSProperties} className="inline-block">
+            {cta}
+          </div>
         </div>
 
         <HeroCollage />
@@ -177,7 +183,7 @@ function HeroCollage() {
 
   return (
     <div aria-hidden className="flex flex-wrap items-stretch gap-[22px] pt-11">
-      <div className="relative flex min-h-[360px] flex-[1_1_220px] flex-col items-center rounded-[26px] bg-[var(--color-bg-raised)] px-6 pb-11 pt-[34px] text-center">
+      <div data-intro style={{ "--i": 5 } as React.CSSProperties} className="relative flex min-h-[360px] flex-[1_1_220px] flex-col items-center rounded-[26px] bg-[var(--color-bg-raised)] px-6 pb-11 pt-[34px] text-center">
         <span className="tag tag-outline absolute -top-[52px] left-1/2 min-h-10 -translate-x-1/2 bg-[var(--color-bg)] px-4 text-[15px] font-extrabold">
           № Senior Frontend
         </span>
@@ -199,7 +205,7 @@ function HeroCollage() {
         </span>
       </div>
 
-      <div className="relative mt-10 min-h-[360px] sm:top-[50px] sm:mt-0 flex-[1.35_1_280px] rounded-[26px] bg-[var(--color-accent-500)] px-[26px] py-[30px]">
+      <div data-intro style={{ "--i": 6 } as React.CSSProperties} className="relative mt-10 min-h-[360px] sm:top-[50px] sm:mt-0 flex-[1.35_1_280px] rounded-[26px] bg-[var(--color-accent-500)] px-[26px] py-[30px]">
         <div className="relative z-[2] flex flex-col items-start gap-3.5">
           {showcase.map((t) => (
             <span key={t.id} className="tag tag-outline min-h-[38px] bg-[var(--color-accent-500)] px-4 text-[15px]">
@@ -210,19 +216,19 @@ function HeroCollage() {
         {back ? (
           <TemplatePaper
             template={back}
-            className="absolute bottom-[22px] right-[18px] h-[200px] w-[150px] rotate-[9deg] rounded-[10px] shadow-[var(--shadow-lg)]"
+            className="intro-fan intro-fan-1 absolute bottom-[22px] right-[18px] h-[200px] w-[150px] rotate-[9deg] rounded-[10px] shadow-[var(--shadow-lg)]"
           />
         ) : null}
         {middle ? (
           <TemplatePaper
             template={middle}
-            className="absolute bottom-16 right-[92px] h-[200px] w-[150px] -rotate-[4deg] rounded-[10px] shadow-[var(--shadow-lg)]"
+            className="intro-fan intro-fan-2 absolute bottom-16 right-[92px] h-[200px] w-[150px] -rotate-[4deg] rounded-[10px] shadow-[var(--shadow-lg)]"
           />
         ) : null}
         {front ? (
           <TemplatePaper
             template={front}
-            className="absolute -top-10 right-10 z-[1] h-[208px] w-[156px] rotate-[3deg] rounded-[10px] shadow-[var(--shadow-lg)]"
+            className="intro-fan intro-fan-3 absolute -top-10 right-10 z-[1] h-[208px] w-[156px] rotate-[3deg] rounded-[10px] shadow-[var(--shadow-lg)]"
           />
         ) : null}
       </div>

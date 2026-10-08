@@ -120,6 +120,7 @@ export default async function StatusPage() {
               <span>{stalled.progressPct}%</span>
             </div>
             <Link
+              data-help="status-run"
               href={`/analysis/${stalled.id}`}
               className="btn btn-secondary btn-sm mt-4 no-underline"
             >

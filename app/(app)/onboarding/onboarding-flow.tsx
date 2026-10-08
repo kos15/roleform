@@ -95,6 +95,7 @@ export function OnboardingFlow() {
       {error ? <ErrorRegion title={error.title} /> : null}
 
       <label
+        data-help="ob-drop"
         onDragOver={(e) => {
           e.preventDefault();
           setDragging(true);

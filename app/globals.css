@@ -946,6 +946,178 @@
     }
   }
 
+  /* ---------------------------------------------------------------------------
+     intro — the landing page's first-visit opening (components/intro-curtain).
+     Inert unless the inline script set html[data-intro="play"].
+  --------------------------------------------------------------------------- */
+  .intro-curtain { display: none; }
+  html[data-intro="play"] .intro-curtain {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .intro-layer {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    animation: intro-curtain 680ms cubic-bezier(0.7, 0, 0.2, 1) both;
+  }
+  .intro-layer-accent { z-index: 1; background: var(--color-accent-500); animation-delay: 2.04s; }
+  .intro-layer-ground {
+    z-index: 2;
+    background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-tint) 60%, var(--color-accent-200) 100%);
+    animation-delay: 1.9s;
+  }
+  .intro-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 24px;
+    text-align: center;
+    animation: intro-out 500ms cubic-bezier(0.7, 0, 0.2, 1) 1.82s forwards;
+  }
+  .intro-mark { width: clamp(96px, 11vw, 140px); aspect-ratio: 1; }
+  .intro-mark > * { transform-box: fill-box; transform-origin: center; }
+  .intro-lens-a { animation: intro-sheet 750ms var(--ease-out-quint) 100ms both; }
+  .intro-lens-b { animation: intro-doc 650ms var(--ease-out-quint) 320ms both; }
+  .intro-pop { animation: intro-pop 500ms cubic-bezier(0.3, 1.6, 0.5, 1) 1.18s both; }
+  .intro-pop-late { animation-delay: 1.4s; }
+  .intro-word {
+    overflow: hidden;
+    padding: 0 0.06em;
+    font-family: var(--font-heading);
+    font-size: clamp(52px, 8vw, 96px);
+    line-height: 1.08;
+    letter-spacing: 0.01em;
+    color: var(--color-text);
+  }
+  .intro-word > span {
+    display: inline-block;
+    animation: intro-rise 600ms var(--ease-out-quint) both;
+  }
+  .intro-word > .intro-dot {
+    color: var(--color-accent-600);
+    animation: intro-pop 450ms cubic-bezier(0.3, 1.6, 0.5, 1) 1.42s both;
+  }
+  .intro-tagline {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    animation: intro-fade 500ms var(--ease-out-quint) 1.5s both;
+  }
+  /* The hero settles in behind the curtains, one element after another. */
+  html[data-intro="play"] [data-intro] {
+    animation: intro-settle 750ms var(--ease-out-quint) both;
+    animation-delay: calc(2.25s + var(--i, 0) * 85ms);
+  }
+  html[data-intro="play"] .intro-fan { animation: intro-fan 950ms var(--ease-out-quint) both; }
+  html[data-intro="play"] .intro-fan-1 { animation-delay: 2.85s; }
+  html[data-intro="play"] .intro-fan-2 { animation-delay: 2.93s; }
+  html[data-intro="play"] .intro-fan-3 { animation-delay: 3.01s; }
+
+  @keyframes intro-curtain {
+    to { transform: translateY(-100%); border-radius: 0 0 50% 50% / 0 0 140px 140px; }
+  }
+  @keyframes intro-out { to { opacity: 0; transform: translateY(-36px) scale(0.96); } }
+  @keyframes intro-sheet { from { opacity: 0; transform: translate(7px, -9px) rotate(-16deg); } to { opacity: 1; transform: none; } }
+  @keyframes intro-doc { from { opacity: 0; transform: translateY(9px) scale(0.88); } to { opacity: 1; transform: none; } }
+  @keyframes intro-pop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: none; } }
+  @keyframes intro-rise { from { opacity: 0; transform: translateY(70%); } to { opacity: 1; transform: none; } }
+  @keyframes intro-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes intro-settle { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }
+  @keyframes intro-fan { from { opacity: 0; transform: translate(-40px, 60px) scale(0.82); } to { opacity: 1; transform: none; } }
+
+  /* ---------------------------------------------------------------------------
+     guide — the red-panda helper (components/roleform-guide). Positioned by
+     transform from script; everything here is skin.
+  --------------------------------------------------------------------------- */
+  .guide-root {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    pointer-events: none;
+    color: var(--color-text);
+    font-family: var(--font-body);
+  }
+  .guide-ring {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    border: 3px solid var(--color-accent-500);
+    border-radius: var(--radius-md);
+    /* Same trick as .tour-spot: the wide ring is the scrim. Lighter, because
+       the helper points while you keep working rather than taking over. */
+    box-shadow:
+      0 0 0 6px var(--color-accent-200),
+      0 0 0 9999px var(--color-hover);
+    transition: opacity 250ms ease;
+  }
+  .guide-panda {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: auto;
+    will-change: transform;
+  }
+  .guide-bubble {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 300px;
+    overflow: auto;
+    padding: 13px 16px 15px;
+    background: var(--color-bg-raised);
+    border: 1.5px solid var(--color-text);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 200ms ease, visibility 0s linear 200ms;
+  }
+  .guide-bubble[data-open="true"] {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    /* Waits for the panda to arrive before speaking. */
+    transition: opacity 240ms ease 380ms, visibility 0s linear 380ms;
+  }
+  .guide-tab {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    height: 44px;
+    padding: 0 15px 0 5px;
+    border-radius: var(--radius-pill);
+    border: 1.5px solid var(--color-text);
+    background: var(--color-bg-raised);
+    color: var(--color-text);
+    font-weight: 800;
+    font-size: 14px;
+    box-shadow: var(--shadow-md);
+  }
+  .guide-tab:hover { background: var(--color-accent-200); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .guide-ring,
+    .guide-bubble,
+    .guide-bubble[data-open="true"] { transition: none; }
+  }
+
   /* Lucide ships at stroke-width 2.25 across the app */
   .lucide { stroke-width: 2.25; }
 

@@ -79,7 +79,7 @@ export function JobSearchClient({ baseQuery }: { baseQuery: JobQuery }) {
     <div className="mb-10">
       {capWall ? <CapWallDialog wall={capWall} onClose={() => setCapWall(null)} /> : null}
 
-      <div className="mb-7 rounded-[var(--radius-xl)] bg-[var(--color-accent-500)] p-[clamp(1.25rem,2.6vw,1.9rem)]">
+      <div data-help="job-search" className="mb-7 rounded-[var(--radius-xl)] bg-[var(--color-accent-500)] p-[clamp(1.25rem,2.6vw,1.9rem)]">
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex flex-[2_1_16rem] flex-col gap-1.5">
             <span className="text-xs font-extrabold uppercase tracking-[0.06em]">Titles</span>

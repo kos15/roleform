@@ -139,7 +139,7 @@ export function QuestionList({
         </p>
       </div>
 
-      <div className="seg seg-wrap mb-[26px]" role="tablist" aria-label="Question families">
+      <div data-help="q-tabs" className="seg seg-wrap mb-[26px]" role="tablist" aria-label="Question families">
         {visibleTabs.map((t) => {
           const selected = t.key === tab.key;
           return (

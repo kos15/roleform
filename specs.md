@@ -1244,6 +1244,31 @@ bottom bar and the sheet, so the button goes with them.
 never rendered; the tour never blocks a click outside its own card; replay works from any signed-in
 surface.
 
+### F20.1 — The helper and the opening
+
+Two pieces from the design's `RoleformGuide.dc.html` and the prototype's `introEl`.
+
+**The helper** (`components/roleform-guide.tsx`, copy in `lib/content/helper.ts`). A red panda
+(`components/mascot.tsx`, a port of nilbuild/page-mascot, MIT) docked bottom-right on every page —
+above the tab bar on a phone. It says something unprompted in four cases only: a hello once per
+browser; a screen's one-line `intro`, once per visit, self-dismissing; signs of being stuck (20s idle,
+three clicks on dead space, or bouncing between the same two pages); and a page dispatching
+`roleform:guide` with `{ label?, text, point? }`. Clicking it or pressing `?` opens the page's tips,
+"Take me to" links, and "Talk to a person" (→ `/contact`). "Show me" scrolls to a tip's `data-help`
+(or `data-tour`) anchor and rings it — and, as with the tour, is offered only when that anchor is in
+the DOM. "Hide helper" leaves a small Help tab; hidden and greeted are `localStorage`.
+
+The copy states nothing the product doesn't enforce: no counts the caps decide (§5), no token figures
+that would drift from `lib/domain/tokens.ts`, no score.
+
+**The opening** (`components/intro-curtain.tsx`). On the landing page, first visit per browser, never
+under `prefers-reduced-motion`: the mark assembles, the wordmark rises, two curtains lift and the hero
+settles in. An inline script decides before the hero paints (`html[data-intro="play"]`); CSS does the
+rest. Click skips.
+
+**Acceptance:** the opening plays once and not on reload; the helper never covers the tab bar; "Show
+me" never rings nothing; `?` inside a text field types a question mark.
+
 ### F21 — Roadmap
 
 A fourth tab on every analysis, `/analysis/[id]/roadmap`: the three result surfaces compiled into
