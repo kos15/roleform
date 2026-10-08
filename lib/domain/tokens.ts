@@ -51,12 +51,29 @@ export const ANALYSIS_TOKEN_CEILING = 60_000;
 /** One worked answer. Frameworks are free — they cost no model call at all. */
 export const DRAFT_ESTIMATE = 1_600;
 
+/**
+ * F26 — rapid prep, one model call each. Estimates at the default sizes (a
+ * 30-minute deck, a ten-question round); re-derive with `pnpm tokens:calibrate`
+ * once `ai_runs` holds real rows for these purposes. A bank coding challenge
+ * costs nothing to start — only its review is a call.
+ */
+export const DRILL_ESTIMATES = {
+  revision: 2_600,
+  quiz: 2_200,
+  challenge: 2_800,
+  review: 2_000,
+} as const;
+
 /** What the member is spending on. Named so a refusal can say which. */
-export type SpendKind = "analysis" | "answer";
+export type SpendKind = "analysis" | "answer" | keyof typeof DRILL_ESTIMATES;
 
 export const SPEND: Record<SpendKind, { estimate: number; label: string; noun: string }> = {
   analysis: { estimate: RUN_ESTIMATE, label: "this analysis", noun: "This run" },
   answer: { estimate: DRAFT_ESTIMATE, label: "a full answer draft", noun: "A drafted answer" },
+  revision: { estimate: DRILL_ESTIMATES.revision, label: "a revision deck", noun: "A revision deck" },
+  quiz: { estimate: DRILL_ESTIMATES.quiz, label: "a quiz round", noun: "A quiz round" },
+  challenge: { estimate: DRILL_ESTIMATES.challenge, label: "a coding challenge", noun: "A generated challenge" },
+  review: { estimate: DRILL_ESTIMATES.review, label: "a code review", noun: "A code review" },
 };
 
 export interface TokenLedger {

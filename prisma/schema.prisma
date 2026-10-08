@@ -324,7 +324,7 @@ model User {
 
   /// The roadmap tab's build cap (F21). Counted from `roadmaps` rows created
   /// in the cycle — a roadmap costs zero tokens, so this is the only limiter.
-  capRoadmaps Int @default(1) @map("cap_roadmaps") // per cycle
+  capRoadmaps    Int @default(1) @map("cap_roadmaps") // per cycle
   /// Job search runs (F22). Off on Free: the cap is 0, not a feature flag —
   /// a plan is its caps (N22), so gating by cap keeps this row the only place
   /// "who can search" is decided.
@@ -607,6 +607,9 @@ model Analysis {
   exports            Export[]
   roadmap            Roadmap?
   savedJobs          SavedJob[]
+  revisionDecks      RevisionDeck[]
+  quizRounds         QuizRound[]
+  codingChallenges   CodingChallenge[]
 
   // F2: identical JD text reuses the prior analysis — no second charge.
   @@unique([clerkUserId, contentHash], map: "analyses_user_content_hash")
@@ -1245,9 +1248,13 @@ model AiRun {
   retryCount    Int      @default(0) @map("retry_count")
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
-  tailoredBullets TailoredBullet[]
-  questionAnswers QuestionAnswer[]
-  learningPlans   LearningPlan[]
+  tailoredBullets  TailoredBullet[]
+  questionAnswers  QuestionAnswer[]
+  learningPlans    LearningPlan[]
+  revisionDecks    RevisionDeck[]
+  quizRounds       QuizRound[]
+  codingChallenges CodingChallenge[]
+  codeAttempts     CodeAttempt[]
 
   @@index([clerkUserId, createdAt], map: "ai_runs_user_created_idx")
   @@map("ai_runs")
@@ -1255,7 +1262,6 @@ model AiRun {
 
 /**
  * ----------------------------------------------------------------- roadmap
- *
  * F21. A per-analysis checklist compiled from rows the analysis already
  * holds — never written by a model (N13). One row created per item at build
  * time; completion is the one thing on this table a user, not the compiler,
@@ -1342,7 +1348,6 @@ model RoadmapItem {
 
 /**
  * -------------------------------------------------------------- job search
- *
  * F22. Listings from documented job-board APIs only (N17) — never scraped,
  * never an employer's page fetched. `job_listings` is a shared cache with no
  * user id: the listing is public content, and the pairing of a listing with a
@@ -1374,29 +1379,29 @@ enum SavedJobStatus {
 /// reading directly; every read goes through a Server Action that joins via
 /// `saved_jobs` or returns a `searchJobs` result, both scoped by subject.
 model JobListing {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   source     JobProvider
-  externalId String    @map("external_id")
+  externalId String      @map("external_id")
   /// The provider's own field. Never assembled by us (N18).
   url        String
   title      String
   company    String
   location   String
   snippet    String
-  postedAt   DateTime? @map("posted_at") @db.Timestamptz
-  salaryMin  Int?      @map("salary_min")
-  salaryMax  Int?      @map("salary_max")
+  postedAt   DateTime?   @map("posted_at") @db.Timestamptz
+  salaryMin  Int?        @map("salary_min")
+  salaryMax  Int?        @map("salary_max")
   currency   String?
   /// The provider's own record, kept for re-normalisation. Never rendered.
-  raw        Json      @default("{}")
-  fetchedAt  DateTime  @default(now()) @map("fetched_at") @db.Timestamptz
+  raw        Json        @default("{}")
+  fetchedAt  DateTime    @default(now()) @map("fetched_at") @db.Timestamptz
   /// 30 days out from `fetchedAt`. Read-filtered (`where expires_at > now()`),
   /// never swept by a job — there is no scheduler (CLAUDE.md §8).
-  expiresAt  DateTime  @map("expires_at") @db.Timestamptz
+  expiresAt  DateTime    @map("expires_at") @db.Timestamptz
 
-  hits      JobSearchHit[]
-  savedBy   SavedJob[]
-  analyses  Analysis[]
+  hits     JobSearchHit[]
+  savedBy  SavedJob[]
+  analyses Analysis[]
 
   @@unique([source, externalId], map: "job_listings_source_external_id")
   @@index([expiresAt], map: "job_listings_expires_idx")
@@ -1468,4 +1473,141 @@ model SavedJob {
   @@unique([clerkUserId, listingId], map: "saved_jobs_user_listing")
   @@index([clerkUserId, updatedAt], map: "saved_jobs_user_updated_idx")
   @@map("saved_jobs")
+}
+
+/**
+ * ------------------------------------------------------------- rapid prep
+ * F26. Three drills on the posting's own topics: revision cards sized to the
+ * time you have, a timed multiple-choice round, and a timed coding challenge.
+ * None of these tables carries a claim about the candidate — cards, questions
+ * and problems are general knowledge about the posting's topics, so there is
+ * no evidence relation to bind (contrast N1/N2). What IS the user's own is
+ * their picks, their code and their clock, and those rows are RLS'd like every
+ * other user table (N10). Not plan-gated by a cap: every generation is a model
+ * call metered by the token meter (D6, F19), and a bank challenge costs none.
+ */
+
+enum ChallengeSource {
+  bank
+  generated
+
+  @@map("challenge_source")
+}
+
+enum DrillDifficulty {
+  easy
+  medium
+  hard
+
+  @@map("drill_difficulty")
+}
+
+enum CodeLanguage {
+  javascript
+  python
+  java
+  cpp
+
+  @@map("code_language")
+}
+
+/// One deck per analysis per time budget. Asking again for the same budget is
+/// a read, not a model call.
+model RevisionDeck {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String   @map("clerk_user_id")
+  analysisId  String   @map("analysis_id") @db.Uuid
+  /// 10 · 20 · 30 · 45 (CHECK). The deck size follows from it.
+  minutes     Int
+  /// [{ topic, title, keyPoints, example, pitfall, recall, answer }] —
+  /// validated by RevisionCardSchema on the way in and on the way out.
+  cards       Json     @default("[]")
+  aiRunId     String?  @map("ai_run_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  aiRun    AiRun?   @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+
+  @@unique([analysisId, minutes], map: "revision_decks_analysis_minutes")
+  @@map("revision_decks")
+}
+
+/// A timed multiple-choice round. The answers never leave the server until the
+/// round is submitted; grading is `gradeQuiz` (lib/domain/drill.ts), a count.
+model QuizRound {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId        String    @map("clerk_user_id")
+  analysisId         String    @map("analysis_id") @db.Uuid
+  /// [{ topic, difficulty, stem, options[4], answerIndex, explanation }],
+  /// options already shuffled by the server.
+  questions          Json      @default("[]")
+  total              Int
+  secondsPerQuestion Int       @map("seconds_per_question")
+  /// [index | null] per question — null is "the clock ran out".
+  picks              Json?
+  correct            Int?
+  finishedAt         DateTime? @map("finished_at") @db.Timestamptz
+  aiRunId            String?   @map("ai_run_id") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  analysis Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  aiRun    AiRun?   @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+  // CHECKs added by hand in the migration SQL: total 5–15; a grade exists
+  // exactly when the round is finished; correct never exceeds total.
+
+  @@index([analysisId], map: "quiz_rounds_analysis_idx")
+  @@map("quiz_rounds")
+}
+
+/// A started challenge. `createdAt` is the server's start of the clock — the
+/// time a review reports is measured here, never taken from the browser.
+model CodingChallenge {
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId        String          @map("clerk_user_id")
+  analysisId         String          @map("analysis_id") @db.Uuid
+  source             ChallengeSource
+  /// Set exactly when source = 'bank' (CHECK).
+  bankSlug           String?         @map("bank_slug")
+  difficulty         DrillDifficulty
+  language           CodeLanguage
+  minutes            Int
+  /// The generated problem, validated by GeneratedChallengeSchema. Set
+  /// exactly when source = 'generated' (CHECK).
+  body               Json?
+  hintsRevealed      Int             @default(0) @map("hints_revealed")
+  solutionRevealedAt DateTime?       @map("solution_revealed_at") @db.Timestamptz
+  aiRunId            String?         @map("ai_run_id") @db.Uuid
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  analysis Analysis      @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  aiRun    AiRun?        @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+  attempts CodeAttempt[]
+
+  @@index([analysisId], map: "coding_challenges_analysis_idx")
+  @@map("coding_challenges")
+}
+
+/// One submitted solution and its review.
+model CodeAttempt {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String       @map("clerk_user_id")
+  challengeId String       @map("challenge_id") @db.Uuid
+  language    CodeLanguage
+  code        String
+  secondsUsed Int          @map("seconds_used")
+  /// Both null when the language was reviewed by reading (CHECK).
+  testsPassed Int?         @map("tests_passed")
+  testsTotal  Int?         @map("tests_total")
+  /// The reviewer's reading, clamped by the tests — CodeReviewSchema.
+  evaluation  Json
+  /// overallVerdict(...) — a function of facts, stored so history can show it.
+  verdict     String
+  aiRunId     String?      @map("ai_run_id") @db.Uuid
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  challenge CodingChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  aiRun     AiRun?          @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+
+  @@index([challengeId], map: "code_attempts_challenge_idx")
+  @@map("code_attempts")
 }

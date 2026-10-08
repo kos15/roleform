@@ -29,4 +29,12 @@ export const TEMPERATURE = {
   questions: 0.5,
   /** Prose that has to read as one voice; the facts underneath are already fixed. */
   answering: 0.3,
+  /** F26: teaching prose over a fixed topic list — consistent, not creative. */
+  revision: 0.3,
+  /** Varied stems and distractors; the answer is checked by structure, not luck. */
+  quiz: 0.5,
+  /** A fresh problem each time is the point; its tests are re-run in the sandbox. */
+  challenge: 0.6,
+  /** A judgement, and the tests overrule it anyway. */
+  review: 0.1,
 } as const;

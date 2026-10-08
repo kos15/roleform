@@ -61,4 +61,10 @@ export const LIMITS = {
    *  two third-party APIs is a different failure than running out of a cycle
    *  allowance, and needs its own ceiling. */
   jobSearch: { limit: 12, windowSeconds: 3600 },
+  /** F26: every rapid-prep model call — decks, rounds, generated challenges,
+   *  reviews. One shared bucket: a click storm is a click storm whichever
+   *  button it lands on. */
+  drill: { limit: 40, windowSeconds: 3600 },
+  /** Running JavaScript tests in the sandbox — no model call, but CPU. */
+  drillRun: { limit: 120, windowSeconds: 3600 },
 } as const;
