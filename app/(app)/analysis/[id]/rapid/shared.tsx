@@ -48,15 +48,21 @@ export function Choice<T extends string | number>({
   );
 }
 
-/** Seconds left until `endsAt` (ms), ticking once a second. Negative once over. */
+/**
+ * Seconds left until `endsAt` (ms), ticking once a second. Negative once over.
+ * null until mounted: the server's clock and the browser's never agree to the
+ * second, and rendering either one into the first paint is a hydration
+ * mismatch (React #418).
+ */
 export function useCountdown(endsAt: number | null): number | null {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     if (endsAt === null) return;
+    setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [endsAt]);
-  return endsAt === null ? null : Math.round((endsAt - now) / 1000);
+  return endsAt === null || now === null ? null : Math.round((endsAt - now) / 1000);
 }
 
 export function formatClock(seconds: number): string {
@@ -66,8 +72,37 @@ export function formatClock(seconds: number): string {
 }
 
 /**
+ * Turns anything a transition could throw into a sentence for an inline
+ * error. A server action can REJECT rather than return a Result — the network
+ * drops, the function times out, or a deploy lands mid-session and the
+ * action's id no longer exists — and an exception thrown inside
+ * `startTransition` is rethrown into render, where Next replaces the whole
+ * page with "Application error". Every async handler in rapid prep goes
+ * through `safely`, so a failure stays a message beside the button.
+ */
+export function failureMessage(e: unknown): string {
+  const raw = e instanceof Error ? e.message : String(e);
+  if (/Server Action|failed to find/i.test(raw)) {
+    return "Roleform was updated while this page was open. Refresh the page and try again.";
+  }
+  if (/fetch|network|load failed/i.test(raw)) {
+    return "We couldn't reach Roleform. Check your connection and try again.";
+  }
+  return "Something went wrong on our side. Try again — your work on this page is kept.";
+}
+
+export async function safely(task: () => Promise<void>, onError: (message: string) => void): Promise<void> {
+  try {
+    await task();
+  } catch (e) {
+    onError(failureMessage(e));
+  }
+}
+
+/**
  * Runs a paid server action. A token wall opens the shared dialog with a
- * resume that re-runs the same call; every other refusal is an inline error.
+ * resume that re-runs the same call; every other refusal — and any thrown
+ * failure (see `safely`) — is an inline error.
  */
 export function usePaidAction<T>() {
   const [pending, startTransition] = useTransition();
@@ -77,13 +112,15 @@ export function usePaidAction<T>() {
   const run = useCallback((call: () => Promise<Result<T>>, onOk: (value: T) => void) => {
     setError(null);
     const attempt = () =>
-      startTransition(async () => {
-        const result = await call();
-        if (result.ok) onOk(result.value);
-        else if (result.error.code === "token_wall" && result.error.wall) {
-          setWall({ wall: result.error.wall, retry: attempt });
-        } else setError(result.error.message);
-      });
+      startTransition(() =>
+        safely(async () => {
+          const result = await call();
+          if (result.ok) onOk(result.value);
+          else if (result.error.code === "token_wall" && result.error.wall) {
+            setWall({ wall: result.error.wall, retry: attempt });
+          } else setError(result.error.message);
+        }, setError),
+      );
     attempt();
   }, []);
 

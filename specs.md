@@ -1594,6 +1594,14 @@ with `SpendKind`s `revision` · `quiz` · `challenge` · `review` and estimates 
 Bank challenges, retakes, test runs, hints and solutions cost nothing. One shared burst bucket
 (`LIMITS.drill`) covers every model call; test runs have their own (`LIMITS.drillRun`).
 
+**Failure handling.** No failure in a drill can take down the page. Every async handler (start, run
+tests, hint, solution, submit, quiz submit, deck build) goes through `safely` (rapid/shared.tsx). A server
+action that rejects instead of returning a `Result` (network drop, timeout, a deploy mid-session) becomes an
+inline error beside the button. `rapid/error.tsx` catches anything that still throws while rendering and keeps
+the header and tabs on screen. The Python runner fails soft when no Worker or interpreter is available, the
+clock renders only after mount, and the saved code draft is restored after hydration, so the first paint
+always matches the server render. Each mode's page sets `maxDuration = 120` for its model calls.
+
 **Prompting.** The four prompts follow the F24 diet. The model gets a role line and a numbered
 topic list only, never the posting text or a bullet. Shape lives in the schema, and field order does
 the reasoning: `explanation` comes before `correctOption`, `analysis` before the verdicts. Each
