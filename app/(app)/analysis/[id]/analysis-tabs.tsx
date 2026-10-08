@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, GraduationCap, ListChecks, MessageSquareText, type LucideIcon } from "lucide-react";
+import { FileText, GraduationCap, ListChecks, MessageSquareText, Zap, type LucideIcon } from "lucide-react";
 
 /**
  * The three surfaces. Real links rather than client state, so a tab is
@@ -26,6 +26,8 @@ export interface TabCounts {
   gaps: number;
   /** null before a roadmap is built (F21) — the tab reads "—", not "0 of 0". */
   roadmapProgress: { done: number; total: number } | null;
+  /** F26: decks, rounds and challenges started — "3 drills" before any. */
+  drills: number;
 }
 
 export function AnalysisTabs({
@@ -55,6 +57,12 @@ export function AnalysisTabs({
         : "—",
       icon: ListChecks,
     },
+    {
+      slug: "rapid",
+      label: "Rapid prep",
+      count: counts.drills > 0 ? `${counts.drills} session${counts.drills === 1 ? "" : "s"}` : "3 drills",
+      icon: Zap,
+    },
   ];
 
   return (
@@ -66,6 +74,7 @@ export function AnalysisTabs({
         // were nowhere.
         const selected =
           pathname === href ||
+          (tab.slug === "rapid" && pathname.startsWith(`${href}/`)) ||
           (tab.slug === "resumes" && pathname.startsWith(`/analysis/${analysisId}/preview/`));
         return (
           <Link key={tab.slug} href={href} role="tab" aria-selected={selected} tabIndex={0}>

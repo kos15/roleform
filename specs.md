@@ -396,6 +396,34 @@ saved_jobs                             -- F22. The only table that pairs a listi
   applied_at null, note text, created_at, updated_at
   UNIQUE (clerk_user_id, listing_id)
   CHECK (status <> 'applied' OR applied_at IS NOT NULL)
+
+revision_decks                         -- F26. One per analysis × time budget; reopening is a read.
+  id, clerk_user_id, analysis_id → analyses (cascade), minutes int,
+  cards jsonb,                         -- RevisionCardSchema[], re-validated on read
+  ai_run_id → ai_runs (set null), created_at
+  UNIQUE (analysis_id, minutes)        CHECK minutes IN (10, 20, 30, 45)
+
+quiz_rounds                            -- F26. Answers stay server-side until submit.
+  id, clerk_user_id, analysis_id → analyses (cascade),
+  questions jsonb,                     -- options already shuffled by the server
+  total int, seconds_per_question int, picks jsonb null, correct int null,
+  finished_at null, ai_run_id → ai_runs (set null), created_at
+  CHECK total 5..15 · picks, correct and finished_at set together · correct <= total
+
+coding_challenges                      -- F26. created_at is the server's start of the clock.
+  id, clerk_user_id, analysis_id → analyses (cascade),
+  source enum('bank','generated'), bank_slug null, body jsonb null,
+  difficulty enum, language enum('javascript','python','java','cpp'), minutes int,
+  hints_revealed int, solution_revealed_at null, ai_run_id → ai_runs (set null), created_at
+  CHECK bank ⇔ bank_slug set and body null; generated ⇔ body set and bank_slug null
+  CHECK hints_revealed 0..3, minutes 5..90
+
+code_attempts                          -- F26. One submission and its review.
+  id, clerk_user_id, challenge_id → coding_challenges (cascade), language, code text,
+  seconds_used int, tests_passed null, tests_total null,
+  evaluation jsonb,                    -- the clamped CodeReview + the verdict's reasons
+  verdict text, ai_run_id → ai_runs (set null), created_at
+  CHECK tests_* both null or both set, passed <= total · char_length(code) <= 12000
 ```
 
 `users` also carries `cap_tokens` (CHECK 0..4,000,000) and `analyses` carries `queued_at`
@@ -415,6 +443,7 @@ saved_jobs                             -- F22. The only table that pairs a listi
 9. `plan_purchases.reference` is UNIQUE, the same idempotency shape as `token_grants.reference` (invariant 6), for the plan-purchase side of the webhook (F23, PAY-1).
 10. `users` CHECK `(plan = 'free') = (plan_expires_at IS NULL)` makes the F23 revenue bug — a paid plan with no expiry — unrepresentable rather than merely unlikely (N21).
 11. `saved_jobs` CHECK `(status <> 'applied') OR (applied_at IS NOT NULL)`: a status of "applied" always carries the date it happened (F22).
+12. The F26 CHECKs make a drill's wrong states unrepresentable: a grade without a finished round, more passes than tests, a bank challenge with a model-written body.
 
 ### 6.3 Storage layout
 
@@ -1511,6 +1540,66 @@ A guardrail that has never been watched rejecting something is not a guardrail (
 above has a case in `scripts/smoke-constraints.ts` (§12), added in the same change as the
 constraint itself.
 
+### F26 — Rapid prep
+
+A fifth tab, `/analysis/[id]/rapid`, with three drills on the posting's own topics. Nothing here
+is a claim about the candidate: cards, questions and problems are general knowledge, so there is
+no evidence relation to bind (contrast N1/N2). What is the user's own is their picks, their code
+and their clock, and those rows are RLS'd like every other user table (N10).
+
+**Topics.** `pickTopics` (lib/domain/drill.ts, pure) ranks the posting's requirements by
+necessity × coverage thinness × mention count and de-duplicates them. The list is passed to the
+model as a Zod `z.enum`, so no output can drift onto a topic the posting never named. Coding
+challenges draw only on `hard_skill` and `responsibility` requirements.
+
+**1. Revise** (`/rapid`). The user picks the time left before the interview: 10 · 20 · 30 · 45
+minutes → 5 · 10 · 14 · 20 cards (`cardsForBudget`). Each card: recall question (front), answer,
+2–4 key points, optional example, the trap interviewers probe. One mid-tier call per budget, cached
+in `revision_decks` (unique per analysis × minutes); reopening is a read. A session timer and
+"n of m known" (N16) are client-only. The verify step rejects any card that talks about the
+candidate's own experience (§3).
+
+**2. Rapid round** (`/rapid/quiz`). 5 · 10 · 15 multiple-choice questions at easy · medium ·
+hard, 30 · 45 · 60 seconds each; a question whose clock runs out is unanswered. The answers never
+leave the server until submit. The server shuffles every option list (seeded by the round id,
+removing the model's position bias) and grades with `gradeQuiz`: "7 of 10" plus per-topic
+counts, never a percentage (N16). A retake copies the round with no model call.
+
+**3. Code** (`/rapid/code`). The user picks a source, a difficulty (15 · 25 · 40 minutes) and a
+language (JavaScript · Python · Java · C++).
+- *Classic DSA*: twelve curated problems in `lib/drill/bank.ts`, with tests, three progressive
+  hints and an optimal solution in all four languages. Zero tokens to start. `pnpm check:drill`
+  runs every JS and Python solution against its own tests.
+- *From this posting*: one mid-tier call writes a problem with a typed signature, 5–10 tests, three
+  hints, `referenceJs` and a solution in the chosen language. **Every test is re-run against
+  `referenceJs` in the QuickJS sandbox before anyone sees it**; tests the reference fails are
+  dropped, and fewer than four survivors triggers the corrective retry.
+- Starter code in every language comes from the one typed signature (`starterCode`), so a stub can
+  never disagree with its tests.
+- Execution: JavaScript runs server-side in QuickJS (quickjs-emscripten, MIT: no host access,
+  32 MB, 1 s per test). Python runs in the browser in a Pyodide worker (`public/workers/py-runner.js`).
+  Java and C++ have no free hostable runtime, so they are reviewed by reading, and the screen says so.
+- Hints are revealed one at a time and the full solution behind a confirm. Both are recorded on
+  the challenge row and both count against the verdict.
+- Submit → one mid-tier review: complexity in Big-O, time and space each rated optimal ·
+  acceptable · suboptimal against the known optimum, correctness, missed edge cases, strengths,
+  improvements. **The tests outrank the reading** (`clampCorrectness`): failing code cannot be
+  called correct, whatever a comment in it says. The clock is the server's (`created_at` → submit).
+- The overall verdict is `overallVerdict`, a pure function of the tests, both complexity ratings,
+  time against the clock, hints and solution-viewing: *Interview-ready answer* · *Solid, with gaps*
+  · *Keep practising*, each shown with the facts it rests on. Words, not a number (N4/N16).
+
+**Cost.** No count cap and no QuotaKey: every generation is metered by the token meter (D6, F19),
+with `SpendKind`s `revision` · `quiz` · `challenge` · `review` and estimates in `DRILL_ESTIMATES`.
+Bank challenges, retakes, test runs, hints and solutions cost nothing. One shared burst bucket
+(`LIMITS.drill`) covers every model call; test runs have their own (`LIMITS.drillRun`).
+
+**Prompting.** The four prompts follow the F24 diet. The model gets a role line and a numbered
+topic list only, never the posting text or a bullet. Shape lives in the schema, and field order does
+the reasoning: `explanation` comes before `correctOption`, `analysis` before the verdicts. Each
+prompt has a stated injection boundary (`<topics>`, `<candidate_code>` are data). `noUrls` is
+applied to every prose field (GR-3), and temperature is set per purpose.
+
 ## 10. AI layer
 
 | Purpose | Function | Schema | Tier | Retry |
@@ -1520,6 +1609,10 @@ constraint itself.
 | Tailoring | `tailorBullets` | `TailoredBulletsSchema` | strong | 1, then fail open to original |
 | Interview questions | `generateQuestions` | `InterviewQuestionsSchema` | strong | 1 |
 | Learning plan | `synthesisePlan` | `LearningPlanSchema` | strong | 1, then degrade to no narrative |
+| Revision cards (F26) | `generateRevisionDeck` | `revisionDeckSchema(topics, n)` | mid | 1 |
+| Quiz round (F26) | `generateQuizRound` | `quizRoundSchema(topics, n)` | mid | 1 |
+| Coding challenge (F26) | `generateChallenge` | `generatedChallengeSchema(topics)` | mid | 1, tests re-run in sandbox |
+| Code review (F26) | `reviewCode` | `CodeReviewSchema` | mid | 1, clamped by tests |
 
 - Every call uses `generateObject` with a Zod schema. The schema is the contract; the prompt is documentation for the model. Schema changes bump `prompt_version`.
 - Provider-agnostic — swapping providers is one import change, which is why the SDK was chosen over calling a provider API directly.
@@ -1633,6 +1726,16 @@ searchJobs(query)                     → { searchId, listings } // F22, cap →
 saveJob(listingId)                    → SavedJob              // F22
 unsaveJob(listingId)                  → null                  // F22
 setSavedJobStatus({ listingId, status, appliedAt? })         // F22, CHECK requires appliedAt when 'applied'
+
+buildRevisionDeck(analysisId, minutes)    → { minutes, cards }  // F26, cached per budget; meter 'revision'
+startQuizRound(analysisId, count, level)  → RoundView           // F26, no answers sent; meter 'quiz'
+submitQuizRound(roundId, picks)           → RoundResultView     // F26, graded server-side; once
+retakeQuizRound(roundId) · openQuizRound(roundId)               // F26, no model call
+startChallenge({ analysisId, source, slug, difficulty, language }) → ChallengeView
+                                                            //   F26, bank: free; generated: meter 'challenge'
+runChallengeTests(challengeId, code)      → TestRun             // F26, JS only, QuickJS sandbox, no model
+revealHint(challengeId) · revealSolution(challengeId)         // F26, recorded; count against the verdict
+submitChallenge(challengeId, code, browserRun) → AttemptView    // F26, meter 'review'; tests clamp the review
 ```
 
 ## 15. Open decisions

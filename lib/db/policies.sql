@@ -44,7 +44,13 @@ declare
     -- `job_listings` and `job_search_hits` are the shared cache underneath
     -- both — see the no-policy block below.
     'saved_jobs',
-    'job_searches'
+    'job_searches',
+    -- F26: rapid prep. The cards and questions say nothing about the member,
+    -- but the picks, the code and the clock are theirs alone.
+    'revision_decks',
+    'quiz_rounds',
+    'coding_challenges',
+    'code_attempts'
   ];
   key_column text;
 begin

@@ -71,6 +71,9 @@
   /* type */
   --font-heading: var(--font-anton), Impact, "Arial Narrow", sans-serif;
   --font-body: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  /* Code in rapid prep (F26): the editor and the solution. The system mono
+     stack — no webfont download for a surface most visits never open. */
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, Consolas, monospace;
 
   /* radius */
   --radius-sm: 14px;
@@ -777,6 +780,104 @@
     border-left: 3px solid var(--color-sage-500);
     padding-left: 1rem;
   }
+
+  /* ---------------------------------------------------------------------------
+     Rapid prep (F26)
+     Revision cards flip; quiz options are big tap targets; code sits on the
+     sunken ground in the mono stack. Every value is a token.
+  --------------------------------------------------------------------------- */
+
+  .drill-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    min-height: 240px;
+    background: var(--color-bg-raised);
+    border: 1.5px solid var(--color-line);
+    border-radius: var(--radius-lg);
+    padding: 1.35rem 1.4rem;
+  }
+  .drill-card[data-state="known"] { border-color: var(--color-sage-500); background: var(--color-sage-100); }
+  .drill-card[data-state="again"] { border-color: var(--color-accent-500); }
+  .drill-card[data-face="back"] { background: var(--color-bg-tint); }
+
+  .quiz-option {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+    width: 100%;
+    min-height: 56px;
+    padding: 0.9rem 1.1rem;
+    text-align: left;
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--color-text);
+    background: var(--color-bg-raised);
+    border: 1.5px solid var(--color-line);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: border-color 140ms ease, background-color 140ms ease;
+  }
+  .quiz-option:hover:not(:disabled) { border-color: var(--color-text); }
+  .quiz-option > .quiz-key {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-pill);
+    background: var(--color-chip);
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+  .quiz-option[data-result="right"] { border-color: var(--color-sage-600); background: var(--color-sage-100); }
+  .quiz-option[data-result="wrong"] { border-color: var(--color-danger-500); background: var(--color-danger-100); }
+  .quiz-option:disabled { cursor: default; }
+
+  /* The countdown under a timed question: the progress track, draining. */
+  .progress-urgent > span { background: var(--color-sage-600); }
+
+  .code-block,
+  .code-editor {
+    font-family: var(--font-mono);
+    font-size: 0.86rem;
+    line-height: 1.6;
+    tab-size: 4;
+    color: var(--color-text);
+    background: var(--color-bg-sunken);
+    border-radius: var(--radius-sm);
+  }
+  .code-block {
+    margin: 0;
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .code-editor {
+    display: block;
+    width: 100%;
+    min-height: 340px;
+    padding: 1rem 1.1rem;
+    border: 1.5px solid var(--color-line);
+    resize: vertical;
+    white-space: pre;
+    overflow: auto;
+    outline: none;
+  }
+  .code-editor:focus { border-color: var(--color-accent-600); }
+  .code-inline {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    padding: 0.05rem 0.35rem;
+    border-radius: var(--radius-pill);
+    background: var(--color-chip);
+  }
+
+  .clock {
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+  }
+  .clock[data-over="true"] { color: var(--color-sage-700); }
 
   /* ---------------------------------------------------------------------------
      Motion

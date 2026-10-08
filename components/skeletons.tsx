@@ -657,3 +657,30 @@ export function PricingSkeleton() {
     </div>
   );
 }
+
+/** F26 — rapid prep: a mode switch, a row of choices, a grid of cards. */
+export function RapidSkeleton() {
+  return (
+    <section>
+      <Header />
+      <Skeleton className="mb-7 h-11 w-[20rem] max-w-full rounded-[var(--radius-pill)]" />
+      <div className="mb-6 flex flex-wrap gap-2">
+        {[5, 5, 5, 5].map((w, i) => (
+          <Skeleton key={i} className="h-10 rounded-[var(--radius-pill)]" style={{ width: `${w}rem` }} />
+        ))}
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {[0, 1, 2, 3].map((i) => (
+          <Card key={i}>
+            <div className="space-y-3">
+              <Skeleton className="h-6 w-24 rounded-[var(--radius-pill)]" />
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </Card>
+        ))}
+      </div>
+    </section>
+  );
+}
