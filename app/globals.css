@@ -947,29 +947,79 @@
   }
 
   /* ---------------------------------------------------------------------------
-     intro — the landing page's first-visit opening (components/intro-curtain).
-     Inert unless the inline script set html[data-intro="play"].
+     The landing intro (components/landing-intro.tsx)
+
+     Everything here is keyed off `html[data-intro]`, which the root layout's
+     head script sets before first paint — and only on a first visit to `/`
+     without reduced motion. Without the attribute the overlay is display:none
+     and the hero classes do nothing. States: "play" (overlay + hero), "hero"
+     (curtains gone, hero still settling), "skip" (hero comes in now).
   --------------------------------------------------------------------------- */
-  .intro-curtain { display: none; }
-  html[data-intro="play"] .intro-curtain {
+  @keyframes intro-sheet {
+    from { opacity: 0; transform: translate(7px, -9px) rotate(-16deg); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes intro-doc {
+    from { opacity: 0; transform: translateY(9px) scale(0.88); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes intro-draw {
+    from { stroke-dashoffset: 1; opacity: 0; }
+    15%  { opacity: 1; }
+    to   { stroke-dashoffset: 0; opacity: 1; }
+  }
+  @keyframes intro-pop {
+    from { opacity: 0; transform: scale(0); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes intro-letter {
+    from { opacity: 0; transform: translateY(70%); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes intro-fade {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes intro-out {
+    to { opacity: 0; transform: translateY(-36px) scale(0.96); }
+  }
+  @keyframes intro-curtain {
+    from { transform: none; border-radius: 0; }
+    to   { transform: translateY(-100%); border-radius: 0 0 50% 50% / 0 0 140px 140px; }
+  }
+  /* The hero's own entrance. `to` is left implicit so each element settles on
+     its own resting transform — the fanned thumbnails keep their tilt, which
+     Tailwind sets on the separate `rotate` property. The -now copies exist so
+     a skip can restart them with a shorter delay. */
+  @keyframes intro-rise { from { opacity: 0; transform: translateY(30px); } }
+  @keyframes intro-rise-now { from { opacity: 0; transform: translateY(30px); } }
+  @keyframes intro-fan { from { opacity: 0; transform: translate(-40px, 60px) scale(0.82); rotate: 0deg; } }
+  @keyframes intro-fan-now { from { opacity: 0; transform: translate(-40px, 60px) scale(0.82); rotate: 0deg; } }
+
+  /* Once both curtains are up the overlay stops catching clicks on its own,
+     so a slow hydration can't leave an invisible layer over the page. */
+  @keyframes intro-gone { to { visibility: hidden; } }
+  .intro { display: none; }
+  html[data-intro="play"] .intro {
     display: block;
     position: fixed;
     inset: 0;
     z-index: 300;
     overflow: hidden;
     cursor: pointer;
+    animation: intro-gone 1ms 2.72s forwards;
   }
-  .intro-layer {
+  .intro-curtain {
     position: absolute;
     inset: 0;
     display: grid;
     place-items: center;
-    animation: intro-curtain 680ms cubic-bezier(0.7, 0, 0.2, 1) both;
+    animation: intro-curtain 680ms cubic-bezier(0.7, 0, 0.2, 1) forwards;
   }
-  .intro-layer-accent { z-index: 1; background: var(--color-accent-500); animation-delay: 2.04s; }
-  .intro-layer-ground {
+  .intro-curtain-back { z-index: 1; background: var(--color-accent-500); animation-delay: 2.04s; }
+  .intro-curtain-front {
     z-index: 2;
-    background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-tint) 60%, var(--color-accent-200) 100%);
+    background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-tint) 60%, #f8e4b4 100%);
     animation-delay: 1.9s;
   }
   .intro-content {
@@ -982,57 +1032,71 @@
     animation: intro-out 500ms cubic-bezier(0.7, 0, 0.2, 1) 1.82s forwards;
   }
   .intro-mark { width: clamp(96px, 11vw, 140px); aspect-ratio: 1; }
-  .intro-mark > * { transform-box: fill-box; transform-origin: center; }
-  .intro-lens-a { animation: intro-sheet 750ms var(--ease-out-quint) 100ms both; }
-  .intro-lens-b { animation: intro-doc 650ms var(--ease-out-quint) 320ms both; }
-  .intro-pop { animation: intro-pop 500ms cubic-bezier(0.3, 1.6, 0.5, 1) 1.18s both; }
-  .intro-pop-late { animation-delay: 1.4s; }
+  .intro-sheet,
+  .intro-doc,
+  .intro-badge { transform-box: fill-box; transform-origin: center; }
+  .intro-sheet { animation: intro-sheet 750ms cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s both; }
+  .intro-doc { animation: intro-doc 650ms cubic-bezier(0.2, 0.8, 0.2, 1) 0.32s both; }
+  .intro-badge { animation: intro-pop 500ms cubic-bezier(0.3, 1.6, 0.5, 1) 1.18s both; }
+  .intro-draw {
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: intro-draw 380ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .intro-line { stroke: var(--color-text); }
+  .intro-tick { stroke: var(--color-accent-500); animation-duration: 300ms; animation-delay: 1.45s; }
   .intro-word {
-    overflow: hidden;
-    padding: 0 0.06em;
-    font-family: var(--font-heading);
     font-size: clamp(52px, 8vw, 96px);
     line-height: 1.08;
     letter-spacing: 0.01em;
-    color: var(--color-text);
+    overflow: hidden;
+    padding: 0 0.06em;
   }
-  .intro-word > span {
+  .intro-letter {
     display: inline-block;
-    animation: intro-rise 600ms var(--ease-out-quint) both;
+    animation: intro-letter 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
-  .intro-word > .intro-dot {
+  .intro-dot {
+    display: inline-block;
     color: var(--color-accent-600);
     animation: intro-pop 450ms cubic-bezier(0.3, 1.6, 0.5, 1) 1.42s both;
   }
   .intro-tagline {
-    font-size: 13px;
     font-weight: 800;
+    font-size: 13px;
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--color-text-muted);
-    animation: intro-fade 500ms var(--ease-out-quint) 1.5s both;
+    animation: intro-fade 500ms cubic-bezier(0.2, 0.8, 0.2, 1) 1.5s both;
   }
-  /* The hero settles in behind the curtains, one element after another. */
-  html[data-intro="play"] [data-intro] {
-    animation: intro-settle 750ms var(--ease-out-quint) both;
-    animation-delay: calc(2.25s + var(--i, 0) * 85ms);
-  }
-  html[data-intro="play"] .intro-fan { animation: intro-fan 950ms var(--ease-out-quint) both; }
-  html[data-intro="play"] .intro-fan-1 { animation-delay: 2.85s; }
-  html[data-intro="play"] .intro-fan-2 { animation-delay: 2.93s; }
-  html[data-intro="play"] .intro-fan-3 { animation-delay: 3.01s; }
 
-  @keyframes intro-curtain {
-    to { transform: translateY(-100%); border-radius: 0 0 50% 50% / 0 0 140px 140px; }
+  /* Header, pill, headline, copy, button, score card and marigold block rise in
+     order (`--i` is each one's place in that order); the thumbnails fan out
+     last. */
+  html[data-intro="play"] .intro-item,
+  html[data-intro="hero"] .intro-item {
+    animation: intro-rise 750ms cubic-bezier(0.2, 0.8, 0.2, 1) calc(2250ms + var(--i, 0) * 85ms) backwards;
   }
-  @keyframes intro-out { to { opacity: 0; transform: translateY(-36px) scale(0.96); } }
-  @keyframes intro-sheet { from { opacity: 0; transform: translate(7px, -9px) rotate(-16deg); } to { opacity: 1; transform: none; } }
-  @keyframes intro-doc { from { opacity: 0; transform: translateY(9px) scale(0.88); } to { opacity: 1; transform: none; } }
-  @keyframes intro-pop { from { opacity: 0; transform: scale(0); } to { opacity: 1; transform: none; } }
-  @keyframes intro-rise { from { opacity: 0; transform: translateY(70%); } to { opacity: 1; transform: none; } }
-  @keyframes intro-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  @keyframes intro-settle { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }
-  @keyframes intro-fan { from { opacity: 0; transform: translate(-40px, 60px) scale(0.82); } to { opacity: 1; transform: none; } }
+  html[data-intro="play"] .intro-fan,
+  html[data-intro="hero"] .intro-fan {
+    animation: intro-fan 950ms cubic-bezier(0.2, 0.8, 0.2, 1) calc(2250ms + var(--i, 0) * 85ms) backwards;
+  }
+  html[data-intro="skip"] .intro-item {
+    animation: intro-rise-now 750ms cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--i, 0) * 85ms) backwards;
+  }
+  html[data-intro="skip"] .intro-fan {
+    animation: intro-fan-now 950ms cubic-bezier(0.2, 0.8, 0.2, 1) calc(var(--i, 0) * 85ms) backwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html[data-intro] .intro { display: none; }
+    html[data-intro] .intro-item,
+    html[data-intro] .intro-fan { animation: none; }
+  }
 
   /* ---------------------------------------------------------------------------
      guide — the red-panda helper (components/roleform-guide). Positioned by
@@ -1117,6 +1181,25 @@
     .guide-bubble,
     .guide-bubble[data-open="true"] { transition: none; }
   }
+
+  /* ---------------------------------------------------------------------------
+     story — the landing page's scroll story (components/landing-story). The
+     motion lives in the generated markup's inline styles, keyed off custom
+     properties the driver sets; this is only the frame around it.
+  --------------------------------------------------------------------------- */
+  .story-bleed {
+    /* Out of <main>'s measure and padding, edge to edge under the header. */
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    margin-top: calc(-1 * clamp(1.75rem, 5vw, 4.5rem));
+  }
+  html:has(.story-bleed) body { overflow-x: clip; }
+  .story { --story-drop: 0 26px 26px rgb(74 13 13 / 0.28); }
+  .story-track { position: relative; height: 560vh; }
+  .story a[href] { transition: background-color 150ms ease; }
+  .story a[href][style*="background:var(--color-text)"]:hover { background: var(--color-link-hover) !important; }
+  .story button[data-jump]:hover { background: var(--color-bg-raised); }
+  .story section { position: relative; z-index: 2; }
 
   /* Lucide ships at stroke-width 2.25 across the app */
   .lucide { stroke-width: 2.25; }

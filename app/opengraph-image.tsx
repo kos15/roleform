@@ -27,10 +27,12 @@ export default function OpengraphImage() {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
           <svg width="64" height="64" viewBox="0 0 32 32">
-            <path d="M2.5 16C9 8.6 23 8.6 29.5 16C23 23.4 9 23.4 2.5 16Z" fill="#f9b130" />
-            <path d="M16 2.5C23.4 9 23.4 23 16 29.5C8.6 23 8.6 9 16 2.5Z" fill="#ff9dc0" />
-            <circle cx="16" cy="16" r="4.6" fill="#f8f0e3" />
-            <circle cx="16" cy="16" r="2" fill="#4a0d0d" />
+            <rect x="10" y="2.5" width="18" height="22" rx="3" fill="#ff9dc0" transform="rotate(9 19 13.5)" />
+            <path d="M7 7H17L22 12V26A3 3 0 0 1 19 29H7A3 3 0 0 1 4 26V10A3 3 0 0 1 7 7Z" fill="#f9b130" />
+            <path d="M17 7V10.5A1.5 1.5 0 0 0 18.5 12H22Z" fill="#e8971a" />
+            <path d="M8 13.5h5M8 18h9M8 22.5h5" stroke="#4a0d0d" strokeWidth="2" strokeLinecap="round" />
+            <circle cx="23.5" cy="23.5" r="6.5" fill="#4a0d0d" stroke="#f8f0e3" strokeWidth="1.8" />
+            <path d="M20.9 23.6l1.8 1.8 3.5-3.7" fill="none" stroke="#f9b130" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
           <div style={{ fontSize: 44, fontWeight: 800, letterSpacing: 1 }}>ROLEFORM.</div>
         </div>

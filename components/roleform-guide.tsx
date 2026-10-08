@@ -559,14 +559,17 @@ export function RoleformGuide() {
     };
 
     const onCustom = (e: Event) => {
-      const d = (e as CustomEvent<{ label?: string; text?: string; point?: string }>).detail;
+      const d = (e as CustomEvent<{ label?: string; text?: string; point?: string; auto?: number }>).detail;
       if (!d?.text) return;
+      // A narrating page (the landing story) shouldn't talk over an open panel.
+      if (d.auto && L.mode === "panel") return;
       sayIt({
         label: d.label ?? "Heads up",
         text: d.text,
         point: d.point,
         acts: [{ label: "Got it", run: close, primary: true }],
-        react: true,
+        react: !d.auto,
+        auto: d.auto,
       });
     };
 

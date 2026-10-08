@@ -1261,12 +1261,20 @@ the DOM. "Hide helper" leaves a small Help tab; hidden and greeted are `localSto
 The copy states nothing the product doesn't enforce: no counts the caps decide (§5), no token figures
 that would drift from `lib/domain/tokens.ts`, no score.
 
-**The opening** (`components/intro-curtain.tsx`). On the landing page, first visit per browser, never
-under `prefers-reduced-motion`: the mark assembles, the wordmark rises, two curtains lift and the hero
-settles in. An inline script decides before the hero paints (`html[data-intro="play"]`); CSS does the
-rest. Click skips.
+**The opening** (`components/landing-intro.tsx`). On the landing page, first visit per browser, never
+under `prefers-reduced-motion`: the mark assembles, the wordmark rises, two curtains lift. An inline
+script in `<head>` decides before first paint (`html[data-intro="play"]`); CSS does the rest. Click
+skips.
 
-**Acceptance:** the opening plays once and not on reload; the helper never covers the tab bar; "Show
+**The scroll story** (`components/landing-story.tsx`, markup in `landing-story-markup.ts`, ported from
+`Roleform Landing.dc.html`). A 560vh track with a stage sticky under the header: one posting is read
+(highlighter, extracted chips), matched (ticks, the coverage count, a dashed gap), rewritten into every
+template (the fan) and turned into questions and a gap plan, while the left column swaps copy per
+stage and a 01–04 rail jumps between them. The driver only maps scroll to custom properties; all
+motion is CSS. Every ATS badge in the fan is `ratingFor` (N5) and the draft count is `TEMPLATES.length`.
+On wide screens the panda narrates each stage once (`STORY_LINES`). Sections below rise in on arrival.
+
+**Acceptance:** the opening plays once and not on reload; the story never scrolls sideways at 390px; the helper never covers the tab bar; "Show
 me" never rings nothing; `?` inside a text field types a question mark.
 
 ### F21 — Roadmap

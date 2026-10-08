@@ -260,3 +260,16 @@ export function helpKeyFor(pathname: string): HelpKey | null {
       return null;
   }
 }
+
+/**
+ * The panda's line for each act of the landing story (design: the landing's
+ * `GUIDE` table, s1–s4). Index 0 is the hero, which the helper's own hello
+ * covers. "Same evidence, 11 layouts" counts nothing here, for §5's reason.
+ */
+export const STORY_LINES: { label: string; text: string }[] = [
+  { label: "Hello", text: "Scroll, and I’ll show you what Roleform does with one job posting." },
+  { label: "Stage 01", text: "Watch the highlighter — every stated requirement gets pulled out first. Nothing the posting doesn’t state is guessed." },
+  { label: "Stage 02", text: "61 is requirement coverage: how much of the posting you can evidence. It isn’t an ATS score. The dashed one is a gap — it goes on your learning list, never onto your résumé." },
+  { label: "Stage 03", text: "Same evidence, every layout. For big-company job portals, pick one rated High. Every rewritten line keeps a key back to the bullet you wrote." },
+  { label: "Stage 04", text: "Start with the questions marked Likely — they come straight from the posting. Gaps are ranked by how often the posting mentions them." },
+];
