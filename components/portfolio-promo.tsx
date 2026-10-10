@@ -25,7 +25,7 @@ export function PortfolioPromo({ analysisId, used }: { analysisId: string; used:
           <span className="mt-1.5 block text-[15px] text-[var(--color-text-muted)]">
             {used
               ? "Your portfolio is built. Open it to download, or copy the free prompt for more versions."
-              : "Copy a curated prompt for free, or let us build the page once, here."}
+              : "Fourteen looks, nine of them animated, your own photos, your profile as the copy. Copy a curated prompt for free, or let us build the page once, here."}
           </span>
         </span>
         <span className="btn btn-primary flex-none">

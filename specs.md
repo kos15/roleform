@@ -1674,9 +1674,10 @@ motion) leads to `/analysis/[id]/portfolio`. One set of answers, two ways out.
 **The answers.** The supplied brief (`lib/content/portfolio-brief.ts`, verbatim) opens with
 clarifying questions; the page asks them once: who it's for (this posting or broad), what to
 emphasise, project details the résumé lacks, what to leave out, which contact details to show, and
-a look. The studio runs in four steps: **1 Pick a look** — nine looks (Midnight, recommended ·
-Keynote · Workspace · Editorial · Bento · Showcase · Notebook · Chapter · Terminal), each card the
-member's real page rendered from their profile (`lib/render/portfolio/` interprets the design's
+a look. The studio runs in four steps: **1 Pick a look** — fourteen looks (Midnight, recommended ·
+Keynote · Desktop · Workspace · Editorial · Scrapbook · Pop · Journal · Sketch · Bento · Showcase ·
+Notebook · Chapter · Terminal; nine animated by the design's motion engine), each card the member's
+real page rendered from their profile in a shadow root, isolated from the app's styles (`lib/render/portfolio/` interprets the design's
 template verbatim; `lib/domain/portfolio-site.ts` maps the excerpt to it — selected and ordered,
 never written); **2 Add photos** — an optional portrait and one image per shown project, kept in the
 browser (downscaled data URLs, never uploaded; ticking "also use as my profile photo" sends the

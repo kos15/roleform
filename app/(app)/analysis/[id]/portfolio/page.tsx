@@ -66,6 +66,7 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
           ? { html: site.html, builtFor: site.analysisId === id ? "this posting" : "another posting", createdAt: site.createdAt.toISOString() }
           : null
       }
+      builtLook={site?.status === "ready" && savedChoices.success ? savedChoices.data.style : null}
       building={site?.status === "building"}
     />
   );

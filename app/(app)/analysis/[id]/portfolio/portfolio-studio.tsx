@@ -45,14 +45,16 @@ const ICON = {
   copy: "M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2zM4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2",
 };
 
-const STAGES: Array<[number, string]> = [
-  [0, "Reading your profile excerpt and answers…"],
-  [12, "Writing the page in your chosen look…"],
-  [55, "Checking every link and figure against your profile…"],
-  [95, "Finishing up — long builds take up to four minutes."],
+const STAGES = [
+  "Writing the page in the {look} look…",
+  "Checking every link against your profile…",
+  "Checking every figure against your profile…",
+  "Embedding your photos and finishing up…",
 ];
+/** A healthy build's length, for the progress bar only (the call itself may run to four minutes). */
+const BUILD_SECONDS = 120;
 
-const MAX_BYTES = 12 * 1024 * 1024;
+const MAX_BYTES = 15 * 1024 * 1024;
 
 export function PortfolioStudio({
   analysisId,
@@ -61,6 +63,7 @@ export function PortfolioStudio({
   estimate,
   initialChoices,
   built: initialBuilt,
+  builtLook: initialBuiltLook,
   building,
 }: {
   analysisId: string;
@@ -69,18 +72,20 @@ export function PortfolioStudio({
   estimate: number;
   initialChoices: PortfolioChoices;
   built: Site | null;
+  builtLook: PortfolioChoices["style"] | null;
   building: boolean;
 }) {
   const [choices, setChoices] = useState<PortfolioChoices>(
     materials.target ? initialChoices : { ...initialChoices, focus: "broad" },
   );
   const [built, setBuilt] = useState<Site | null>(initialBuilt);
+  const [builtLook, setBuiltLook] = useState(initialBuiltLook);
   const [photos, setPhotos] = useState<PortfolioPhotos>({});
   const [drag, setDrag] = useState<string | null>(null);
   const [photoErr, setPhotoErr] = useState<string | null>(null);
   const [avatar, setAvatar] = useState(false);
-  const [device, setDevice] = useState<"desk" | "phone">("desk");
-  const [page, setPage] = useState(0);
+  const [device, setDevice] = useState<"desk" | "phone" | null>(null);
+  const [offset, setOffset] = useState(0);
   const [hover, setHover] = useState<string | null>(null);
   const [promptOpen, setPromptOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -102,13 +107,16 @@ export function PortfolioStudio({
   /* ------------------------------------------------------------ geometry */
   const [pickW, pickRef] = useWidth<HTMLDivElement>();
   const [prevW, prevRef] = useWidth<HTMLDivElement>();
-  const [rootW, rootRef] = useWidth<HTMLElement>();
-  const cols = pickW >= 900 ? 3 : pickW >= 560 ? 2 : 1;
-  const cardW = cols ? (pickW - 20 * (cols - 1)) / cols : 0;
-  const pages = Math.ceil(PORTFOLIO_STYLES.length / cols);
-  const at = Math.min(page, pages - 1);
-  const shown = PORTFOLIO_STYLES.slice(at * cols, at * cols + cols);
-  const wide = rootW >= 980;
+  const winW = useWindowWidth();
+  const mobile = winW > 0 && winW < 900;
+  const cols = pickW ? (pickW >= 980 ? 3 : pickW >= 600 ? 2 : 1) : mobile ? 1 : 3;
+  const cardW = pickW ? (pickW - 20 * (cols - 1)) / cols : 0;
+  const maxOff = PORTFOLIO_STYLES.length - cols;
+  const off = Math.max(0, Math.min(offset, maxOff));
+  const shown = PORTFOLIO_STYLES.slice(off, off + cols);
+  const range = cols === 1 ? `${off + 1} of ${PORTFOLIO_STYLES.length}` : `${off + 1}–${off + cols} of ${PORTFOLIO_STYLES.length}`;
+  const dev = device ?? (mobile ? "phone" : "desk");
+  const reduce = useReducedMotion();
 
   /* ------------------------------------------------------------- content */
   const projects = siteData.projects[choices.focus];
@@ -146,15 +154,15 @@ export function PortfolioStudio({
 
   async function read(file: File, slot: string) {
     setPhotoErr(null);
-    if (!file.type.startsWith("image/")) return setPhotoErr("That isn't an image. Use a JPG, PNG or WebP.");
-    if (file.size > MAX_BYTES) return setPhotoErr("That image is over 12 MB. Use a smaller one.");
+    if (!file.type.startsWith("image/")) return setPhotoErr("That file isn’t an image. Use a JPG, PNG or WebP.");
+    if (file.size > MAX_BYTES) return setPhotoErr("That image is over 15 MB. Try a smaller copy of it.");
     try {
-      const url = await downscale(file, slot === "portrait" ? 1200 : 1600);
+      const url = await downscale(file, slot === "portrait" ? 900 : 1600);
       if (slot === "portrait") portraitFile.current = file;
       setPhotos((p) => ({ ...p, [slot]: url }));
       if (slot === "portrait" && avatar) void syncAvatar(file);
     } catch {
-      setPhotoErr("We couldn't read that image. Try another file.");
+      setPhotoErr("We couldn’t read that image. Try another file.");
     }
   }
 
@@ -202,10 +210,8 @@ export function PortfolioStudio({
   });
   const slotBorder = (name: string, has: boolean) =>
     drag === name
-      ? "2px dashed var(--color-accent-600)"
-      : has
-        ? "2px solid transparent"
-        : "2px dashed var(--color-line-strong)";
+      ? `${name === "portrait" ? "2.5px" : "2px"} solid var(--color-accent-600)`
+      : `${name === "portrait" ? "2.5px" : "2px"} ${has ? "solid transparent" : "dashed var(--color-line-strong)"}`;
 
   /* --------------------------------------------------------------- paths */
   async function copy() {
@@ -216,7 +222,7 @@ export function PortfolioStudio({
       setTimeout(() => setCopied(false), 2000);
     } catch {
       setPromptOpen(true);
-      setCopyErr("Your browser blocked copying. Select the text above and copy it instead.");
+      setCopyErr("Your browser blocked copying. Select the text and copy it instead.");
     }
   }
 
@@ -228,6 +234,7 @@ export function PortfolioStudio({
         const result = await buildPortfolio(analysisId, choices);
         if (result.ok) {
           setBuilt({ html: result.value.html, builtFor: "this posting", createdAt: new Date().toISOString() });
+          setBuiltLook(choices.style);
         } else if (result.error.code === "token_wall" && result.error.wall) {
           setWall(result.error.wall);
         } else {
@@ -242,12 +249,13 @@ export function PortfolioStudio({
   const roles = materials.roles.length;
   const projectCount = materials.projects.length;
   const buildDis = !confirmed || building;
-  const stage = [...STAGES].reverse().find(([s]) => elapsed >= s)?.[1] ?? STAGES[0]![1];
-  const buildW = `${Math.min(92, 6 + (elapsed / 110) * 86).toFixed(1)}%`;
+  const frac = Math.min(0.96, elapsed / BUILD_SECONDS);
+  const stage = STAGES[Math.min(STAGES.length - 1, Math.floor(frac * STAGES.length))]!.replace("{look}", look.name);
+  const buildW = `${Math.round(8 + frac * 92)}%`;
 
   /* ---------------------------------------------------------------- view */
   return (
-    <section ref={rootRef} style={{ marginTop: "clamp(36px,4cqi,56px)" }} className="[container-type:inline-size]">
+    <section style={{ marginTop: "clamp(36px,4cqi,56px)" }} className="[container-type:inline-size]">
       {/* The looks' own type: loaded once, used only inside the previews. */}
       <link rel="stylesheet" href={SITE_FONTS_HREF} precedence="default" />
       <input
@@ -297,11 +305,9 @@ export function PortfolioStudio({
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 13.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums" }}>
-              {at * cols + 1}–{Math.min(PORTFOLIO_STYLES.length, at * cols + cols)} of {PORTFOLIO_STYLES.length}
-            </span>
-            <RoundBtn label="Previous looks" disabled={at === 0} onClick={() => setPage(at - 1)} d="m15 18-6-6 6-6" />
-            <RoundBtn label="More looks" disabled={at >= pages - 1} onClick={() => setPage(at + 1)} d="m9 18 6-6-6-6" />
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums" }}>{range}</span>
+            <RoundBtn label="Previous looks" disabled={off <= 0} onClick={() => setOffset(Math.max(0, off - 1))} d="m15 18-6-6 6-6" />
+            <RoundBtn label="More looks" disabled={off >= maxOff} onClick={() => setOffset(Math.min(maxOff, off + 1))} d="m9 18 6-6-6-6" />
           </div>
         </div>
         <div ref={pickRef} role="radiogroup" aria-label="Portfolio look" style={{ display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, gap: 20 }}>
@@ -309,7 +315,7 @@ export function PortfolioStudio({
             const lk = STYLE_LABEL[id];
             const on = choices.style === id;
             const hot = hover === id;
-            const zoom = cardW / DESK;
+            const zoom = (cardW || 400) / DESK;
             const pick = () => set("style", id);
             return (
               <div
@@ -336,18 +342,27 @@ export function PortfolioStudio({
                     borderRadius: 22,
                     overflow: "hidden",
                     background: lk.ground,
-                    boxShadow: on ? `0 0 0 3px ${INK}` : hot ? `0 0 0 1.5px ${INK}, var(--shadow-md)` : "0 0 0 1.5px var(--color-line)",
-                    transform: hot ? "translateY(-4px)" : "none",
+                    boxShadow: on
+                      ? `0 0 0 3px var(--color-bg), 0 0 0 6px ${INK}`
+                      : hot
+                        ? "0 0 0 1.5px rgb(74 13 13 / .2), 0 20px 40px -24px rgb(74 13 13 / .4)"
+                        : "0 0 0 1.5px rgb(74 13 13 / .12)",
+                    transform: hot && !reduce ? "translateY(-3px)" : "none",
                     transition: "box-shadow .2s,transform .25s cubic-bezier(.22,1,.36,1)",
                   }}
                 >
-                  <ScrollThrough hot={hot} zoom={zoom}>
-                    {cardW > 0 ? (
-                      <div style={{ zoom, width: DESK }}>
-                        <PortfolioSite data={siteData} theme={id} vw={DESK} motion={false} {...siteProps} />
-                      </div>
-                    ) : null}
-                  </ScrollThrough>
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      pointerEvents: "none",
+                      transform: hot && !reduce ? "translateY(calc(-100% + 280px))" : "translateY(0)",
+                      transition: hot ? "transform 7s cubic-bezier(.45,0,.55,1)" : "transform .8s cubic-bezier(.22,1,.36,1)",
+                    }}
+                  >
+                    <div style={{ zoom, width: DESK }}>
+                      <PortfolioSite data={siteData} theme={id} vw={DESK} {...siteProps} />
+                    </div>
+                  </div>
                   {on ? (
                     <span style={{ ...badge, left: 14, top: 14, gap: 6, background: INK, color: MARIGOLD }}>
                       <Svg d={ICON.check} size={14} stroke={3} />
@@ -379,7 +394,7 @@ export function PortfolioStudio({
 
       <div style={{ display: "flex", flexWrap: "wrap", flexDirection: "row-reverse", alignItems: "flex-start", gap: "clamp(24px,3cqi,40px)", marginTop: "clamp(40px,4.4cqi,60px)" }}>
         {/* Live preview */}
-        <div data-help="pf-preview" style={{ flex: "999 1 540px", minWidth: 0, position: wide ? "sticky" : "static", top: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div data-help="pf-preview" style={{ flex: "999 1 540px", minWidth: 0, position: mobile ? "static" : "sticky", top: 16, display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
             <p style={{ ...eyebrow, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-sage-600)" }} />
@@ -391,9 +406,9 @@ export function PortfolioStudio({
                   key={dv}
                   type="button"
                   role="tab"
-                  aria-selected={device === dv}
+                  aria-selected={dev === dv}
                   onClick={() => setDevice(dv)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 7, minHeight: 36, padding: "0 14px", border: 0, borderRadius: 999, fontWeight: 700, fontSize: 13.5, background: device === dv ? INK : "transparent", color: device === dv ? MARIGOLD : INK, transition: "background-color .14s" }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 7, minHeight: 36, padding: "0 14px", border: 0, borderRadius: 999, fontWeight: 700, fontSize: 13.5, background: dev === dv ? INK : "transparent", color: dev === dv ? MARIGOLD : INK, transition: "background-color .14s" }}
                 >
                   <Svg d={ICON[dv]} size={15} />
                   {dv === "desk" ? "Desktop" : "Phone"}
@@ -401,9 +416,9 @@ export function PortfolioStudio({
               ))}
             </div>
           </div>
-          {device === "desk" ? (
-            <div style={{ borderRadius: 20, overflow: "hidden", background: RAISED, border: "1.5px solid var(--color-line)", boxShadow: "var(--shadow-lg)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, height: 44, padding: "0 16px", background: "var(--color-bg-sunken)", borderBottom: "1.5px solid var(--color-line)" }}>
+          {dev === "desk" ? (
+            <div style={{ borderRadius: 20, overflow: "hidden", background: RAISED, border: "1.5px solid var(--color-line)", boxShadow: "0 30px 60px -30px rgb(74 13 13 / .45)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, height: 44, padding: "0 16px", background: "var(--color-bg-sunken)", borderBottom: "1.5px solid rgb(74 13 13 / .1)" }}>
                 <span aria-hidden="true" style={{ display: "flex", gap: 6 }}>
                   {[0, 1, 2].map((i) => (
                     <span key={i} style={{ width: 11, height: 11, borderRadius: "50%", background: "var(--color-on-ink-muted)" }} />
@@ -412,28 +427,24 @@ export function PortfolioStudio({
                 <span style={{ flex: 1, minWidth: 0, display: "flex", justifyContent: "center" }}>
                   <span style={{ maxWidth: "100%", display: "inline-flex", alignItems: "center", gap: 8, height: 28, padding: "0 14px", borderRadius: 999, background: RAISED, fontSize: 12.5, fontWeight: 600, color: MUTED, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     <Svg d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM7 11V7a5 5 0 0 1 10 0v4" size={12} stroke={2.4} />
-                    {siteData.slug || "portfolio"}/index.html
+                    index.html — {siteData.name}
                   </span>
                 </span>
                 <span aria-hidden="true" style={{ width: 45 }} />
               </div>
               <div ref={prevRef} style={{ height: "min(72vh,680px)", overflowY: "auto", overflowX: "hidden", background: look.ground }}>
-                {prevW > 0 ? (
-                  <div style={{ zoom: prevW / DESK, width: DESK }}>
-                    <PortfolioSite data={siteData} theme={choices.style} vw={DESK} hints onPick={open} {...siteProps} />
-                  </div>
-                ) : null}
+                <div style={{ zoom: prevW ? prevW / DESK : 0.6, width: DESK }}>
+                  <PortfolioSite data={siteData} theme={choices.style} vw={DESK} hints onPick={open} {...siteProps} />
+                </div>
               </div>
             </div>
           ) : (
             <div style={{ display: "flex", justifyContent: "center", padding: "6px 0" }}>
-              <div style={{ width: "min(100%,364px)", height: "min(78vh,740px)", padding: 12, borderRadius: 54, background: INK, boxShadow: "var(--shadow-lg)" }}>
+              <div style={{ width: "min(100%,364px)", height: "min(78vh,740px)", padding: 12, borderRadius: 54, background: "#2B1410", boxShadow: "0 30px 60px -30px rgb(74 13 13 / .55)" }}>
                 <div ref={prevRef} style={{ height: "100%", borderRadius: 42, overflowY: "auto", overflowX: "hidden", background: look.ground }}>
-                  {prevW > 0 ? (
-                    <div style={{ zoom: prevW / PHONE, width: PHONE }}>
-                      <PortfolioSite data={siteData} theme={choices.style} vw={PHONE} hints onPick={open} {...siteProps} />
-                    </div>
-                  ) : null}
+                  <div style={{ zoom: prevW ? prevW / PHONE : 0.86, width: PHONE }}>
+                    <PortfolioSite data={siteData} theme={choices.style} vw={PHONE} hints onPick={open} {...siteProps} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -471,13 +482,15 @@ export function PortfolioStudio({
                 <div>
                   <p style={{ margin: 0, fontSize: 15.5, fontWeight: 800 }}>Your portrait</p>
                   <p style={{ margin: "2px 0 0", fontSize: 13, lineHeight: 1.5, color: MUTED }}>
-                    {hasPortrait ? look.portraitWhere : "Optional. A clear, recent photo of you — drop it here or upload."}
+                    {hasPortrait
+                      ? "Looks good. Drop another on the circle to replace it."
+                      : "Head and shoulders, good light, plain background. JPG, PNG or WebP — or drop it on the circle."}
                   </p>
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   <button type="button" onClick={() => open("portrait")} className="hover-tint" style={{ ...outline, minHeight: 38, padding: "0 15px", fontSize: 13.5 }}>
                     <Svg d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5" size={15} />
-                    {hasPortrait ? "Replace" : "Upload"}
+                    {hasPortrait ? "Replace" : "Upload a photo"}
                   </button>
                   {hasPortrait ? (
                     <button type="button" onClick={() => remove("portrait")} className="hover-tint" style={{ ...ghost, minHeight: 38, padding: "0 14px", fontSize: 13.5 }}>
@@ -503,7 +516,7 @@ export function PortfolioStudio({
             <div style={{ height: 1, background: "var(--color-line)" }} />
             <div>
               <p style={{ ...eyebrow, margin: "0 0 12px" }}>
-                Project images · {shotCount} of {projects.length}
+                Project images · {shotCount} of {projects.length} added
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {projects.map((p) => {
@@ -513,7 +526,7 @@ export function PortfolioStudio({
                       <div
                         role="button"
                         tabIndex={0}
-                        aria-label={`${has ? "Replace" : "Add"} an image for ${p.name}`}
+                        aria-label={`${has ? "Replace" : "Add"} image for ${p.name}`}
                         {...slot(p.id)}
                         style={{ position: "relative", flex: "none", width: 112, height: 70, borderRadius: 12, overflow: "hidden", display: "grid", placeItems: "center", cursor: "pointer", background: "var(--color-bg-tint)", border: slotBorder(p.id, has), transition: "border-color .15s" }}
                       >
@@ -526,13 +539,13 @@ export function PortfolioStudio({
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ margin: 0, fontSize: 14.5, fontWeight: 800 }}>{p.name}</p>
                         <p style={{ margin: "2px 0 0", fontSize: 12.5, lineHeight: 1.45, color: MUTED }}>
-                          {has ? "On your page." : "A screenshot, diagram or photo of the work."}
+                          {has ? "Added · click or drop to replace" : "Drop a screenshot here, or click to add"}
                         </p>
                       </div>
                       {has ? (
                         <button
                           type="button"
-                          aria-label={`Remove the image for ${p.name}`}
+                          aria-label={`Remove image for ${p.name}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             remove(p.id);
@@ -675,7 +688,7 @@ export function PortfolioStudio({
                   Download .txt
                 </button>
                 <button type="button" onClick={() => setPromptOpen((o) => !o)} className="hover-tint" style={{ ...ghost, minHeight: 42, padding: "0 14px", fontSize: 14 }}>
-                  {promptOpen ? "Hide prompt" : "Show prompt"}
+                  {promptOpen ? "Hide the prompt" : "Read it first"}
                 </button>
               </div>
               {copyErr ? <Alert>{copyErr}</Alert> : null}
@@ -691,7 +704,8 @@ export function PortfolioStudio({
                 {built ? (
                   <>
                     <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.55, color: MUTED }}>
-                      Your build is done (made for {built.builtFor}, {new Date(built.createdAt).toLocaleDateString("en-GB")}). The trial is used — the curated prompt is how you make more versions.
+                      Your build is done — made for {built.builtFor}
+                      {builtLook ? ` in the ${STYLE_LABEL[builtLook].name} look` : ""}, {new Date(built.createdAt).toLocaleDateString("en-GB")}. The trial is used; the curated prompt is how you make more versions.
                     </p>
                     <div>
                       <button type="button" onClick={() => download("index.html", built.html, "text/html")} className="pf-solid" style={{ ...solid, minHeight: 44, padding: "0 22px", fontSize: 15 }}>
@@ -718,7 +732,7 @@ export function PortfolioStudio({
                     <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.55, color: MUTED }}>
                       {building
                         ? "Your portfolio is already being built in another tab. Reload in a minute to see it."
-                        : `We write the page for you in ${look.name}, check every link and figure against your profile, and give you the file. Costs about ${formatCount(estimate)} tokens — most of a full analysis — and you get one build, so check the answers above first.`}
+                        : `We write the page for you in the ${look.name} look, check every link and figure against your profile, and give you the file. Costs about ${formatCount(estimate)} tokens — most of a full analysis — and you get one build, so check the answers above first.`}
                     </p>
                     <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, fontWeight: 600, lineHeight: 1.45 }}>
                       <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} style={{ flex: "none", width: 18, height: 18, margin: "1px 0 0", accentColor: INK }} />
@@ -810,28 +824,27 @@ function Alert({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** On hover, glide the page up so the card scrolls through the whole site; glide back on leave. */
-function ScrollThrough({ hot, zoom, children }: { hot: boolean; zoom: number; children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [travel, setTravel] = useState(0);
+function useWindowWidth(): number {
+  const [w, setW] = useState(0);
   useEffect(() => {
-    if (!hot || !ref.current) return;
-    setTravel(Math.max(0, ref.current.scrollHeight - 280));
-  }, [hot, zoom]);
-  const px = hot ? travel : 0;
-  return (
-    <div
-      ref={ref}
-      aria-hidden="true"
-      style={{
-        pointerEvents: "none",
-        transform: `translateY(${-px}px)`,
-        transition: hot ? `transform ${Math.max(2.5, px / 260).toFixed(2)}s cubic-bezier(.45,0,.55,1)` : "transform .7s cubic-bezier(.22,1,.36,1)",
-      }}
-    >
-      {children}
-    </div>
-  );
+    const on = () => setW(window.innerWidth);
+    on();
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  return w;
+}
+
+function useReducedMotion(): boolean {
+  const [r, setR] = useState(false);
+  useEffect(() => {
+    const q = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setR(q.matches);
+    const on = () => setR(q.matches);
+    q.addEventListener("change", on);
+    return () => q.removeEventListener("change", on);
+  }, []);
+  return r;
 }
 
 function useWidth<T extends HTMLElement>(): [number, (el: T | null) => void] {
@@ -856,7 +869,7 @@ async function downscale(file: File, max: number): Promise<string> {
   canvas.height = Math.round(bmp.height * k);
   canvas.getContext("2d")!.drawImage(bmp, 0, 0, canvas.width, canvas.height);
   bmp.close();
-  return canvas.toDataURL(file.type === "image/png" ? "image/png" : "image/jpeg", 0.86);
+  return canvas.toDataURL("image/jpeg", 0.86);
 }
 
 function download(filename: string, content: string, type: string) {
