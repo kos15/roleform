@@ -9,6 +9,7 @@ import { CapWallDialog } from "@/components/cap-wall";
 import { createAnalysis } from "@/app/actions/analysis";
 import { SAMPLE_JD } from "@/lib/sample-jd";
 import { JD_MIN_CHARS } from "@/lib/domain/guardrails";
+import { ACCEPT_DOCUMENT_ATTR, ACCEPTED_DOCUMENT_SHORT } from "@/lib/extract/formats";
 import type { TokenWall } from "@/lib/domain/tokens";
 import type { CapWall } from "@/lib/domain/quotas";
 
@@ -207,14 +208,14 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
                   : "Drop the posting here, or choose a file"}
             </span>
             <span className="mb-5 mt-2 block text-sm text-[var(--color-text-muted)]">
-              PDF, DOCX or TXT · up to 5 MB
+              {ACCEPTED_DOCUMENT_SHORT} · up to 4 MB
             </span>
             {/* A span, not a button: the whole label is the control, and a nested
                 button would swallow the click that opens the file picker. */}
             <span className="btn btn-secondary">Choose a file</span>
             <input
               type="file"
-              accept=".pdf,.docx,.txt,application/pdf,text/plain"
+              accept={ACCEPT_DOCUMENT_ATTR}
               className="sr-only"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />

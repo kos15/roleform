@@ -534,8 +534,34 @@ clear 4.5:1.
 
 ### F1 — Onboarding: profile import
 
-Upload PDF/DOCX/TXT ≤5 MB → `resumes` bucket → raw text (`unpdf` / `mammoth` / plain) →
-`generateObject` → **mandatory review screen** → commit.
+Upload ≤4 MB → `resumes` bucket → raw text → `generateObject` → **mandatory review screen** → commit.
+Or paste the text instead (`pasteResume`), which stores it as a `.txt` and takes the same path.
+
+| Format | Reader |
+|---|---|
+| PDF | `unpdf`; an image-only PDF goes to the OCR pass |
+| DOCX | `mammoth` |
+| DOC (Word 97–2003) | `word-extractor` |
+| ODT | `fflate` → `content.xml` |
+| RTF, HTML, Markdown, TXT (UTF-8, UTF-16, Latin-1) | `lib/extract/normalise.ts`, pure |
+| JPG, PNG, WEBP, GIF | OCR pass: one strong-tier vision call (`transcribeDocument`), text stored on the source document so it is paid for once |
+
+HEIC, TIFF, Pages and zip files are refused with the export step that fixes them. 4 MB, not 5:
+Vercel caps a request body at 4.5 MB, and an upload over that used to fail in the platform with no
+message; `serverActions.bodySizeLimit` is raised to match (the 1 MB default rejected most PDFs).
+
+The model returns a **draft** (`DraftResumeSchema`), looser than `ResumeJsonSchema` on purpose:
+dates are free strings and names may be empty. `lib/domain/profile-draft.ts` turns dates into ISO
+or null and lists each unreadable one, drops empty entries, and computes career gaps — so one
+odd date no longer fails a whole résumé. The commit still parses with the strict schema.
+
+**Progress is shown, and failures resume.** The screen lists Upload → Read the text → Build your
+profile → Review, with elapsed seconds on the active step. Structuring runs as up to three
+client-driven attempts (`EXTRACT_ATTEMPTS`), each `retries: 0`, so the attempt count on screen is
+the call count billed. A later attempt is told why the last failed, and one after a truncation
+gets a larger output ceiling. Transient provider failures (429, 5xx, timeout) are retried with
+backoff by the SDK and never reported as a schema failure. A final failure keeps the upload:
+**Try again** resumes at the failed step, **Paste the text instead** skips layout problems.
 
 No regex section detection. The LLM structures from raw text, which is far more robust to two-column
 layouts. Each `highlights[]` entry becomes one `experience_bullets` row — this atomization is the
@@ -545,9 +571,12 @@ Profile card afterwards reads `filename · Parsed · N yrs experience · N skill
 
 **Acceptance**
 - 2-page two-column PDF yields ≥90% of bullets, correctly attributed to employers.
-- Image-only PDF → `no_text_layer` → told to upload a text version, never handed silent garbage.
+- Image-only PDF or photo → OCR pass; if that reads under 40 characters → `no_text_layer` → told to
+  re-shoot or paste, never handed silent garbage.
 - Encrypted PDF → clear rejection.
-- Dates parse to ISO `YYYY-MM`; ambiguous ones surface as a review prompt, never a guess.
+- Dates parse to ISO `YYYY-MM` ("Jan 2020", "03/2019" included); a year with no month stays a year;
+  unreadable ones surface as a review prompt, never a guess.
+- Save names what is still missing ("a start date for Engineer at Acme"), never "some fields".
 
 ### F2 — JD input (Step 1 of 3)
 
@@ -559,7 +588,8 @@ thing we'll draw *against*.
 
 Segmented control: **Upload file** / **Paste text**.
 
-- Drop zone with drag states (`dzBg`, `dzBorder`, `dzTitle`, `dropGood`/`dropBad`) — PDF, DOCX or TXT up to 5 MB.
+- Drop zone with drag states (`dzBg`, `dzBorder`, `dzTitle`, `dropGood`/`dropBad`) — PDF, Word, ODT,
+  RTF, TXT, Markdown or HTML up to 4 MB. No images: a posting has no OCR pass (`requireText`).
 - Paste mode: textarea with live `charCount` and **Load sample posting**. The 120-character floor is
   quoted only once there is something to measure — over an empty box it's a scolding.
 - Design's demo affordances ("Try: a valid posting / an unreadable file") ship behind a dev flag, not in production UI.
@@ -1479,7 +1509,7 @@ Every version bump keeps the old prompt text in the file for one release so `ai_
 stays a real axis to compare against (PR-6): `tailor-bullets@2` (schema becomes a single object,
 `rationale` dropped entirely since it was never stored or shown), `tailor-summary@2`,
 `analyze-jd@2`, `interview-questions@3`, `question-answer@2`, `extract-profile@2`,
-`learning-plan@2`. `pnpm tokens:calibrate` prints measured p50/p95 per purpose from `ai_runs`,
+`learning-plan@2`. F27 moves every prompt on again (v3 and peers); its section lists them. `pnpm tokens:calibrate` prints measured p50/p95 per purpose from `ai_runs`,
 `TOKEN_STAGES` is hand-recalibrated from that output after each bump, and the pricing page's "about
 N tokens" line derives from the same numbers (PR-6, G11).
 
@@ -1600,11 +1630,48 @@ the reasoning: `explanation` comes before `correctOption`, `analysis` before the
 prompt has a stated injection boundary (`<topics>`, `<candidate_code>` are data). `noUrls` is
 applied to every prose field (GR-3), and temperature is set per purpose.
 
+### F27 — Output discipline and resilient import
+
+Two changes, one reason: the user reads less and waits less, and the run pays for less.
+
+**Prompts (v3).** Every prompt is built the same way — task line, rules as testable statements, a
+word budget per prose field, one self-check line — and every prose-producing call shares one
+`STYLE` block (plain words, a banned-buzzword list, no preamble, no restating the input, word
+limits are maximums). The budgets sit inside the schemas' character ceilings, so they cut output
+tokens *and* schema-failure retries; the ceilings remain the enforcement (GR-1) and a few were
+added where a field had none (`text`/`frame` on questions, `text`/`evidenceQuote` on requirements,
+a runaway ceiling on `rewrittenText`). Long-form surfaces keep room but get a hard limit: a worked
+answer is ≤ 400 words (about two minutes spoken), a revision card is read in under 30 seconds.
+Extraction and OCR do not get `STYLE` — they transcribe, and a style rule there invites rewriting.
+Tailoring gets one good/bad example, because it is the stage where a fabricated tool or number is
+most tempting.
+
+Versions: `extract-profile@3`, `transcribe-document@1` (new), `analyze-jd@3`, `tailor-bullets@3`,
+`tailor-summary@3`, `interview-questions@4`, `question-answer@3`, `learning-plan@3`,
+`revision-cards@2`, `quiz-round@2`, `coding-challenge@2`, `code-review@2`. `SYSTEM_V2` keeps the
+prior text for one release; `SYSTEM_V1` is removed (PR-6).
+
+**The runner.** `runStructured` now separates failures by kind (`AppError.failure`: `truncated` ·
+`schema` · `verify` · `transient` · `rejected`). Transient errors get the SDK's own exponential
+backoff (`maxRetries: 3`) and are never answered with a "your output was invalid" correction —
+the output never arrived. Each attempt has a wall-clock timeout (default 120 s) so a hung request
+fails with a message rather than the platform killing the function. Calls can attach files (the
+OCR pass); bytes are never logged (N7).
+
+**Import.** See F1: more formats, OCR, the lenient draft, visible attempts, resumable failure,
+paste fallback.
+
+**Acceptance:** the fabrication eval (`pnpm check:fabrication`) stays at zero on `tailor-bullets@3`
+and `tailor-summary@3` or those two revert (PR-7); `pnpm tokens:calibrate` after a cycle shows
+output p50 down per purpose, and `TOKEN_STAGES` is recalibrated from it; a two-column PDF, a DOC,
+an ODT, a phone photo and a pasted résumé each reach the review screen.
+
 ## 10. AI layer
 
 | Purpose | Function | Schema | Tier | Retry |
 |---|---|---|---|---|
-| Profile extraction | `extractProfile` | `ResumeJsonSchema` | strong | 2, schema-corrective |
+| Profile extraction | `extractProfile` | `DraftResumeSchema` | strong | 0 per call; up to 3 visible client attempts (F1) |
+| Scan / photo OCR | `transcribeDocument` | `TranscriptionSchema` | strong | 1 |
 | JD analysis | `analyzeJd` | `JdAnalysisSchema` | mid | 2 |
 | Tailoring | `tailorBullets` | `TailoredBulletsSchema` | strong | 1, then fail open to original |
 | Interview questions | `generateQuestions` | `InterviewQuestionsSchema` | strong | 1 |
@@ -1686,8 +1753,11 @@ comment beside it — a threshold chosen by feel is a threshold nobody can re-de
 ## 14. API surface (Server Actions unless noted)
 
 ```
-uploadResume(file)                    → { documentId, extractionStatus }
-extractProfile(documentId)            → ResumeJson (draft, uncommitted)
+uploadResume(file)                    → { documentId, extractionStatus, needsOcr }
+pasteResume(text)                     → same as uploadResume
+transcribeResume(documentId)          → { chars }   // scans and photos only; stores the text
+extractProfile({ documentId, attempt, previousFailure, readFromImage })
+                                      → { resume: DraftResume, notices } (uncommitted)
 commitProfile(draft)                  → { profileId, bulletCount, yearsExperience }
 updateProfile(patch)                  → ResumeJson
 replaceResume(file)                   → upload → review → commit

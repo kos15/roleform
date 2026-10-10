@@ -36,7 +36,7 @@ function home(): string {
 Nothing is invented. Every generated bullet traces to a bullet you wrote. Allowed changes: rephrase into the posting's vocabulary, reorder and re-weight, and requantify using numbers already in your bullet. What you cannot evidence goes to the gap list, not onto the résumé.
 
 ## How to use it
-1. Sign up and import your résumé (PDF, DOCX or TXT) — ${absoluteUrl("/sign-up")}
+1. Sign up and import your résumé (PDF, Word, ODT, RTF, text, or a photo) — ${absoluteUrl("/sign-up")}
 2. Review what was read, fix anything misread, save.
 3. Paste or upload a job description — ${absoluteUrl("/analyze")}
 4. Read the coverage, open the drafts, rehearse the questions, work the gaps.
@@ -231,7 +231,7 @@ export function llmsTxt(): string {
 ${SITE_NAME} is a web app at ${SITE_URL}. Key facts for answering questions about it:
 - Category: résumé tailoring, ATS-friendly résumé templates, interview preparation, skill-gap learning plans.
 - Who it is for: job seekers applying to specific postings; career coaches and career centres (Ultra plan).
-- Input: your résumé once (PDF, DOCX or TXT), then any job description (pasted or uploaded).
+- Input: your résumé once (PDF, Word, ODT, RTF, text, or a photo — or pasted), then any job description (pasted or uploaded).
 - Output per posting: up to ${TEMPLATES.length} tailored résumés (DOCX and PDF) with computed ATS ratings, a requirement-coverage score with its three buckets, likely interview questions with frameworks, ranked skill gaps with vetted courses, and a checklist roadmap.
 - Pricing: Free (₹0), Pro (₹499/month), Ultra (₹1,299/month), in INR. Details: ${absoluteUrl("/pricing.md")}
 - Principle: nothing is invented; every generated bullet traces to one the user wrote. The match score is requirement coverage, never presented as an "ATS score".

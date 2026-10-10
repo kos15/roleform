@@ -159,19 +159,91 @@ export interface StoredResume extends ResumeJson {
   x_roleform?: RoleformExtension;
 }
 
+/* ─────────────────────────────────────────────────────────── extraction ── */
+
+/**
+ * What the model returns at extraction (F1). Deliberately LOOSER than
+ * `ResumeJsonSchema`, and the reason is the failure rate.
+ *
+ * Under the strict schema a single unreadable date, a résumé with no name in
+ * its text layer, or one empty bullet failed the whole object — and the user
+ * got "couldn't produce a valid result" for a document that was 99% fine. The
+ * review screen exists to fix exactly those things, so the model is allowed to
+ * hand them over unfixed:
+ *
+ *   - dates are free strings; `lib/domain/profile-draft.ts` turns them into
+ *     ISO or null and lists every one it could not read as a notice;
+ *   - names, positions and bullets may be empty; empties are dropped there too.
+ *
+ * The strict schema still guards the commit (`commitProfile` parses with
+ * `ResumeJsonSchema`), so nothing looser than before ever reaches the database.
+ */
+const draftDate = z
+  .string()
+  .nullable()
+  .describe('"YYYY-MM" or "YYYY" when legible, else the date text exactly as printed. null when absent.');
+
+const draftText = z.string().describe('Empty string if the document does not state it.');
+
+export const DraftResumeSchema = z.object({
+  basics: BasicsSchema.extend({ name: draftText }),
+  work: z.array(
+    z.object({
+      name: draftText.describe("employer"),
+      position: draftText,
+      location: optionalText,
+      startDate: draftDate,
+      endDate: draftDate.describe("null when current (Present, Now) or absent"),
+      summary: optionalText,
+      highlights: z
+        .array(z.string())
+        .describe("One achievement per entry, verbatim from the document. Never merge two bullets."),
+    }),
+  ),
+  education: z.array(EducationSchema.extend({ institution: draftText, startDate: draftDate, endDate: draftDate })),
+  skills: z.array(SkillSchema.extend({ name: draftText })),
+  projects: z.array(
+    ProjectSchema.extend({ name: draftText, startDate: draftDate, endDate: draftDate, highlights: z.array(z.string()) }),
+  ),
+  certificates: z.array(CertificateSchema.extend({ name: draftText, date: draftDate })),
+  volunteer: z.array(
+    VolunteerSchema.extend({
+      organization: draftText,
+      startDate: draftDate,
+      endDate: draftDate,
+      highlights: z.array(z.string()),
+    }),
+  ),
+  awards: z.array(z.object({ title: z.string(), awarder: optionalText, date: draftDate })),
+  languages: z.array(z.object({ language: z.string(), fluency: optionalText })),
+});
+
+/**
+ * The draft after normalisation: same shape, but every date is ISO or null.
+ * This is what the review screen edits; `ResumeJsonSchema` judges the result.
+ */
+export type DraftResume = z.infer<typeof DraftResumeSchema>;
+
 /** Extraction quality signals the review screen surfaces, never silently fixes. */
 export const ExtractionNoticeSchema = z.object({
-  ambiguousDates: z
-    .array(z.object({ path: z.string(), raw: z.string() }))
-    .describe("Dates you could not read confidently. Surface, never guess."),
-  careerGaps: z
-    .array(z.object({ afterPath: z.string(), months: z.number().int() }))
-    .describe("Gaps of 4+ months between roles. Shown neutrally at review, never concealed."),
+  /** Dates we could not read confidently. Surfaced, never guessed. */
+  ambiguousDates: z.array(z.object({ path: z.string(), raw: z.string() })),
+  /** Gaps of 4+ months between roles. Computed, shown neutrally, never concealed. */
+  careerGaps: z.array(z.object({ afterPath: z.string(), months: z.number().int() })),
+  /** The text was read from a scan or photo — worth a closer check. */
+  readFromImage: z.boolean(),
+  /** The document was longer than we send to the model; the tail was cut. */
+  clipped: z.boolean(),
 });
 
-export const ExtractProfileSchema = z.object({
-  resume: ResumeJsonSchema,
-  notices: ExtractionNoticeSchema,
-});
+export type ExtractionNotices = z.infer<typeof ExtractionNoticeSchema>;
 
-export type ExtractProfileResult = z.infer<typeof ExtractProfileSchema>;
+export interface ExtractProfileResult {
+  resume: DraftResume;
+  notices: ExtractionNotices;
+}
+
+/** The OCR pass's contract (lib/ai/transcribe.ts). */
+export const TranscriptionSchema = z.object({
+  text: z.string().describe("Every word on the page, in reading order. Headings on their own line; bullets start with \"- \"."),
+});
