@@ -99,11 +99,63 @@ export function portfolioMaterials(
   };
 }
 
-export const STYLE_LABEL: Record<PortfolioStyle, { name: string; blurb: string }> = {
-  editorial: { name: "Editorial", blurb: "Serif headings, generous white space, one accent colour. Reads like a well-set magazine page." },
-  technical: { name: "Technical", blurb: "Monospace details, a tight grid, dark-on-light with a single bright accent. Suits engineering and data roles." },
-  warm: { name: "Warm", blurb: "Rounded shapes, soft neutral ground, friendly sans-serif. Suits design, product and people-facing roles." },
+export interface LookLabel {
+  name: string;
+  blurb: string;
+  /** Roles it suits, shown beside the name. */
+  best: string;
+  /** The page's ground colour, painted behind the card while it renders. */
+  ground: string;
+  rec?: boolean;
+  /** Carries scroll motion (portfolio-motion). */
+  fresh?: boolean;
+  /** Where photos go in this look — shown in the studio and written into the prompt. */
+  where: string;
+  portraitWhere: string;
+  shotsWhere: string;
+}
+
+/** The nine looks, as the design names and describes them. */
+export const STYLE_LABEL: Record<PortfolioStyle, LookLabel> = {
+  midnight: { name: "Midnight", rec: true, fresh: true, best: "Engineering · Product", ground: "#08090A", blurb: "A dark, precise launch page: a glowing grid, a hero window that tilts flat as you scroll, and numbers that count up.",
+    where: "In Midnight, your portrait sits in the hero window that tilts flat as visitors scroll, and each project image tops its card.", portraitWhere: "Put it in the hero window under the headline.", shotsWhere: "Use each one at the top of its project card." },
+  keynote: { name: "Keynote", fresh: true, best: "Product · Design · Engineering", ground: "#000000", blurb: "Keynote-style: a metallic headline, a portrait that grows into place on scroll and big rounded project tiles.",
+    where: "In Keynote, your portrait runs wide under the headline and grows into place on scroll; each project image fills the foot of its tile.", portraitWhere: "Run it wide under the headline, growing into place on scroll.", shotsWhere: "Set each one at the foot of its project tile, with a gentle parallax." },
+  workspace: { name: "Workspace", fresh: true, best: "Any role", ground: "#FFFFFF", blurb: "A workspace page: a sidebar of pages, a title that types itself, linked project pages and a table of roles.",
+    where: "In Workspace, your portrait is the page icon over a drifting cover, and each project image heads its linked page.", portraitWhere: "Use it as the page icon, overlapping the cover.", shotsWhere: "Use the first as the page cover, and each one beside its linked project page." },
+  editorial: { name: "Editorial", fresh: true, best: "Design · Writing · Leadership", ground: "#F3EFE7", blurb: "A magazine feature: a giant serif masthead, a scrolling ticker, photographs that wipe in and numbered stories.",
+    where: "In Editorial, your portrait is the lead photograph beside the brief, and each project image wipes in beside its numbered story.", portraitWhere: "Run it as the lead photograph beside the brief.", shotsWhere: "Set each one beside its numbered story, wiping in on scroll." },
+  bento: { name: "Bento", best: "Engineering · Product", ground: "#ECEAE4", blurb: "Your story in tiles — portrait, numbers and projects side by side. Scannable in seconds.",
+    where: "In Bento, your portrait fills the tall tile beside your name, and each project image tops its tile.", portraitWhere: "Fill the tall tile beside my name with it.", shotsWhere: "Use each one full-bleed at the top of its project’s tile." },
+  showcase: { name: "Showcase", best: "Product · Design", ground: "#FFFFFF", blurb: "Huge type, one idea per screen and big rounded imagery — the product-launch look.",
+    where: "In Showcase, your portrait runs wide under the headline, and each project image sits large at the foot of its section.", portraitWhere: "Run it wide, with rounded corners, under the headline.", shotsWhere: "Set each one large at the foot of its project section." },
+  notebook: { name: "Notebook", best: "Any role", ground: "#FFFFFF", blurb: "A tidy workspace page: properties, a callout, a gallery of projects and a toggle for each role.",
+    where: "In Notebook, your portrait is the page icon, the first project image becomes the cover, and each image heads its gallery card.", portraitWhere: "Use it as the page icon, overlapping the cover.", shotsWhere: "Use the first as the page cover, and each one as its gallery card’s cover." },
+  chapter: { name: "Chapter", best: "Research · Writing · Leadership", ground: "#E9E2D4", blurb: "Set like a book: a title spread, a contents page, chapters and captioned plates.",
+    where: "In Chapter, your portrait is the frontispiece plate, and project images become captioned figures.", portraitWhere: "Set it as a frontispiece plate with a caption.", shotsWhere: "Set each one as a captioned figure in its chapter." },
+  terminal: { name: "Terminal", best: "Engineering · Data", ground: "#F6F5F0", blurb: "Monospace, hairline windows and a command for every section. Engineering through and through.",
+    where: "In Terminal, your portrait opens as portrait.jpg beside whoami, and each project image sits in its folder’s window.", portraitWhere: "Show it in a window titled portrait.jpg beside the introduction.", shotsWhere: "Show each one in a window inside its project card." },
 };
+
+/** Which photos the member has added in the studio — names only; the images never leave the browser. */
+export interface PromptAssets {
+  portrait: boolean;
+  /** Project names that have an image. */
+  shots: string[];
+}
+
+function assetsText(c: PortfolioChoices, a?: PromptAssets): string {
+  if (!a || (!a.portrait && a.shots.length === 0)) {
+    return "No portrait or images supplied. Design a complete layout without one, and no resume download.";
+  }
+  const look = STYLE_LABEL[c.style];
+  const lines: string[] = [];
+  if (a.portrait) lines.push(`Portrait: attached as portrait.jpg — my own photo; do not alter or generate one. ${look.portraitWhere}`);
+  else lines.push("No portrait — design the layout without one.");
+  if (a.shots.length) lines.push(`Project images attached for: ${a.shots.join(", ")}. ${look.shotsWhere}`);
+  lines.push("No resume download.");
+  return lines.join("\n");
+}
 
 /** The excerpt as plain text. Shared by both paths so they describe one person. */
 export function materialsText(m: PortfolioMaterials, c: PortfolioChoices): string {
@@ -158,7 +210,7 @@ function instructionsText(m: PortfolioMaterials, c: PortfolioChoices): string {
 }
 
 /** The curated prompt for an external tool. The brief, then the materials it asks for. */
-export function buildCuratedPrompt(brief: string, m: PortfolioMaterials, c: PortfolioChoices): string {
+export function buildCuratedPrompt(brief: string, m: PortfolioMaterials, c: PortfolioChoices, assets?: PromptAssets): string {
   return [
     brief,
     "",
@@ -172,7 +224,7 @@ export function buildCuratedPrompt(brief: string, m: PortfolioMaterials, c: Port
     "",
     `Project details and supporting evidence: ${c.projectNotes || "Nothing beyond the résumé yet — ask me what you need."}`,
     "",
-    "Portrait and other assets: No portrait or images supplied. Design a complete layout without one, and no resume download.",
+    `Portrait and other assets: ${assetsText(c, assets)}`,
     "",
     "Additional instructions:",
     instructionsText(m, c),

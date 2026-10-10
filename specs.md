@@ -1674,7 +1674,15 @@ motion) leads to `/analysis/[id]/portfolio`. One set of answers, two ways out.
 **The answers.** The supplied brief (`lib/content/portfolio-brief.ts`, verbatim) opens with
 clarifying questions; the page asks them once: who it's for (this posting or broad), what to
 emphasise, project details the résumé lacks, what to leave out, which contact details to show, and
-a visual direction (Editorial, recommended · Technical · Warm). No photo is taken or generated.
+a look. The studio runs in four steps: **1 Pick a look** — nine looks (Midnight, recommended ·
+Keynote · Workspace · Editorial · Bento · Showcase · Notebook · Chapter · Terminal), each card the
+member's real page rendered from their profile (`lib/render/portfolio/` interprets the design's
+template verbatim; `lib/domain/portfolio-site.ts` maps the excerpt to it — selected and ordered,
+never written); **2 Add photos** — an optional portrait and one image per shown project, kept in the
+browser (downscaled data URLs, never uploaded; ticking "also use as my profile photo" sends the
+portrait to Clerk), named in the curated prompt; **3 A few answers**; **4 Get your page**. A sticky
+live preview (desktop / phone) shows the chosen look; dashed slots open the file picker. Nothing is
+generated or retouched.
 
 **Copy the prompt — free.** `buildCuratedPrompt` (pure, `lib/domain/portfolio.ts`) appends a
 "MY MATERIALS" block to the brief: a deliberately short profile excerpt (`portfolioMaterials`: up to

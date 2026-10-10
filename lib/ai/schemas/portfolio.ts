@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PORTFOLIO_LOOKS } from "@/lib/domain/portfolio-site";
 
 /**
  * F28 — portfolio site contracts.
@@ -13,7 +14,8 @@ import { z } from "zod";
  * fabrication check's source text, never something the check ignores.
  */
 
-export const PORTFOLIO_STYLES = ["editorial", "technical", "warm"] as const;
+/** The nine looks the studio renders (lib/render/portfolio/template.ts). */
+export const PORTFOLIO_STYLES = PORTFOLIO_LOOKS;
 export type PortfolioStyle = (typeof PORTFOLIO_STYLES)[number];
 
 export const PortfolioChoicesSchema = z.object({
@@ -32,7 +34,7 @@ export type PortfolioChoices = z.infer<typeof PortfolioChoicesSchema>;
 
 export const DEFAULT_CHOICES: PortfolioChoices = {
   focus: "this_role",
-  style: "editorial",
+  style: "midnight",
   emphasis: "",
   projectNotes: "",
   avoid: "",

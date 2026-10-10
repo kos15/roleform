@@ -1044,6 +1044,26 @@
     .promo-glow::before { animation: none; }
   }
 
+  /* F28 portfolio studio (design "22 Portfolio studio"). */
+  .hover-tint:hover:not(:disabled) { background: var(--color-hover) !important; }
+  .pf-solid:hover { background: var(--color-accent-800) !important; }
+  .pf-input:focus { border-color: var(--color-accent-600) !important; }
+  .pf-glow {
+    position: absolute;
+    inset: -8px;
+    z-index: -1;
+    border-radius: 32px;
+    background: linear-gradient(120deg, var(--color-accent-500), var(--color-sage-500), var(--color-accent-600), var(--color-sage-600), var(--color-accent-500));
+    background-size: 300% 300%;
+    filter: blur(18px);
+    opacity: 0.8;
+    animation: promo-drift 9s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pf-glow { animation: none; }
+  }
+
   .card { transition: transform 200ms var(--ease-out-quint), box-shadow 200ms ease; }
   /* A card that is a link lifts on hover. */
   .card-link:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }

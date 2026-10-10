@@ -7,6 +7,7 @@ import { getProfile } from "@/lib/db/queries/profile";
 import { StoredResumeSchema } from "@/lib/ai/schemas/resume-json";
 import { PortfolioChoicesSchema, DEFAULT_CHOICES } from "@/lib/ai/schemas/portfolio";
 import { portfolioMaterials } from "@/lib/domain/portfolio";
+import { siteData } from "@/lib/domain/portfolio-site";
 import { PORTFOLIO_ESTIMATE } from "@/lib/domain/tokens";
 import { EmptyState } from "@/components/ui";
 import { PortfolioStudio } from "./portfolio-studio";
@@ -57,9 +58,10 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
     <PortfolioStudio
       analysisId={id}
       materials={materials}
+      site={siteData(materials)}
       estimate={PORTFOLIO_ESTIMATE}
       initialChoices={savedChoices.success ? savedChoices.data : DEFAULT_CHOICES}
-      site={
+      built={
         site?.status === "ready" && site.html
           ? { html: site.html, builtFor: site.analysisId === id ? "this posting" : "another posting", createdAt: site.createdAt.toISOString() }
           : null
