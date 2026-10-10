@@ -495,6 +495,7 @@ model MasterProfile {
   sourceDocument    SourceDocument?    @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
   experienceBullets ExperienceBullet[]
   analyses          Analysis[]
+  portfolioSites    PortfolioSite[]
 
   @@index([clerkUserId], map: "master_profiles_user_idx")
   @@map("master_profiles")
@@ -610,6 +611,7 @@ model Analysis {
   revisionDecks      RevisionDeck[]
   quizRounds         QuizRound[]
   codingChallenges   CodingChallenge[]
+  portfolioSites     PortfolioSite[]
 
   // F2: identical JD text reuses the prior analysis — no second charge.
   @@unique([clerkUserId, contentHash], map: "analyses_user_content_hash")
@@ -1255,6 +1257,7 @@ model AiRun {
   quizRounds       QuizRound[]
   codingChallenges CodingChallenge[]
   codeAttempts     CodeAttempt[]
+  portfolioSites   PortfolioSite[]
 
   @@index([clerkUserId, createdAt], map: "ai_runs_user_created_idx")
   @@map("ai_runs")
@@ -1610,4 +1613,45 @@ model CodeAttempt {
 
   @@index([challengeId], map: "code_attempts_challenge_idx")
   @@map("code_attempts")
+}
+
+/**
+ * ------------------------------------------------------- portfolio sites (F28)
+ */
+
+enum PortfolioStatus {
+  building
+  ready
+
+  @@map("portfolio_status")
+}
+
+/// The one in-app portfolio build an account gets (F28). The curated prompt is
+/// free and needs no row; only a build writes here.
+///
+/// UNIQUE on clerk_user_id, not on the profile: "Replace résumé" deletes and
+/// recreates the master profile, so a per-profile key would hand out a fresh
+/// trial on every re-import. The row is reserved as `building` before the
+/// model call, so two tabs cannot both spend a build; a failed call deletes
+/// it, so a failure never uses up the trial.
+model PortfolioSite {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId     String          @unique(map: "portfolio_sites_user") @map("clerk_user_id")
+  masterProfileId String?         @map("master_profile_id") @db.Uuid
+  /// The posting it was tailored to. Null once that analysis is deleted.
+  analysisId      String?         @map("analysis_id") @db.Uuid
+  status          PortfolioStatus @default(building)
+  /// The answers to the brief's questions — validated by PortfolioChoicesSchema.
+  choices         Json            @default("{}")
+  /// The finished index.html. Present exactly when status = ready (CHECK).
+  html            String?
+  aiRunId         String?         @map("ai_run_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  masterProfile MasterProfile? @relation(fields: [masterProfileId], references: [id], onDelete: SetNull)
+  analysis      Analysis?      @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+  aiRun         AiRun?         @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
+
+  @@map("portfolio_sites")
 }

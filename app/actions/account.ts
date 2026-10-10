@@ -32,6 +32,8 @@ export async function deleteAccount(): Promise<Result<{ objectsDeleted: number }
     // always has — neither needs its own deleteMany here.
     db.analysis.deleteMany({ where: { clerkUserId } }),
     db.export.deleteMany({ where: { clerkUserId } }),
+    // F28: no FK to users, so it goes by subject like exports.
+    db.portfolioSite.deleteMany({ where: { clerkUserId } }),
     db.masterProfile.deleteMany({ where: { clerkUserId } }),
     db.sourceDocument.deleteMany({ where: { clerkUserId } }),
     db.aiRun.deleteMany({ where: { clerkUserId } }),

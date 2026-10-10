@@ -226,7 +226,7 @@ app/
     onboarding/              resume upload → parse → review → profile   (once)
     analyze/                 Step 1 of 3: JD input → parsing → results  (per session)
     analysis/[id]/
-      resumes/  prep/  learning/  roadmap/  rapid/{quiz,code}/  preview/[templateId]/
+      resumes/  prep/  learning/  roadmap/  rapid/{quiz,code}/  portfolio/  preview/[templateId]/
     history/   profile/
   api/                       webhooks only (Clerk)
 lib/
@@ -309,7 +309,8 @@ That's the standard.
 - Zod at every boundary. Types inferred from schemas, never written alongside them.
 - `prisma/schema.prisma` is the truth; migrations are generated (`prisma migrate dev`), never hand-authored — except the two CHECK constraints (N1/N2 have no Prisma schema equivalent), which are added by hand to the migration SQL once and never touched again. RLS policies live in `lib/db/policies.sql`, in the repo, applied by script (`pnpm db:policies`) — never clicked into the Supabase dashboard.
 - Fixed vocabulary — do not introduce synonyms: `MasterProfile`, `ExperienceBullet`, `Analysis`, `ResumeDraft`, `TailoredBullet`, `InterviewQuestion`, `QuestionAnswer`, `SkillGap`, `Course`, `CourseSkill`, `SkillBundle`, `LearningPlan`, `LearningStep`, `UnresolvedTerm`, `CorpusGap`,
-  and for rapid prep (F26) `RevisionDeck`, `QuizRound`, `CodingChallenge`, `CodeAttempt`.
+  and for rapid prep (F26) `RevisionDeck`, `QuizRound`, `CodingChallenge`, `CodeAttempt`,
+  and for the portfolio (F28) `PortfolioSite`.
   Note in particular: the learning engine's spec calls a catalogued thing a *resource*; in this repo
   it is a **`Course`**. There is one table, not two — a parallel `Resource` model would be exactly
   the synonym this rule exists to prevent.

@@ -62,6 +62,8 @@ export const LIMITS = {
   /** One mid-tier call per worked answer — cheap, but not free, and clickable. */
   answer: { limit: 60, windowSeconds: 3600 },
   export: { limit: 40, windowSeconds: 3600 },
+  /** F28: one build per account anyway; this only stops a click storm on it. */
+  portfolio: { limit: 3, windowSeconds: 3600 },
   /** The burst guard beside the durable cap (JS-7/G10) — a click storm against
    *  two third-party APIs is a different failure than running out of a cycle
    *  allowance, and needs its own ceiling. */

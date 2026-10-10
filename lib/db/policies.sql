@@ -50,7 +50,9 @@ declare
     'revision_decks',
     'quiz_rounds',
     'coding_challenges',
-    'code_attempts'
+    'code_attempts',
+    -- F28: the portfolio page is built from the profile and is theirs alone.
+    'portfolio_sites'
   ];
   key_column text;
 begin
