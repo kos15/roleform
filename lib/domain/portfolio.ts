@@ -1,7 +1,7 @@
 /**
  * F28 — portfolio site. PURE.
  *
- * Three jobs, none of which needs a model:
+ * Two jobs, neither of which needs a model:
  *
  *   1. `portfolioMaterials` — a deliberately SHORT excerpt of the profile: who
  *      they are, up to four roles with their first bullets, a few projects,
@@ -9,11 +9,6 @@
  *      whole résumé to a tool invites "the résumé as a web page".
  *   2. `buildCuratedPrompt` — the supplied brief plus that excerpt and the
  *      member's answers. Free: string assembly, no call, nothing metered.
- *   3. `checkPortfolioHtml` — the build's guardrail. The page is the user's
- *      document going to strangers, so every link must be one their profile
- *      states (N8/N18: a URL we did not get from them is one we cannot vouch
- *      for), it may not load or send anything, and a number in its copy must
- *      exist in the source (CLAUDE.md §3: no invented metrics).
  */
 
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
@@ -239,128 +234,4 @@ export function buildCuratedPrompt(brief: string, m: PortfolioMaterials, c: Port
     "Additional instructions:",
     instructionsText(m, c),
   ].join("\n");
-}
-
-/** What the in-app build sends as its variable block. Same facts, no brief. */
-export function buildRequestText(m: PortfolioMaterials, c: PortfolioChoices, nowYear: number): string {
-  return [
-    "<materials>",
-    materialsText(m, c),
-    "</materials>",
-    "",
-    "<target>",
-    targetText(m, c),
-    "</target>",
-    "",
-    "<project_notes>",
-    c.projectNotes || "None.",
-    "</project_notes>",
-    "",
-    "<answers>",
-    instructionsText(m, c),
-    `No portrait, no images, no résumé file. The current year is ${nowYear}.`,
-    "</answers>",
-  ].join("\n");
-}
-
-/* --------------------------------------------------------------- guardrail */
-
-/** Hosts a page may load from: fonts only. Nothing else leaves the page. */
-const FONT_HOSTS = ["https://fonts.googleapis.com/", "https://fonts.gstatic.com/"];
-
-const FORBIDDEN: Array<[RegExp, string]> = [
-  [/<script\b[^>]*\bsrc\s*=/i, "no external scripts"],
-  [/<(iframe|object|embed|frame|base)\b/i, "no iframes, embeds or <base>"],
-  [/<form\b/i, "no forms — contact is an email link (nothing can send a message)"],
-  [/<img\b/i, "no images — none were supplied"],
-  [/\b(lorem ipsum|insert here|your name here|placeholder text)\b/i, "no placeholder text"],
-];
-
-function normaliseUrl(u: string): string {
-  return u.trim().replace(/&amp;/g, "&").replace(/\/+$/, "").toLowerCase();
-}
-
-/** Every URL the page may link to: the profile's own, as the choices allow. */
-export function allowedLinks(m: PortfolioMaterials, c: PortfolioChoices): Set<string> {
-  const urls = new Set<string>();
-  if (c.showLinks) {
-    for (const l of m.links) urls.add(normaliseUrl(l.url));
-    for (const p of m.projects) if (p.url) urls.add(normaliseUrl(p.url));
-  }
-  if (c.showEmail && m.email) urls.add(`mailto:${m.email.toLowerCase()}`);
-  if (c.showPhone && m.phone) urls.add(`tel:${m.phone.replace(/[^\d+]/g, "")}`);
-  return urls;
-}
-
-function urlAllowed(raw: string, allowed: Set<string>): boolean {
-  const u = raw.trim();
-  if (!u || u.startsWith("#")) return true;
-  if (u.startsWith("data:font/") || u.startsWith("data:image/svg+xml")) return true;
-  if (FONT_HOSTS.some((h) => u.startsWith(h))) return true;
-  const lower = u.toLowerCase();
-  if (lower.startsWith("mailto:")) return allowed.has(lower.split("?")[0]!);
-  if (lower.startsWith("tel:")) return allowed.has(`tel:${u.slice(4).replace(/[^\d+]/g, "")}`);
-  return allowed.has(normaliseUrl(u));
-}
-
-function visibleText(html: string): string {
-  return html
-    .replace(/<(script|style|head)[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&[a-z#0-9]+;/gi, " ");
-}
-
-/**
- * Numbers that carry a claim: a percentage, a multiple, a money or "k/M"
- * figure, a "+", or anything of three or more digits. Small bare numbers
- * (section indices, "2 projects") pass; a year passes only if it is in the
- * source or is the current year (a copyright line).
- */
-export function unsourcedNumbers(html: string, sourceText: string, nowYear: number): string[] {
-  const source = new Set((sourceText.match(/\d[\d,.]*/g) ?? []).map((n) => n.replace(/[,]/g, "").replace(/\.$/, "")));
-  const found = new Set<string>();
-  const re = /([$€£₹]\s?)?(\d[\d,.]*)\s?(%|\+|x\b|k\b|m\b|bn\b)?/gi;
-  for (const m of visibleText(html).matchAll(re)) {
-    const digits = m[2]!.replace(/,/g, "").replace(/\.$/, "");
-    const claim = Boolean(m[1] || m[3]) || digits.replace(/\D/g, "").length >= 3;
-    if (!claim) continue;
-    if (digits === String(nowYear)) continue;
-    if (!source.has(digits)) found.add(m[0].trim());
-  }
-  return [...found];
-}
-
-/**
- * Null when the page is acceptable; otherwise one line naming what to fix,
- * fed back to the model as a correction (lib/ai/run.ts `verify`).
- */
-export function checkPortfolioHtml(
-  html: string,
-  args: { allowed: Set<string>; sourceText: string; nowYear: number },
-): string | null {
-  const problems: string[] = [];
-  if (!/^\s*<!doctype html>/i.test(html)) problems.push("start with <!doctype html>");
-  if (!/<title>[^<]{3,}<\/title>/i.test(html)) problems.push("include a <title>");
-  if (!/<meta\s+name=["']description["']/i.test(html)) problems.push('include <meta name="description">');
-  if (!/<main\b/i.test(html)) problems.push("wrap the content in <main>");
-  for (const [re, why] of FORBIDDEN) if (re.test(html)) problems.push(why);
-  // Script bodies only: the copy may well say "fetch" or "cookie".
-  const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]!).join("\n");
-  if (/\b(fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon|importScripts)\b/.test(scripts)) {
-    problems.push("no network calls from script");
-  }
-  if (/\b(localStorage|sessionStorage|indexedDB|document\.cookie)\b/.test(scripts)) problems.push("no storage or cookies");
-
-  const urls = [
-    ...[...html.matchAll(/\b(?:href|src|action)\s*=\s*["']([^"']*)["']/gi)].map((m) => m[1]!),
-    ...[...html.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/gi)].map((m) => m[1]!),
-    ...[...html.matchAll(/@import\s+["']([^"']+)["']/gi)].map((m) => m[1]!),
-  ];
-  const bad = [...new Set(urls.filter((u) => !urlAllowed(u, args.allowed)))];
-  if (bad.length) problems.push(`remove links not in <materials>: ${bad.slice(0, 5).join(", ")}`);
-
-  const numbers = unsourcedNumbers(html, args.sourceText, args.nowYear);
-  if (numbers.length) problems.push(`remove figures not in the source: ${numbers.slice(0, 5).join(", ")}`);
-
-  return problems.length ? `Fix the page: ${problems.join("; ")}.` : null;
 }

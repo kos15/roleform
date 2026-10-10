@@ -1691,31 +1691,25 @@ four roles × four bullets, four projects, 24 skills, education, certifications,
 member chose), the posting's top ten requirements or "general portfolio", and the answers as
 "Additional instructions". No model call, nothing metered, copy or download as often as they like.
 
-**Build it here — one trial per account.** One strong-tier call (`portfolio-site@1`, condensed
-from the brief's sections 2–6, questions already answered) returns `{ html }`. `checkPortfolioHtml`
-runs as `verify` with one corrective retry: doctype, `<title>`, meta description and `<main>`
-present; no external scripts, iframes, forms, images or `<base>`; no network or storage calls in
-script; every href/src/`url()` is an in-page anchor, Google Fonts, or a URL/email/phone from the
-materials (N8/N18 for a page under the member's name); and no claim-shaped figure (%, ×, money,
-k/M, "+", or three or more digits) that the source text lacks (§3).
+**Build it here — one trial per account.** No model call and no tokens: `buildPortfolio`
+renders the chosen look from the profile excerpt (`exportPortfolioHtml`, pure) and records the
+trial with a photo-less copy of the page. Every link on it comes from the profile (`siteVals`
+builds them from the excerpt) and every line is the member's own, selected and ordered (§3). The
+file the member downloads is rendered in their browser, where the photos are, so photos never
+reach the server.
 
-- Metered by the token meter (F19): `SpendKind` `portfolio`, `PORTFOLIO_ESTIMATE` 14,000.
 - **One build per account, enforced by `portfolio_sites.clerk_user_id` UNIQUE** — not per profile,
   because "Replace résumé" recreates the profile and would reissue the trial. It is not a plan
   difference, so it is a constraint rather than a `QuotaKey` (N22 covers plan-gated caps; this cap
-  is the same on every plan).
-- The row is reserved as `building` before the call so two tabs cannot both spend; a failed call
-  deletes it (a trial is only used by a page the member receives); a `building` row older than ten
-  minutes is treated as dead. CHECK: `html` present exactly when `status = 'ready'`.
-- Preview is an `<iframe sandbox="allow-scripts allow-popups …">` without `allow-same-origin`, so
-  model-written script runs in an opaque origin. No "open in new tab": a blob URL would inherit
-  ours. Download is a client-side Blob.
+  is the same on every plan). Two tabs racing: the UNIQUE insert lets one through.
+- The row is written `ready` with its `html` in one insert (CHECK: `html` present exactly when
+  `status = 'ready'`); a leftover `building` row from the model-call era is cleared.
+- Download is a client-side Blob.
 - RLS own-rows on `portfolio_sites` (N10); both account-deletion paths delete it.
 
-**Acceptance:** the curated prompt contains the brief unchanged plus the materials; a build whose
-page links to a URL not in the profile, or states a figure the profile lacks, is corrected or
-refused; a second build on the same account is refused before any model call; a failed build
-leaves the trial unused.
+**Acceptance:** the curated prompt contains the brief unchanged plus the materials; the build
+makes no model call and moves no tokens; a second build on the same account is refused; the
+downloaded page carries the chosen look and the member's photos.
 
 ## 10. AI layer
 
@@ -1723,7 +1717,6 @@ leaves the trial unused.
 |---|---|---|---|---|
 | Profile extraction | `extractProfile` | `DraftResumeSchema` | strong | 0 per call; up to 3 visible client attempts (F1) |
 | Scan / photo OCR | `transcribeDocument` | `TranscriptionSchema` | strong | 1 |
-| Portfolio site (F28) | `buildPortfolioSite` | `PortfolioSiteSchema` | strong | 1, `checkPortfolioHtml` as verify |
 | JD analysis | `analyzeJd` | `JdAnalysisSchema` | mid | 2 |
 | Tailoring | `tailorBullets` | `TailoredBulletsSchema` | strong | 1, then fail open to original |
 | Interview questions | `generateQuestions` | `InterviewQuestionsSchema` | strong | 1 |

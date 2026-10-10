@@ -42,12 +42,3 @@ export const DEFAULT_CHOICES: PortfolioChoices = {
   showPhone: false,
   showLinks: true,
 };
-
-/** The build's output. One field: the whole page. */
-export const PortfolioSiteSchema = z.object({
-  html: z
-    .string()
-    .min(800)
-    .max(120_000)
-    .describe("The complete index.html, starting with <!doctype html>. Embedded CSS and minimal vanilla JS only."),
-});

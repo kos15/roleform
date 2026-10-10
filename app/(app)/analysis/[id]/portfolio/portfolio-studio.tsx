@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type CSSProperties, type DragEvent, type KeyboardEvent } from "react";
 import { useUser } from "@clerk/nextjs";
-import { TokenWallDialog } from "@/components/token-wall";
 import { PortfolioSite } from "@/components/portfolio-site";
 import { buildPortfolio } from "@/app/actions/portfolio";
 import { PORTFOLIO_BRIEF } from "@/lib/content/portfolio-brief";
@@ -12,7 +11,6 @@ import { STYLE_LABEL, buildCuratedPrompt, type PortfolioMaterials } from "@/lib/
 import type { PortfolioPhotos, SiteData } from "@/lib/domain/portfolio-site";
 import { SITE_FONTS_HREF } from "@/lib/render/portfolio/template";
 import { exportPortfolioHtml } from "@/lib/render/portfolio/export";
-import { formatCount, type TokenWall } from "@/lib/domain/tokens";
 
 interface Site {
   html: string;
@@ -46,14 +44,9 @@ const ICON = {
   copy: "M10 8h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2zM4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2",
 };
 
-const STAGES = [
-  "Writing the page in the {look} look…",
-  "Checking every link against your profile…",
-  "Checking every figure against your profile…",
-  "Embedding your photos and finishing up…",
-];
-/** A healthy build's length, for the progress bar only (the call itself may run to four minutes). */
-const BUILD_SECONDS = 120;
+const STAGES = ["Building the page in the {look} look…", "Recording your one build…"];
+/** The build is a render and one write; the bar only covers the round trip. */
+const BUILD_SECONDS = 4;
 
 const MAX_BYTES = 15 * 1024 * 1024;
 const PHOTOS_KEY = "rf-pf-photos";
@@ -62,7 +55,6 @@ export function PortfolioStudio({
   analysisId,
   materials,
   site: siteData,
-  estimate,
   initialChoices,
   built: initialBuilt,
   builtLook: initialBuiltLook,
@@ -71,7 +63,6 @@ export function PortfolioStudio({
   analysisId: string;
   materials: PortfolioMaterials;
   site: SiteData;
-  estimate: number;
   initialChoices: PortfolioChoices;
   built: Site | null;
   builtLook: PortfolioChoices["style"] | null;
@@ -94,7 +85,6 @@ export function PortfolioStudio({
   const [copyErr, setCopyErr] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [wall, setWall] = useState<TokenWall | null>(null);
   const [pending, startTransition] = useTransition();
   const [elapsed, setElapsed] = useState(0);
 
@@ -264,13 +254,11 @@ export function PortfolioStudio({
         if (result.ok) {
           setBuilt({ html: result.value.html, builtFor: "this posting", createdAt: new Date().toISOString() });
           setBuiltLook(choices.style);
-        } else if (result.error.code === "token_wall" && result.error.wall) {
-          setWall(result.error.wall);
         } else {
           setError(result.error.message);
         }
       } catch {
-        setError("The connection dropped before the build finished. If it completed, reload to see it; your build is only used by a page you receive.");
+        setError("The connection dropped before the build finished. Reload to see whether it completed.");
       }
     });
   }
@@ -757,7 +745,7 @@ export function PortfolioStudio({
                 ) : pending ? (
                   <div role="status" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
-                      Writing and checking your page — usually 1–2 minutes. {elapsed >= 3 ? `${elapsed}s` : ""}
+                      Building your page — a few seconds. {elapsed >= 3 ? `${elapsed}s` : ""}
                     </p>
                     <div style={{ height: 10, borderRadius: 999, background: "var(--color-chip)", overflow: "hidden" }}>
                       <span style={{ display: "block", height: "100%", borderRadius: 999, background: MARIGOLD, width: buildW, transition: "width .5s cubic-bezier(.22,1,.36,1)" }} />
@@ -769,7 +757,7 @@ export function PortfolioStudio({
                     <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.55, color: MUTED }}>
                       {building
                         ? "Your portfolio is already being built in another tab. Reload in a minute to see it."
-                        : `We write the page for you in the ${look.name} look, check every link and figure against your profile, and give you the file. Costs about ${formatCount(estimate)} tokens — most of a full analysis — and you get one build, so check the answers above first.`}
+                        : `We build the page for you in the ${look.name} look from your profile, embed your photos and give you the file. It uses no tokens, and you get one build, so check the answers above first.`}
                     </p>
                     <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, fontWeight: 600, lineHeight: 1.45 }}>
                       <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} style={{ flex: "none", width: 18, height: 18, margin: "1px 0 0", accentColor: INK }} />
@@ -795,17 +783,6 @@ export function PortfolioStudio({
         </div>
       </div>
 
-      {wall ? (
-        <TokenWallDialog
-          wall={wall}
-          onClose={() => setWall(null)}
-          onResume={() => {
-            setWall(null);
-            build();
-          }}
-          resumeLabel="Try again"
-        />
-      ) : null}
     </section>
   );
 }

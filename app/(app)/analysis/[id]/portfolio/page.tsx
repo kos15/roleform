@@ -8,7 +8,6 @@ import { StoredResumeSchema } from "@/lib/ai/schemas/resume-json";
 import { PortfolioChoicesSchema, DEFAULT_CHOICES } from "@/lib/ai/schemas/portfolio";
 import { portfolioMaterials } from "@/lib/domain/portfolio";
 import { siteData } from "@/lib/domain/portfolio-site";
-import { PORTFOLIO_ESTIMATE } from "@/lib/domain/tokens";
 import { EmptyState } from "@/components/ui";
 import { PortfolioStudio } from "./portfolio-studio";
 
@@ -19,9 +18,6 @@ import { PortfolioStudio } from "./portfolio-studio";
  * call, as many times as they like) or build the page here (one metered call,
  * once per account).
  */
-
-/** The build is one long call (up to four minutes at the strong tier). */
-export const maxDuration = 300;
 
 export default async function PortfolioPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -59,7 +55,6 @@ export default async function PortfolioPage({ params }: { params: Promise<{ id: 
       analysisId={id}
       materials={materials}
       site={siteData(materials)}
-      estimate={PORTFOLIO_ESTIMATE}
       initialChoices={savedChoices.success ? savedChoices.data : DEFAULT_CHOICES}
       built={
         site?.status === "ready" && site.html

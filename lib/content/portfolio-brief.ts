@@ -7,9 +7,8 @@
  * nobody asked for. Only the "MY MATERIALS" block below it is ours, filled
  * from their profile by `buildCuratedPrompt` (lib/domain/portfolio.ts).
  *
- * The in-app build does NOT send this text. It runs one call with the
- * questions already answered, so it gets the condensed v3-style system prompt
- * `SYSTEM.portfolioSite` instead (lib/ai/prompts).
+ * The in-app build does not use this text: it renders the chosen look from
+ * the profile with no model call (app/actions/portfolio.ts).
  */
 export const PORTFOLIO_BRIEF = `You are an expert portfolio strategist, UX designer, and frontend developer. Create a polished, responsive HTML portfolio using the resume, target job description (JD), reference examples, and supporting materials I provide.
 Your goal is to help recruiters and hiring managers quickly understand this person’s strengths, experience, projects, and suitability for their target role. The portfolio should feel personal, credible, minimal, and professional, with smooth, subtle transitions. Its length should be balanced: enough detail to demonstrate ability, without becoming a long resume webpage.

@@ -64,15 +64,8 @@ export const DRILL_ESTIMATES = {
   review: 2_000,
 } as const;
 
-/**
- * F28 — one in-app portfolio build: a full index.html is the largest single
- * output in the product (~9K output tokens plus the brief and the profile).
- * The curated prompt beside it costs nothing; it is a pure function.
- */
-export const PORTFOLIO_ESTIMATE = 14_000;
-
 /** What the member is spending on. Named so a refusal can say which. */
-export type SpendKind = "analysis" | "answer" | "portfolio" | keyof typeof DRILL_ESTIMATES;
+export type SpendKind = "analysis" | "answer" | keyof typeof DRILL_ESTIMATES;
 
 export const SPEND: Record<SpendKind, { estimate: number; label: string; noun: string }> = {
   analysis: { estimate: RUN_ESTIMATE, label: "this analysis", noun: "This run" },
@@ -81,7 +74,6 @@ export const SPEND: Record<SpendKind, { estimate: number; label: string; noun: s
   quiz: { estimate: DRILL_ESTIMATES.quiz, label: "a quiz round", noun: "A quiz round" },
   challenge: { estimate: DRILL_ESTIMATES.challenge, label: "a coding challenge", noun: "A generated challenge" },
   review: { estimate: DRILL_ESTIMATES.review, label: "a code review", noun: "A code review" },
-  portfolio: { estimate: PORTFOLIO_ESTIMATE, label: "a portfolio build", noun: "A portfolio build" },
 };
 
 export interface TokenLedger {
