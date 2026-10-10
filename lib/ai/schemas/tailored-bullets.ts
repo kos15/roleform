@@ -25,6 +25,8 @@ export const TailoredBulletSchema = z.object({
   rewrittenText: z
     .string()
     .min(10)
+    // A runaway ceiling only; long source bullets come back verbatim.
+    .max(600)
     .describe(
       "The same claim in the posting's vocabulary. No new numbers, tools, or seniority. " +
         "If nothing should change, return the original text unchanged.",

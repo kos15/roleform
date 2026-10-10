@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { checkAnalysisAllowance, checkTokenAllowance, requireUser } from "@/lib/auth";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
-import { extractText, MAX_UPLOAD_BYTES } from "@/lib/extract/text";
+import { extractText, MAX_UPLOAD_BYTES, requireText } from "@/lib/extract/text";
 import { getProfile } from "@/lib/db/queries/profile";
 import { findByContentHash } from "@/lib/db/queries/analysis";
 import { JD_MIN_CHARS, scanForInjection } from "@/lib/domain/guardrails";
@@ -62,9 +62,10 @@ export async function createAnalysis(input: {
     if (!input.fileBase64) return err(appError("invalid_input", "No file received."));
     const buffer = Buffer.from(input.fileBase64, "base64");
     if (buffer.byteLength > MAX_UPLOAD_BYTES) {
-      return err(appError("invalid_input", "That file is over the 5 MB limit."));
+      return err(appError("invalid_input", "That file is over the 4 MB limit."));
     }
-    const extracted = await extractText(buffer, input.filename ?? "posting");
+    const read = await extractText(buffer, input.filename ?? "posting");
+    const extracted = read.ok ? requireText(read.value) : read;
     if (!extracted.ok) return err(extracted.error);
     rawText = extracted.value.text;
     filename = input.filename ?? null;

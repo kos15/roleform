@@ -3,6 +3,13 @@ import { hasProfile } from "@/lib/db/queries/profile";
 import { OnboardingFlow } from "./onboarding-flow";
 
 /**
+ * The server actions this page calls run under its function. A scan's OCR pass
+ * plus a long résumé's extraction can take a minute or more at the strong
+ * tier; the default budget cut them off with no message.
+ */
+export const maxDuration = 300;
+
+/**
  * Import, or replace.
  *
  * The same screen serves both, because the work is identical — but it used to

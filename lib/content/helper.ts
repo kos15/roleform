@@ -145,7 +145,7 @@ export const HELP: Record<HelpKey, HelpScreen> = {
     intro: "Drop your résumé in. Nothing saves until you’ve checked what we read.",
     stuck: "Drop your résumé onto the big box, or click it to choose a file.",
     tips: [
-      { text: "Drop a PDF, DOCX or TXT up to 5 MB — or click the box to choose one.", target: "ob-drop" },
+      { text: "Drop a PDF, Word, ODT, RTF, text file or a photo of your résumé, up to 4 MB — or paste the text instead.", target: "ob-drop" },
       { text: "Start with “Worth a look” — those are the things we couldn’t read confidently.", target: "ob-flags" },
       { text: "It needs a name and at least one bullet before it can save.", target: "ob-save" },
     ],

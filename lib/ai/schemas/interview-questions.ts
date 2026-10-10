@@ -23,6 +23,7 @@ export const InterviewQuestionSchema = z.object({
   text: z
     .string()
     .min(10)
+    .max(300)
     .describe("A question this posting would plausibly produce. Never a generic stock question."),
   likely: z.boolean().describe("True for the four most probable, given the posting's emphasis."),
   whyTheyAsk: z
@@ -31,7 +32,7 @@ export const InterviewQuestionSchema = z.object({
     .max(240)
     .describe("Tie this to something the posting actually says."),
   frame: z
-    .array(z.string().min(5))
+    .array(z.string().min(5).max(160))
     .length(3)
     .describe("Three points of scaffolding for the answer. Not a script, not a claim."),
   evidenceBulletIds: z

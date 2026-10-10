@@ -136,7 +136,25 @@ export interface AppError {
   wall?: TokenWall;
   /** Set only on `cap_wall` (F23). The count-based counterpart of `wall`. */
   capWall?: CapWall;
+  /**
+   * Set only on a failed model call (lib/ai/run.ts): why the last attempt
+   * failed. Lets a caller that retries from the client (onboarding) say what
+   * happened and adjust the next attempt — a structural reason, never content.
+   */
+  failure?: ModelFailure;
 }
+
+export type ModelFailure =
+  /** The output hit `maxOutputTokens` and was cut off. */
+  | "truncated"
+  /** The output did not satisfy the schema. */
+  | "schema"
+  /** Schema-valid, but `verify` rejected it. */
+  | "verify"
+  /** Rate limit, timeout, 5xx or network: the request itself never completed. */
+  | "transient"
+  /** The provider refused the request (bad key, schema the provider rejects). */
+  | "rejected";
 
 export type Result<T, E = AppError> = { ok: true; value: T } | { ok: false; error: E };
 

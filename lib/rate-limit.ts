@@ -54,6 +54,11 @@ export const LIMITS = {
   /** A full analysis is expensive; six per hour per user is generous in practice. */
   analysis: { limit: 6, windowSeconds: 3600 },
   upload: { limit: 10, windowSeconds: 3600 },
+  /**
+   * Strong-tier extraction calls, OCR included. Three attempts per upload, so
+   * this covers every upload's attempts plus a few manual retries.
+   */
+  extract: { limit: 36, windowSeconds: 3600 },
   /** One mid-tier call per worked answer — cheap, but not free, and clickable. */
   answer: { limit: 60, windowSeconds: 3600 },
   export: { limit: 40, windowSeconds: 3600 },

@@ -186,7 +186,7 @@ Rules:
 | LLM | Vercel AI SDK, `generateObject` + Zod | Provider-agnostic; swap by changing one import | Low — the point |
 | PDF | `@react-pdf/renderer` | Chromium ~100 MB vs Vercel's 50 MB function limit; renders <500ms vs 2–5s | Medium |
 | DOCX | `docx` (npm) | Real named paragraph styles | Medium |
-| Extraction | `unpdf` (PDF), `mammoth` (DOCX), plain read (TXT) | Raw text only; the LLM does the structuring | Low |
+| Extraction | `unpdf` (PDF), `mammoth` (DOCX), `word-extractor` (DOC), `fflate` (ODT), pure readers for RTF/HTML/MD/TXT, one vision call for scans and photos (specs F1) | Raw text only; the LLM does the structuring | Low |
 | Zip | `archiver` | "Download all" = 6 templates × 2 formats | Low |
 | Jobs | None in v1 — inline + streaming | See §10 trigger | Low |
 
@@ -236,7 +236,7 @@ lib/
   ai/
     schemas/                 Zod — the LLM contract lives HERE, not in prompts
     prompts/                 versioned templates
-    extract-profile.ts · analyze-jd.ts · tailor.ts · interview.ts
+    extract-profile.ts · transcribe.ts · analyze-jd.ts · tailor.ts · interview.ts
   catalog/
     skills.ts · courses.ts · match.ts · taxonomy.ts · quality.ts
   learning/                  SERVER. the engine's I/O half:

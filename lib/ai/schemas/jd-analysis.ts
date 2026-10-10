@@ -30,7 +30,7 @@ export const RequirementSchema = z.object({
     "certification",
     "responsibility",
   ]),
-  text: z.string().min(3).describe("The requirement in the posting's own terms, one clause."),
+  text: z.string().min(3).max(200).describe("The requirement in the posting's own terms, one clause."),
   necessity: z
     .enum(["required", "preferred", "implied"])
     .describe("required = stated as must-have; preferred = nice-to-have; implied = inferable from responsibilities"),
@@ -45,6 +45,7 @@ export const RequirementSchema = z.object({
   evidenceQuote: z
     .string()
     .min(3)
+    .max(400)
     .describe("A verbatim span from the posting. Must appear in the input text."),
 });
 
