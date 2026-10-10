@@ -49,6 +49,9 @@ const STAGES = ["Building the page in the {look} look…", "Recording your one b
 const BUILD_SECONDS = 4;
 
 const MAX_BYTES = 15 * 1024 * 1024;
+/** Look picker spacing: the gap between cards, and the inset that keeps the selection ring and hover lift unclipped. */
+const LOOK_GAP = 20;
+const LOOK_PAD = 10;
 const PHOTOS_KEY = "rf-pf-photos";
 
 export function PortfolioStudio({
@@ -57,7 +60,6 @@ export function PortfolioStudio({
   site: siteData,
   initialChoices,
   built: initialBuilt,
-  builtLook: initialBuiltLook,
   building,
 }: {
   analysisId: string;
@@ -65,20 +67,20 @@ export function PortfolioStudio({
   site: SiteData;
   initialChoices: PortfolioChoices;
   built: Site | null;
-  builtLook: PortfolioChoices["style"] | null;
   building: boolean;
 }) {
   const [choices, setChoices] = useState<PortfolioChoices>(
     materials.target ? initialChoices : { ...initialChoices, focus: "broad" },
   );
   const [built, setBuilt] = useState<Site | null>(initialBuilt);
-  const [builtLook, setBuiltLook] = useState(initialBuiltLook);
   const [photos, setPhotosState] = useState<PortfolioPhotos>({});
   const [drag, setDrag] = useState<string | null>(null);
   const [photoErr, setPhotoErr] = useState<string | null>(null);
   const [avatar, setAvatar] = useState(false);
   const [device, setDevice] = useState<"desk" | "phone" | null>(null);
-  const [offset, setOffset] = useState(0);
+  const [atStart, setAtStart] = useState(true);
+  const [atEnd, setAtEnd] = useState(false);
+  const scrollerRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<string | null>(null);
   const [promptOpen, setPromptOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -128,12 +130,40 @@ export function PortfolioStudio({
   const [prevW, prevRef] = useWidth<HTMLDivElement>();
   const winW = useWindowWidth();
   const mobile = winW > 0 && winW < 900;
-  const cols = pickW ? (pickW >= 980 ? 3 : pickW >= 600 ? 2 : 1) : mobile ? 1 : 3;
-  const cardW = pickW ? (pickW - 20 * (cols - 1)) / cols : 0;
-  const maxOff = PORTFOLIO_STYLES.length - cols;
-  const off = Math.max(0, Math.min(offset, maxOff));
-  const shown = PORTFOLIO_STYLES.slice(off, off + cols);
-  const range = cols === 1 ? `${off + 1} of ${PORTFOLIO_STYLES.length}` : `${off + 1}–${off + cols} of ${PORTFOLIO_STYLES.length}`;
+  // Desktop: a 3×2 window onto the looks, scrolling down. Tablet: 2×2. Phone: one row you swipe.
+  const swipe = pickW > 0 && pickW < 600;
+  const cols = pickW >= 980 ? 3 : 2;
+  const cardW = pickW ? (swipe ? pickW * 0.82 : (pickW - LOOK_PAD * 2 - LOOK_GAP * (cols - 1)) / cols) : 0;
+  const [cardH, cardRef] = useHeight<HTMLDivElement>();
+  const pickerH = cardH ? cardH * 2 + LOOK_GAP + LOOK_PAD * 2 : undefined;
+
+  const syncEnds = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const pos = swipe ? el.scrollLeft : el.scrollTop;
+    const max = swipe ? el.scrollWidth - el.clientWidth : el.scrollHeight - el.clientHeight;
+    setAtStart(pos <= 2);
+    setAtEnd(pos >= max - 2);
+  }, [swipe]);
+  useEffect(syncEnds, [syncEnds, pickW, cardH]);
+  // Open on the saved look, wherever it sits in the list.
+  const shownSaved = useRef(false);
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (shownSaved.current || !el || !cardH) return;
+    shownSaved.current = true;
+    const card = el.querySelector<HTMLElement>('[aria-checked="true"]');
+    if (card) {
+      if (swipe) el.scrollLeft = card.offsetLeft - LOOK_PAD;
+      else el.scrollTop = card.offsetTop - LOOK_PAD;
+    }
+  }, [cardH, swipe]);
+  const step = (dir: 1 | -1) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    if (swipe) el.scrollBy({ left: dir * (cardW + LOOK_GAP), behavior: reduce ? "auto" : "smooth" });
+    else el.scrollBy({ top: dir * (cardH + LOOK_GAP), behavior: reduce ? "auto" : "smooth" });
+  };
   const dev = device ?? (mobile ? "phone" : "desk");
   const reduce = useReducedMotion();
 
@@ -253,7 +283,6 @@ export function PortfolioStudio({
         const result = await buildPortfolio(analysisId, choices);
         if (result.ok) {
           setBuilt({ html: result.value.html, builtFor: "this posting", createdAt: new Date().toISOString() });
-          setBuiltLook(choices.style);
         } else {
           setError(result.error.message);
         }
@@ -313,99 +342,124 @@ export function PortfolioStudio({
 
       {/* 1 — Pick a look */}
       <div data-help="pf-looks">
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 14, marginBottom: 18 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 14, marginBottom: 18 - LOOK_PAD }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <Step n={1} />
             <div>
               <h3 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>Pick a look</h3>
-              <p style={{ margin: "2px 0 0", fontSize: 14, color: MUTED }}>Each card is your real page. Hover one to scroll through it.</p>
+              <p style={{ margin: "2px 0 0", fontSize: 14, color: MUTED }}>
+                {swipe ? "Each card is your real page. Swipe for more looks." : "Each card is your real page. Hover one to scroll through it."}
+              </p>
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 13.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums" }}>{range}</span>
-            <RoundBtn label="Previous looks" disabled={off <= 0} onClick={() => setOffset(Math.max(0, off - 1))} d="m15 18-6-6 6-6" />
-            <RoundBtn label="More looks" disabled={off >= maxOff} onClick={() => setOffset(Math.min(maxOff, off + 1))} d="m9 18 6-6-6-6" />
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: MUTED, fontVariantNumeric: "tabular-nums" }}>
+              {PORTFOLIO_STYLES.length} looks · {swipe ? "swipe" : "scroll"} for more
+            </span>
+            <RoundBtn label="Previous looks" disabled={atStart} onClick={() => step(-1)} d={swipe ? "m15 18-6-6 6-6" : "m18 15-6-6-6 6"} />
+            <RoundBtn label="More looks" disabled={atEnd} onClick={() => step(1)} d={swipe ? "m9 18 6-6-6-6" : "m6 9 6 6 6-6"} />
           </div>
         </div>
-        <div ref={pickRef} role="radiogroup" aria-label="Portfolio look" style={{ display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, gap: 20 }}>
-          {shown.map((id) => {
-            const lk = STYLE_LABEL[id];
-            const on = choices.style === id;
-            const hot = hover === id;
-            const zoom = (cardW || 400) / DESK;
-            const pick = () => set("style", id);
-            return (
-              <div
-                key={id}
-                role="radio"
-                aria-checked={on}
-                aria-label={lk.name}
-                tabIndex={0}
-                onClick={pick}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    pick();
-                  }
-                }}
-                onMouseEnter={() => setHover(id)}
-                onMouseLeave={() => setHover(null)}
-                style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 14, cursor: "pointer", borderRadius: 24 }}
-              >
+        <div ref={pickRef} style={{ position: "relative" }}>
+          <div
+            ref={scrollerRef}
+            onScroll={syncEnds}
+            role="radiogroup"
+            aria-label="Portfolio look"
+            // A soft edge where the list continues, so the scroll reads at a glance.
+            className={`pf-looks${atEnd ? "" : swipe ? " pf-fade-x" : " pf-fade-y"}`}
+            style={
+              swipe
+                ? { position: "relative", display: "grid", gridAutoFlow: "column", gridAutoColumns: cardW || "82%", gap: LOOK_GAP, overflowX: "auto", overflowY: "hidden", scrollSnapType: "x mandatory", scrollPaddingInline: LOOK_PAD, padding: LOOK_PAD, margin: -LOOK_PAD }
+                : { position: "relative", display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, alignItems: "start", gap: LOOK_GAP, overflowY: "auto", overflowX: "hidden", maxHeight: pickerH, scrollSnapType: "y proximity", scrollPaddingBlock: LOOK_PAD, padding: LOOK_PAD, margin: -LOOK_PAD, overscrollBehavior: "contain" }
+            }
+          >
+            {PORTFOLIO_STYLES.map((id, i) => {
+              const lk = STYLE_LABEL[id];
+              const on = choices.style === id;
+              const hot = hover === id;
+              const zoom = (cardW || 400) / DESK;
+              const pick = () => set("style", id);
+              return (
                 <div
-                  style={{
-                    position: "relative",
-                    height: 280,
-                    borderRadius: 22,
-                    overflow: "hidden",
-                    background: lk.ground,
-                    boxShadow: on
-                      ? `0 0 0 3px var(--color-bg), 0 0 0 6px ${INK}`
-                      : hot
-                        ? "0 0 0 1.5px rgb(74 13 13 / .2), 0 20px 40px -24px rgb(74 13 13 / .4)"
-                        : "0 0 0 1.5px rgb(74 13 13 / .12)",
-                    transform: hot && !reduce ? "translateY(-3px)" : "none",
-                    transition: "box-shadow .2s,transform .25s cubic-bezier(.22,1,.36,1)",
+                  key={id}
+                  ref={i === 0 ? cardRef : undefined}
+                  role="radio"
+                  aria-checked={on}
+                  aria-label={lk.name}
+                  tabIndex={0}
+                  onClick={pick}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      pick();
+                    }
                   }}
+                  onMouseEnter={() => setHover(id)}
+                  onMouseLeave={() => setHover(null)}
+                  style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 14, cursor: "pointer", borderRadius: 24, scrollSnapAlign: "start" }}
                 >
                   <div
-                    aria-hidden="true"
                     style={{
-                      pointerEvents: "none",
-                      transform: hot && !reduce ? "translateY(calc(-100% + 280px))" : "translateY(0)",
-                      transition: hot ? "transform 7s cubic-bezier(.45,0,.55,1)" : "transform .8s cubic-bezier(.22,1,.36,1)",
+                      position: "relative",
+                      height: 280,
+                      borderRadius: 22,
+                      overflow: "hidden",
+                      background: lk.ground,
+                      boxShadow: on
+                        ? `0 0 0 3px var(--color-bg), 0 0 0 6px ${INK}`
+                        : hot
+                          ? "0 0 0 1.5px rgb(74 13 13 / .2), 0 20px 40px -24px rgb(74 13 13 / .4)"
+                          : "0 0 0 1.5px rgb(74 13 13 / .12)",
+                      transform: hot && !reduce ? "translateY(-3px)" : "none",
+                      transition: "box-shadow .2s,transform .25s cubic-bezier(.22,1,.36,1)",
                     }}
                   >
-                    <div style={{ zoom, width: DESK }}>
-                      <PortfolioSite data={siteData} theme={id} vw={DESK} {...siteProps} />
+                    <div
+                      aria-hidden="true"
+                      style={{
+                        pointerEvents: "none",
+                        transform: hot && !reduce ? "translateY(calc(-100% + 280px))" : "translateY(0)",
+                        transition: hot ? "transform 7s cubic-bezier(.45,0,.55,1)" : "transform .8s cubic-bezier(.22,1,.36,1)",
+                      }}
+                    >
+                      <WhenNear root={scrollerRef} height={280}>
+                        <div style={{ zoom, width: DESK }}>
+                          <PortfolioSite data={siteData} theme={id} vw={DESK} {...siteProps} />
+                        </div>
+                      </WhenNear>
                     </div>
+                    {on ? (
+                      <span style={{ ...badge, left: 14, top: 14, gap: 6, background: INK, color: MARIGOLD }}>
+                        <Svg d={ICON.check} size={14} stroke={3} />
+                        Selected
+                      </span>
+                    ) : null}
+                    {lk.rec ? <span style={{ ...badge, right: 14, top: 14, background: MARIGOLD, color: INK }}>Recommended</span> : null}
+                    {lk.fresh ? (
+                      <span style={{ ...badge, left: 14, bottom: 14, height: 28, padding: "0 11px", gap: 6, fontSize: 12.5, background: RAISED, color: INK, boxShadow: "0 0 0 1.5px var(--color-line-strong)" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z" />
+                        </svg>
+                        Animated
+                      </span>
+                    ) : null}
                   </div>
-                  {on ? (
-                    <span style={{ ...badge, left: 14, top: 14, gap: 6, background: INK, color: MARIGOLD }}>
-                      <Svg d={ICON.check} size={14} stroke={3} />
-                      Selected
-                    </span>
-                  ) : null}
-                  {lk.rec ? <span style={{ ...badge, right: 14, top: 14, background: MARIGOLD, color: INK }}>Recommended</span> : null}
-                  {lk.fresh ? (
-                    <span style={{ ...badge, left: 14, bottom: 14, height: 28, padding: "0 11px", gap: 6, fontSize: 12.5, background: RAISED, color: INK, boxShadow: "0 0 0 1.5px var(--color-line-strong)" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z" />
-                      </svg>
-                      Animated
-                    </span>
-                  ) : null}
-                </div>
-                <div style={{ padding: "0 4px" }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", justifyContent: "space-between", gap: "4px 10px" }}>
-                    <h4 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>{lk.name}</h4>
-                    <span style={{ fontSize: 12.5, fontWeight: 700, color: MUTED }}>{lk.best}</span>
+                  <div style={{ padding: "0 4px" }}>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                      <h4 style={{ margin: 0, fontSize: 19, fontWeight: 800, flex: "none" }}>{lk.name}</h4>
+                      <span style={{ minWidth: 0, fontSize: 12.5, fontWeight: 700, color: MUTED, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={lk.best}>
+                        {lk.best}
+                      </span>
+                    </div>
+                    <p className="pf-blurb" style={{ margin: "6px 0 0", fontSize: 14, lineHeight: 1.5, color: MUTED, textWrap: "pretty" }}>
+                      {lk.blurb}
+                    </p>
                   </div>
-                  <p style={{ margin: "6px 0 0", fontSize: 14, lineHeight: 1.5, color: MUTED, textWrap: "pretty" }}>{lk.blurb}</p>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -722,7 +776,7 @@ export function PortfolioStudio({
                   <>
                     <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.55, color: MUTED }}>
                       Your build is done — made for {built.builtFor}
-                      {builtLook ? ` in the ${STYLE_LABEL[builtLook].name} look` : ""}, {new Date(built.createdAt).toLocaleDateString("en-GB")}. The trial is used; the curated prompt is how you make more versions.
+, {new Date(built.createdAt).toLocaleDateString("en-GB")}. The trial is used; the curated prompt is how you make more versions.
                     </p>
                     <div>
                       <button
@@ -730,7 +784,7 @@ export function PortfolioStudio({
                         onClick={() =>
                           download(
                             "index.html",
-                            exportPortfolioHtml(siteData, { theme: builtLook ?? choices.style, ...siteProps }),
+                            exportPortfolioHtml(siteData, { theme: choices.style, ...siteProps }),
                             "text/html",
                           )
                         } className="pf-solid" style={{ ...solid, minHeight: 44, padding: "0 22px", fontSize: 15 }}>
@@ -836,6 +890,41 @@ function Alert({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
+}
+
+function useHeight<T extends HTMLElement>(): [number, (el: T | null) => void] {
+  const [h, setH] = useState(0);
+  const obs = useRef<ResizeObserver | null>(null);
+  const ref = useCallback((el: T | null) => {
+    obs.current?.disconnect();
+    if (!el) return;
+    obs.current = new ResizeObserver(() => setH(Math.round(el.getBoundingClientRect().height)));
+    obs.current.observe(el);
+    setH(Math.round(el.getBoundingClientRect().height));
+  }, []);
+  return [h, ref];
+}
+
+/** Mount a look only once it nears the picker's viewport — fourteen live pages at once is too many. Stays mounted after. */
+function WhenNear({ root, height, children }: { root: React.RefObject<HTMLDivElement | null>; height: number; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || near) return;
+    const io = new IntersectionObserver(
+      (es) => {
+        if (es.some((e) => e.isIntersecting)) {
+          setNear(true);
+          io.disconnect();
+        }
+      },
+      { root: root.current, rootMargin: "400px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [root, near]);
+  return <div ref={ref} style={near ? undefined : { height }}>{near ? children : null}</div>;
 }
 
 function useWindowWidth(): number {

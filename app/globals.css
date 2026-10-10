@@ -1063,6 +1063,17 @@
   @media (prefers-reduced-motion: reduce) {
     .pf-glow { animation: none; }
   }
+  /* The look picker: a scrolling window onto the looks (3×2 desktop, 2×2 tablet, a swipe row on phones). */
+  .pf-looks { scrollbar-width: thin; scrollbar-color: var(--color-line-strong) transparent; }
+  .pf-looks.pf-fade-y { mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent); }
+  .pf-looks.pf-fade-x { mask-image: linear-gradient(to right, #000 calc(100% - 40px), transparent); }
+  .pf-blurb {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 4.5em;
+  }
 
   .card { transition: transform 200ms var(--ease-out-quint), box-shadow 200ms ease; }
   /* A card that is a link lifts on hover. */
