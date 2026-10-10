@@ -5,6 +5,8 @@ import { getAnalysis, getDrafts } from "@/lib/db/queries/analysis";
 import { templateById } from "@/lib/render/templates";
 import { AtsBadge, Card, EmptyState, Tag } from "@/components/ui";
 import { TemplateThumb } from "@/components/template-thumb";
+import { PortfolioPromo } from "@/components/portfolio-promo";
+import { db } from "@/lib/db";
 import { DownloadAll } from "./download-all";
 
 /**
@@ -26,7 +28,11 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
   // bar — the layout only draws those for a `ready` analysis — which left a
   // page with no score, no tabs and no way back. The run's own screen is the
   // right place to be until there is something to tab between.
-  const [analysis, drafts] = await Promise.all([getAnalysis(userId, id), getDrafts(userId, id)]);
+  const [analysis, drafts, portfolio] = await Promise.all([
+    getAnalysis(userId, id),
+    getDrafts(userId, id),
+    db.portfolioSite.findUnique({ where: { clerkUserId: userId }, select: { status: true } }),
+  ]);
   if (!analysis) redirect("/history");
   if (analysis.status !== "ready") redirect(`/analysis/${id}`);
 
@@ -86,6 +92,8 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
           );
         })}
       </div>
+
+      <PortfolioPromo analysisId={id} used={portfolio?.status === "ready"} />
     </section>
   );
 }

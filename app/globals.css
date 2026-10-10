@@ -1010,6 +1010,40 @@
   .seg > button[data-pending="true"],
   .tab-bar button[data-pending="true"] { animation: breathe 1s ease-in-out infinite; }
 
+  /* F28 — the portfolio promotion. A soft marigold-to-pink glow behind a card:
+     a blurred gradient layer, not a box-shadow, so elevation stays the DS's
+     own. Decoration only; it drifts slowly and stops under reduced motion. */
+  .promo-glow { position: relative; isolation: isolate; }
+  .promo-glow::before {
+    content: "";
+    position: absolute;
+    inset: -10px;
+    z-index: -1;
+    border-radius: calc(var(--radius-lg) + 10px);
+    background: linear-gradient(
+      120deg,
+      var(--color-accent-500),
+      var(--color-sage-500),
+      var(--color-accent-600),
+      var(--color-sage-600),
+      var(--color-accent-500)
+    );
+    background-size: 300% 300%;
+    filter: blur(20px);
+    opacity: 0.85;
+    animation: promo-drift 9s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .promo-glow > .card { position: relative; outline: 1.5px solid var(--color-accent-400); outline-offset: -1.5px; }
+  .promo-glow:hover::before { opacity: 1; }
+  @keyframes promo-drift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .promo-glow::before { animation: none; }
+  }
+
   .card { transition: transform 200ms var(--ease-out-quint), box-shadow 200ms ease; }
   /* A card that is a link lifts on hover. */
   .card-link:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }

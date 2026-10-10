@@ -37,4 +37,6 @@ export const TEMPERATURE = {
   challenge: 0.6,
   /** A judgement, and the tests overrule it anyway. */
   review: 0.1,
+  /** F28: a designed page over fixed facts — some range in layout, none in content. */
+  portfolio: 0.4,
 } as const;
