@@ -11,6 +11,7 @@ import { PORTFOLIO_STYLES, type PortfolioChoices } from "@/lib/ai/schemas/portfo
 import { STYLE_LABEL, buildCuratedPrompt, type PortfolioMaterials } from "@/lib/domain/portfolio";
 import type { PortfolioPhotos, SiteData } from "@/lib/domain/portfolio-site";
 import { SITE_FONTS_HREF } from "@/lib/render/portfolio/template";
+import { exportPortfolioHtml } from "@/lib/render/portfolio/export";
 import { formatCount, type TokenWall } from "@/lib/domain/tokens";
 
 interface Site {
@@ -55,6 +56,7 @@ const STAGES = [
 const BUILD_SECONDS = 120;
 
 const MAX_BYTES = 15 * 1024 * 1024;
+const PHOTOS_KEY = "rf-pf-photos";
 
 export function PortfolioStudio({
   analysisId,
@@ -80,7 +82,7 @@ export function PortfolioStudio({
   );
   const [built, setBuilt] = useState<Site | null>(initialBuilt);
   const [builtLook, setBuiltLook] = useState(initialBuiltLook);
-  const [photos, setPhotos] = useState<PortfolioPhotos>({});
+  const [photos, setPhotosState] = useState<PortfolioPhotos>({});
   const [drag, setDrag] = useState<string | null>(null);
   const [photoErr, setPhotoErr] = useState<string | null>(null);
   const [avatar, setAvatar] = useState(false);
@@ -100,6 +102,33 @@ export function PortfolioStudio({
   const slotRef = useRef<string>("portrait");
   const portraitFile = useRef<Blob | null>(null);
   const { user } = useUser();
+
+  // Photos stay in this browser (design: localStorage "rf-pf-photos") so the page file can embed them later.
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(PHOTOS_KEY) ?? "{}") as unknown;
+      if (saved && typeof saved === "object") {
+        const ok = Object.fromEntries(
+          Object.entries(saved as Record<string, unknown>).filter(
+            (e): e is [string, string] => typeof e[1] === "string" && e[1].startsWith("data:image/"),
+          ),
+        );
+        setPhotosState(ok);
+      }
+    } catch {
+      /* private window or cleared storage: start empty */
+    }
+  }, []);
+  const setPhotos = (next: (p: PortfolioPhotos) => PortfolioPhotos) =>
+    setPhotosState((p) => {
+      const v = next(p);
+      try {
+        localStorage.setItem(PHOTOS_KEY, JSON.stringify(v));
+      } catch {
+        /* over quota: the photos still work for this visit */
+      }
+      return v;
+    });
 
   const set = <K extends keyof PortfolioChoices>(key: K, value: PortfolioChoices[K]) =>
     setChoices((c) => ({ ...c, [key]: value }));
@@ -708,7 +737,15 @@ export function PortfolioStudio({
                       {builtLook ? ` in the ${STYLE_LABEL[builtLook].name} look` : ""}, {new Date(built.createdAt).toLocaleDateString("en-GB")}. The trial is used; the curated prompt is how you make more versions.
                     </p>
                     <div>
-                      <button type="button" onClick={() => download("index.html", built.html, "text/html")} className="pf-solid" style={{ ...solid, minHeight: 44, padding: "0 22px", fontSize: 15 }}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          download(
+                            "index.html",
+                            exportPortfolioHtml(siteData, { theme: builtLook ?? choices.style, ...siteProps }),
+                            "text/html",
+                          )
+                        } className="pf-solid" style={{ ...solid, minHeight: 44, padding: "0 22px", fontSize: 15 }}>
                         <Svg d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5" size={16} />
                         Download index.html
                       </button>

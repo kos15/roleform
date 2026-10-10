@@ -1681,7 +1681,7 @@ real page rendered from their profile in a shadow root, isolated from the app's 
 template verbatim; `lib/domain/portfolio-site.ts` maps the excerpt to it — selected and ordered,
 never written); **2 Add photos** — an optional portrait and one image per shown project, kept in the
 browser (downscaled data URLs, never uploaded; ticking "also use as my profile photo" sends the
-portrait to Clerk), named in the curated prompt; **3 A few answers**; **4 Get your page**. A sticky
+portrait to Clerk), named in the curated prompt; **3 A few answers**; **4 Get your page** — once the build has run, "Download index.html" is the built look rendered from the profile with the photos embedded, the design's export stylesheet and motion inline (`lib/render/portfolio/export.ts`); photos persist in this browser only (`localStorage`). A sticky
 live preview (desktop / phone) shows the chosen look; dashed slots open the file picker. Nothing is
 generated or retouched.
 
