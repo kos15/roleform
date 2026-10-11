@@ -13,6 +13,8 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 import { TokenPanel } from "./token-panel";
 import { ProfileEditor } from "./profile-editor";
 import { DeleteAccount } from "./delete-account";
+import { NotificationsPanel } from "@/components/notifications-panel";
+import { getDevices } from "@/lib/db/queries/rounds";
 
 export const metadata = { title: "Your profile" };
 
@@ -75,6 +77,19 @@ export default async function ProfilePage() {
         updatedAt={loaded.profile.updatedAt.toISOString()}
         tokenPanel={<TokenPanel clerkUserId={userId} />}
       />
+
+      {/* F29: which devices hear about interview rounds. */}
+      <div className="mt-8 max-w-3xl">
+        <NotificationsPanel
+          devices={(await getDevices(userId)).map((d) => ({
+            id: d.id,
+            key: d.key,
+            deviceLabel: d.deviceLabel,
+            createdAt: d.createdAt.toISOString(),
+            lastSentAt: d.lastSentAt?.toISOString() ?? null,
+          }))}
+        />
+      </div>
 
       <div className="mt-8 max-w-3xl">
         <DeleteAccount />

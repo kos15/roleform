@@ -52,7 +52,13 @@ declare
     'coding_challenges',
     'code_attempts',
     -- F28: the portfolio page is built from the profile and is theirs alone.
-    'portfolio_sites'
+    'portfolio_sites',
+    -- F29: a member's interview calendar, the reminders it implies, and the
+    -- devices they let us push to. The sender reads all three over the
+    -- Prisma connection (a trusted server path); nothing else may.
+    'interview_rounds',
+    'round_reminders',
+    'push_subscriptions'
   ];
   key_column text;
 begin

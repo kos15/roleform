@@ -10,6 +10,7 @@ import { RenewalBanner } from "@/components/renewal-banner";
 import { SiteFooter } from "@/components/site-footer";
 import { NavLinks } from "@/components/nav-links";
 import { MobileTabBar } from "@/components/mobile-tabbar";
+import { PushSync } from "@/components/push-sync";
 import { SheetAccount } from "@/components/sheet-account";
 import { ProductTour, TourLauncher } from "@/components/product-tour";
 import { currentRole } from "@/lib/admin/role";
@@ -100,6 +101,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </main>
 
       <SiteFooter />
+
+      {/* F29: keeps this device's push subscription on file. Never prompts. */}
+      <PushSync />
 
       {/* Outside <main> on purpose: it measures controls in the header and the
           page alike, so it can't live inside either. */}

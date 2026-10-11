@@ -103,7 +103,7 @@ export async function getDraft(clerkUserId: string, draftId: string) {
  */
 export async function getTabCounts(clerkUserId: string, analysisId: string) {
   const where = { clerkUserId, analysisId };
-  const [resumes, questions, gaps, roadmap, decks, rounds, challenges] = await Promise.all([
+  const [resumes, questions, gaps, roadmap, decks, rounds, challenges, nextRound] = await Promise.all([
     db.resumeDraft.count({ where }),
     db.interviewQuestion.count({ where }),
     db.skillGap.count({ where }),
@@ -111,12 +111,26 @@ export async function getTabCounts(clerkUserId: string, analysisId: string) {
     db.revisionDeck.count({ where }),
     db.quizRound.count({ where }),
     db.codingChallenge.count({ where }),
+    db.interviewRound.findFirst({
+      where: { ...where, status: "upcoming", scheduledAt: { gt: new Date() } },
+      orderBy: { scheduledAt: "asc" },
+      select: { scheduledAt: true, timeZone: true },
+    }),
   ]);
   // null before a roadmap is built (F21) — the tab reads "—", not "0 of 0".
   const roadmapProgress = roadmap
     ? { done: roadmap.items.filter((i) => i.doneAt !== null).length, total: roadmap.items.length }
     : null;
-  return { resumes, questions, gaps, roadmapProgress, drills: decks + rounds + challenges };
+  // F29: the tab says when the next round is, in the zone it was booked in.
+  const next = nextRound
+    ? new Intl.DateTimeFormat("en-GB", {
+        timeZone: nextRound.timeZone,
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      }).format(nextRound.scheduledAt)
+    : null;
+  return { resumes, questions, gaps, roadmapProgress, drills: decks + rounds + challenges, nextRound: next };
 }
 
 export async function getTailoredBullets(clerkUserId: string, draftId: string) {

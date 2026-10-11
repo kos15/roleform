@@ -17,6 +17,20 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/analysis/**": ["./node_modules/.pnpm/@jitl+quickjs-wasmfile-release-sync@*/node_modules/@jitl/quickjs-wasmfile-release-sync/dist/*.wasm"],
   },
+  // F29: the service worker must never be served stale (an old worker keeps
+  // control until a new one is fetched), and must be allowed to claim "/".
+  async headers() {
+    return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ];
+  },
   // The palette picker was retired with the single marigold palette. Old links
   // land on the profile, which is where the account's settings live.
   async redirects() {
