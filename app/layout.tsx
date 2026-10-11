@@ -7,6 +7,7 @@ import { PwaRegister } from "@/components/pwa-register";
 import { INTRO_SCRIPT } from "@/components/landing-intro";
 import { RoleformGuide } from "@/components/roleform-guide";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/seo/site";
+import { ICON_VERSION } from "@/lib/seo/icons";
 
 /**
  * Anton is the only display voice; Figtree carries body copy (CLAUDE.md §9).
@@ -65,9 +66,18 @@ export const metadata: Metadata = {
   // F29: installable on iPhone. iOS ignores the manifest's icons and reads
   // apple-touch-icon instead, and only a Home Screen app can receive pushes.
   appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: "default" },
+  // `?v=` busts the icon caches phones keep from the moment a site is added to
+  // the Home Screen; bump ICON_VERSION whenever the mark changes. PNG and ICO
+  // sit beside the SVG because launchers that fall back to a page's favicon
+  // (Android shortcuts, older iOS) cannot use an SVG.
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: `/icons/favicon-32.png?v=${ICON_VERSION}`, type: "image/png", sizes: "32x32" },
+      { url: `/icons/icon-192.png?v=${ICON_VERSION}`, type: "image/png", sizes: "192x192" },
+    ],
+    shortcut: [{ url: "/favicon.ico" }],
+    apple: [{ url: `/apple-touch-icon.png?v=${ICON_VERSION}`, sizes: "180x180", type: "image/png" }],
   },
   // Search Console / Bing Webmaster ownership, set per deployment.
   verification: {
