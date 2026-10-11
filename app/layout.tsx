@@ -3,6 +3,7 @@ import { Anton, Figtree } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { AgentTools } from "@/components/agent-tools";
+import { PwaRegister } from "@/components/pwa-register";
 import { INTRO_SCRIPT } from "@/components/landing-intro";
 import { RoleformGuide } from "@/components/roleform-guide";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/seo/site";
@@ -61,6 +62,13 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION },
   robots: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
   formatDetection: { telephone: false },
+  // F29: installable on iPhone. iOS ignores the manifest's icons and reads
+  // apple-touch-icon instead, and only a Home Screen app can receive pushes.
+  appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: "default" },
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
   // Search Console / Bing Webmaster ownership, set per deployment.
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
@@ -70,7 +78,9 @@ export const metadata: Metadata = {
   },
 };
 
-export const viewport: Viewport = { themeColor: "#f8f0e3" };
+// viewport-fit=cover lets the installed app paint under the iPhone notch and
+// home indicator; the bottom tab bar already pads by env(safe-area-inset-*).
+export const viewport: Viewport = { themeColor: "#f8f0e3", viewportFit: "cover" };
 
 /**
  * Clerk's own screens (the sign-in modal, the routed pages, the user menu),
@@ -128,6 +138,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <body>
           {children}
           <AgentTools />
+          <PwaRegister />
           <RoleformGuide />
         </body>
       </html>

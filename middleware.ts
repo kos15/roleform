@@ -23,6 +23,12 @@ const isPublic = createRouteMatcher([
   "/sign-up(.*)",
   "/api/webhooks/clerk",
   "/api/webhooks/razorpay",
+  // F29: called by the scheduler, which has no session. It checks
+  // CRON_SECRET before reading anything — that is its lock.
+  "/api/cron/reminders",
+  // The service worker's offline page. Shown when there is no network, so
+  // there is no session check it could pass anyway.
+  "/offline",
   "/how-it-works",
   "/privacy",
   "/terms",

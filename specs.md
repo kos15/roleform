@@ -1717,6 +1717,82 @@ reach the server.
 makes no model call and moves no tokens; a second build on the same account is refused; the
 downloaded page carries the chosen look and the member's photos.
 
+### F29 — Installable app and interview-round reminders
+
+Roleform installs as a Progressive Web App on Android, iPhone/iPad and desktop, and reminds the
+member before each interview round they add to a posting. It closes the last gap in the loop F22
+opened: find → analyse → prep → **the round itself**.
+
+**Installable.** `app/manifest.ts` declares `id`, `scope`, `start_url: /analyze`, `standalone`
+display, PNG icons at 192/512 in `any` and `maskable` (the mark drawn inside the 80% safe zone),
+and three shortcuts (New analysis, History, Jobs). iOS reads none of the manifest's icons, so the
+root layout also emits `apple-touch-icon` (180, full-bleed — iOS turns transparency black) and the
+web-app-capable meta. `viewport-fit=cover` lets the installed app paint under the notch; the
+bottom tab bar already pads by `env(safe-area-inset-bottom)`.
+
+**The service worker** (`public/sw.js`) does three things and refuses a fourth. It precaches an
+`/offline` page and serves it to any navigation the network cannot reach; caches content-hashed
+`/_next/static` and `/icons` (public, immutable); and shows pushes and opens their target on tap.
+It **never caches a signed-in page** — an analysis or a profile left in Cache Storage on a shared
+phone would outlive sign-out (N7). A tapped notification can only open an in-app path; anything
+else falls back to `/history`. Registered in production only (in dev the static cache would serve
+stale chunks) and served `no-cache` with `Service-Worker-Allowed: /`.
+
+**Install prompts.** `components/install-app.tsx`: Chrome/Edge/Samsung get one button wired to the
+parked `beforeinstallprompt`; iPhone/iPad Safari get the two taps (Share → Add to Home Screen),
+because Apple offers no button a page can press and — Apple's rule — only a Home Screen app can
+receive a push. Anywhere else nothing renders rather than instructions that would not work.
+
+**Rounds** (`/analysis/[id]/rounds`, a sixth tab whose count is the next round's date). An
+`InterviewRound` is the member's own fact: label, date-time, the IANA zone they booked it in,
+notes, and which reminders they want (`leads`: a day, an hour, 15 minutes before). Nothing
+derived, scheduled or model-written creates or edits one (N3/N15 applied). States are `upcoming`,
+`done`, `cancelled`; done and cancelled drop pending reminders, reopening re-derives them. No model
+call, no `ai_runs` row, no plan cap — remembering a date costs nothing, so it is on every plan
+(N22 governs plan-gated caps; this has none). `MAX_ROUNDS_PER_ANALYSIS` (20) is a sanity ceiling.
+
+**Reminders are rows, not timers.** Saving a round writes one `round_reminders` row per lead whose
+moment is still ahead (`planReminders`, pure) — a lead already in the past is never written, so a
+round booked for this afternoon never gets "your interview is tomorrow". Moving the date clears
+every reminder, sent ones included; keeping it keeps the record of what went out. The sender
+(`lib/push/dispatch.ts`) **claims** a due row (pending → settled in one conditional UPDATE) before
+sending, so overlapping invocations can never buzz a phone twice; a crash after the claim loses
+that reminder rather than repeating it. A round that has started, finished or been called off is
+skipped, never delivered late. The copy is computed at send time in the round's own zone ("Acme
+interview in 1 hour" · "Round 2 · today at 10:00 AM"), so a late reminder still tells the truth.
+
+**What a notification carries:** the round's label, the company, the time, and the posting's
+`/prep` path. **Never the notes** — a lock screen is read by whoever holds the phone. Payloads are
+encrypted to the device key (RFC 8291) so push services relay bytes they cannot read. Logs are
+counts only (`[reminders] due= sent= skipped= failed=`); endpoints are capability URLs and are
+neither logged nor sent back to the browser (the device list carries a 16-hex fingerprint).
+
+**Devices.** `push_subscriptions` holds the browser's own `PushSubscription` (endpoint issued by the
+push service, never assembled — N18 applied), a derived label ("iPhone · Safari", never the raw
+user agent), at most 10 per member (oldest dropped). A 404/410 from the push service deletes the
+row on the spot. `PushSync` re-files this device's subscription once per signed-in load when
+permission is already granted; the OS permission prompt is only ever raised by the **Turn on**
+button (iOS refuses a prompt no tap asked for). The panel lives on `/profile` and beside the
+rounds; it can send a test (5 per 10 minutes).
+
+**The scheduler — the one clock in the product.** `GET /api/cron/reminders`, authorised by
+`Authorization: Bearer $CRON_SECRET` (timing-safe; unset refuses everything), called every five
+minutes by **Supabase pg_cron + pg_net** (`pnpm db:schedule`, secret in Supabase Vault). Not Vercel
+Cron: on Hobby it runs at most daily, and "in an hour" cannot come from a daily job. The route also
+answers Vercel Cron's GET, so a plan with sub-daily crons can switch with one `vercel.json` line;
+the claim makes two schedulers safe. Nothing else in the product moved onto this clock — parked
+analyses (F19), plan lapse (F23) and listing expiry (F22) are still settled on read.
+
+Unset VAPID keys are a supported state, like Razorpay's (F17): the panel says notifications are not
+switched on and nothing subscribes.
+
+**Acceptance:** Chrome's installability check reports no errors; the app opens standalone from the
+home screen on Android and iPhone; offline navigation shows `/offline` and no signed-in page is in
+Cache Storage; a round two hours out with all three leads writes two reminder rows; a reminder is
+delivered once even when the route is called twice concurrently; a done or cancelled round sends
+nothing; a notification shows no notes and opens the posting's prep; a second member cannot read or
+tick another's rounds (RLS); `ai_runs` does not move.
+
 ## 10. AI layer
 
 | Purpose | Function | Schema | Tier | Retry |
@@ -1826,6 +1902,15 @@ exportAll(analysisId)                 → { zipSignedUrl }
 listAnalyses(cursor)                  → History page
 deleteAccount()                       → hard delete of rows + storage objects
 POST /api/webhooks/clerk              → user lifecycle
+
+createRound(analysisId, input)        → { id }              // F29, writes its reminder rows
+updateRound(roundId, input)           → null                // F29, re-derives pending reminders
+setRoundStatus(roundId, status)       → null                // F29, done/cancelled drop pending ones
+deleteRound(roundId)                  → null                // F29, cascades its reminders
+savePushSubscription(sub)             → null                // F29, upsert by endpoint, ≤10 devices
+removePushSubscription({id}|{endpoint}) → null              // F29
+sendTestNotification()                → { delivered, devices } // F29, 5 per 10 min
+GET|POST /api/cron/reminders          → DispatchSummary     // F29, Bearer CRON_SECRET; the one clock
 
 sendContactMessage(prev, formData)    → ContactState        // F13, public — no session
 updateMemberCaps({ clerkUserId, caps, suspended })          // F15, re-reads role server-side

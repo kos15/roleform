@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, GraduationCap, ListChecks, MessageSquareText, Zap, type LucideIcon } from "lucide-react";
+import { CalendarClock, FileText, GraduationCap, ListChecks, MessageSquareText, Zap, type LucideIcon } from "lucide-react";
 
 /**
  * The three surfaces. Real links rather than client state, so a tab is
@@ -28,6 +28,8 @@ export interface TabCounts {
   roadmapProgress: { done: number; total: number } | null;
   /** F26: decks, rounds and challenges started — "3 drills" before any. */
   drills: number;
+  /** F29: the next round still ahead, already phrased ("Thu 16 Oct"), or null. */
+  nextRound: string | null;
 }
 
 export function AnalysisTabs({
@@ -62,6 +64,12 @@ export function AnalysisTabs({
       label: "Rapid prep",
       count: counts.drills > 0 ? `${counts.drills} session${counts.drills === 1 ? "" : "s"}` : "3 drills",
       icon: Zap,
+    },
+    {
+      slug: "rounds",
+      label: "Rounds",
+      count: counts.nextRound ?? "Add one",
+      icon: CalendarClock,
     },
   ];
 

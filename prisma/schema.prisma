@@ -338,9 +338,10 @@ model User {
   /// (CLAUDE.md §8).
   planExpiresAt DateTime? @map("plan_expires_at") @db.Timestamptz
 
-  tokenGrants TokenGrant[]
-  savedJobs   SavedJob[]
-  jobSearches JobSearch[]
+  tokenGrants       TokenGrant[]
+  savedJobs         SavedJob[]
+  jobSearches       JobSearch[]
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
 }
@@ -612,6 +613,7 @@ model Analysis {
   quizRounds         QuizRound[]
   codingChallenges   CodingChallenge[]
   portfolioSites     PortfolioSite[]
+  interviewRounds    InterviewRound[]
 
   // F2: identical JD text reuses the prior analysis — no second charge.
   @@unique([clerkUserId, contentHash], map: "analyses_user_content_hash")
@@ -1654,4 +1656,119 @@ model PortfolioSite {
   aiRun         AiRun?         @relation(fields: [aiRunId], references: [id], onDelete: SetNull)
 
   @@map("portfolio_sites")
+}
+
+/**
+ * ------------------------------------------------- interview rounds (F29)
+ * The member's own calendar for one posting: "round 2 is Thursday at 3pm".
+ * Every row here is user-authored — the date, the label, the notes. Nothing
+ * derived, scheduled or model-written creates or edits a round (N3/N15
+ * applied), and there is no model call anywhere on this path (N13 applied).
+ *
+ * Reminders are the one thing the app does on its own clock. They are rows,
+ * not a timer: one per (round, lead), written when the member saves the round,
+ * and sent by the single scheduled sender (lib/push/dispatch.ts) that claims a
+ * due row before it sends, so a second invocation cannot send it twice.
+ */
+
+enum InterviewRoundStatus {
+  upcoming
+  done
+  cancelled
+
+  @@map("interview_round_status")
+}
+
+/// How long before the round a reminder fires. An enum, not a free number of
+/// minutes: the copy, the picker and the CHECK all agree on three values.
+enum ReminderLead {
+  day_before
+  hour_before
+  quarter_hour_before
+
+  @@map("reminder_lead")
+}
+
+enum ReminderStatus {
+  pending
+  sent
+  /// Due, but there was nothing worth sending: the round was moved, finished,
+  /// cancelled, already under way, or the member has no device subscribed.
+  skipped
+  /// Due and attempted, and every device refused it.
+  failed
+
+  @@map("reminder_status")
+}
+
+model InterviewRound {
+  id          String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String               @map("clerk_user_id")
+  /// NOT NULL, cascade: a round is always a round OF a posting. Deleting the
+  /// analysis takes its calendar with it.
+  analysisId  String               @map("analysis_id") @db.Uuid
+  /// "Round 2 · System design". 1–120 characters (CHECK).
+  label       String
+  scheduledAt DateTime             @map("scheduled_at") @db.Timestamptz
+  /// The IANA zone the member scheduled it in, so a pushed "tomorrow at 3pm"
+  /// is their 3pm and not the server's. Validated on write (Intl), not here.
+  timeZone    String               @map("time_zone")
+  /// Free text the member owns — interviewer names, a dial-in. Never pushed:
+  /// a lock screen is not the place for it (N7 applied). ≤ 2000 (CHECK).
+  notes       String               @default("")
+  status      InterviewRoundStatus @default(upcoming)
+  /// Which reminders the member asked for. The rows in `round_reminders` are
+  /// derived from this and the date; keeping the choice lets a reschedule or
+  /// a reopened round re-derive them without asking again.
+  leads       ReminderLead[]       @default([])
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  analysis  Analysis        @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  reminders RoundReminder[]
+
+  @@index([clerkUserId, analysisId, scheduledAt], map: "interview_rounds_user_analysis_idx")
+  @@map("interview_rounds")
+}
+
+model RoundReminder {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String         @map("clerk_user_id")
+  roundId     String         @map("round_id") @db.Uuid
+  lead        ReminderLead
+  /// scheduledAt minus the lead. Rewritten with the round on a reschedule.
+  dueAt       DateTime       @map("due_at") @db.Timestamptz
+  status      ReminderStatus @default(pending)
+  /// Set exactly when the sender claimed the row (CHECK: anything but
+  /// pending has a date). The claim is the idempotency guarantee.
+  settledAt   DateTime?      @map("settled_at") @db.Timestamptz
+  /// How many devices accepted it. A count, logged as a count (N7).
+  delivered   Int            @default(0)
+
+  round InterviewRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, lead], map: "round_reminders_round_lead")
+  @@index([status, dueAt], map: "round_reminders_due_idx")
+  @@map("round_reminders")
+}
+
+/// One browser or installed app that agreed to receive pushes. The endpoint
+/// is a capability URL issued by the device's push service — it is never
+/// logged, and a 404/410 from that service deletes the row.
+model PushSubscription {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String    @map("clerk_user_id")
+  endpoint    String    @unique(map: "push_subscriptions_endpoint")
+  p256dh      String
+  auth        String
+  /// "iPhone · Safari", derived from the user agent on subscribe. Never the
+  /// raw user-agent string.
+  deviceLabel String    @default("") @map("device_label")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  lastSentAt  DateTime? @map("last_sent_at") @db.Timestamptz
+
+  user User @relation(fields: [clerkUserId], references: [clerkUserId], onDelete: Cascade)
+
+  @@index([clerkUserId], map: "push_subscriptions_user_idx")
+  @@map("push_subscriptions")
 }

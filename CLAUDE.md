@@ -51,6 +51,7 @@ analysis as much as to résumé bullets.
 | N20 | Fit between a listing and the profile is skill overlap, shown as named skills. No number, no ring, no "match". | N4: the match score is coverage over a full posting; a snippet cannot earn it. |
 | N21 | A paid plan has an expiry; Free has none (CHECK). Lapse is settled by one function on read. Nothing else lowers a plan, and nothing raises one except the webhook on a captured payment of the right amount. | A plan granted forever for one payment is the revenue bug; two writers to `users.plan` is the next one. |
 | N22 | A plan **is** its caps: every plan-gated capability is a `QuotaKey` with a column, a CHECK, a `PLANS` value, a `NOTES` line and an enforcement seam that counts rows. No boolean feature flags per plan. | The pricing page prints `QUOTAS`; a gate outside it is a promise the page cannot show and the admin cannot move. |
+| N23 | Interview rounds are user-authored facts; reminders are rows derived from them. The sender claims a row before it sends, pushes only label · company · time · an in-app path (never notes), and logs counts. The service worker never caches a signed-in page. `/api/cron/reminders` is the only scheduled path in the product. | A reminder is the one thing we do on our own clock — it has to arrive at most once, honest about when, and safe on a lock screen. |
 
 ## 3. The fabrication boundary
 
@@ -188,7 +189,8 @@ Rules:
 | DOCX | `docx` (npm) | Real named paragraph styles | Medium |
 | Extraction | `unpdf` (PDF), `mammoth` (DOCX), `word-extractor` (DOC), `fflate` (ODT), pure readers for RTF/HTML/MD/TXT, one vision call for scans and photos (specs F1) | Raw text only; the LLM does the structuring | Low |
 | Zip | `archiver` | "Download all" = 6 templates × 2 formats | Low |
-| Jobs | None in v1 — inline + streaming | See §10 trigger | Low |
+| Jobs | None in v1 — inline + streaming. One exception: the F29 reminder sender, called every 5 min by Supabase pg_cron (`pnpm db:schedule`), not Vercel Cron (Hobby is daily-only) | See §12 trigger | Low |
+| Push | `web-push` (VAPID, RFC 8291) + `public/sw.js` | Standard Web Push reaches Android, desktop and iOS ≥16.4 Home Screen apps with no native app | Low |
 
 **Not chosen:** Puppeteer (bundle size), LangChain (the AI SDK covers this shape), a vector DB (the
 corpus is one user's résumé — there is no retrieval problem), Supabase Auth (Clerk was chosen; don't
@@ -226,9 +228,10 @@ app/
     onboarding/              resume upload → parse → review → profile   (once)
     analyze/                 Step 1 of 3: JD input → parsing → results  (per session)
     analysis/[id]/
-      resumes/  prep/  learning/  roadmap/  rapid/{quiz,code}/  portfolio/  preview/[templateId]/
+      resumes/  prep/  learning/  roadmap/  rapid/{quiz,code}/  portfolio/  rounds/  preview/[templateId]/
     history/   profile/
-  api/                       webhooks only (Clerk)
+  api/                       webhooks (Clerk, Razorpay) · cron/reminders (F29, Bearer CRON_SECRET)
+  offline/                   the service worker's offline page (public, static)
 lib/
   domain/                    PURE. coverage · scoring · ats-rating · ordering · diff
                              + the learning engine's pure half:
@@ -243,6 +246,8 @@ lib/
     bundles.ts               precomputed retrieval — a PK lookup, never a search
     build-plan.ts            the S3→S7 request path. ONE model call.
     validate.ts              OUT-1: every resource id resolves to a live row
+  push/                      F29: send.ts (web-push, SERVER ONLY) · dispatch.ts (claims due reminders)
+                             · client.ts (browser subscribe/unsubscribe; no server imports)
   drill/                     F26 rapid prep: bank.ts (curated DSA problems, checked by
                              `pnpm check:drill`) · sandbox.ts (QuickJS — JS tests, no host access)
   render/
@@ -310,7 +315,8 @@ That's the standard.
 - `prisma/schema.prisma` is the truth; migrations are generated (`prisma migrate dev`), never hand-authored — except the two CHECK constraints (N1/N2 have no Prisma schema equivalent), which are added by hand to the migration SQL once and never touched again. RLS policies live in `lib/db/policies.sql`, in the repo, applied by script (`pnpm db:policies`) — never clicked into the Supabase dashboard.
 - Fixed vocabulary — do not introduce synonyms: `MasterProfile`, `ExperienceBullet`, `Analysis`, `ResumeDraft`, `TailoredBullet`, `InterviewQuestion`, `QuestionAnswer`, `SkillGap`, `Course`, `CourseSkill`, `SkillBundle`, `LearningPlan`, `LearningStep`, `UnresolvedTerm`, `CorpusGap`,
   and for rapid prep (F26) `RevisionDeck`, `QuizRound`, `CodingChallenge`, `CodeAttempt`,
-  and for the portfolio (F28) `PortfolioSite`.
+  and for the portfolio (F28) `PortfolioSite`,
+  and for rounds and reminders (F29) `InterviewRound`, `RoundReminder`, `PushSubscription`.
   Note in particular: the learning engine's spec calls a catalogued thing a *resource*; in this repo
   it is a **`Course`**. There is one table, not two — a parallel `Resource` model would be exactly
   the synonym this rule exists to prevent.
