@@ -86,11 +86,16 @@ const TABS: Tab[] = [
 export function QuestionList({
   questions,
   answeredIds,
+  initialTab,
 }: {
   questions: QuestionView[];
   answeredIds: string[];
+  /** F29.1: the family a round reminder points at. Unknown keys fall back to All. */
+  initialTab?: string;
 }) {
-  const [tabKey, setTabKey] = useState("all");
+  const [tabKey, setTabKey] = useState(() =>
+    initialTab && TABS.some((t) => t.key === initialTab) ? initialTab : "all",
+  );
   const [open, setOpen] = useState<string[]>([]);
   // Seeded from the server, then extended in place — drafting an answer should
   // flip its badge immediately rather than waiting for a navigation.

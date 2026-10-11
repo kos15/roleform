@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { reminderCopy, shouldSend } from "@/lib/domain/reminders";
+import { reminderCopy, reminderPath, shouldSend } from "@/lib/domain/reminders";
 import { sendToMember } from "./send";
 
 /**
@@ -41,11 +41,13 @@ export async function dispatchDueReminders(now: Date = new Date()): Promise<Disp
     select: {
       id: true,
       clerkUserId: true,
+      lead: true,
       round: {
         select: {
           id: true,
           analysisId: true,
           label: true,
+          kind: true,
           scheduledAt: true,
           timeZone: true,
           status: true,
@@ -66,15 +68,22 @@ export async function dispatchDueReminders(now: Date = new Date()): Promise<Disp
       data: { status: "skipped", settledAt: now },
     });
     if (claimed.count === 0) return null; // Another invocation has it.
-    if (!shouldSend(round, now)) return "skipped";
+    if (!shouldSend(round, reminder.lead, now)) return "skipped";
 
     const copy = reminderCopy(
-      { label: round.label, company: round.analysis.company, scheduledAt: round.scheduledAt, timeZone: round.timeZone },
+      {
+        label: round.label,
+        kind: round.kind,
+        company: round.analysis.company,
+        scheduledAt: round.scheduledAt,
+        timeZone: round.timeZone,
+      },
+      reminder.lead,
       now,
     );
     const result = await sendToMember(reminder.clerkUserId, {
       ...copy,
-      url: `/analysis/${round.analysisId}/prep`,
+      url: reminderPath(round.analysisId, round.kind, reminder.lead),
       tag: `round-${round.id}`,
     });
 

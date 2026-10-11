@@ -4,6 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { listAnalyses } from "@/lib/db/queries/analysis";
 import type { AnalysisStatus } from "@/lib/generated/prisma/enums";
 import { Card, EmptyState, Tag } from "@/components/ui";
+import { UpcomingRounds } from "@/components/upcoming-rounds";
 
 /**
  * F10 — History.
@@ -37,6 +38,8 @@ export default async function HistoryPage() {
           New analysis
         </Link>
       </div>
+      {/* F29.1: every booked round across postings, soonest first. */}
+      <UpcomingRounds clerkUserId={userId} />
       <Card className="overflow-hidden rounded-[26px] p-0">
         <div className="table-scroll">
           <table className="table">

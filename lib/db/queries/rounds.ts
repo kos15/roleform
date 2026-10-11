@@ -11,6 +11,7 @@ export async function getRounds(clerkUserId: string, analysisId: string) {
     select: {
       id: true,
       label: true,
+      kind: true,
       scheduledAt: true,
       timeZone: true,
       notes: true,
@@ -43,3 +44,33 @@ export async function getDevices(clerkUserId: string) {
 }
 
 export type DeviceRow = Awaited<ReturnType<typeof getDevices>>[number];
+
+/**
+ * The next round still ahead on this posting — for the "Preparing for" strip
+ * on the prep surfaces (F29.1).
+ */
+export async function getNextRound(clerkUserId: string, analysisId: string) {
+  return db.interviewRound.findFirst({
+    where: { clerkUserId, analysisId, status: "upcoming", scheduledAt: { gt: new Date() } },
+    orderBy: { scheduledAt: "asc" },
+    select: { id: true, label: true, kind: true, scheduledAt: true, timeZone: true },
+  });
+}
+
+/** Every round still ahead, across postings — the History page's list (F29.1). */
+export async function getUpcomingRounds(clerkUserId: string, take = 6) {
+  return db.interviewRound.findMany({
+    where: { clerkUserId, status: "upcoming", scheduledAt: { gt: new Date() } },
+    orderBy: { scheduledAt: "asc" },
+    take,
+    select: {
+      id: true,
+      analysisId: true,
+      label: true,
+      kind: true,
+      scheduledAt: true,
+      timeZone: true,
+      analysis: { select: { company: true, title: true } },
+    },
+  });
+}

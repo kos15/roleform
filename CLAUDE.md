@@ -316,7 +316,7 @@ That's the standard.
 - Fixed vocabulary — do not introduce synonyms: `MasterProfile`, `ExperienceBullet`, `Analysis`, `ResumeDraft`, `TailoredBullet`, `InterviewQuestion`, `QuestionAnswer`, `SkillGap`, `Course`, `CourseSkill`, `SkillBundle`, `LearningPlan`, `LearningStep`, `UnresolvedTerm`, `CorpusGap`,
   and for rapid prep (F26) `RevisionDeck`, `QuizRound`, `CodingChallenge`, `CodeAttempt`,
   and for the portfolio (F28) `PortfolioSite`,
-  and for rounds and reminders (F29) `InterviewRound`, `RoundReminder`, `PushSubscription`.
+  and for rounds and reminders (F29) `InterviewRound` (with its `RoundKind`), `RoundReminder`, `PushSubscription`.
   Note in particular: the learning engine's spec calls a catalogued thing a *resource*; in this repo
   it is a **`Course`**. There is one table, not two — a parallel `Resource` model would be exactly
   the synonym this rule exists to prevent.

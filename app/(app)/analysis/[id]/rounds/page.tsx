@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import { getDevices, getRounds } from "@/lib/db/queries/rounds";
-import { whenPhrase } from "@/lib/domain/reminders";
+import { countdownPhrase, whenPhrase } from "@/lib/domain/reminders";
 import { pushConfigured } from "@/lib/push/send";
 import { NotificationsPanel } from "@/components/notifications-panel";
 import { RoundsClient, type RoundView } from "./rounds-client";
@@ -29,9 +29,11 @@ export default async function RoundsTab({ params }: { params: Promise<{ id: stri
   const views: RoundView[] = rounds.map((r) => ({
     id: r.id,
     label: r.label,
+    kind: r.kind,
     scheduledAt: r.scheduledAt.toISOString(),
     timeZone: r.timeZone,
     when: whenPhrase(r.scheduledAt, r.timeZone, now),
+    countdown: countdownPhrase(r.scheduledAt, r.timeZone, now),
     past: r.scheduledAt.getTime() <= now.getTime(),
     notes: r.notes,
     status: r.status,
@@ -55,8 +57,8 @@ export default async function RoundsTab({ params }: { params: Promise<{ id: stri
         />
         {!pushConfigured() ? null : (
           <p className="text-sm leading-normal text-[var(--color-text-muted)]">
-            A reminder shows the round&rsquo;s name, the company and the time — never your notes.
-            Tapping it opens this posting&rsquo;s interview prep.
+            A reminder shows the round&rsquo;s name and type, the company and the time — never your
+            notes. Tapping it opens the prep that fits that round.
           </p>
         )}
       </aside>
