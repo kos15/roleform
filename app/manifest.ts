@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/seo/site";
+import { ICON_VERSION } from "@/lib/seo/icons";
 
 /**
  * The installable app (F29). What Android's "Install app", desktop Chrome's
@@ -26,16 +27,16 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#f8f0e3",
     categories: ["productivity", "business"],
     icons: [
-      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/icons/icon-maskable-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
-      { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: `/icons/icon-192.png?v=${ICON_VERSION}`, sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: `/icons/icon-512.png?v=${ICON_VERSION}`, sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: `/icons/icon-maskable-192.png?v=${ICON_VERSION}`, sizes: "192x192", type: "image/png", purpose: "maskable" },
+      { src: `/icons/icon-maskable-512.png?v=${ICON_VERSION}`, sizes: "512x512", type: "image/png", purpose: "maskable" },
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml" },
     ],
     shortcuts: [
-      { name: "New analysis", url: "/analyze", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
-      { name: "History", url: "/history", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
-      { name: "Jobs", url: "/jobs", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
+      { name: "New analysis", url: "/analyze", icons: [{ src: `/icons/icon-192.png?v=${ICON_VERSION}`, sizes: "192x192" }] },
+      { name: "History", url: "/history", icons: [{ src: `/icons/icon-192.png?v=${ICON_VERSION}`, sizes: "192x192" }] },
+      { name: "Jobs", url: "/jobs", icons: [{ src: `/icons/icon-192.png?v=${ICON_VERSION}`, sizes: "192x192" }] },
     ],
   };
 }

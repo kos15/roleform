@@ -11,7 +11,7 @@
  * and only the offline page and hashed static assets are ever cached.
  */
 
-const VERSION = "rf-v1";
+const VERSION = "rf-v2";
 const STATIC_CACHE = `${VERSION}-static`;
 const OFFLINE_URL = "/offline";
 const PRECACHE = [
