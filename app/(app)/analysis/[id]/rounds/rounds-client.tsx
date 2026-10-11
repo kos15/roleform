@@ -6,15 +6,28 @@ import { useRouter } from "next/navigation";
 import { BellRing, CalendarClock, Check, Pencil, Plus, Trash2, Undo2, X } from "lucide-react";
 import { Button, Card, EmptyState, ErrorRegion, Field, Input, Tag, Textarea } from "@/components/ui";
 import { createRound, deleteRound, setRoundStatus, updateRound } from "@/app/actions/rounds";
-import { DEFAULT_LEADS, LEAD_LABEL, REMINDER_LEADS, type ReminderLead } from "@/lib/domain/reminders";
+import {
+  DEFAULT_LEADS,
+  KIND_LABEL,
+  LEAD_LABEL,
+  REMINDER_LEADS,
+  ROUND_KINDS,
+  prepTarget,
+  type ReminderLead,
+  type RoundKind,
+} from "@/lib/domain/reminders";
+import { Choice } from "../rapid/shared";
 
 export interface RoundView {
   id: string;
   label: string;
+  kind: RoundKind;
   scheduledAt: string;
   timeZone: string;
   /** "tomorrow at 3:00 PM", in the round's own zone, computed on the server. */
   when: string;
+  /** "in 5 days" · "tomorrow" · "in 3 hours" — "" once it has started. */
+  countdown: string;
   past: boolean;
   notes: string;
   status: "upcoming" | "done" | "cancelled";
@@ -36,7 +49,17 @@ function tomorrowAtTen(): string {
   return toLocalInput(d.toISOString());
 }
 
+/** A sensible next kind: after L1 comes L2, after L2 comes L3. */
+function nextKind(rounds: RoundView[]): RoundKind {
+  const kinds = new Set(rounds.map((r) => r.kind));
+  if (kinds.has("l2")) return "l3";
+  if (kinds.has("l1")) return "l2";
+  if (kinds.has("screening")) return "l1";
+  return rounds.length === 0 ? "l1" : "other";
+}
+
 interface Draft {
+  kind: RoundKind;
   label: string;
   local: string;
   notes: string;
@@ -57,22 +80,42 @@ export function RoundsClient({
 
   const ahead = rounds.filter((r) => r.status === "upcoming" && !r.past);
   const behind = rounds.filter((r) => !(r.status === "upcoming" && !r.past)).reverse();
-  const nextNumber = rounds.length + 1;
+
+  const editForm = (round: RoundView) => (
+    <li key={round.id}>
+      <RoundForm
+        analysisId={analysisId}
+        roundId={round.id}
+        initial={{
+          kind: round.kind,
+          // A name equal to the kind's own is the default, not a choice — keep it
+          // empty so changing the kind renames it.
+          label: round.label === KIND_LABEL[round.kind] ? "" : round.label,
+          local: round.past ? tomorrowAtTen() : toLocalInput(round.scheduledAt),
+          notes: round.notes,
+          leads: round.leads,
+        }}
+        onDone={() => setEditing(null)}
+        onCancel={() => setEditing(null)}
+      />
+    </li>
+  );
 
   return (
     <div>
       <div className="mb-6 max-w-[640px]">
         <h2 className="mb-2.5">Your rounds</h2>
         <p className="text-base leading-relaxed text-[var(--color-text-muted)]">
-          Got the call for the next round{company ? ` at ${company}` : ""}? Put it here and Roleform will
-          remind you before it starts — with this posting&rsquo;s prep one tap away.
+          Tell us which round you&rsquo;re preparing for{company ? ` at ${company}` : ""} and when it is.
+          We&rsquo;ll count you down to it, point you at the prep that fits that round, and check in
+          afterwards.
         </p>
       </div>
 
       {adding ? (
         <RoundForm
           analysisId={analysisId}
-          initial={{ label: `Round ${nextNumber}`, local: tomorrowAtTen(), notes: "", leads: [...DEFAULT_LEADS] }}
+          initial={{ kind: nextKind(rounds), label: "", local: tomorrowAtTen(), notes: "", leads: [...DEFAULT_LEADS] }}
           onDone={() => setAdding(false)}
           onCancel={rounds.length > 0 ? () => setAdding(false) : undefined}
         />
@@ -94,15 +137,7 @@ export function RoundsClient({
           <ul className="space-y-3">
             {ahead.map((round) =>
               editing === round.id ? (
-                <li key={round.id}>
-                  <RoundForm
-                    analysisId={analysisId}
-                    roundId={round.id}
-                    initial={{ label: round.label, local: toLocalInput(round.scheduledAt), notes: round.notes, leads: round.leads }}
-                    onDone={() => setEditing(null)}
-                    onCancel={() => setEditing(null)}
-                  />
-                </li>
+                editForm(round)
               ) : (
                 <RoundRow key={round.id} round={round} analysisId={analysisId} onEdit={() => setEditing(round.id)} />
               ),
@@ -117,15 +152,7 @@ export function RoundsClient({
           <ul className="space-y-3">
             {behind.map((round) =>
               editing === round.id ? (
-                <li key={round.id}>
-                  <RoundForm
-                    analysisId={analysisId}
-                    roundId={round.id}
-                    initial={{ label: round.label, local: tomorrowAtTen(), notes: round.notes, leads: round.leads }}
-                    onDone={() => setEditing(null)}
-                    onCancel={() => setEditing(null)}
-                  />
-                </li>
+                editForm(round)
               ) : (
                 <RoundRow key={round.id} round={round} analysisId={analysisId} onEdit={() => setEditing(round.id)} />
               ),
@@ -139,11 +166,13 @@ export function RoundsClient({
 
 function reminderSummary(round: RoundView): string {
   if (round.status !== "upcoming") return "";
-  const pending = round.reminders.filter((r) => r.status === "pending").map((r) => LEAD_LABEL[r.lead].toLowerCase());
+  const pending = round.reminders.filter((r) => r.status === "pending");
   const sent = round.reminders.filter((r) => r.status === "sent").length;
   const parts: string[] = [];
-  if (pending.length > 0) parts.push(`Reminding you ${pending.join(" and ")}`);
-  if (sent > 0) parts.push(`${sent} reminder${sent === 1 ? "" : "s"} sent`);
+  if (pending.length > 0) {
+    parts.push(`${pending.length} reminder${pending.length === 1 ? "" : "s"} to come, next ${LEAD_LABEL[pending[0].lead].toLowerCase()}`);
+  }
+  if (sent > 0) parts.push(`${sent} sent`);
   if (parts.length === 0 && !round.past) parts.push("No reminders set");
   return parts.join(" · ");
 }
@@ -153,6 +182,7 @@ function RoundRow({ round, analysisId, onEdit }: { round: RoundView; analysisId:
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const live = round.status === "upcoming" && !round.past;
+  const target = prepTarget(round.kind);
 
   const run = (fn: () => Promise<{ ok: boolean; error?: { message: string } }>) =>
     start(async () => {
@@ -172,8 +202,12 @@ function RoundRow({ round, analysisId, onEdit }: { round: RoundView; analysisId:
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-[17px]">{round.label}</h3>
+              {round.label !== KIND_LABEL[round.kind] && round.kind !== "other" ? (
+                <Tag tone="outline">{KIND_LABEL[round.kind]}</Tag>
+              ) : null}
               {round.status === "done" ? <Tag tone="ink">Done</Tag> : null}
               {round.status === "cancelled" ? <Tag tone="muted">Called off</Tag> : null}
+              {live && round.countdown ? <Tag tone="accent">{round.countdown}</Tag> : null}
             </div>
             <p className="mt-0.5 text-[15px] font-bold">{round.when}</p>
             {summary ? (
@@ -185,6 +219,9 @@ function RoundRow({ round, analysisId, onEdit }: { round: RoundView; analysisId:
             {round.notes ? (
               <p className="mt-2 whitespace-pre-line text-sm leading-normal text-[var(--color-text-muted)]">{round.notes}</p>
             ) : null}
+            {round.status === "upcoming" && round.past ? (
+              <p className="mt-2 text-sm font-bold">How did it go? Mark it done, or reschedule if it moved.</p>
+            ) : null}
           </div>
         </div>
 
@@ -192,8 +229,8 @@ function RoundRow({ round, analysisId, onEdit }: { round: RoundView; analysisId:
 
         <div className="mt-4 flex flex-wrap gap-2">
           {live ? (
-            <Link href={`/analysis/${analysisId}/prep`} className="btn btn-primary btn-sm no-underline">
-              Prepare for it
+            <Link href={`/analysis/${analysisId}/${target.path}`} className="btn btn-primary btn-sm no-underline">
+              Prepare: {target.label.toLowerCase()}
             </Link>
           ) : null}
           {round.status === "upcoming" ? (
@@ -258,15 +295,16 @@ function RoundForm({
     start(async () => {
       setError(null);
       const at = new Date(draft.local);
-      if (Number.isNaN(at.getTime())) {
-        setError("Pick a date and a time.");
+      if (!draft.local || Number.isNaN(at.getTime())) {
+        setError("Pick the interview date and time.");
         return;
       }
-      if (at.getTime() <= Date.now() && !roundId) {
-        setError("That time has already passed — reminders need a round that's still ahead.");
+      if (at.getTime() <= Date.now()) {
+        setError("That time has already passed — pick when the round is.");
         return;
       }
       const input = {
+        kind: draft.kind,
         label: draft.label,
         scheduledAt: at.toISOString(),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -285,23 +323,22 @@ function RoundForm({
   return (
     <Card className="rounded-[var(--radius-lg)] p-5">
       <form
-        className="space-y-4"
+        className="space-y-5"
         onSubmit={(e) => {
           e.preventDefault();
           save();
         }}
       >
+        <Choice
+          label="Which round are you preparing for?"
+          options={ROUND_KINDS.map((k) => ({ value: k, label: KIND_LABEL[k] }))}
+          value={draft.kind}
+          onChange={(kind) => setDraft({ ...draft, kind })}
+          disabled={pending}
+        />
+
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Round">
-            <Input
-              value={draft.label}
-              maxLength={120}
-              required
-              placeholder="Round 2 · System design"
-              onChange={(e) => setDraft({ ...draft, label: e.target.value })}
-            />
-          </Field>
-          <Field label="When">
+          <Field label="Interview date and time">
             <Input
               type="datetime-local"
               value={draft.local}
@@ -309,23 +346,35 @@ function RoundForm({
               onChange={(e) => setDraft({ ...draft, local: e.target.value })}
             />
           </Field>
+          <Field label="Name (optional)">
+            <Input
+              value={draft.label}
+              maxLength={120}
+              placeholder={KIND_LABEL[draft.kind]}
+              onChange={(e) => setDraft({ ...draft, label: e.target.value })}
+            />
+          </Field>
         </div>
 
         <fieldset>
-          <legend className="mb-2 text-sm font-bold">Remind me</legend>
-          <div className="flex flex-wrap gap-x-5 gap-y-2.5">
+          <legend className="eyebrow mb-2">Remind me</legend>
+          <div className="grid gap-x-5 gap-y-2.5 sm:grid-cols-2">
             {REMINDER_LEADS.map((lead) => (
               <label key={lead} className="flex cursor-pointer items-center gap-2.5 text-[15px] font-bold">
                 <input
                   type="checkbox"
                   checked={draft.leads.includes(lead)}
                   onChange={() => toggle(lead)}
-                  className="h-5 w-5 accent-[var(--color-text)]"
+                  className="h-5 w-5 flex-none accent-[var(--color-text)]"
                 />
                 {LEAD_LABEL[lead]}
               </label>
             ))}
           </div>
+          <p className="mt-2 text-sm text-[var(--color-text-muted)]">
+            Reminders whose moment has already passed are skipped. Each one opens{" "}
+            {prepTarget(draft.kind).label.toLowerCase()} for this posting.
+          </p>
         </fieldset>
 
         <Field label="Notes (only you see these — never in a notification)">

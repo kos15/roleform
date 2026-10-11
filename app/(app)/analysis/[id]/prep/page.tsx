@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { getAnalysis, getAnswers, getBulletTexts, getQuestions } from "@/lib/db/queries/analysis";
 import { EmptyState } from "@/components/ui";
+import { NextRoundStrip } from "@/components/next-round-strip";
 import { QuestionList } from "./question-list";
 import type { QuestionType } from "./types";
 
@@ -18,8 +19,18 @@ import type { QuestionType } from "./types";
  * handed down — the client component never has to guess whether a click will
  * cost a model call.
  */
-export default async function PrepTab({ params }: { params: Promise<{ id: string }> }) {
+export default async function PrepTab({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ focus?: string | string[] }>;
+}) {
   const { id } = await params;
+  // F29.1: a round reminder or "Prepare" link opens the family that fits the
+  // round (?focus=system_design). Only a known tab key is honoured.
+  const focusParam = (await searchParams).focus;
+  const focus = typeof focusParam === "string" ? focusParam : undefined;
   const { userId } = await auth();
   if (!userId) redirect("/");
 
@@ -49,17 +60,21 @@ export default async function PrepTab({ params }: { params: Promise<{ id: string
   ]);
 
   return (
-    <QuestionList
-      answeredIds={[...answers.keys()]}
-      questions={questions.map((q) => ({
-        id: q.id,
-        type: q.type as QuestionType,
-        text: q.text,
-        likely: q.likely,
-        whyTheyAsk: q.whyTheyAsk,
-        frame: q.frame,
-        evidence: q.evidenceBulletIds.map((bid) => bulletTexts.get(bid) ?? "").filter(Boolean),
-      }))}
-    />
+    <>
+      <NextRoundStrip clerkUserId={userId} analysisId={id} />
+      <QuestionList
+        initialTab={focus}
+        answeredIds={[...answers.keys()]}
+        questions={questions.map((q) => ({
+          id: q.id,
+          type: q.type as QuestionType,
+          text: q.text,
+          likely: q.likely,
+          whyTheyAsk: q.whyTheyAsk,
+          frame: q.frame,
+          evidence: q.evidenceBulletIds.map((bid) => bulletTexts.get(bid) ?? "").filter(Boolean),
+        }))}
+      />
+    </>
   );
 }

@@ -1793,6 +1793,45 @@ delivered once even when the route is called twice concurrently; a done or cance
 nothing; a notification shows no notes and opens the posting's prep; a second member cannot read or
 tick another's rounds (RLS); `ai_runs` does not move.
 
+### F29.1 — Round types, countdown and follow-up events
+
+The member tells us **which round** they are preparing for and **when**. `interview_rounds.kind`
+(`round_kind`): Screening call · L1 · L2 · L3 (technical) · DSA / Coding · System design (HLD) ·
+Low-level design · Behavioural · Hiring manager · HR / Offer · Take-home · Other. Their choice,
+never inferred. The kind supplies the default name ("L2 · Technical" — the name field is optional),
+the reminder's wording ("3 days to your system design round at Acme") and **where a reminder or
+"Prepare" button lands** — `prepTarget(kind)`, a pointer into surfaces the analysis already has:
+
+| Kind | Opens |
+|---|---|
+| System design | Prep → System design family (`?focus=system_design`) |
+| L1 / L2 / L3 / LLD | Prep → Technical family |
+| DSA / Take-home | Rapid prep → Code |
+| Behavioural / Hiring manager | Prep → Behavioural family |
+| Screening / HR | Prep → Most likely |
+| Other | Prep |
+
+`?focus` honours only a known family key; anything else opens All. Nothing is generated for a kind
+— no model call, no tokens (N13 applied).
+
+**Events.** Reminders now count the member down and check in afterwards (`reminder_lead`):
+a week before · 3 days before · a day before · **the morning of** (8 AM in the round's own zone,
+DST-safe, and only when that leaves ≥90 minutes — a 9 AM round gets the hour-before instead) ·
+an hour before · 15 minutes before · **after the round** ("How did L2 go?" two hours after the
+start, opening the Rounds tab to mark it done or add the next one). Defaults: 3 days, a day, the
+morning of, an hour, after. Events whose moment has passed are not written; the after-round nudge
+is skipped if the round was already marked done or called off. Copy is computed at send time from
+calendar days in the round's zone ("Tomorrow: …", "Today: …", "in 3 hours").
+
+**Where it shows.** The Rounds tab (type chips, date and time, reminder choices, a countdown tag
+per round); a **Preparing for** strip above the Prep tab naming the next round, its countdown and
+the surface that fits it; and an **Upcoming rounds** card at the top of History listing every round
+still ahead across postings.
+
+**Acceptance:** adding an L2 round five days out with the defaults writes five reminder rows in
+time order; a system-design reminder opens Prep on the System design family; the after-round nudge
+arrives only for a round not yet marked; a round at 09:00 local has no morning-of row.
+
 ## 10. AI layer
 
 | Purpose | Function | Schema | Tier | Retry |

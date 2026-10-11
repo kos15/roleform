@@ -62,8 +62,10 @@ select status_code, content from net._http_response order by created desc limit 
    Safari tab; Safari tabs cannot receive pushes.
 3. In the installed app: Profile → *Turn on notifications* → allow → *Send a test*. It should land
    within seconds.
-4. On an analysis → **Rounds** → add a round 20 minutes out with *15 minutes before* ticked. The
-   reminder should arrive within five minutes of its due time, show no notes, and open the prep tab.
+4. On an analysis → **Rounds** → pick a type (say *System design*), set it 20 minutes out with
+   *15 minutes before* ticked. The reminder should arrive within five minutes of its due time, show
+   no notes, and open Prep on the System design family. Two hours after the start, the *after*
+   nudge should arrive and open the Rounds tab.
 5. Airplane mode, then navigate: the offline page shows, not a browser error.
 
 ## Troubleshooting

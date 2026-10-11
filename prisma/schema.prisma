@@ -1679,14 +1679,40 @@ enum InterviewRoundStatus {
   @@map("interview_round_status")
 }
 
-/// How long before the round a reminder fires. An enum, not a free number of
-/// minutes: the copy, the picker and the CHECK all agree on three values.
+/// When a reminder fires relative to the round. An enum, not a free number of
+/// minutes: the copy, the picker and the planner all agree on these values.
+/// `morning_of` is 8 AM in the round's own zone; `after_round` is the one lag —
+/// the "how did it go?" nudge two hours after the start (F29.1).
 enum ReminderLead {
   day_before
   hour_before
   quarter_hour_before
+  week_before
+  three_days_before
+  morning_of
+  after_round
 
   @@map("reminder_lead")
+}
+
+/// What the member is preparing for (F29.1). Their choice; nothing infers it.
+/// Drives the default name, the reminder's wording and which prep surface a
+/// reminder opens (lib/domain/reminders.ts#prepTarget).
+enum RoundKind {
+  screening
+  l1
+  l2
+  l3
+  dsa
+  system_design
+  lld
+  behavioral
+  managerial
+  hr
+  take_home
+  other
+
+  @@map("round_kind")
 }
 
 enum ReminderStatus {
@@ -1709,6 +1735,8 @@ model InterviewRound {
   analysisId  String               @map("analysis_id") @db.Uuid
   /// "Round 2 · System design". 1–120 characters (CHECK).
   label       String
+  /// L1, L2, system design, LLD… (F29.1). `other` for rows made before kinds.
+  kind        RoundKind            @default(other)
   scheduledAt DateTime             @map("scheduled_at") @db.Timestamptz
   /// The IANA zone the member scheduled it in, so a pushed "tomorrow at 3pm"
   /// is their 3pm and not the server's. Validated on write (Intl), not here.
