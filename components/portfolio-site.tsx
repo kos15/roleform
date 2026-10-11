@@ -34,16 +34,17 @@ export function PortfolioSite({
   data,
   onPick,
   motion = true,
+  drop,
   ...props
-}: SiteProps & { data: SiteData; onPick?: (slot: string) => void; motion?: boolean }) {
+}: SiteProps & { data: SiteData; onPick?: (slot: string) => void; motion?: boolean; drop?: string[] }) {
   const host = useRef<HTMLDivElement>(null);
   const pickRef = useRef(onPick);
   pickRef.current = onPick;
 
   const html = useMemo(
-    () => renderDc(SITE_TEMPLATE, siteVals(data, props), Boolean(onPick)),
+    () => renderDc(SITE_TEMPLATE, siteVals(data, props), Boolean(onPick), drop),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, props.theme, props.vw, props.hints, props.focus, props.showEmail, props.showPhone, props.showLinks, props.photos, Boolean(onPick)],
+    [data, props.theme, props.vw, props.hints, props.focus, props.showEmail, props.showPhone, props.showLinks, props.photos, Boolean(onPick), drop?.join()],
   );
 
   // One shadow root per host, with its click handling.

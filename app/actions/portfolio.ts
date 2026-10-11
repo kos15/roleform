@@ -9,7 +9,7 @@ import { getProfile } from "@/lib/db/queries/profile";
 import { StoredResumeSchema } from "@/lib/ai/schemas/resume-json";
 import { PortfolioChoicesSchema } from "@/lib/ai/schemas/portfolio";
 import { portfolioMaterials } from "@/lib/domain/portfolio";
-import { siteData } from "@/lib/domain/portfolio-site";
+import { EXPERIENCE_IDS, siteData, tuneSite } from "@/lib/domain/portfolio-site";
 import { exportPortfolioHtml } from "@/lib/render/portfolio/export";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
@@ -57,14 +57,14 @@ export async function buildPortfolio(analysisId: string, rawChoices: unknown): P
     requirements,
   });
   const c = choices.data;
-  const html = exportPortfolioHtml(siteData(materials), {
+  const html = exportPortfolioHtml(tuneSite(siteData(materials), c), {
     theme: c.style,
     focus: materials.target ? c.focus : "broad",
     showEmail: c.showEmail && Boolean(materials.email),
     showPhone: c.showPhone && Boolean(materials.phone),
     showLinks: c.showLinks && materials.links.length > 0,
     photos: {},
-  });
+  }, c.showExperience ? [] : EXPERIENCE_IDS);
 
   try {
     await db.portfolioSite.create({

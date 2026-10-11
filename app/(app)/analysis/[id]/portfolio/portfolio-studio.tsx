@@ -8,7 +8,7 @@ import { buildPortfolio } from "@/app/actions/portfolio";
 import { PORTFOLIO_BRIEF } from "@/lib/content/portfolio-brief";
 import { PORTFOLIO_STYLES, type PortfolioChoices } from "@/lib/ai/schemas/portfolio";
 import { STYLE_LABEL, buildCuratedPrompt, type PortfolioMaterials } from "@/lib/domain/portfolio";
-import type { PortfolioPhotos, SiteData } from "@/lib/domain/portfolio-site";
+import { EXPERIENCE_IDS, tuneSite, type PortfolioPhotos, type SiteData } from "@/lib/domain/portfolio-site";
 import { SITE_FONTS_HREF } from "@/lib/render/portfolio/template";
 import { exportPortfolioHtml } from "@/lib/render/portfolio/export";
 
@@ -168,7 +168,10 @@ export function PortfolioStudio({
   const reduce = useReducedMotion();
 
   /* ------------------------------------------------------------- content */
-  const projects = siteData.projects[choices.focus];
+  // The profile's page, with the member's optional fine-tuning applied.
+  const tuned = useMemo(() => tuneSite(siteData, choices), [siteData, choices]);
+  const drop = choices.showExperience ? undefined : EXPERIENCE_IDS;
+  const projects = tuned.projects[choices.focus];
   const look = STYLE_LABEL[choices.style];
   const hasPortrait = Boolean(photos.portrait);
   const shotCount = projects.filter((p) => photos[p.id]).length;
@@ -425,7 +428,7 @@ export function PortfolioStudio({
                     >
                       <WhenNear root={scrollerRef} height={280}>
                         <div style={{ zoom, width: DESK }}>
-                          <PortfolioSite data={siteData} theme={id} vw={DESK} {...siteProps} />
+                          <PortfolioSite data={tuned} theme={id} vw={DESK} drop={drop} {...siteProps} />
                         </div>
                       </WhenNear>
                     </div>
@@ -505,7 +508,7 @@ export function PortfolioStudio({
               </div>
               <div ref={prevRef} style={{ height: "min(72vh,680px)", overflowY: "auto", overflowX: "hidden", background: look.ground }}>
                 <div style={{ zoom: prevW ? prevW / DESK : 0.6, width: DESK }}>
-                  <PortfolioSite data={siteData} theme={choices.style} vw={DESK} hints onPick={open} {...siteProps} />
+                  <PortfolioSite data={tuned} theme={choices.style} vw={DESK} hints onPick={open} drop={drop} {...siteProps} />
                 </div>
               </div>
             </div>
@@ -514,7 +517,7 @@ export function PortfolioStudio({
               <div style={{ width: "min(100%,364px)", height: "min(78vh,740px)", padding: 12, borderRadius: 54, background: "#2B1410", boxShadow: "0 30px 60px -30px rgb(74 13 13 / .55)" }}>
                 <div ref={prevRef} style={{ height: "100%", borderRadius: 42, overflowY: "auto", overflowX: "hidden", background: look.ground }}>
                   <div style={{ zoom: prevW ? prevW / PHONE : 0.86, width: PHONE }}>
-                    <PortfolioSite data={siteData} theme={choices.style} vw={PHONE} hints onPick={open} {...siteProps} />
+                    <PortfolioSite data={tuned} theme={choices.style} vw={PHONE} hints onPick={open} drop={drop} {...siteProps} />
                   </div>
                 </div>
               </div>
@@ -721,8 +724,9 @@ export function PortfolioStudio({
                 style={{ ...inputStyle, height: "auto", padding: "12px 16px", fontWeight: 500, lineHeight: 1.6, resize: "vertical" }}
               />
             </label>
+            <FineTune site={siteData} choices={choices} set={set} />
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55, color: MUTED }}>
-              The build rewrites the copy from these answers. Any figure or link on the page must still come from your profile or these notes.
+              Everything here is optional — anything you leave blank falls back to your profile. Any figure or link on the page still comes from your profile.
             </p>
           </div>
 
@@ -784,7 +788,7 @@ export function PortfolioStudio({
                         onClick={() =>
                           download(
                             "index.html",
-                            exportPortfolioHtml(siteData, { theme: choices.style, ...siteProps }),
+                            exportPortfolioHtml(tuned, { theme: choices.style, ...siteProps }, drop),
                             "text/html",
                           )
                         } className="pf-solid" style={{ ...solid, minHeight: 44, padding: "0 22px", fontSize: 15 }}>
@@ -854,6 +858,157 @@ const outline: CSSProperties = { display: "inline-flex", alignItems: "center", g
 const ghost: CSSProperties = { borderRadius: 999, border: 0, background: "transparent", color: INK, fontWeight: 700 };
 const fieldLabel: CSSProperties = { display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 800 };
 const inputStyle: CSSProperties = { height: 48, borderRadius: 14, border: "1.5px solid var(--color-line)", background: "var(--color-bg)", padding: "0 16px", fontSize: 15, fontWeight: 600, color: INK, outline: "none" };
+
+/**
+ * The optional fine-tuning: words the member wants in place of the profile's,
+ * which work leads, which sections and roles appear, which skills show. Each
+ * control starts on "use my profile" and says what that default is.
+ */
+function FineTune({
+  site,
+  choices,
+  set,
+}: {
+  site: SiteData;
+  choices: PortfolioChoices;
+  set: <K extends keyof PortfolioChoices>(key: K, value: PortfolioChoices[K]) => void;
+}) {
+  const [open, setOpen] = useState(
+    Boolean(choices.headline || choices.pitch || choices.location || !choices.showLocation || choices.featured.length || !choices.showExperience || choices.hiddenRoles.length || choices.skills.length),
+  );
+  const toggleIn = (list: string[], id: string, max: number) =>
+    list.includes(id) ? list.filter((x) => x !== id) : list.length >= max ? list : [...list, id];
+  const sub: CSSProperties = { margin: "0 0 8px", fontSize: 13, fontWeight: 800 };
+  const hint: CSSProperties = { margin: "-2px 0 8px", fontSize: 12.5, lineHeight: 1.5, color: MUTED };
+
+  return (
+    <div style={{ borderTop: "1px solid var(--color-line)", paddingTop: 16 }}>
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="hover-tint"
+        style={{ ...ghost, display: "inline-flex", alignItems: "center", gap: 8, minHeight: 40, padding: "0 14px", marginLeft: -14, fontSize: 14.5, fontWeight: 800 }}
+      >
+        <Svg d={open ? "m18 15-6-6-6 6" : "m6 9 6 6 6-6"} size={16} />
+        Fine-tune the page <span style={{ fontWeight: 600, color: MUTED }}>(all optional)</span>
+      </button>
+      {open ? (
+        <div className="rise-in" style={{ display: "flex", flexDirection: "column", gap: 18, marginTop: 14 }}>
+          <label style={fieldLabel}>
+            Title under your name
+            <input value={choices.headline} onChange={(e) => set("headline", e.target.value)} maxLength={120} placeholder={site.headline || "e.g. Frontend engineer"} className="pf-input" style={inputStyle} />
+          </label>
+          <label style={fieldLabel}>
+            Your one-line pitch, in your words
+            <input value={choices.pitch} onChange={(e) => set("pitch", e.target.value)} maxLength={200} placeholder={site.pitch.this_role || "What you do, and for whom"} className="pf-input" style={inputStyle} />
+          </label>
+          <div>
+            <label style={fieldLabel}>
+              Location
+              <input
+                value={choices.location}
+                onChange={(e) => set("location", e.target.value)}
+                maxLength={80}
+                disabled={!choices.showLocation}
+                placeholder={site.location || "e.g. Remote · Pune, India"}
+                className="pf-input"
+                style={{ ...inputStyle, opacity: choices.showLocation ? 1 : 0.5 }}
+              />
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, fontSize: 14, fontWeight: 600 }}>
+              <input type="checkbox" checked={!choices.showLocation} onChange={(e) => set("showLocation", !e.target.checked)} style={{ width: 18, height: 18, margin: 0, accentColor: INK }} />
+              Don&rsquo;t show my location
+            </label>
+          </div>
+
+          {site.pool.length > 0 ? (
+            <div>
+              <p style={sub}>Work to feature first (up to 3)</p>
+              <p style={hint}>Pick in the order you want them. None picked: chosen for who the page is for.</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {site.pool.map((p) => {
+                  const at = choices.featured.indexOf(p.id);
+                  return (
+                    <Chip key={p.id} on={at >= 0} onClick={() => set("featured", toggleIn(choices.featured, p.id, 3))} badge={at >= 0 ? String(at + 1) : undefined}>
+                      {p.name}
+                      {p.org ? <span style={{ fontWeight: 600, opacity: 0.7 }}> · {p.org}</span> : null}
+                    </Chip>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          <div>
+            <p style={sub}>Experience</p>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, fontSize: 14, fontWeight: 600 }}>
+              <input type="checkbox" checked={choices.showExperience} onChange={(e) => set("showExperience", e.target.checked)} style={{ width: 18, height: 18, margin: 0, accentColor: INK }} />
+              Show an experience section
+            </label>
+            {choices.showExperience && site.roles.length > 0 ? (
+              <>
+                <p style={hint}>Roles on the page — tap one to leave it off.</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {site.roles.map((r) => {
+                    const on = !choices.hiddenRoles.includes(r.id);
+                    return (
+                      <Chip key={r.id} on={on} onClick={() => set("hiddenRoles", toggleIn(choices.hiddenRoles, r.id, 20))} icon={on ? ICON.check : ICON.plus}>
+                        {[r.title, r.org].filter(Boolean).join(" · ")}
+                      </Chip>
+                    );
+                  })}
+                </div>
+              </>
+            ) : null}
+          </div>
+
+          {site.allSkills.length > 0 ? (
+            <div>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                <p style={sub}>Skills to show (up to 16)</p>
+                {choices.skills.length ? (
+                  <button type="button" onClick={() => set("skills", [])} className="hover-tint" style={{ ...ghost, padding: "4px 10px", fontSize: 13 }}>
+                    Use my profile&rsquo;s
+                  </button>
+                ) : null}
+              </div>
+              <p style={hint}>Pick in the order you want them. None picked: your profile&rsquo;s, the posting&rsquo;s first.</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {site.allSkills.map((name) => {
+                  const at = choices.skills.indexOf(name);
+                  return (
+                    <Chip key={name} on={at >= 0} onClick={() => set("skills", toggleIn(choices.skills, name, 16))} badge={at >= 0 ? String(at + 1) : undefined}>
+                      {name}
+                    </Chip>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function Chip({ on, onClick, badge, icon, children }: { on: boolean; onClick: () => void; badge?: string; icon?: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      style={{ display: "inline-flex", alignItems: "center", gap: 7, minHeight: 38, padding: "0 14px", borderRadius: 999, border: `1.5px solid ${INK}`, fontWeight: 700, fontSize: 13.5, textAlign: "left", background: on ? INK : "transparent", color: on ? MARIGOLD : INK }}
+    >
+      {badge ? (
+        <span style={{ display: "grid", placeItems: "center", width: 20, height: 20, borderRadius: "50%", background: MARIGOLD, color: INK, fontSize: 11.5, fontWeight: 800 }}>{badge}</span>
+      ) : icon ? (
+        <Svg d={icon} size={14} stroke={2.6} />
+      ) : null}
+      <span>{children}</span>
+    </button>
+  );
+}
 
 function Step({ n }: { n: number }) {
   return (

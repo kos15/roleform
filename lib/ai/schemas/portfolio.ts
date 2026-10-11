@@ -14,7 +14,7 @@ import { PORTFOLIO_LOOKS } from "@/lib/domain/portfolio-site";
  * fabrication check's source text, never something the check ignores.
  */
 
-/** The nine looks the studio renders (lib/render/portfolio/template.ts). */
+/** The fourteen looks the studio renders (lib/render/portfolio/template.ts). */
 export const PORTFOLIO_STYLES = PORTFOLIO_LOOKS;
 export type PortfolioStyle = (typeof PORTFOLIO_STYLES)[number];
 
@@ -28,6 +28,28 @@ export const PortfolioChoicesSchema = z.object({
   showEmail: z.boolean(),
   showPhone: z.boolean(),
   showLinks: z.boolean(),
+
+  /*
+   * Fine-tuning. Every field is optional and empty means "use the profile":
+   * a member who answers nothing gets the page their profile implies. The
+   * text fields are the member's own words about themselves (§3: theirs to
+   * write, never ours); the lists only select and order what the profile has.
+   */
+  /** Their title on the page, e.g. "Frontend engineer". Empty: the profile's. */
+  headline: z.string().trim().max(120).default(""),
+  /** One line under the name, in their words. Empty: the summary's first sentence. */
+  pitch: z.string().trim().max(200).default(""),
+  /** Where they are, as they want it shown. Empty: the profile's. */
+  location: z.string().trim().max(80).default(""),
+  showLocation: z.boolean().default(true),
+  /** Up to three work items to feature, in order (ids from `siteData().pool`). Empty: chosen for the focus. */
+  featured: z.array(z.string().max(12)).max(3).default([]),
+  /** Show the experience section at all. */
+  showExperience: z.boolean().default(true),
+  /** Roles to leave off the page (ids from `siteData().roles`). */
+  hiddenRoles: z.array(z.string().max(12)).max(20).default([]),
+  /** Skills to show, in order. Empty: the profile's, posting-relevant first. */
+  skills: z.array(z.string().max(80)).max(16).default([]),
 });
 
 export type PortfolioChoices = z.infer<typeof PortfolioChoicesSchema>;
@@ -41,4 +63,12 @@ export const DEFAULT_CHOICES: PortfolioChoices = {
   showEmail: true,
   showPhone: false,
   showLinks: true,
+  headline: "",
+  pitch: "",
+  location: "",
+  showLocation: true,
+  featured: [],
+  showExperience: true,
+  hiddenRoles: [],
+  skills: [],
 };

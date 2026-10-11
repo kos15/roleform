@@ -26,8 +26,8 @@ const EXPORT_CSS = [
   "@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}",
 ].join("\n");
 
-export function exportPortfolioHtml(data: SiteData, props: Omit<SiteProps, "vw" | "hints">): string {
-  const body = renderDc(SITE_TEMPLATE, siteVals(data, { ...props, vw: 1280, hints: false }), false);
+export function exportPortfolioHtml(data: SiteData, props: Omit<SiteProps, "vw" | "hints">, drop: string[] = []): string {
+  const body = renderDc(SITE_TEMPLATE, siteVals(data, { ...props, vw: 1280, hints: false }), false, drop);
   const title = [data.name, data.headline].filter(Boolean).join(" — ");
   return [
     "<!doctype html>",

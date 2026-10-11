@@ -198,6 +198,17 @@ function targetText(m: PortfolioMaterials, c: PortfolioChoices): string {
   return [`${role}. Its main requirements:`, ...m.target.requirements.map((r) => `- ${r}`)].join("\n");
 }
 
+/** A pool id (`p0` a project, `r1` a role — lib/domain/portfolio-site.ts) as the reader would name it. */
+function workName(m: PortfolioMaterials, id: string): string {
+  const i = Number(id.slice(1));
+  if (id[0] === "p") return m.projects[i]?.name ?? "";
+  if (id[0] === "r") {
+    const r = m.roles[i];
+    return r ? [r.position, r.employer].filter(Boolean).join(" at ") : "";
+  }
+  return "";
+}
+
 function instructionsText(m: PortfolioMaterials, c: PortfolioChoices): string {
   const style = STYLE_LABEL[c.style];
   const lines = [
@@ -208,6 +219,18 @@ function instructionsText(m: PortfolioMaterials, c: PortfolioChoices): string {
   ];
   if (c.emphasis) lines.push(`Emphasise: ${c.emphasis}`);
   if (c.avoid) lines.push(`Leave out (confidential or outdated): ${c.avoid}`);
+  if (c.headline) lines.push(`Title to show under my name: ${c.headline}`);
+  if (c.pitch) lines.push(`My one-line pitch, in my words — use it as written: ${c.pitch}`);
+  if (!c.showLocation) lines.push("Do not show my location.");
+  else if (c.location) lines.push(`Location to show: ${c.location}`);
+  const featured = c.featured.map((id) => workName(m, id)).filter(Boolean);
+  if (featured.length) lines.push(`Feature this work, in this order: ${featured.join("; ")}.`);
+  if (!c.showExperience) lines.push("Leave out the experience section.");
+  else {
+    const hidden = c.hiddenRoles.map((id) => workName(m, id)).filter(Boolean);
+    if (hidden.length) lines.push(`Leave these roles off the page: ${hidden.join("; ")}.`);
+  }
+  if (c.skills.length) lines.push(`Skills to show, in this order: ${c.skills.join(", ")}.`);
   lines.push(
     `Contact to show: ${[c.showEmail && m.email ? "email" : "", c.showPhone && m.phone ? "phone" : "", c.showLinks && m.links.length ? "the links above" : ""].filter(Boolean).join(", ") || "none listed — ask me"}.`,
   );

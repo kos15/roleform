@@ -886,7 +886,7 @@ re-billing. Master profile edits never rewrite past analyses (§6.2 invariant 4)
 ### F11 — Profile
 
 One screen over the whole corpus, because the corpus is one thing. Two columns: the token meter
-(F19), identity and contact, summary, skills, experience, then education / certifications /
+(F19), identity and contact, summary, skills, experience, personal projects, then education / certifications /
 languages / preferences; aside carries profile strength and the checks that explain it. The AI
 layer writes to none of it (N3) — that is what makes the fabrication guard mean anything.
 
@@ -898,6 +898,12 @@ queries and has no business in a bundle.
 **Everything here is editable.** Education and certifications were read-only cards; a page whose
 whole argument is "a draft can only say what exists here" cannot have sections you are unable to
 put anything into. Both take add and remove, and experience takes "Add a role".
+
+**Personal projects.** Side projects, open source and coursework, edited like a role: name, link,
+dates, a one-line description and bullets. They are `resume.projects`, so their bullets enter the
+corpus as `experience_bullets` with scope `project` — a tailored résumé may cite them (N1), prep
+may draw evidence from them, and the portfolio can feature them. A project still being typed (no
+name yet, an empty bullet) is left out of the save rather than failing it.
 
 **Skills collapse.** The heading is a disclosure carrying the count; collapsed, the list is one row
 of chips coloured by evidence rather than by level, on the same rule the open rows state. Open is
@@ -1681,7 +1687,7 @@ real page rendered from their profile in a shadow root, isolated from the app's 
 template verbatim; `lib/domain/portfolio-site.ts` maps the excerpt to it — selected and ordered,
 never written); **2 Add photos** — an optional portrait and one image per shown project, kept in the
 browser (downscaled data URLs, never uploaded; ticking "also use as my profile photo" sends the
-portrait to Clerk), named in the curated prompt; **3 A few answers**; **4 Get your page** — once the build has run, "Download index.html" is the currently selected look rendered from the profile with the photos embedded, the design's export stylesheet and motion inline (`lib/render/portfolio/export.ts`); photos persist in this browser only (`localStorage`). A sticky
+portrait to Clerk), named in the curated prompt; **3 A few answers** — plus an optional "Fine-tune the page" panel: title, one-line pitch (the member's own words), location or none, up to three work items to feature in order (from their personal projects and roles), show or hide the experience section and individual roles, and which skills show in what order. Every field defaults to the profile; lists only select and order what the profile has (`tuneSite`, `lib/domain/portfolio-site.ts`), and a hidden section is dropped with its links by the renderer; **4 Get your page** — once the build has run, "Download index.html" is the currently selected look rendered from the profile with the photos embedded, the design's export stylesheet and motion inline (`lib/render/portfolio/export.ts`); photos persist in this browser only (`localStorage`). A sticky
 live preview (desktop / phone) shows the chosen look; dashed slots open the file picker. Nothing is
 generated or retouched.
 

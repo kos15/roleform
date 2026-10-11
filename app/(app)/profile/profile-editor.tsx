@@ -52,6 +52,7 @@ export function ProfileEditor({
   const [resume, setResume] = useState<StoredResume>(initial);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [openRole, setOpenRole] = useState<number | null>(0);
+  const [openProject, setOpenProject] = useState<number | null>(null);
   const [newSkill, setNewSkill] = useState("");
   // Open by default. Collapsed is for someone who has read their skills and is
   // here for something else — it is not the state you should have to leave.
@@ -73,7 +74,14 @@ export function ProfileEditor({
   }, [resume]);
 
   async function save(next: StoredResume) {
-    const result = await updateProfile(next);
+    // A project mid-entry (no name yet, an empty bullet) is not a fact yet:
+    // save the rest of the document rather than fail validation on it.
+    const result = await updateProfile({
+      ...next,
+      projects: next.projects
+        .filter((p) => p.name.trim())
+        .map((p) => ({ ...p, highlights: p.highlights.filter((h) => h.trim()) })),
+    });
     setStatus(result.ok ? "saved" : "error");
   }
 
@@ -473,6 +481,158 @@ export function ProfileEditor({
                       >
                         <Plus className="lucide h-4 w-4" /> Add a bullet
                       </Button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+
+        {/* Personal projects: side work, open source, coursework. Their bullets
+            join the corpus (scope "project") exactly like a role's, so a
+            tailored résumé, interview prep and the portfolio can all cite them. */}
+        <Section
+          title="Personal projects"
+          aside="Side projects, open source, coursework — evidence like any role"
+          action={
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                patch((r) => ({
+                  ...r,
+                  projects: [
+                    ...r.projects,
+                    { name: "", description: "", url: "", startDate: thisMonth(), endDate: null, highlights: [] },
+                  ],
+                }));
+                setOpenProject(resume.projects.length);
+              }}
+            >
+              <Plus className="lucide h-4 w-4" /> Add a project
+            </Button>
+          }
+        >
+          {resume.projects.length === 0 ? (
+            <Empty>
+              Nothing here yet. A project you built yourself is often the strongest proof of a skill no
+              role has let you use.
+            </Empty>
+          ) : null}
+          <div className="flex flex-col gap-2.5">
+            {resume.projects.map((project, pi) => {
+              const open = openProject === pi;
+              return (
+                <div key={pi} className="overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-bg)]">
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() => setOpenProject(open ? null : pi)}
+                    className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[0.95rem] font-semibold">{project.name || "Untitled project"}</span>
+                      <span className="block text-xs text-[var(--color-text-muted)]">
+                        {[project.description, project.startDate ? period(project.startDate, project.endDate) : ""]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </span>
+                    <ChevronDown
+                      className="lucide h-4 w-4 flex-none text-[var(--color-text-muted)] transition-transform duration-200"
+                      style={{ transform: open ? "rotate(180deg)" : undefined }}
+                    />
+                  </button>
+
+                  {open ? (
+                    <div className="rise-in px-4 pb-4">
+                      <div className="mb-3.5 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(150px,100%),1fr))]">
+                        <Labelled label="Project name">
+                          <Input value={project.name} onChange={(e) => patchProject(patch, pi, { name: e.target.value })} />
+                        </Labelled>
+                        <Labelled label="Link (repo or demo)">
+                          <Input
+                            value={project.url}
+                            inputMode="url"
+                            placeholder="https://"
+                            onChange={(e) => patchProject(patch, pi, { url: e.target.value })}
+                          />
+                        </Labelled>
+                        <Labelled label="Started">
+                          <DateInput value={project.startDate} onCommit={(next) => patchProject(patch, pi, { startDate: next })} />
+                        </Labelled>
+                        <Labelled label="Ended">
+                          <DateInput value={project.endDate} onCommit={(next) => patchProject(patch, pi, { endDate: next })} />
+                        </Labelled>
+                      </div>
+                      <div className="mb-3.5">
+                        <Labelled label="One line on what it is">
+                          <Input
+                            value={project.description}
+                            placeholder="e.g. A budgeting app for shared flats, built with Next.js"
+                            onChange={(e) => patchProject(patch, pi, { description: e.target.value })}
+                          />
+                        </Labelled>
+                      </div>
+
+                      <div className="eyebrow mb-2">Bullets — what you did and what came of it</div>
+                      <div className="flex flex-col gap-2.5">
+                        {project.highlights.map((highlight, hi) => (
+                          <div key={hi} className="flex items-start gap-2">
+                            <div className="min-w-0 flex-1">
+                              <Textarea
+                                aria-label={`Project bullet ${hi + 1}`}
+                                rows={2}
+                                className="text-[0.85rem] leading-[1.6]"
+                                value={highlight}
+                                onChange={(e) =>
+                                  patchProjectHighlights(patch, pi, (hs) => hs.map((h, j) => (j === hi ? e.target.value : h)))
+                                }
+                              />
+                              <EvidenceLabel count={evidenceByPath[`projects.${pi}.highlights.${hi}`] ?? 0} />
+                            </div>
+                            <div className="flex flex-none flex-col gap-1">
+                              <IconButton
+                                label="Move bullet up"
+                                disabled={hi === 0}
+                                onClick={() => patchProjectHighlights(patch, pi, (hs) => swap(hs, hi, hi - 1))}
+                              >
+                                <ArrowUp className="lucide h-3.5 w-3.5" />
+                              </IconButton>
+                              <IconButton
+                                label="Move bullet down"
+                                disabled={hi === project.highlights.length - 1}
+                                onClick={() => patchProjectHighlights(patch, pi, (hs) => swap(hs, hi, hi + 1))}
+                              >
+                                <ArrowDown className="lucide h-3.5 w-3.5" />
+                              </IconButton>
+                              <IconButton
+                                label="Remove bullet"
+                                onClick={() => patchProjectHighlights(patch, pi, (hs) => hs.filter((_, j) => j !== hi))}
+                              >
+                                <X className="lucide h-3.5 w-3.5" />
+                              </IconButton>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => patchProjectHighlights(patch, pi, (hs) => [...hs, ""])}>
+                          <Plus className="lucide h-4 w-4" /> Add a bullet
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            patch((r) => ({ ...r, projects: r.projects.filter((_, j) => j !== pi) }));
+                            setOpenProject(null);
+                          }}
+                        >
+                          <X className="lucide h-4 w-4" /> Remove project
+                        </Button>
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -1184,6 +1344,25 @@ function patchCertificate(
   patch((r) => ({
     ...r,
     certificates: r.certificates.map((c, j) => (j === i ? { ...c, ...next } : c)),
+  }));
+}
+
+function patchProject(
+  patch: (fn: (r: StoredResume) => StoredResume) => void,
+  pi: number,
+  next: Partial<StoredResume["projects"][number]>,
+) {
+  patch((r) => ({ ...r, projects: r.projects.map((p, i) => (i === pi ? { ...p, ...next } : p)) }));
+}
+
+function patchProjectHighlights(
+  patch: (fn: (r: StoredResume) => StoredResume) => void,
+  pi: number,
+  fn: (highlights: string[]) => string[],
+) {
+  patch((r) => ({
+    ...r,
+    projects: r.projects.map((p, i) => (i === pi ? { ...p, highlights: fn(p.highlights) } : p)),
   }));
 }
 

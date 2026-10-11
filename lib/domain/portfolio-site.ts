@@ -34,7 +34,7 @@ export type PortfolioFocus = "this_role" | "broad";
 /** Photo slots: `portrait`, or a project id. Values are data: URLs. */
 export type PortfolioPhotos = Record<string, string>;
 
-interface SiteProject {
+export interface SiteProject {
   id: string;
   name: string;
   org: string;
@@ -61,10 +61,14 @@ export interface SiteData {
   phone: string;
   links: Array<{ label: string; url: string }>;
   highlight: { where: string; stat: string; label: string };
-  roles: Array<{ title: string; org: string; dates: string; site: string[] }>;
+  roles: Array<{ id: string; title: string; org: string; dates: string; site: string[] }>;
   /** Ordered for each focus — the look shows exactly three. */
   projects: Record<PortfolioFocus, SiteProject[]>;
+  /** Every work item a look could feature: the member's projects, then their roles. */
+  pool: SiteProject[];
   skills: string[];
+  /** The whole skill list, for the studio's picker. */
+  allSkills: string[];
   education: string;
   target: { title: string; company: string } | null;
 }
@@ -146,6 +150,7 @@ export function siteData(m: PortfolioMaterials): SiteData {
     bullets: r.bullets.slice(1, 3),
   }));
   const pool = [...fromProjects, ...fromRoles];
+  const realPool = [...pool];
   while (pool.length < 3) {
     pool.push({ id: `x${pool.length}`, name: m.headline || m.name, org: "", desc: m.summary, stat: "", statLabel: "", tags: [], bullets: [] });
   }
@@ -190,9 +195,11 @@ export function siteData(m: PortfolioMaterials): SiteData {
     phone: m.phone,
     links: m.links,
     highlight: hl,
-    roles: m.roles.map((r) => ({ title: r.position, org: r.employer, dates: r.dates, site: r.bullets.slice(0, 3) })),
+    roles: m.roles.map((r, i) => ({ id: `r${i}`, title: r.position, org: r.employer, dates: r.dates, site: r.bullets.slice(0, 3) })),
     projects: { this_role: thisRole, broad },
-    skills: m.skills.slice(0, 12),
+    pool: realPool,
+    skills: ranked.slice(0, 12),
+    allSkills: m.skills,
     education: m.education[0] ?? "",
     target: m.target ? { title: m.target.title, company: m.target.company } : null,
   };
@@ -206,6 +213,45 @@ export function siteData(m: PortfolioMaterials): SiteData {
 function tagsFor(text: string, skills: string[]): string[] {
   return skills.filter((s) => mentions(text, s)).slice(0, 2);
 }
+
+/* ------------------------------------------------------------ fine-tuning */
+
+/** The studio's optional answers that shape the page. Empty means "use the profile". */
+export interface SiteTuning {
+  headline: string;
+  pitch: string;
+  location: string;
+  showLocation: boolean;
+  featured: string[];
+  showExperience: boolean;
+  hiddenRoles: string[];
+  skills: string[];
+}
+
+/**
+ * Apply the member's fine-tuning. Text overrides are their own words; the
+ * lists only select and order items the profile already has — an id or skill
+ * the profile lacks is ignored, never invented.
+ */
+export function tuneSite(D: SiteData, t: SiteTuning): SiteData {
+  const pitch = t.pitch.trim();
+  const featured = t.featured.map((id) => D.pool.find((p) => p.id === id)).filter((p): p is SiteProject => Boolean(p));
+  const order = (list: SiteProject[]) =>
+    featured.length ? [...featured, ...list.filter((p) => !featured.some((f) => f.id === p.id)), ...D.pool.filter((p) => !featured.some((f) => f.id === p.id) && !list.some((l) => l.id === p.id))].slice(0, 3) : list;
+  const skills = t.skills.filter((s) => D.allSkills.includes(s));
+  return {
+    ...D,
+    headline: t.headline.trim() || D.headline,
+    location: t.showLocation ? t.location.trim() || D.location : "",
+    pitch: pitch ? { this_role: pitch, broad: pitch } : D.pitch,
+    projects: { this_role: order(D.projects.this_role), broad: order(D.projects.broad) },
+    roles: t.showExperience ? D.roles.filter((r) => !t.hiddenRoles.includes(r.id)) : [],
+    skills: skills.length ? skills : D.skills,
+  };
+}
+
+/** Element ids a look uses for its experience section, dropped when the member hides it. */
+export const EXPERIENCE_IDS = ["experience", "changelog", "career", "log"];
 
 /* ------------------------------------------------- the design's renderVals */
 

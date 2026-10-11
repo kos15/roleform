@@ -80,23 +80,49 @@ function interp(raw: string, scope: Scope): string {
   });
 }
 
-function render(nodes: Node[], scope: Scope, interactive: boolean, out: string[]): void {
+interface Opts {
+  interactive: boolean;
+  /** Section ids to leave out, with every link to them. */
+  drop: Set<string>;
+}
+
+const HEADING = /^h[1-6]$/;
+
+function render(nodes: Node[], scope: Scope, o: Opts, out: string[]): void {
+  // A dropped heading that is only a marker (`<h2 id="experience">` in a flat
+  // page) takes its following siblings with it, up to the next heading.
+  let skipping = false;
   for (const n of nodes) {
+    if (skipping) {
+      if (typeof n !== "string" && HEADING.test(n.tag)) skipping = false;
+      else continue;
+    }
     if (typeof n === "string") {
       out.push(interp(n, scope));
       continue;
     }
     const attr = (name: string) => n.attrs.find(([k]) => k === name)?.[1] ?? "";
+    if (o.drop.size) {
+      const id = interp(attr("id"), scope);
+      if (id && o.drop.has(id)) {
+        if (HEADING.test(n.tag)) skipping = true;
+        continue;
+      }
+      if (n.tag === "a") {
+        const href = interp(attr("href"), scope);
+        if (href.startsWith("#") && o.drop.has(href.slice(1))) continue;
+      }
+    }
     if (n.tag === "sc-if") {
       const m = ONE.exec(attr("value"));
-      if (m && lookup(scope, m[1]!)) render(n.kids, scope, interactive, out);
+      if (m && lookup(scope, m[1]!)) render(n.kids, scope, o, out);
       continue;
     }
     if (n.tag === "sc-for") {
       const m = ONE.exec(attr("list"));
       const list = m ? lookup(scope, m[1]!) : null;
       const as = attr("as");
-      if (Array.isArray(list)) for (const item of list) render(n.kids, { ...scope, [as]: item }, interactive, out);
+      if (Array.isArray(list)) for (const item of list) render(n.kids, { ...scope, [as]: item }, o, out);
       continue;
     }
     out.push("<", n.tag);
@@ -109,7 +135,7 @@ function render(nodes: Node[], scope: Scope, interactive: boolean, out: string[]
       if (k === "onClick") {
         const m = ONE.exec(v);
         const slot = m ? lookup(scope, m[1]!) : null;
-        if (interactive && typeof slot === "string") out.push(` data-pick="${escapeHtml(slot)}"`);
+        if (o.interactive && typeof slot === "string") out.push(` data-pick="${escapeHtml(slot)}"`);
         continue;
       }
       const whole = ONE.exec(v);
@@ -124,19 +150,19 @@ function render(nodes: Node[], scope: Scope, interactive: boolean, out: string[]
     }
     out.push(">");
     if (VOID.has(n.tag) && n.tag !== "path") continue;
-    render(n.kids, scope, interactive, out);
+    render(n.kids, scope, o, out);
     out.push("</", n.tag, ">");
   }
 }
 
 /** Render a template against its values. `interactive` adds `data-pick` hooks for photo slots. */
-export function renderDc(template: string, scope: Scope, interactive = false): string {
+export function renderDc(template: string, scope: Scope, interactive = false, drop: Iterable<string> = []): string {
   let nodes = cache.get(template);
   if (!nodes) {
     nodes = parse(template);
     cache.set(template, nodes);
   }
   const out: string[] = [];
-  render(nodes, scope, interactive, out);
+  render(nodes, scope, { interactive, drop: new Set(drop) }, out);
   return out.join("");
 }
