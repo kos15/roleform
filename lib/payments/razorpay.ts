@@ -17,14 +17,27 @@ import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 const API = "https://api.razorpay.com/v1";
 
+/**
+ * An env value, trimmed. A key pasted into a dashboard with a trailing space or
+ * newline is the commonest way to end up with a "wrong" key that looks right,
+ * and Razorpay answers it with the same 401 as a genuinely wrong one.
+ */
+function env(name: string): string | undefined {
+  const value = process.env[name]?.trim();
+  return value ? value : undefined;
+}
+
 function credentials(): Result<{ keyId: string; keySecret: string }> {
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const keyId = env("RAZORPAY_KEY_ID");
+  const keySecret = env("RAZORPAY_KEY_SECRET");
 
   // A missing key is a deployment fact, not a user error — but the user is the
   // one standing in front of it, so the message says what they can do rather
-  // than naming an environment variable at them.
+  // than naming an environment variable at them. The log names the variable
+  // (never its value) so whoever deploys can tell this apart from a 401.
   if (!keyId || !keySecret) {
+    const missing = [!keyId && "RAZORPAY_KEY_ID", !keySecret && "RAZORPAY_KEY_SECRET"].filter(Boolean);
+    console.error(`[payments] not configured missing=${missing.join(",")}`);
     return err(
       appError("misconfigured", "Card payments aren't switched on yet. Write to us and we'll sort it out by hand."),
     );
@@ -33,7 +46,7 @@ function credentials(): Result<{ keyId: string; keySecret: string }> {
 }
 
 export function isPaymentsConfigured(): boolean {
-  return Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
+  return Boolean(env("RAZORPAY_KEY_ID") && env("RAZORPAY_KEY_SECRET"));
 }
 
 export interface RazorpayOrder {
@@ -85,14 +98,23 @@ export async function createOrder(args: {
     return err(appError("upstream_failed", "We couldn't reach the payment provider. Try again in a moment."));
   }
 
-  // 401 is Razorpay refusing our keys, not the user's request: a deployment
-  // fact, said the same way as a missing key.
-  if (response.status === 401) {
-    return err(
-      appError("misconfigured", "Card payments aren't switched on yet. Write to us and we'll sort it out by hand."),
-    );
-  }
   if (!response.ok) {
+    // Razorpay's error code and description say what it objected to ("BAD_REQUEST_ERROR
+    // Authentication failed") and carry nothing about the payer (N7). The key
+    // id's mode prefix is logged so a test/live mismatch is visible; the id
+    // itself is publishable, but its prefix is all the log needs.
+    const detail = await upstreamError(response);
+    const keyId = creds.value.keyId;
+    const mode = keyId.startsWith("rzp_live_") ? "live" : keyId.startsWith("rzp_test_") ? "test" : "unknown";
+    console.error(`[payments] order create failed status=${response.status} key_mode=${mode} ${detail}`);
+
+    // 401 is Razorpay refusing our keys, not the user's request: a deployment
+    // fact, with its own sentence so it can't be mistaken for unset keys.
+    if (response.status === 401) {
+      return err(
+        appError("misconfigured", "Payments are set up but the provider rejected our keys. Write to us and we'll fix it."),
+      );
+    }
     return err(appError("upstream_failed", "The payment provider refused that request."));
   }
 
@@ -117,7 +139,7 @@ export async function createOrder(args: {
  * is checked first because `timingSafeEqual` throws on a mismatch.
  */
 export function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  const secret = env("RAZORPAY_WEBHOOK_SECRET");
   if (!secret || !signature) return false;
 
   const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
@@ -142,7 +164,7 @@ export function verifyPaymentSignature(args: {
   paymentId: string;
   signature: string;
 }): boolean {
-  const secret = process.env.RAZORPAY_KEY_SECRET;
+  const secret = env("RAZORPAY_KEY_SECRET");
   if (!secret) return false;
 
   const expected = createHmac("sha256", secret).update(`${args.orderId}|${args.paymentId}`).digest("hex");
@@ -151,4 +173,16 @@ export function verifyPaymentSignature(args: {
   if (a.length !== b.length) return false;
 
   return timingSafeEqual(a, b);
+}
+
+/** `code description` from a Razorpay error body, or the bare status text. */
+async function upstreamError(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as { error?: { code?: string; description?: string } };
+    const code = body.error?.code ?? "unknown";
+    const description = (body.error?.description ?? "").replace(/\s+/g, " ").slice(0, 160);
+    return `code=${code} description="${description}"`;
+  } catch {
+    return `code=unparseable`;
+  }
 }
