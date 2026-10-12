@@ -1167,8 +1167,11 @@ loaded **on first click**, never on page load — a pricing page that ships a th
 script to be *read* hands a tracker to everyone who was only comparing numbers.
 
 **The plan is granted only in the webhook**, on `payment.captured` — never `payment.authorized`,
-which is money that can still fail to settle. The client handler refreshes and nothing more; an
-action that flipped the plan on a click would grant Pro to anyone who could open the network tab.
+which is money that can still fail to settle. The client handler sends the widget's three ids to
+`verifyCheckout`, which checks `HMAC-SHA256(order_id|payment_id, KEY_SECRET)` and grants nothing
+either way: a match lets the page say "paid" and refresh, a mismatch shows an error. A declined card
+(`payment.failed`) shows Razorpay's reason; closing the window shows nothing. An action that flipped
+the plan on a click would grant Pro to anyone who could open the network tab.
 Upgrading writes the Pro row's four caps onto the account alongside `plan`, because the table on the
 page IS those numbers. Unset keys are a supported state: the button says payments aren't switched on
 rather than failing into a blank window.
@@ -1956,6 +1959,8 @@ updateMemberCaps({ clerkUserId, caps, suspended })          // F15, re-reads rol
 updateWorkspaceDefaults(caps)                               // F15, new accounts only — never an existing row
 startPlanCheckout(planId)                   → RazorpayOrder // F17, amount read server-side
 startTopupCheckout(topupId)                 → RazorpayOrder // F19, refused on Free server-side
+verifyCheckout({ razorpay_order_id, razorpay_payment_id, razorpay_signature })
+                                            → { verified }  // F17, signature check only — grants nothing
 grantTokens({ clerkUserId, tokens })        → { tokens }    // F19, admin one-off — NOT a cap change
 POST /api/webhooks/razorpay                    (route)      // F17/F19/F23, the ONLY place users.plan is
                                                             //   raised, plan_expires_at extended, or

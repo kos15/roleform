@@ -1,10 +1,11 @@
 "use server";
 
 import { requireUser } from "@/lib/auth";
-import { createOrder, type RazorpayOrder } from "@/lib/payments/razorpay";
+import { z } from "zod";
+import { createOrder, verifyPaymentSignature, type RazorpayOrder } from "@/lib/payments/razorpay";
 import { planById, topupById, canBuyTopup, type PlanId } from "@/lib/content/pricing";
 import { db } from "@/lib/db";
-import { appError, err, type Result } from "@/lib/domain/types";
+import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 /**
  * Opening a checkout (F17, F19).
@@ -74,4 +75,45 @@ export async function startTopupCheckout(topupId: string): Promise<Result<Razorp
 /** Kept so existing callers of the Pro button don't have to know about plan ids. */
 export async function startProCheckout(): Promise<Result<RazorpayOrder>> {
   return startPlanCheckout("pro");
+}
+
+const CheckoutResult = z.object({
+  razorpay_order_id: z.string().min(1).max(64),
+  razorpay_payment_id: z.string().min(1).max(64),
+  razorpay_signature: z.string().regex(/^[0-9a-f]{64}$/),
+});
+
+/**
+ * The widget's success handler, checked (Standard Checkout step 3).
+ *
+ * Grants nothing, whatever the answer. The plan and tokens are written only by
+ * the webhook on a captured payment of the right amount (N21). What this buys
+ * is an honest message: the browser says "paid" only when Razorpay signed it,
+ * and a forged or mangled handler payload is told so instead of being sent on
+ * to a page that will never show the plan.
+ */
+export async function verifyCheckout(input: unknown): Promise<Result<{ verified: true }>> {
+  const user = await requireUser();
+  if (!user.ok) return user;
+
+  const parsed = CheckoutResult.safeParse(input);
+  if (!parsed.success) {
+    return err(appError("invalid_input", "The payment window didn't send back everything we need to confirm it."));
+  }
+
+  const verified = verifyPaymentSignature({
+    orderId: parsed.data.razorpay_order_id,
+    paymentId: parsed.data.razorpay_payment_id,
+    signature: parsed.data.razorpay_signature,
+  });
+  if (!verified) {
+    return err(
+      appError(
+        "invalid_input",
+        "We couldn't confirm that payment. If money left your account, write to us with the payment id and we'll sort it out.",
+      ),
+    );
+  }
+
+  return ok({ verified: true });
 }

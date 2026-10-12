@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, ErrorRegion } from "@/components/ui";
-import { startPlanCheckout, startTopupCheckout } from "@/app/actions/checkout";
+import { startPlanCheckout, startTopupCheckout, verifyCheckout } from "@/app/actions/checkout";
 import type { PlanId } from "@/lib/content/pricing";
 
 /**
@@ -20,7 +20,10 @@ import type { PlanId } from "@/lib/content/pricing";
  */
 declare global {
   interface Window {
-    Razorpay?: new (options: Record<string, unknown>) => { open: () => void };
+    Razorpay?: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on: (event: "payment.failed", cb: (response: { error?: { description?: string } }) => void) => void;
+    };
   }
 }
 
@@ -94,24 +97,44 @@ export function CheckoutButton({
       return;
     }
 
-    new window.Razorpay!({
+    const widget = new window.Razorpay!({
       key: order.value.keyId,
       order_id: order.value.id,
       amount: order.value.amount,
       currency: order.value.currency,
       name: "Roleform",
       description,
-      // Payment is confirmed by the webhook, never here. This handler only
-      // refreshes so the new caps are visible; a client that granted the plan
+      // The plan is granted by the webhook, never here. The handler checks the
+      // signature server-side so "paid" is only said when Razorpay signed it,
+      // then refreshes so the new caps show; a client that granted the plan
       // would grant it to anyone who could call it.
-      handler: () => {
+      handler: async (response: {
+        razorpay_order_id: string;
+        razorpay_payment_id: string;
+        razorpay_signature: string;
+      }) => {
+        const verified = await verifyCheckout(response);
         setBusy(false);
+        if (!verified.ok) {
+          setError(verified.error.message);
+          return;
+        }
         router.refresh();
         if (onPurchased) onPurchased();
         else router.push("/profile");
       },
+      // Closing the window is a choice, not a failure: no message.
       modal: { ondismiss: () => setBusy(false) },
-    }).open();
+    });
+
+    // A declined card leaves the window open for a retry; the reason is shown
+    // here too so it survives the user closing it. Razorpay's description is
+    // written for the payer and carries no card data.
+    widget.on("payment.failed", (response) => {
+      setError(response.error?.description ?? "The payment didn't go through. You can try again.");
+    });
+
+    widget.open();
   }
 
   return (
@@ -125,7 +148,7 @@ export function CheckoutButton({
       >
         {busy ? "Opening…" : label}
       </Button>
-      {error ? <ErrorRegion title="That didn't open">{error}</ErrorRegion> : null}
+      {error ? <ErrorRegion title="That didn't go through">{error}</ErrorRegion> : null}
     </div>
   );
 }

@@ -85,6 +85,13 @@ export async function createOrder(args: {
     return err(appError("upstream_failed", "We couldn't reach the payment provider. Try again in a moment."));
   }
 
+  // 401 is Razorpay refusing our keys, not the user's request: a deployment
+  // fact, said the same way as a missing key.
+  if (response.status === 401) {
+    return err(
+      appError("misconfigured", "Card payments aren't switched on yet. Write to us and we'll sort it out by hand."),
+    );
+  }
   if (!response.ok) {
     return err(appError("upstream_failed", "The payment provider refused that request."));
   }
@@ -116,6 +123,31 @@ export function verifyWebhookSignature(rawBody: string, signature: string | null
   const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
   const a = Buffer.from(expected, "utf8");
   const b = Buffer.from(signature, "utf8");
+  if (a.length !== b.length) return false;
+
+  return timingSafeEqual(a, b);
+}
+
+/**
+ * Checkout signature check — the handler's three ids, after the widget closes.
+ *
+ * Razorpay signs `order_id|payment_id` with the KEY secret (the webhook uses
+ * its own secret over the raw body). A match proves the browser is reporting a
+ * payment Razorpay actually made against an order we created. It proves the
+ * payment was made, not that it was captured, so nothing is granted on it;
+ * the webhook still does that (N21).
+ */
+export function verifyPaymentSignature(args: {
+  orderId: string;
+  paymentId: string;
+  signature: string;
+}): boolean {
+  const secret = process.env.RAZORPAY_KEY_SECRET;
+  if (!secret) return false;
+
+  const expected = createHmac("sha256", secret).update(`${args.orderId}|${args.paymentId}`).digest("hex");
+  const a = Buffer.from(expected, "utf8");
+  const b = Buffer.from(args.signature, "utf8");
   if (a.length !== b.length) return false;
 
   return timingSafeEqual(a, b);
