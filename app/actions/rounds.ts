@@ -74,12 +74,22 @@ export async function createRound(analysisId: string, input: RoundInputValue): P
   const analysis = await getAnalysis(user.value, analysisId);
   if (!analysis) return err(appError("not_found", "We couldn't find that analysis."));
 
+  const { kind, label, timeZone, notes, leads, at } = value.value;
+
+  // The same posting submitted twice from the JD screen with the same date
+  // (a reused analysis) is one interview, not two — two rows would push every
+  // reminder twice. Saving it again is a no-op that returns the round.
+  const same = await db.interviewRound.findFirst({
+    where: { clerkUserId: user.value, analysisId, scheduledAt: at },
+    select: { id: true },
+  });
+  if (same) return ok({ id: same.id });
+
   const count = await db.interviewRound.count({ where: { clerkUserId: user.value, analysisId } });
   if (count >= MAX_ROUNDS_PER_ANALYSIS) {
     return err(appError("invalid_input", `A posting can hold ${MAX_ROUNDS_PER_ANALYSIS} rounds. Remove an old one first.`));
   }
 
-  const { kind, label, timeZone, notes, leads, at } = value.value;
   const round = await db.interviewRound.create({
     data: {
       clerkUserId: user.value,
