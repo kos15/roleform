@@ -89,6 +89,10 @@ export async function tailorBullet(args: {
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
     maxOutputTokens: 200,
+    // A 200-token answer that hasn't arrived in 30s isn't coming. The 120s
+    // default let one stuck call hold a whole run; this fails open to the
+    // original bullet instead, like any other failure here.
+    timeoutMs: 30_000,
     // specs §10: one retry, then fail open to the original.
     retries: 1,
     verify: (value) => {
@@ -193,6 +197,8 @@ export async function tailorSummary(args: {
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
     maxOutputTokens: 400,
+    // Falls back to the stock line below on timeout, so waiting longer buys nothing.
+    timeoutMs: 45_000,
     retries: 1,
     verify: (value) => {
       const findings = checkFabrication({

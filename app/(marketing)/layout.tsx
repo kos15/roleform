@@ -26,7 +26,11 @@ export default async function MarketingLayout({ children }: { children: React.Re
   // with neither would be chrome writing cheques the account can't cash.
   const { userId } = await auth();
   const signedIn = Boolean(userId);
-  const isAdmin = userId ? (await currentRole(userId)) === "admin" : false;
+  const account = (
+    <Suspense fallback={null}>
+      <SheetAccount />
+    </Suspense>
+  );
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -74,18 +78,25 @@ export default async function MarketingLayout({ children }: { children: React.Re
 
       <SiteFooter />
 
-      {signedIn ? (
-        <MobileTabBar
-          extraLinks={
-          isAdmin ? [{ href: "/admin", label: "Admin", hint: "Members, caps and the support inbox" }] : []
-        }
-          account={
-            <Suspense fallback={null}>
-              <SheetAccount />
-            </Suspense>
-          }
-        />
+      {/* The admin row waits on a Clerk directory fetch; the page doesn't
+          (see the (app) layout's `viewerIsAdmin`). */}
+      {signedIn && userId ? (
+        <Suspense fallback={<MobileTabBar account={account} />}>
+          <TabBar clerkUserId={userId} account={account} />
+        </Suspense>
       ) : null}
     </div>
+  );
+}
+
+async function TabBar({ clerkUserId, account }: { clerkUserId: string; account: React.ReactNode }) {
+  const isAdmin = (await currentRole(clerkUserId)) === "admin";
+  return (
+    <MobileTabBar
+      extraLinks={
+        isAdmin ? [{ href: "/admin", label: "Admin", hint: "Members, caps and the support inbox" }] : []
+      }
+      account={account}
+    />
   );
 }

@@ -21,6 +21,9 @@ import type { TokenWall } from "@/lib/domain/tokens";
  * The heading, the description and the figure all follow the stage the pipeline
  * says is running. Nothing on this screen advances on its own.
  */
+/** Quiet reconnects after a dropped stream, before the screen says anything. */
+const RECONNECTS = 3;
+
 export function ParsingScreen({
   analysisId,
   initialStatus,
@@ -63,64 +66,120 @@ export function ParsingScreen({
     // redirect below would fire over the error screen it just raised.
     let stageFailed = false;
 
-    void (async () => {
-      const response = await fetch(`/api/analyze/${analysisId}`, {
-        method: "POST",
-        signal: controller.signal,
-      });
+    // Whether the stream carried the run's last word. A stream can also just
+    // stop — a phone locking, a network blip, the platform cutting a long
+    // response — and before this, a stream that stopped without a failure was
+    // read as success: the screen pushed to results for a run still parsing.
+    let finished = false;
+
+    /**
+     * One connection to the pipeline route. "dropped" is the only outcome
+     * worth another connection: the run keeps going server-side without us
+     * (the route hands it to `after()`), so reconnecting follows it rather
+     * than starting it again.
+     */
+    const connect = async (reconnect: boolean): Promise<"done" | "dropped" | "refused"> => {
+      let response: Response;
+      try {
+        response = await fetch(`/api/analyze/${analysisId}${reconnect ? "?reconnect=1" : ""}`, {
+          method: "POST",
+          signal: controller.signal,
+        });
+      } catch {
+        return "dropped";
+      }
 
       // 402: the run never started, so this is not a stage that failed. The
       // pipeline refuses before stage one rather than half-running (F19), and
       // the dialog is what the member gets instead of a progress bar that
       // stops at 0%.
       if (response.status === 402) {
-        const body = (await response.json()) as { error?: AppError };
-        if (body.error?.wall) {
-          setWall(body.error.wall);
-          // Another attempt is a legitimate thing to want after topping up.
-          started.current = false;
-          return;
-        }
+        const body = (await response.json().catch(() => ({}))) as { error?: AppError };
+        // Another attempt is a legitimate thing to want after topping up.
+        started.current = false;
+        if (body.error?.wall) setWall(body.error.wall);
+        else setFailed(body.error?.message ?? "We couldn't start the analysis.");
+        return "refused";
       }
 
-      if (!response.body) {
-        // Released like every other failure path, so the resume button below
-        // is not dead the one time nothing ever started.
-        started.current = false;
-        setFailed("We couldn't start the analysis.");
-        return;
-      }
+      // Anything else that isn't a stream says nothing about the run itself:
+      // a 5xx, a gateway timeout, or — most often after a phone wakes — a
+      // session token that expired while the tab slept, which middleware
+      // answers with 401/404 until Clerk refreshes it a moment later.
+      if (!response.ok || !response.body) return "dropped";
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const update = JSON.parse(line) as StageUpdate;
-          setProgressPct(update.progressPct);
-          setStates((prev) => ({ ...prev, [update.stage]: update.state }));
-          if (update.message) {
-            setMessages((prev) => ({ ...prev, [update.stage]: update.message! }));
-          }
-          if (update.state === "failed") {
-            stageFailed = true;
-            setFailed(update.message ?? "A stage failed.");
-          }
+      const apply = (line: string) => {
+        if (!line.trim()) return;
+        let update: StageUpdate;
+        try {
+          update = JSON.parse(line) as StageUpdate;
+        } catch {
+          // One unreadable line is not worth failing a run the server is
+          // still driving. The next update carries the whole state anyway.
+          return;
         }
+        if (!update || typeof update !== "object" || !STAGES.some((s) => s.key === update.stage)) return;
+        setProgressPct(update.progressPct);
+        setStates((prev) => ({ ...prev, [update.stage]: update.state }));
+        if (update.message) {
+          setMessages((prev) => ({ ...prev, [update.stage]: update.message! }));
+        }
+        if (update.state === "failed") {
+          stageFailed = true;
+          setFailed(update.message ?? "A stage failed.");
+        }
+        // The pipeline's last word on success is always stage ④ at 100%.
+        if (update.stage === "preparing" && update.progressPct >= 100 && update.state !== "running") {
+          finished = true;
+        }
+      };
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          lines.forEach(apply);
+        }
+        apply(buffer);
+      } catch {
+        // Read failed mid-stream: same as the stream stopping early.
+      }
+
+      return stageFailed || finished ? "done" : "dropped";
+    };
+
+    void (async () => {
+      let outcome = await connect(false);
+      // A couple of quiet reconnects before saying anything. Each one costs a
+      // short wait and nothing else: the route follows a run that is still
+      // going, and reports one that ended either way.
+      for (let tries = 0; outcome === "dropped" && tries < RECONNECTS; tries++) {
+        if (controller.signal.aborted) return;
+        await new Promise((resolve) => setTimeout(resolve, 2_000 * (tries + 1)));
+        if (controller.signal.aborted) return;
+        outcome = await connect(true);
+      }
+      if (controller.signal.aborted || outcome === "refused") return;
+
+      if (outcome === "dropped") {
+        started.current = false;
+        setFailed(
+          "We lost the connection to this run. It may still be finishing — pick it up again to check, nothing finished is charged twice.",
+        );
+        return;
       }
 
       // Only a run that finished goes to the results. A failed one stays here,
       // where the stage that broke is named and the resume button is.
-      if (stageFailed) {
+      if (stageFailed || !finished) {
         started.current = false;
         router.refresh();
         return;

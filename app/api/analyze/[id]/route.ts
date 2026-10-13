@@ -1,5 +1,6 @@
+import { after } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { runAnalysis } from "@/lib/pipeline/run-analysis";
+import { RUN_LOCK_STALE_MS, runAnalysis } from "@/lib/pipeline/run-analysis";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import { checkTokenAllowance } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -18,7 +19,7 @@ import type { StageUpdate } from "@/lib/pipeline/stages";
 export const maxDuration = 300;
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { userId } = await auth();
@@ -36,6 +37,31 @@ export async function POST(
     );
   }
 
+  // `?reconnect=1` is the parsing screen picking a dropped stream back up
+  // (a phone that locked mid-run, a network blip). It wants to know how the
+  // run it was watching ended — not to start another. A run that failed says
+  // so here, and the member decides whether to pick it up again, exactly as
+  // after a reload.
+  const reconnect = new URL(request.url).searchParams.get("reconnect") === "1";
+  if (reconnect && analysis.status === "failed") {
+    return new Response(
+      `${JSON.stringify({
+        stage: "reading",
+        state: "failed",
+        progressPct: 0,
+        message: analysis.scoreNote ?? "This analysis didn't finish.",
+      } satisfies StageUpdate)}\n`,
+      { headers: STREAM_HEADERS },
+    );
+  }
+
+  // A run another invocation is still driving is followed, not started
+  // (`runAnalysis` → `followExistingRun`), so it bills nothing here. Checking
+  // the meter anyway would read a balance this very run is in the middle of
+  // spending, and could raise the wall over a run that is already paid for.
+  const liveRun =
+    analysis.runningAt !== null && analysis.runningAt.getTime() > Date.now() - RUN_LOCK_STALE_MS;
+
   // The meter, at the door the pipeline actually runs through (F19).
   //
   // `createAnalysis` already checked it, and this checks it again — not out of
@@ -47,9 +73,11 @@ export async function POST(
   // 402 with the wall as JSON rather than an NDJSON stage failure: this is not
   // a stage that broke, it is a run that never started, and the client opens
   // the dialog rather than printing "a stage failed".
-  const tokens = await checkTokenAllowance(userId, "analysis");
-  if (!tokens.ok) {
-    return Response.json({ error: tokens.error }, { status: 402 });
+  if (!liveRun) {
+    const tokens = await checkTokenAllowance(userId, "analysis");
+    if (!tokens.ok) {
+      return Response.json({ error: tokens.error }, { status: 402 });
+    }
   }
 
   // Starting clears the parked stamp: from here the run is a run like any
@@ -63,27 +91,61 @@ export async function POST(
   }
 
   const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      const emit = (update: StageUpdate) => {
-        controller.enqueue(encoder.encode(`${JSON.stringify(update)}\n`));
-      };
-      try {
-        await runAnalysis({ clerkUserId: userId, analysisId: id, emit });
-      } catch (e) {
-        // N7: the shape of the failure, never the document.
-        console.error(`[analyze] error=${e instanceof Error ? e.name : "unknown"}`);
-        emit({
-          stage: "reading",
-          state: "failed",
-          progressPct: 0,
-          message: "Something failed partway through. Your completed stages were kept.",
-        });
-      } finally {
-        controller.close();
-      }
+
+  // The stream is how the member watches the run, not what keeps it alive.
+  // Before, the pipeline ran inside the stream's `start` and wrote straight to
+  // its controller — so a closed tab, a locked phone or a dropped connection
+  // made the next `enqueue` throw, and that throw tore down whichever stage
+  // happened to be running. The run died because its audience left.
+  //
+  // Now `emit` is a no-op once nobody is listening, and the run is handed to
+  // `after()` so the platform keeps the invocation alive (up to maxDuration)
+  // until it finishes. A member who comes back finds it done, or still going
+  // and followable — never half-written because they looked away.
+  let controller = null as ReadableStreamDefaultController<Uint8Array> | null;
+  let open = true;
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c;
+    },
+    cancel() {
+      open = false;
     },
   });
+
+  const emit = (update: StageUpdate) => {
+    if (!open || !controller) return;
+    try {
+      controller.enqueue(encoder.encode(`${JSON.stringify(update)}\n`));
+    } catch {
+      open = false;
+    }
+  };
+
+  const run = (async () => {
+    try {
+      await runAnalysis({ clerkUserId: userId, analysisId: id, emit });
+    } catch (e) {
+      // N7: the shape of the failure, never the document.
+      console.error(`[analyze] error=${e instanceof Error ? e.name : "unknown"}`);
+      emit({
+        stage: "reading",
+        state: "failed",
+        progressPct: 0,
+        message: "Something failed partway through. Your completed stages were kept.",
+      });
+    } finally {
+      if (open) {
+        open = false;
+        try {
+          controller?.close();
+        } catch {
+          // Already closed by the client going away.
+        }
+      }
+    }
+  })();
+  after(run);
 
   return new Response(stream, { headers: STREAM_HEADERS });
 }
