@@ -1125,7 +1125,7 @@ function useHeight<T extends HTMLElement>(): [number, (el: T | null) => void] {
   return [h, ref];
 }
 
-/** Mount a look only once it nears the picker's viewport — fourteen live pages at once is too many. Stays mounted after. */
+/** Mount a look only once it nears the picker's viewport — eighteen live pages at once is too many. Stays mounted after. */
 function WhenNear({ root, height, children }: { root: React.RefObject<HTMLDivElement | null>; height: number; children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [near, setNear] = useState(false);

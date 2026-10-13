@@ -1,5 +1,5 @@
 /**
- * F28 — the values the nine portfolio looks render from. PURE.
+ * F28 — the values the eighteen portfolio looks render from. PURE.
  *
  * `siteData` turns the profile excerpt into the shape the design's template
  * reads; `siteVals` is the design's own `renderVals` (PortfolioSite.dc.html),
@@ -26,6 +26,10 @@ export const PORTFOLIO_LOOKS = [
   "notebook",
   "chapter",
   "terminal",
+  "catalogue",
+  "voltage",
+  "bluehour",
+  "constellation",
 ] as const;
 export type PortfolioLook = (typeof PORTFOLIO_LOOKS)[number];
 
@@ -271,6 +275,23 @@ const E_T = ["#E6DACA", "#DAD8CE", "#E8D3C6"];
 const S_ROT = ["-2deg", "1.5deg", "-1deg"], T_ROT = ["4deg", "-5deg", "2deg"], S_PAPER = ["#FFFDF6", "#F4F1E6", "#FFF7E8"], P_TINT = ["#F1E6FD", "#FFF0A1", "#E2F4EA"];
 const F_TINT = ["linear-gradient(160deg,#6CB6FF,#2A6FDB)", "linear-gradient(160deg,#C8A2FF,#7A4FE0)", "linear-gradient(160deg,#5FD08A,#1F8A4E)"];
 const DOTS = ["#FF5F57", "#FEBC2E", "#28C840"];
+/** Constellation look: a deterministic cloud of outlined triangles (three overlapping blobs plus a light ambient scatter). */
+const STARS = (() => {
+  let s = 11;
+  const r = () => (s = (s * 16807) % 2147483647) / 2147483647,
+    g = () => (r() + r() + r() - 1.5) / 1.5;
+  const C = ["#8052FF", "#FFB829", "#15846E", "#B48CFF", "#5B8CFF", "#FF6FAE"],
+    B = [[50, 46, 24, 19], [34, 56, 15, 13], [66, 38, 17, 14]],
+    out: Array<{ x: string; y: string; z: string; c: string; r: string; o: string; d: string }> = [];
+  for (let i = 0; i < 96; i++) {
+    const amb = i >= 78,
+      b = B[i % 3]!;
+    const x = amb ? 3 + r() * 92 : Math.max(3, Math.min(94, b[0]! + g() * b[2]! * 1.7)),
+      y = amb ? 3 + r() * 92 : Math.max(3, Math.min(94, b[1]! + g() * b[3]! * 1.7));
+    out.push({ x: x.toFixed(1) + "%", y: y.toFixed(1) + "%", z: (amb ? 6 + r() * 5 : 8 + r() * 14).toFixed(0) + "px", c: C[Math.floor(r() * C.length)]!, r: Math.floor(r() * 360) + "deg", o: (amb ? 0.3 + r() * 0.3 : 0.55 + r() * 0.45).toFixed(2), d: String(Math.floor(r() * 1500)) });
+  }
+  return out;
+})();
 const IC = {
   mail: "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 6l-10 7L2 6",
   phone: "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z",
@@ -338,6 +359,9 @@ export function siteVals(D: SiteData, p: SiteProps): Record<string, unknown> {
   return {
     isMid: theme === "midnight", isKey: theme === "keynote", isWork: theme === "workspace", isEd: theme === "editorial",
     isMac: theme === "desktop", isScrap: theme === "scrapbook", isPop: theme === "pop", isJournal: theme === "journal", isSketch: theme === "sketch",
+    isCat: theme === "catalogue", isVolt: theme === "voltage", isBlue: theme === "bluehour", isStar: theme === "constellation",
+    catNo: D.initials + "-" + String(new Date().getFullYear()).slice(2), stars: STARS,
+    specs: [{ k: "Role", v: D.headline }, { k: "Location", v: D.location }, { k: "Experience", v: D.years }, { k: "Focus", v: D.kicker[focus] }].filter((f) => f.v),
     lastName: D.name.split(" ").slice(1).join(" "), clock: fmtClock(new Date()),
     dock: (
       [

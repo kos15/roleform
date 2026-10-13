@@ -45,3 +45,6 @@ next-env.d.ts
 .roundtrip/
 
 /lib/generated/prisma
+
+# clerk configuration (can include secrets)
+/.clerk/

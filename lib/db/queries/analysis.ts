@@ -33,6 +33,16 @@ export async function listAnalyses(clerkUserId: string, limit = 50) {
   });
 }
 
+/** The member's newest finished analysis, for links that open a tool on it. */
+export async function latestReadyAnalysisId(clerkUserId: string): Promise<string | null> {
+  const row = await db.analysis.findFirst({
+    where: { clerkUserId, status: "ready" },
+    select: { id: true },
+    orderBy: { createdAt: "desc" },
+  });
+  return row?.id ?? null;
+}
+
 export async function findByContentHash(clerkUserId: string, contentHash: string) {
   return db.analysis.findFirst({ where: { clerkUserId, contentHash } });
 }

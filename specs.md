@@ -1368,15 +1368,18 @@ under `prefers-reduced-motion`: the mark assembles, the wordmark rises, two curt
 script in `<head>` decides before first paint (`html[data-intro="play"]`); CSS does the rest. Click
 skips.
 
-**The scroll story** (`components/landing-story.tsx`, markup in `landing-story-markup.ts`, ported from
-`Roleform Landing.dc.html`). A 560vh track with a stage sticky under the header: one posting is read
-(highlighter, extracted chips), matched (ticks, the coverage count, a dashed gap), rewritten into every
-template (the fan) and turned into questions and a gap plan, while the left column swaps copy per
-stage and a 01–04 rail jumps between them. The driver only maps scroll to custom properties; all
-motion is CSS. Every ATS badge in the fan is `ratingFor` (N5) and the draft count is `TEMPLATES.length`.
-On wide screens the panda narrates each stage once (`STORY_LINES`). Sections below rise in on arrival.
+**The landing page** (`components/landing-home.tsx`, from the prototype's "01 Landing" screen).
+The hero ("Switch jobs. Skip the chaos.", a sample coverage card with its buckets, and four template
+families with their computed ATS badges over a fan of real template papers), "How it works" in three
+steps, then one row per tool — Find, Fit, Tailor, Rehearse, Cram, Grow, Plan, Stand out, Track — each
+with a worked-example illustration and a button into that tool: Jobs, a new analysis, History, and
+the member's newest finished analysis for the per-posting tabs (a new analysis when there is none;
+sign-in first for a visitor). A closing card, the coverage note, then guides and the FAQ for search.
+Every ATS badge is `ratingFor` (N5), the draft count `TEMPLATES.length`, the look count
+`PORTFOLIO_LOOKS.length`; roadmap progress reads "n of m" (N16). Rows rise in on arrival
+(`landing-reveal.tsx`); nothing moves under reduced motion.
 
-**Acceptance:** the opening plays once and not on reload; the story never scrolls sideways at 390px; the helper never covers the tab bar; "Show
+**Acceptance:** the opening plays once and not on reload; the landing never scrolls sideways at 390px; the helper never covers the tab bar; "Show
 me" never rings nothing; `?` inside a text field types a question mark.
 
 ### F21 — Roadmap
@@ -1717,9 +1720,10 @@ motion) leads to `/analysis/[id]/portfolio`. One set of answers, two ways out.
 **The answers.** The supplied brief (`lib/content/portfolio-brief.ts`, verbatim) opens with
 clarifying questions; the page asks them once: who it's for (this posting or broad), what to
 emphasise, project details the résumé lacks, what to leave out, which contact details to show, and
-a look. The studio runs in four steps: **1 Pick a look** — fourteen looks (Midnight, recommended ·
+a look. The studio runs in four steps: **1 Pick a look** — eighteen looks (Midnight, recommended ·
 Keynote · Desktop · Workspace · Editorial · Scrapbook · Pop · Journal · Sketch · Bento · Showcase ·
-Notebook · Chapter · Terminal; nine animated by the design's motion engine), each card the member's
+Notebook · Chapter · Terminal · Catalogue · Voltage · Blue Hour · Constellation; thirteen animated by
+the design's motion engine; the count is `PORTFOLIO_LOOKS.length`, never typed into copy), each card the member's
 real page rendered from their profile in a shadow root, isolated from the app's styles — shown as a scrolling 3×2 grid on desktop, 2×2 on tablets and a swipe row on phones, each look mounted only as it nears view (`lib/render/portfolio/` interprets the design's
 template verbatim; `lib/domain/portfolio-site.ts` maps the excerpt to it — selected and ordered,
 never written); **2 Add photos** — an optional portrait and one image per shown project, kept in the

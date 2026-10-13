@@ -1348,25 +1348,6 @@
     .guide-bubble[data-open="true"] { transition: none; }
   }
 
-  /* ---------------------------------------------------------------------------
-     story — the landing page's scroll story (components/landing-story). The
-     motion lives in the generated markup's inline styles, keyed off custom
-     properties the driver sets; this is only the frame around it.
-  --------------------------------------------------------------------------- */
-  .story-bleed {
-    /* Out of <main>'s measure and padding, edge to edge under the header. */
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-top: calc(-1 * clamp(1.75rem, 5vw, 4.5rem));
-  }
-  html:has(.story-bleed) body { overflow-x: clip; }
-  .story { --story-drop: 0 26px 26px rgb(74 13 13 / 0.28); }
-  .story-track { position: relative; height: 560vh; }
-  .story a[href] { transition: background-color 150ms ease; }
-  .story a[href][style*="background:var(--color-text)"]:hover { background: var(--color-link-hover) !important; }
-  .story button[data-jump]:hover { background: var(--color-bg-raised); }
-  .story section { position: relative; z-index: 2; }
-
   /* Lucide ships at stroke-width 2.25 across the app */
   .lucide { stroke-width: 2.25; }
 

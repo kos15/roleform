@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { hasProfile } from "@/lib/db/queries/profile";
-import { TEMPLATES, ratingFor } from "@/lib/render/templates";
+import { latestReadyAnalysisId } from "@/lib/db/queries/analysis";
+import { TEMPLATES } from "@/lib/render/templates";
 import { JsonLd } from "@/components/json-ld";
 import { FaqList } from "@/components/faq-list";
 import { GUIDES, HOME_FAQS } from "@/lib/content/guides";
-import { STORY_LINES } from "@/lib/content/helper";
 import { faqSchema, graph, organizationSchema, softwareSchema, websiteSchema } from "@/lib/seo/schema";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo/site";
 import type { Metadata } from "next";
 import { LandingIntro } from "@/components/landing-intro";
-import { LandingStory } from "@/components/landing-story";
+import { LandingHome, type LandingHrefs } from "@/components/landing-home";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: SITE_TITLE, description: SITE_DESCRIPTION, path: "/" }),
@@ -20,22 +20,36 @@ export const metadata: Metadata = {
 };
 
 /**
- * The landing page is the design's scroll story (components/landing-story):
- * one posting read, matched, rewritten and turned into prep as you scroll,
- * then what you get and the closing card. Guides and the FAQ follow for
- * search, unchanged.
+ * The landing page is the design's hero and tool tour (components/landing-home).
+ * Guides and the FAQ follow for search, unchanged.
  *
- * Every ATS badge in the story is computed here through `ratingFor` (N5), and
- * the draft count is the catalog's own length, never a typed number.
+ * Each tool's button goes where that tool lives for this visitor: a member's
+ * newest finished analysis for the per-posting tabs, a new analysis when there
+ * is none yet, and sign-in first for a visitor (the app routes require a
+ * session — middleware.ts sends them back after).
  */
 export default async function MarketingPage() {
   // A member who already imported a résumé is not here to import one again.
   // The button they get is the one for where they actually are.
   const { userId } = await auth();
-  const returning = userId ? await hasProfile(userId) : false;
-  const startHref = !userId ? "/sign-in" : returning ? "/analyze" : "/onboarding";
+  const [returning, latest] = userId
+    ? await Promise.all([hasProfile(userId), latestReadyAnalysisId(userId)])
+    : [false, null];
+  const start = !userId ? "/sign-in" : returning ? "/analyze" : "/onboarding";
+  const tab = (t: string) => (latest ? `/analysis/${latest}/${t}` : "/analyze");
 
-  const ratings = Object.fromEntries(TEMPLATES.map((t) => [t.name, ratingFor(t.id)]));
+  const hrefs: LandingHrefs = {
+    start,
+    jobs: "/jobs",
+    analyze: "/analyze",
+    resumes: tab("resumes"),
+    prep: tab("prep"),
+    rapid: tab("rapid"),
+    learning: tab("learning"),
+    roadmap: tab("roadmap"),
+    portfolio: tab("portfolio"),
+    history: "/history",
+  };
 
   return (
     <div>
@@ -43,15 +57,7 @@ export default async function MarketingPage() {
       <JsonLd
         data={graph(organizationSchema(), websiteSchema(), softwareSchema(), faqSchema(HOME_FAQS))}
       />
-      {/* Full-bleed: the story owns the viewport under the sticky header. */}
-      <div className="story-bleed">
-        <LandingStory
-          templateCount={TEMPLATES.length}
-          ratings={ratings}
-          startHref={startHref}
-          lines={STORY_LINES}
-        />
-      </div>
+      <LandingHome hrefs={hrefs} />
 
       <section aria-labelledby="guides-heading" className="mt-[clamp(3rem,6vw,4.5rem)]">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">

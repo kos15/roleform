@@ -43,6 +43,8 @@ export type HelpKey =
   | "prep"
   | "learning"
   | "roadmap"
+  | "rapid"
+  | "portfolio"
   | "profile"
   | "pricing"
   | "onboarding"
@@ -61,9 +63,10 @@ export type HelpKey =
 export const HELP: Record<HelpKey, HelpScreen> = {
   landing: {
     title: "Home",
-    intro: "Start with Get started — your résumé goes in once, then any posting is one paste away.",
+    intro: "Start with Start my switch — your résumé goes in once, then any posting is one paste away.",
     tips: [
-      { text: "Get started takes you through adding your résumé first. After that, every posting is one paste away.", target: "landing-cta" },
+      { text: "Start my switch takes you through adding your résumé first. After that, every posting is one paste away.", target: "landing-cta" },
+      { text: "Each tool below has its own button — it opens that tool on your newest analysis." },
       { text: "Want the detail first? How it works explains all four stages in plain words." },
     ],
   },
@@ -123,6 +126,26 @@ export const HELP: Record<HelpKey, HelpScreen> = {
     title: "Roadmap",
     tips: [
       { text: "Tick items off as you go. It’s your own record — nothing ticks a step but you.", target: "roadmap" },
+    ],
+  },
+  rapid: {
+    title: "Rapid prep",
+    intro: "Short on time? Pick how long you have and revise just this posting’s topics.",
+    tips: [
+      { text: "Three drills: cards to revise, a timed multiple-choice round, then one coding problem against the clock.", target: "rp-modes" },
+      { text: "Topics come from this posting — the ones your résumé shows least of come first." },
+      { text: "Pick the minutes you have and the deck resizes to fit." },
+      { text: "A classic coding problem is free to start. Only the review of your answer draws on your tokens." },
+    ],
+  },
+  portfolio: {
+    title: "Portfolio site",
+    intro: "Pick a look, drop in your photos, and watch your page change as you go.",
+    tips: [
+      { text: "Each card is your real page in that look. Scroll the grid to see them all.", target: "pf-looks" },
+      { text: "Add a portrait and an image per project. The line under the heading says where each lands in this look.", target: "pf-photos" },
+      { text: "Dashed spots in the preview are empty photo slots — click one to fill it.", target: "pf-preview" },
+      { text: "The prompt is free to copy as often as you like. Building it here is a one-time trial.", target: "pf-get" },
     ],
   },
   profile: {
@@ -235,7 +258,10 @@ export function helpKeyFor(pathname: string): HelpKey | null {
       return "analyze";
     case "analysis":
       if (!third) return "parsing";
-      if (third === "resumes" || third === "preview" || third === "prep" || third === "learning" || third === "roadmap")
+      if (
+        third === "resumes" || third === "preview" || third === "prep" || third === "learning" ||
+        third === "roadmap" || third === "rapid" || third === "portfolio"
+      )
         return third;
       return null;
     case "onboarding":
@@ -260,16 +286,3 @@ export function helpKeyFor(pathname: string): HelpKey | null {
       return null;
   }
 }
-
-/**
- * The panda's line for each act of the landing story (design: the landing's
- * `GUIDE` table, s1–s4). Index 0 is the hero, which the helper's own hello
- * covers. "Same evidence, 11 layouts" counts nothing here, for §5's reason.
- */
-export const STORY_LINES: { label: string; text: string }[] = [
-  { label: "Hello", text: "Scroll, and I’ll show you what Roleform does with one job posting." },
-  { label: "Stage 01", text: "Watch the highlighter — every stated requirement gets pulled out first. Nothing the posting doesn’t state is guessed." },
-  { label: "Stage 02", text: "61 is requirement coverage: how much of the posting you can evidence. It isn’t an ATS score. The dashed one is a gap — it goes on your learning list, never onto your résumé." },
-  { label: "Stage 03", text: "Same evidence, every layout. For big-company job portals, pick one rated High. Every rewritten line keeps a key back to the bullet you wrote." },
-  { label: "Stage 04", text: "Start with the questions marked Likely — they come straight from the posting. Gaps are ranked by how often the posting mentions them." },
-];

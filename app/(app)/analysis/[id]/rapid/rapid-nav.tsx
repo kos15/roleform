@@ -22,7 +22,7 @@ export function RapidNav({ analysisId }: { analysisId: string }) {
   ];
 
   return (
-    <div className="seg" role="tablist" aria-label="Rapid prep modes">
+    <div className="seg" role="tablist" aria-label="Rapid prep modes" data-help="rp-modes">
       {modes.map(({ href, label, icon: Icon }) => {
         const selected = pathname === href;
         return (

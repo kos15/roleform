@@ -110,7 +110,7 @@ export interface LookLabel {
   shotsWhere: string;
 }
 
-/** The fourteen looks, in the design's order, as it names and describes them. */
+/** The eighteen looks, in the design's order. */
 export const STYLE_LABEL: Record<PortfolioStyle, LookLabel> = {
   midnight: { name: "Midnight", rec: true, fresh: true, best: "Engineering · Product", ground: "#08090A", blurb: "A dark, precise launch page: a glowing grid, a hero window that tilts flat as you scroll, and numbers that count up.",
     where: "In Midnight, your portrait sits in the hero window that tilts flat as visitors scroll, and each project image tops its card.", portraitWhere: "Put it in the hero window under the headline.", shotsWhere: "Use each one at the top of its project card." },
@@ -140,6 +140,14 @@ export const STYLE_LABEL: Record<PortfolioStyle, LookLabel> = {
     where: "In Chapter, your portrait is the frontispiece plate, and project images become captioned figures.", portraitWhere: "Set it as a frontispiece plate with a caption.", shotsWhere: "Set each one as a captioned figure in its chapter." },
   terminal: { name: "Terminal", best: "Engineering · Data", ground: "#F6F5F0", blurb: "Monospace, hairline windows and a command for every section. Engineering through and through.",
     where: "In Terminal, your portrait opens as portrait.jpg beside whoami, and each project image sits in its folder’s window.", portraitWhere: "Show it in a window titled portrait.jpg beside the introduction.", shotsWhere: "Show each one in a window inside its project card." },
+  catalogue: { name: "Catalogue", fresh: true, best: "Engineering · Product · Design", ground: "#F6F8F7", blurb: "A product spec sheet: a catalogue number, a figure plate, a specifications table and numbered work entries that wipe in.",
+    where: "In Catalogue, your portrait is figure 01 beside the specifications, and each project image fills its numbered work entry.", portraitWhere: "Set it as figure 01, a plate beside the specifications table.", shotsWhere: "Fill each numbered work entry’s panel with one." },
+  voltage: { name: "Voltage", fresh: true, best: "Marketing · Product · Creative", ground: "#FFFFFF", blurb: "Loud, bright and wide: a giant name that rises word by word, a round portrait, a skills marquee and big numbers.",
+    where: "In Voltage, your portrait sits in the round frame under the headline, and each project image fills its panel.", portraitWhere: "Put it in a round frame under the headline.", shotsWhere: "Use each one to fill its project’s panel." },
+  bluehour: { name: "Blue Hour", fresh: true, best: "Design · Product · Engineering", ground: "#171721", blurb: "Dusk tones and soft blur: your photo drifts behind the hero, then an about card, alternating projects and a toolkit.",
+    where: "In Blue Hour, your portrait drifts behind the hero and returns on the about card, and each project image sits beside its write-up.", portraitWhere: "Use it as the hero’s drifting backdrop, and again on the about card.", shotsWhere: "Set each one beside its project write-up, alternating sides." },
+  constellation: { name: "Constellation", fresh: true, best: "Engineering · Data · Research", ground: "#000000", blurb: "A black page under a floating cloud of outlined triangles, with a name that rises line by line and figures that count up.",
+    where: "In Constellation, your portrait sits in a rounded frame among the triangles, and each project image tops its card.", portraitWhere: "Put it in a rounded frame beside the introduction.", shotsWhere: "Use each one at the top of its project card." },
 };
 
 /** Which photos the member has added in the studio — names only; the images never leave the browser. */
