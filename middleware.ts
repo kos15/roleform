@@ -87,6 +87,22 @@ function markdownRewrite(request: NextRequest): NextResponse | null {
   return response;
 }
 
+/**
+ * The origins allowed to present a session to this app (Clerk's
+ * `authorizedParties`). Without it, a compromised app on another subdomain of
+ * koustubh.org could mint a session cookie this middleware would accept — the
+ * subdomain-leak / CSRF case Clerk's production checklist calls out.
+ *
+ * Only with live keys. A development instance (and every Vercel preview URL)
+ * runs on origins this list would refuse, and a production instance only
+ * works on its own domain anyway, so the allowlist costs nothing there and
+ * would lock everyone out here. Unset NEXT_PUBLIC_APP_URL leaves it off rather
+ * than guessing an origin.
+ */
+const APP_ORIGIN = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, "");
+const LIVE_KEYS = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.startsWith("pk_live_") ?? false;
+const CLERK_OPTIONS = LIVE_KEYS && APP_ORIGIN ? { authorizedParties: [APP_ORIGIN] } : undefined;
+
 /** The admin section: invisible, not merely forbidden, to everyone else. */
 const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
 
@@ -137,7 +153,7 @@ export default clerkMiddleware(async (auth, request) => {
     response.headers.set("Vary", "Accept");
     return response;
   }
-});
+}, CLERK_OPTIONS);
 
 export const config = {
   matcher: [
