@@ -10,7 +10,7 @@ import { PORTFOLIO_STYLES, type PortfolioChoices } from "@/lib/ai/schemas/portfo
 import { STYLE_LABEL, buildCuratedPrompt, type PortfolioMaterials } from "@/lib/domain/portfolio";
 import { EXPERIENCE_IDS, tuneSite, type PortfolioPhotos, type SiteData } from "@/lib/domain/portfolio-site";
 import { SITE_FONTS_HREF } from "@/lib/render/portfolio/template";
-import { exportPortfolioHtml } from "@/lib/render/portfolio/export";
+import { exportPortfolioHtml, previewPortfolioHtml } from "@/lib/render/portfolio/export";
 
 interface Site {
   html: string;
@@ -89,6 +89,15 @@ export function PortfolioStudio({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [elapsed, setElapsed] = useState(0);
+  const [previewErr, setPreviewErr] = useState<string | null>(null);
+  /** The open preview's blob: URL — one at a time, freed when replaced or when the studio closes. */
+  const previewUrl = useRef<string | null>(null);
+  useEffect(
+    () => () => {
+      if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+    },
+    [],
+  );
 
   const fileRef = useRef<HTMLInputElement>(null);
   const slotRef = useRef<string>("portrait");
@@ -189,6 +198,29 @@ export function PortfolioStudio({
     showPhone: choices.showPhone && Boolean(materials.phone),
     showLinks: choices.showLinks && materials.links.length > 0,
     photos,
+  };
+
+  /** The page as it stands now — every tweak above applied. Download and preview both use it. */
+  const pageHtml = () => exportPortfolioHtml(tuned, { theme: choices.style, ...siteProps }, drop);
+
+  /**
+   * Opens the page in a new tab, exactly as the download would be. Built and
+   * opened inside the click itself, so popup blockers see a user gesture.
+   */
+  const preview = () => {
+    setPreviewErr(null);
+    const url = URL.createObjectURL(
+      new Blob([previewPortfolioHtml(pageHtml(), siteData.name || "Portfolio")], { type: "text/html" }),
+    );
+    const tab = window.open(url, "_blank");
+    if (!tab) {
+      URL.revokeObjectURL(url);
+      setPreviewErr("Your browser blocked the new tab. Allow pop-ups for Roleform, or download the file and open it.");
+      return;
+    }
+    tab.opener = null;
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+    previewUrl.current = url;
   };
 
   useEffect(() => {
@@ -782,23 +814,24 @@ export function PortfolioStudio({
                       Your build is done — made for {built.builtFor}
 , {new Date(built.createdAt).toLocaleDateString("en-GB")}. The trial is used; the curated prompt is how you make more versions.
                     </p>
-                    <div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                       <button
                         type="button"
-                        onClick={() =>
-                          download(
-                            "index.html",
-                            exportPortfolioHtml(tuned, { theme: choices.style, ...siteProps }, drop),
-                            "text/html",
-                          )
-                        } className="pf-solid" style={{ ...solid, minHeight: 44, padding: "0 22px", fontSize: 15 }}>
+                        onClick={() => download("index.html", pageHtml(), "text/html")}
+                        className="pf-solid" style={{ ...solid, minHeight: 44, padding: "0 22px", fontSize: 15 }}>
                         <Svg d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5" size={16} />
                         Download index.html
                       </button>
+                      <button type="button" onClick={preview} className="hover-tint" style={{ ...outline, minHeight: 44, padding: "0 20px", fontSize: 15 }}>
+                        <Svg d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" size={16} />
+                        Preview in a new tab
+                      </button>
                     </div>
+                    {previewErr ? <Alert>{previewErr}</Alert> : null}
                     <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: MUTED }}>
-                      Open the file in any browser, or upload it to a free host such as GitHub Pages or Netlify. Read it through before you share it — it&rsquo;s your name on it.
+                      The preview and the download are the same page, built from your look, photos and answers as they are right now. Read it through before you share it — it&rsquo;s your name on it.
                     </p>
+                    <DeployGuide />
                   </>
                 ) : pending ? (
                   <div role="status" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -857,6 +890,7 @@ const solid: CSSProperties = { display: "inline-flex", alignItems: "center", gap
 const outline: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, borderRadius: 999, border: `1.5px solid ${INK}`, background: "transparent", color: INK, fontWeight: 700, whiteSpace: "nowrap" };
 const ghost: CSSProperties = { borderRadius: 999, border: 0, background: "transparent", color: INK, fontWeight: 700 };
 const fieldLabel: CSSProperties = { display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 800 };
+const codeStyle: CSSProperties = { fontFamily: "ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace", fontSize: "0.92em", background: "var(--color-bg-sunken)", borderRadius: 6, padding: "1px 5px", overflowWrap: "anywhere" };
 const inputStyle: CSSProperties = { height: 48, borderRadius: 14, border: "1.5px solid var(--color-line)", background: "var(--color-bg)", padding: "0 16px", fontSize: 15, fontWeight: 600, color: INK, outline: "none" };
 
 /**
@@ -1036,6 +1070,37 @@ function RoundBtn({ label, disabled, onClick, d }: { label: string; disabled: bo
     >
       <Svg d={d} size={18} stroke={2.4} />
     </button>
+  );
+}
+
+/**
+ * Putting the page online — GitHub Pages, because it is free, needs no card,
+ * and gives a link the member owns. Collapsed by default: it matters once,
+ * right after the download, and not to anyone still choosing a look.
+ */
+const DEPLOY_STEPS: React.ReactNode[] = [
+  <>Sign in to <strong>github.com</strong> (or create a free account).</>,
+  <>Create a new <strong>public</strong> repository named <code style={codeStyle}>your-username.github.io</code>, using your GitHub username exactly.</>,
+  <>In the new repository, choose <strong>Add file → Upload files</strong>, drop in your <code style={codeStyle}>index.html</code> (keep that name) and press <strong>Commit changes</strong>.</>,
+  <>Open <strong>Settings → Pages</strong>. Under <em>Build and deployment</em>, pick <strong>Deploy from a branch</strong>, then <strong>main</strong> and <strong>/ (root)</strong>, and <strong>Save</strong> if it isn&rsquo;t set already.</>,
+  <>Wait a minute or two. Your site is live at <code style={codeStyle}>https://your-username.github.io</code> — that&rsquo;s the link to put on your résumé, LinkedIn or in an email.</>,
+];
+
+function DeployGuide() {
+  return (
+    <details style={{ borderRadius: 18, background: "var(--color-bg)", padding: "14px 16px" }}>
+      <summary style={{ cursor: "pointer", fontSize: 14.5, fontWeight: 800 }}>
+        Put it online free with GitHub Pages — about 5 minutes
+      </summary>
+      <ol style={{ margin: "12px 0 0", paddingLeft: 20, display: "flex", flexDirection: "column", gap: 8, fontSize: 14, lineHeight: 1.55 }}>
+        {DEPLOY_STEPS.map((step, i) => (
+          <li key={i}>{step}</li>
+        ))}
+      </ol>
+      <p style={{ margin: "12px 0 0", fontSize: 13, lineHeight: 1.55, color: MUTED }}>
+        To update it later, upload a new <code style={codeStyle}>index.html</code> to the same repository — it replaces the old one and the link stays the same. Using a different repository name works too; the address becomes <code style={codeStyle}>your-username.github.io/repository-name</code>. Everything on the page, photos included, is public once it&rsquo;s up.
+      </p>
+    </details>
   );
 }
 

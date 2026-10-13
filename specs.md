@@ -602,6 +602,15 @@ Segmented control: **Upload file** / **Paste text**.
 - Design's demo affordances ("Try: a valid posting / an unreadable file") ship behind a dev flag, not in production UI.
 - Error region (`errorTitle` + `error`) renders inline in accent-800 on accent-100, never a toast.
 - Primary action **Analyze posting**, disabled until input is valid.
+- **Interview date · optional**, above the action in both modes: a date and, if they know it, a
+  time. Empty changes nothing. Filled, it is checked before the analysis is created (future, within
+  `MAX_DAYS_AHEAD`), then saved through the ordinary `createRound` (F29) under the new analysis —
+  same validation, same reminder rows, nothing the Rounds tab couldn't have written. With a time it
+  asks for `DEFAULT_LEADS`; date-only, it is stored at `DATE_ONLY_HOUR` (10:00 local), named
+  "Interview · time to confirm" so the placeholder hour is never shown as theirs, and asks only for
+  `DATE_ONLY_LEADS` (3 days, the day before, the morning of) — an hour-before reminder about an hour
+  nobody gave would be an invented fact. A parked run (F19) carries its date too. If the round fails
+  to save, the screen says so and offers to continue to the analysis rather than dropping it silently.
 
 **Acceptance:** identical JD text (by `content_hash`) reuses the prior analysis, no second charge.
 
@@ -1715,7 +1724,7 @@ real page rendered from their profile in a shadow root, isolated from the app's 
 template verbatim; `lib/domain/portfolio-site.ts` maps the excerpt to it — selected and ordered,
 never written); **2 Add photos** — an optional portrait and one image per shown project, kept in the
 browser (downscaled data URLs, never uploaded; ticking "also use as my profile photo" sends the
-portrait to Clerk), named in the curated prompt; **3 A few answers** — plus an optional "Fine-tune the page" panel: title, one-line pitch (the member's own words), location or none, up to three work items to feature in order (from their personal projects and roles), show or hide the experience section and individual roles, and which skills show in what order. Every field defaults to the profile; lists only select and order what the profile has (`tuneSite`, `lib/domain/portfolio-site.ts`), and a hidden section is dropped with its links by the renderer; **4 Get your page** — once the build has run, "Download index.html" is the currently selected look rendered from the profile with the photos embedded, the design's export stylesheet and motion inline (`lib/render/portfolio/export.ts`); photos persist in this browser only (`localStorage`). A sticky
+portrait to Clerk), named in the curated prompt; **3 A few answers** — plus an optional "Fine-tune the page" panel: title, one-line pitch (the member's own words), location or none, up to three work items to feature in order (from their personal projects and roles), show or hide the experience section and individual roles, and which skills show in what order. Every field defaults to the profile; lists only select and order what the profile has (`tuneSite`, `lib/domain/portfolio-site.ts`), and a hidden section is dropped with its links by the renderer; **4 Get your page** — once the build has run, "Download index.html" is the currently selected look rendered from the profile with the photos embedded, the design's export stylesheet and motion inline (`lib/render/portfolio/export.ts`); photos persist in this browser only (`localStorage`). Beside it, **Preview in a new tab** opens that same page, with every tweak as it stands, from a `blob:` URL — inside a `sandbox="allow-scripts allow-popups"` iframe (`previewPortfolioHtml`), so the page and the member's unvalidated profile links run on an opaque origin with no reach into Roleform's storage or session, and outbound links open in their own tab instead of being refused by a frame. Under both, a collapsed **Put it online free with GitHub Pages** guide: a `username.github.io` repository, upload `index.html`, Pages from `main` / root, share `https://username.github.io`; re-uploading updates it at the same link. A sticky
 live preview (desktop / phone) shows the chosen look; dashed slots open the file picker. Nothing is
 generated or retouched.
 
@@ -1778,6 +1787,9 @@ derived, scheduled or model-written creates or edits one (N3/N15 applied). State
 `done`, `cancelled`; done and cancelled drop pending reminders, reopening re-derives them. No model
 call, no `ai_runs` row, no plan cap — remembering a date costs nothing, so it is on every plan
 (N22 governs plan-gated caps; this has none). `MAX_ROUNDS_PER_ANALYSIS` (20) is a sanity ceiling.
+A round can also be filed from the JD screen (F2). Saving a round at the exact instant one already
+has on the same posting returns that round instead of writing a second — two rows would push every
+reminder twice.
 
 **Reminders are rows, not timers.** Saving a round writes one `round_reminders` row per lead whose
 moment is still ahead (`planReminders`, pure) — a lead already in the past is never written, so a

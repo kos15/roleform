@@ -1,15 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FileUp } from "lucide-react";
 import { Button, ErrorRegion, Textarea } from "@/components/ui";
 import { TokenWallDialog } from "@/components/token-wall";
 import { CapWallDialog } from "@/components/cap-wall";
 import { createAnalysis } from "@/app/actions/analysis";
+import { createRound, type RoundInputValue } from "@/app/actions/rounds";
 import { SAMPLE_JD } from "@/lib/sample-jd";
 import { JD_MIN_CHARS } from "@/lib/domain/guardrails";
 import { ACCEPT_DOCUMENT_ATTR, ACCEPTED_DOCUMENT_SHORT } from "@/lib/extract/formats";
+import { DATE_ONLY_HOUR, DATE_ONLY_LEADS, DEFAULT_LEADS, MAX_DAYS_AHEAD } from "@/lib/domain/reminders";
 import type { TokenWall } from "@/lib/domain/tokens";
 import type { CapWall } from "@/lib/domain/quotas";
 
@@ -40,6 +42,16 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
   const [busy, setBusy] = useState(false);
   const [wall, setWall] = useState<TokenWall | null>(null);
   const [capWall, setCapWall] = useState<CapWall | null>(null);
+  // F29 from the front door: the interview date, if the member already has
+  // one. Optional in every sense — empty is the default and changes nothing.
+  const [interviewDate, setInterviewDate] = useState("");
+  const [interviewTime, setInterviewTime] = useState("");
+  /** The analysis started but its round didn't save — say so before moving on. */
+  const [roundFailed, setRoundFailed] = useState<{ analysisId: string; message: string } | null>(null);
+  // Set after mount: "today" is the member's date, and the server rendering
+  // this form may be on the other side of midnight from them.
+  const [today, setToday] = useState<string | undefined>(undefined);
+  useEffect(() => setToday(todayLocal()), []);
 
   const devAffordances = process.env.NEXT_PUBLIC_DEV_AFFORDANCES === "true";
   const canSubmit = mode === "paste" ? text.trim().length >= JD_MIN_CHARS : file !== null;
@@ -58,8 +70,65 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
         };
   }
 
+  /**
+   * The round the member described, or null for none. Checked before the
+   * analysis is created, so a mistyped date never leaves a run behind it.
+   */
+  function interviewRound(): { ok: true; value: RoundInputValue | null } | { ok: false; message: string } {
+    if (!interviewDate) {
+      return interviewTime
+        ? { ok: false, message: "Add the interview date too, or clear the time." }
+        : { ok: true, value: null };
+    }
+    const hasTime = interviewTime !== "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    // No zone suffix: the browser reads this as the member's own wall clock.
+    const at = new Date(`${interviewDate}T${hasTime ? interviewTime : `${pad(DATE_ONLY_HOUR)}:00`}`);
+    if (Number.isNaN(at.getTime())) return { ok: false, message: "That interview date doesn't look right." };
+    if (at.getTime() <= Date.now()) {
+      return {
+        ok: false,
+        message: hasTime
+          ? "That interview time has already passed — check the date."
+          : "That date has already passed. If the interview is later today, add the time.",
+      };
+    }
+    if (at.getTime() > Date.now() + MAX_DAYS_AHEAD * 24 * 3600_000) {
+      return { ok: false, message: "That date is more than a year away — check the year." };
+    }
+    return {
+      ok: true,
+      value: {
+        kind: "other",
+        // A date with no time is stored at a placeholder hour; the name says
+        // so, so the Rounds tab never presents 10:00 as something they told us.
+        label: hasTime ? "Interview" : "Interview · time to confirm",
+        scheduledAt: at.toISOString(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        notes: "",
+        leads: [...(hasTime ? DEFAULT_LEADS : DATE_ONLY_LEADS)],
+      },
+    };
+  }
+
+  /** Files the round under the new analysis. False (and says why) if it didn't save. */
+  async function saveRound(analysisId: string, round: RoundInputValue): Promise<boolean> {
+    const saved = await createRound(analysisId, round).catch(() => null);
+    if (saved?.ok) return true;
+    setRoundFailed({
+      analysisId,
+      message: saved ? saved.error.message : "We couldn\u2019t reach Roleform to save it.",
+    });
+    return false;
+  }
+
   async function submit() {
     setError(null);
+    const round = interviewRound();
+    if (!round.ok) {
+      setError(round.message);
+      return;
+    }
     setBusy(true);
 
     // A thrown action — a dropped connection, a body the platform refused,
@@ -87,6 +156,10 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
       setBusy(false);
       return;
     }
+    if (round.value && !(await saveRound(result.value.analysisId, round.value))) {
+      setBusy(false);
+      return;
+    }
     router.push(`/analysis/${result.value.analysisId}`);
   }
 
@@ -96,10 +169,56 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
    * still real. Throwing is what tells the dialog to say so.
    */
   async function park() {
+    const round = interviewRound();
+    if (!round.ok) throw new Error(round.message);
     const result = await createAnalysis(await payload(true));
     if (!result.ok) throw new Error(result.error.message);
+    // A parked posting can carry its interview date too — the reminders are
+    // what make parking it until the reset safe to do.
+    if (round.value) await saveRound(result.value.analysisId, round.value);
     router.refresh();
   }
+
+  const interviewField = (
+    <fieldset className="rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] px-[22px] py-[18px]">
+      <legend className="sr-only">Interview date (optional)</legend>
+      <p aria-hidden className="mb-1 text-[15px] font-extrabold">
+        Interview date{" "}
+        <span className="font-semibold text-[var(--color-text-muted)]">· optional</span>
+      </p>
+      <p className="mb-3.5 text-sm leading-relaxed text-[var(--color-text-muted)]">
+        Already have one? We&rsquo;ll remind you before it — a few days ahead, the day before and
+        that morning. Skip it if you don&rsquo;t know yet; you can add rounds later.
+      </p>
+      <div className="flex flex-wrap gap-3">
+        <label className="flex flex-col gap-1.5 text-[13px] font-extrabold">
+          Date
+          <input
+            type="date"
+            className="input w-[13rem]"
+            value={interviewDate}
+            min={today}
+            onChange={(e) => setInterviewDate(e.target.value)}
+            disabled={busy}
+          />
+        </label>
+        <label className="flex flex-col gap-1.5 text-[13px] font-extrabold">
+          Time (if you know it)
+          <input
+            type="time"
+            className="input w-[10rem]"
+            value={interviewTime}
+            onChange={(e) => setInterviewTime(e.target.value)}
+            disabled={busy}
+          />
+        </label>
+      </div>
+      <p className="mt-3 text-[13px] text-[var(--color-text-muted)]">
+        Reminders arrive as notifications once they&rsquo;re turned on for this device — from
+        the analysis&rsquo;s Rounds tab or your profile.
+      </p>
+    </fieldset>
+  );
 
   return (
     // The walkthrough points at the whole block rather than one mode's control:
@@ -137,6 +256,17 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
 
       {error ? <ErrorRegion title="We couldn't use that">{error}</ErrorRegion> : null}
 
+      {roundFailed ? (
+        <div className="space-y-3">
+          <ErrorRegion title="Your analysis started, but the interview date wasn't saved">
+            {roundFailed.message} You can add it from the Rounds tab once the results are ready.
+          </ErrorRegion>
+          <Button onClick={() => router.push(`/analysis/${roundFailed.analysisId}`)}>
+            Continue to the analysis
+          </Button>
+        </div>
+      ) : null}
+
       {initialListing ? (
         <p className="mb-3 rounded-[var(--radius-md)] bg-[var(--color-accent-100)] px-4 py-3 text-sm leading-relaxed">
           <strong className="font-extrabold">
@@ -157,6 +287,7 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
             onChange={(e) => setText(e.target.value)}
             className="min-h-[22rem] rounded-[var(--radius-lg)] border-transparent bg-[var(--color-bg-raised)] px-[26px] py-6 text-[15px] leading-[1.65]"
           />
+          <div className="mt-[18px]">{interviewField}</div>
           <div className="mt-[18px] flex flex-wrap items-center justify-between gap-3.5">
             <span className="text-sm text-[var(--color-text-muted)]">
               {text.length.toLocaleString()} characters
@@ -231,6 +362,8 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
             />
           </label>
 
+          <div className="mt-[18px]">{interviewField}</div>
+
           <div className="mt-3 flex justify-end">
             <Button data-help="analyze-btn" onClick={submit} disabled={!canSubmit || busy} busy={busy}>
               {busy ? "Starting…" : "Analyse posting"}
@@ -240,4 +373,11 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
       )}
     </div>
   );
+}
+
+/** Today as `<input type="date">` wants it, in the member's own zone. */
+function todayLocal(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }

@@ -160,6 +160,18 @@ export const DEFAULT_LEADS: readonly ReminderLead[] = [
   "after_round",
 ];
 
+/**
+ * What a round entered with a date but no time asks for (the JD screen's
+ * optional interview date). Only the leads a placeholder time can't make
+ * wrong: a day-level "in 3 days" or "tomorrow" is right whatever the hour,
+ * and morning-of fires at 8 AM local. "An hour before" a time nobody gave
+ * would be a reminder about an invented fact.
+ */
+export const DATE_ONLY_LEADS: readonly ReminderLead[] = ["three_days_before", "day_before", "morning_of"];
+
+/** The placeholder hour for a date-only round — late enough for morning-of to fire. */
+export const DATE_ONLY_HOUR = 10;
+
 /** A round further out than this is almost certainly a typo in the year. */
 export const MAX_DAYS_AHEAD = 366;
 

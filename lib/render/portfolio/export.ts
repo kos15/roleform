@@ -50,3 +50,40 @@ export function exportPortfolioHtml(data: SiteData, props: Omit<SiteProps, "vw" 
     "",
   ].join("\n");
 }
+
+/**
+ * The preview tab: the exact `exportPortfolioHtml` output, shown full-window
+ * inside a sandboxed iframe.
+ *
+ * Opened from a blob: URL, the page would share Roleform's origin — and its
+ * links are the member's own, unvalidated profile URLs. `sandbox` without
+ * `allow-same-origin` gives the page an opaque origin instead: its script (the
+ * motion engine) runs, but nothing on it can read Roleform's storage or
+ * cookies or call Roleform as the member.
+ *
+ * Inside a frame, a link to LinkedIn or GitHub would try to load in the frame
+ * and be refused, so outbound links are sent to a new tab. In-page `#` links
+ * stay where they are. The downloaded file is untouched by any of this.
+ */
+export function previewPortfolioHtml(html: string, title: string): string {
+  const outbound =
+    "<script>document.querySelectorAll('a[href]').forEach(function(a){var h=a.getAttribute('href')||'';if(h&&h.charAt(0)!=='#'){a.target='_blank';a.rel='noopener noreferrer'}})</script>";
+  const end = html.lastIndexOf("</body>");
+  const framed = end === -1 ? html + outbound : `${html.slice(0, end)}${outbound}\n${html.slice(end)}`;
+  const srcdoc = framed.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  return [
+    "<!doctype html>",
+    '<html lang="en">',
+    "<head>",
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    `<title>${escapeHtml(`Preview · ${title}`)}</title>`,
+    "<style>html,body{margin:0;height:100%}iframe{display:block;width:100%;height:100%;border:0}</style>",
+    "</head>",
+    "<body>",
+    `<iframe title="${escapeHtml(title)}" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" srcdoc="${srcdoc}"></iframe>`,
+    "</body>",
+    "</html>",
+    "",
+  ].join("\n");
+}
