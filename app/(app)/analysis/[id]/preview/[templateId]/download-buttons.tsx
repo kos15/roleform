@@ -24,8 +24,16 @@ export function DownloadButtons({ draftId }: { draftId: string }) {
     const tab = format === "pdf" ? window.open("about:blank", "_blank") : null;
     if (tab) tab.opener = null;
 
-    const result = await exportDraft(draftId, format);
+    // A thrown action (dropped connection, a new deploy) used to leave the
+    // button stuck on "Building…" and the blank tab open.
+    const result = await exportDraft(draftId, format).catch(() => null);
     setBusy(null);
+
+    if (!result) {
+      tab?.close();
+      setError("We couldn\u2019t reach Roleform. Check your connection and try again.");
+      return;
+    }
 
     if (!result.ok) {
       tab?.close();

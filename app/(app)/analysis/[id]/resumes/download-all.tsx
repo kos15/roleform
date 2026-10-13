@@ -13,8 +13,13 @@ export function DownloadAll({ analysisId }: { analysisId: string }) {
   async function run() {
     setBusy(true);
     setError(null);
-    const result = await exportAll(analysisId);
+    // A thrown action used to leave the button stuck on its busy label.
+    const result = await exportAll(analysisId).catch(() => null);
     setBusy(false);
+    if (!result) {
+      setError("We couldn\u2019t reach Roleform. Check your connection and try again.");
+      return;
+    }
     if (!result.ok) {
       setError(result.error.message);
       return;

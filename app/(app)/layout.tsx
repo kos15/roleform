@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
+import { Suspense, cache } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import { Brand } from "@/components/brand";
@@ -18,11 +18,51 @@ import { currentRole } from "@/lib/admin/role";
 /** Signed-in and auth surfaces are a person's own data, not search results. */
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  // Decides whether the header and the sheet list Admin at all. For anyone else
-  // the admin section is invisible: /admin 404s (lib/admin/guard.ts).
+/**
+ * Decides whether the header and the sheet list Admin at all. For anyone else
+ * the admin section is invisible: /admin 404s (lib/admin/guard.ts).
+ *
+ * It is a Clerk directory fetch plus a mirror write, and it used to be awaited
+ * at the top of this layout — so every signed-in page, and every route's
+ * loading skeleton, waited on a round trip to Clerk before the first byte.
+ * Now only the two places that list Admin wait for it, behind Suspense, with
+ * the member's links (which is everyone's links but one) as the fallback.
+ */
+// `cache`: both boundaries below ask, and the answer (and its mirror write)
+// should be fetched once per request, as it was when it lived up here.
+const viewerIsAdmin = cache(async (): Promise<boolean> => {
   const { userId } = await auth();
-  const isAdmin = userId ? (await currentRole(userId)) === "admin" : false;
+  return userId ? (await currentRole(userId)) === "admin" : false;
+});
+
+function headerLinks(isAdmin: boolean) {
+  return [
+    { href: "/analyze", label: "New analysis", match: ["/analyze", "/analysis", "/onboarding"] },
+    { href: "/jobs", label: "Jobs" },
+    { href: "/history", label: "History" },
+    { href: "/profile", label: "Profile" },
+    { href: "/pricing", label: "Pricing" },
+    ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+  ];
+}
+
+const ADMIN_SHEET_LINK = { href: "/admin", label: "Admin", hint: "Members, caps and the support inbox" };
+
+async function HeaderNav() {
+  return <NavLinks className="wide-only" links={headerLinks(await viewerIsAdmin())} />;
+}
+
+async function TabBar({ account }: { account: React.ReactNode }) {
+  const isAdmin = await viewerIsAdmin();
+  return <MobileTabBar extraLinks={isAdmin ? [ADMIN_SHEET_LINK] : []} account={account} />;
+}
+
+export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const account = (
+    <Suspense fallback={null}>
+      <SheetAccount />
+    </Suspense>
+  );
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -38,17 +78,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             alone didn't say so. It also claims /analysis, because that is the
             same thread of work. Admin is listed only for admins; /admin still
             enforces the role on its own. */}
-        <NavLinks
-          className="wide-only"
-          links={[
-            { href: "/analyze", label: "New analysis", match: ["/analyze", "/analysis", "/onboarding"] },
-            { href: "/jobs", label: "Jobs" },
-            { href: "/history", label: "History" },
-            { href: "/profile", label: "Profile" },
-            { href: "/pricing", label: "Pricing" },
-            ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
-          ]}
-        />
+        <Suspense fallback={<NavLinks className="wide-only" links={headerLinks(false)} />}>
+          <HeaderNav />
+        </Suspense>
 
         <div className="ml-auto flex flex-none items-center gap-3.5">
           {/* Two aggregate queries. Suspended so the layout doesn't hold the
@@ -109,16 +141,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           page alike, so it can't live inside either. */}
       <ProductTour />
 
-      <MobileTabBar
-        extraLinks={
-          isAdmin ? [{ href: "/admin", label: "Admin", hint: "Members, caps and the support inbox" }] : []
-        }
-        account={
-          <Suspense fallback={null}>
-            <SheetAccount />
-          </Suspense>
-        }
-      />
+      <Suspense fallback={<MobileTabBar account={account} />}>
+        <TabBar account={account} />
+      </Suspense>
     </div>
   );
 }

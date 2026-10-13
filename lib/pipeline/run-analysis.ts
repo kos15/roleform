@@ -60,7 +60,14 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
  * claim only goes stale after an invocation that could not possibly still be
  * running has had time to be killed and its `finally` skipped.
  */
-const RUN_LOCK_STALE_MS = 6 * 60_000;
+export const RUN_LOCK_STALE_MS = 6 * 60_000;
+
+/**
+ * Tailoring calls in flight at once. Small on purpose: enough to take the
+ * stage from minutes to well under one, few enough that a single run never
+ * crowds the provider's rate limit or the database pool.
+ */
+const TAILOR_CONCURRENCY = 5;
 
 /**
  * Claims this analysis for the caller, atomically. `updateMany`'s WHERE and
@@ -110,7 +117,7 @@ async function followExistingRun(
   while (Date.now() < deadline) {
     const row = await db.analysis.findFirst({
       where: { clerkUserId, id: analysisId },
-      select: { status: true, scoreNote: true },
+      select: { status: true, scoreNote: true, runningAt: true },
     });
     if (!row || row.status === "ready") {
       emit({ stage: "preparing", state: "done", progressPct: 100 });
@@ -123,6 +130,36 @@ async function followExistingRun(
         progressPct: 0,
         message: row.scoreNote ?? "This analysis didn't finish.",
       });
+      return;
+    }
+    // Still `parsing`, but nobody holds the run any more. Following it would
+    // poll a run that no longer exists until the deadline, then end with
+    // nothing to say.
+    //
+    // Released without finishing means the run itself threw. That is a
+    // failure, and a failed run is picked up again only when the member asks
+    // (parsing-screen.tsx), so it is reported, not retried.
+    if (row.runningAt === null) {
+      emit({
+        stage: "reading",
+        state: "failed",
+        progressPct: 0,
+        message: "Something failed partway through. Your completed stages were kept.",
+      });
+      return;
+    }
+    // A claim gone stale means the invocation holding it was killed by the
+    // platform mid-run — nothing the run did wrong, and exactly what the
+    // member is still waiting on. Take it over: the claim is atomic, so of
+    // several followers exactly one wins, and `resumeState` means the stages
+    // that already finished are not paid for twice.
+    const abandoned = row.runningAt.getTime() < Date.now() - RUN_LOCK_STALE_MS;
+    if (abandoned && (await claimRun(clerkUserId, analysisId))) {
+      try {
+        await executeAnalysis({ clerkUserId, analysisId, emit });
+      } finally {
+        await releaseRun(clerkUserId, analysisId);
+      }
       return;
     }
     await new Promise((resolve) => setTimeout(resolve, 1_500));
@@ -371,6 +408,75 @@ async function executeAnalysis(args: {
 
   emit({ stage: "matching", state: "done", progressPct: progressFor("matching", "done") });
 
+  /* ------------------------------------- ④ + ⑤ started now, reported after ③ */
+
+  // Prep and Learning read the requirements, the coverage and the bullets —
+  // nothing stage ③ produces — so they start here and run while the bullets
+  // are being rewritten instead of after. Run back to back, the four stages
+  // regularly brushed the route's 300s ceiling, and a run the platform kills
+  // has no `finally`, no failure message and a lock that stays held for six
+  // minutes. Their order relative to each other is unchanged: learning still
+  // waits for the questions it binds to.
+  //
+  // The parsing screen still reports them after ③. Work that began early and
+  // is announced late understates progress; it never claims any.
+  //
+  // Never rejects — each half catches its own failure, exactly as before.
+  const prepAndLearning = (async () => {
+    let prepDegraded = false;
+    if (!done.preparing) {
+      try {
+        await writeQuestions({
+          clerkUserId,
+          analysisId,
+          meta: jobMeta,
+          requirements,
+          bullets,
+          coverage,
+          absent: scored.buckets.absent,
+        });
+      } catch (e) {
+        prepDegraded = true;
+        logStageFailure("prep", e);
+      }
+    }
+
+    let learningDegraded = false;
+    if (!done.learning) {
+      try {
+        // The Learning Engine, S3–S7 (lib/learning/build-plan.ts). One large-model
+        // call; everything else is a pure function or a primary-key read against
+        // the precomputed bundles.
+        //
+        // It runs AFTER writeQuestions on purpose: the proof-of-learning loop binds
+        // every recommended resource to an interview question, and a question that
+        // doesn't exist yet cannot be bound to. When Prep degrades, gaps still get
+        // written — they just fall through to roadmap fallbacks rather than steps,
+        // which is the honest consequence rather than a silent one.
+        const learning = await buildLearningPlan({
+          clerkUserId,
+          analysisId,
+          jobTitle: jobMeta.title,
+          requirements,
+          coverage,
+          bullets,
+          profileSkillNames,
+          skillIdByName,
+          // No budget on the analysis run. The knapsack is pure and re-solvable in
+          // milliseconds, so the Learning tab re-plans against whatever budget the
+          // user picks without spending a token or touching the model (spec §10).
+          budgetMin: null,
+        });
+        learningDegraded = learning.narrativeDegraded;
+      } catch (e) {
+        learningDegraded = true;
+        logStageFailure("learning", e);
+      }
+    }
+
+    return { prepDegraded, learningDegraded };
+  })();
+
   /* -------------------------------------------------------------- ③ tailoring */
 
   emit({ stage: "rewriting", state: "running", progressPct: progressFor("rewriting", "running") });
@@ -396,55 +502,87 @@ async function executeAnalysis(args: {
       let ceilingHit = false;
 
       // One call per bullet, each scoped to its single best-matching requirement.
-      // Sequential rather than parallel: the per-user rate limit matters more here
-      // than latency, and the pipeline already streams progress.
-      for (const [i, entry] of ranked.entries()) {
-        if (budget.exceeded()) {
-          ceilingHit = true;
-          tailored.push({
-            sourceBulletId: entry.bullet.id,
-            originalText: entry.bullet.text,
-            rewrittenText: entry.bullet.text,
-            transform: "verbatim",
-            targetsRequirementId: null,
-            aiRunId: null,
-            blockedBy: ["token_ceiling"],
-            tokensUsed: 0,
-          });
-          continue;
+      //
+      // A few at a time rather than one after another. Sequential, 20–30
+      // bullets at a few seconds each was most of a run's wall clock, and with
+      // ③–⑤ in series it pushed long profiles past the route's 300s ceiling —
+      // where the platform kills the function mid-stage with no message. The
+      // provider's own 429s are retried with backoff inside `runStructured`,
+      // and the per-user limit (LIMITS.analysis) counts runs, not calls.
+      //
+      // Results land at their ranked index, so the order the drafts are built
+      // in — and every `ordinal` — is the same as the sequential loop gave.
+      // The ceiling is checked before each call starts; at most
+      // TAILOR_CONCURRENCY − 1 calls already in flight can finish past it,
+      // a few hundred tokens each against a 60,000 budget.
+      const slots: (TailoredResult | null)[] = new Array(ranked.length).fill(null);
+      let nextIndex = 0;
+      let finished = 0;
+      let aborted = false;
+
+      const worker = async () => {
+        while (!aborted && nextIndex < ranked.length) {
+          const i = nextIndex++;
+          const entry = ranked[i];
+
+          if (budget.exceeded()) {
+            ceilingHit = true;
+            slots[i] = {
+              sourceBulletId: entry.bullet.id,
+              originalText: entry.bullet.text,
+              rewrittenText: entry.bullet.text,
+              transform: "verbatim",
+              targetsRequirementId: null,
+              aiRunId: null,
+              blockedBy: ["token_ceiling"],
+              tokensUsed: 0,
+            };
+          } else {
+            const target = entry.requirementIds
+              .map((id) => requirementById.get(id))
+              .filter((r): r is DomainRequirement => Boolean(r))
+              .sort((a, b) => weight(b) - weight(a))[0];
+
+            try {
+              const result = await tailorBullet({
+                clerkUserId,
+                analysisId,
+                bullet: entry.bullet,
+                requirement: target ?? null,
+                profileTerms: scopedTerms(entry.bullet.scopeRef),
+                jobTitle: jobMeta.title,
+              });
+              if (result.ok) {
+                slots[i] = result.value;
+                budget.add(result.value.tokensUsed);
+              }
+            } catch (e) {
+              // Same outcome as the sequential loop's throw: the stage stops
+              // and degrades. The other workers take nothing further.
+              aborted = true;
+              throw e;
+            }
+          }
+
+          // This is the run's slowest stretch, and a progress bar that sat at
+          // 45% for all of it read as broken, not slow — exactly what sends a
+          // member reloading mid-run (see `claimRun` above). Interpolated
+          // across the stage's own 45–80% band by bullets finished so far.
+          finished++;
+          if (!aborted) {
+            emit({
+              stage: "rewriting",
+              state: "running",
+              progressPct: progressWithin("rewriting", finished, ranked.length),
+            });
+          }
         }
+      };
 
-        const target = entry.requirementIds
-          .map((id) => requirementById.get(id))
-          .filter((r): r is DomainRequirement => Boolean(r))
-          .sort((a, b) => weight(b) - weight(a))[0];
-
-        const result = await tailorBullet({
-          clerkUserId,
-          analysisId,
-          bullet: entry.bullet,
-          requirement: target ?? null,
-          profileTerms: scopedTerms(entry.bullet.scopeRef),
-          jobTitle: jobMeta.title,
-        });
-        if (result.ok) {
-          tailored.push(result.value);
-          budget.add(result.value.tokensUsed);
-        }
-
-        // This is the run's slowest stretch — one sequential model call per
-        // bullet, often 20–30 of them — and until now the progress bar sat
-        // at 45% for the whole thing with nothing moving. A parsing screen
-        // that stops advancing for the majority of a multi-minute run reads
-        // as broken, not slow, and is exactly what sends a member reloading
-        // mid-run (which is its own bug — see `claimRun` above). Interpolated
-        // across the stage's own 45–80% band, not just start/end.
-        emit({
-          stage: "rewriting",
-          state: "running",
-          progressPct: progressWithin("rewriting", i + 1, ranked.length),
-        });
-      }
+      await Promise.all(
+        Array.from({ length: Math.min(TAILOR_CONCURRENCY, ranked.length) }, () => worker()),
+      );
+      for (const slot of slots) if (slot) tailored.push(slot);
 
       const summary = await tailorSummary({
         clerkUserId,
@@ -501,56 +639,8 @@ async function executeAnalysis(args: {
 
   emit({ stage: "preparing", state: "running", progressPct: progressFor("preparing", "running") });
 
-  let prepDegraded = false;
-  if (!done.preparing) {
-    try {
-      await writeQuestions({
-        clerkUserId,
-        analysisId,
-        meta: jobMeta,
-        requirements,
-        bullets,
-        coverage,
-        absent: scored.buckets.absent,
-      });
-    } catch (e) {
-      prepDegraded = true;
-      logStageFailure("prep", e);
-    }
-  }
-
-  let learningDegraded = false;
-  if (!done.learning) {
-    try {
-      // The Learning Engine, S3–S7 (lib/learning/build-plan.ts). One large-model
-      // call; everything else is a pure function or a primary-key read against
-      // the precomputed bundles.
-      //
-      // It runs AFTER writeQuestions on purpose: the proof-of-learning loop binds
-      // every recommended resource to an interview question, and a question that
-      // doesn't exist yet cannot be bound to. When Prep degrades, gaps still get
-      // written — they just fall through to roadmap fallbacks rather than steps,
-      // which is the honest consequence rather than a silent one.
-      const learning = await buildLearningPlan({
-        clerkUserId,
-        analysisId,
-        jobTitle: jobMeta.title,
-        requirements,
-        coverage,
-        bullets,
-        profileSkillNames,
-        skillIdByName,
-        // No budget on the analysis run. The knapsack is pure and re-solvable in
-        // milliseconds, so the Learning tab re-plans against whatever budget the
-        // user picks without spending a token or touching the model (spec §10).
-        budgetMin: null,
-      });
-      learningDegraded = learning.narrativeDegraded;
-    } catch (e) {
-      learningDegraded = true;
-      logStageFailure("learning", e);
-    }
-  }
+  // Started before ③ (above); usually finished or nearly so by now.
+  const { prepDegraded, learningDegraded } = await prepAndLearning;
 
   await db.analysis.update({ where: { id: analysisId }, data: { status: "ready" } });
 

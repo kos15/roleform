@@ -516,7 +516,14 @@ Profile · Pricing` (plus `Admin` for admins), the token balance pill (F19), the
 on is set in the heavy weight — the only active treatment.
 
 `Admin` is listed in the header and the mobile sheet only for admins. For everyone else the admin
-section does not exist: `/admin` (any sub-path, any query) returns the ordinary 404 (F15).
+section does not exist: `/admin` (any sub-path, any query) returns the ordinary 404 (F15). The role
+is a Clerk directory fetch, so it is read behind Suspense with the member's links as the fallback —
+no page, and no loading skeleton, waits on it.
+
+**When a screen crashes** it gets the house error screen (`components/route-error.tsx`, wired as
+`error.tsx` in `(app)`, `(marketing)` and the root, plus `global-error.tsx`), never Next's bare
+"Application error" line. *Try again* refreshes the server half and re-renders; a tab left over from
+a previous deploy (a missing chunk or Server Action) reloads itself, at most once a minute.
 
 **Footer**, on every surface including the public ones: the mark and the one-line promise, then three
 columns — Product (`New analysis · History · Profile · Status`), Company (`How it works · Privacy ·
@@ -609,6 +616,24 @@ A stage failure stops there and says what failed — a spinner that lies is wors
 without a failed stage; a run that broke would otherwise be dropped on a résumés tab with no header
 and no tabs. Beside *Try another posting* there is **Pick it up again**, which re-POSTs the same
 analysis. It never fires on its own — a page reload must not bill anybody.
+
+**The run does not depend on the screen watching it.** The route hands the pipeline to `after()`
+and its `emit` goes quiet once the client disconnects, so a locked phone, a closed tab or a dropped
+connection no longer tears down whichever stage was running (it used to: the next `enqueue` threw).
+The screen only redirects to results when the stream carried the run's last word — stage ④ at 100%
+— never merely because the stream ended. A stream that stops early is reconnected quietly, up to
+three times, with `?reconnect=1`: that follows a run still in progress, reports one that ended
+(including a failure, which is still only picked up again on request), and bills nothing. A
+follower that finds the run's claim gone stale — its invocation killed by the platform — takes it
+over and resumes it; one that finds the claim released without a finish reports the failure.
+
+**Time budget.** The route caps at 300s, and a run the platform kills has no message and holds its
+claim for six minutes, so the pipeline is built to finish well inside it: stage ③ tailors five
+bullets at a time (results kept in ranked order, so ordinals are unchanged; the token ceiling is
+checked before each call starts, so at most four in-flight calls can finish past it), each tailoring
+attempt times out at 30s and falls back to the original bullet, and ④ + ⑤ start as soon as ② has
+written coverage — they read nothing ③ produces — and are reported after ③. Learning still waits
+for the questions it binds to.
 
 **Resuming is enforced, not asserted.** `runAnalysis` consults `resumeState` before each stage and
 returns early where the rows already exist, so a resumed run pays only for what it has not already

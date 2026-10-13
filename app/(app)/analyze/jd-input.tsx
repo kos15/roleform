@@ -62,7 +62,17 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
     setError(null);
     setBusy(true);
 
-    const result = await createAnalysis(await payload(false));
+    // A thrown action — a dropped connection, a body the platform refused,
+    // a tab older than the current deploy — used to leave the button busy
+    // forever with nothing said. Now it says so and the button comes back.
+    let result: Awaited<ReturnType<typeof createAnalysis>>;
+    try {
+      result = await createAnalysis(await payload(false));
+    } catch {
+      setError("We couldn\u2019t reach Roleform. Check your connection and try again.");
+      setBusy(false);
+      return;
+    }
     if (!result.ok) {
       // The meter and the analyses cap are the two refusals with somewhere to
       // go, so both open a dialog instead of printing a sentence into the

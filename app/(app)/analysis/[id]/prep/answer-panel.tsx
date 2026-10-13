@@ -47,8 +47,13 @@ export function AnswerPanel({
   const load = () => {
     setError(null);
     startTransition(async () => {
-      const result = await draftAnswer(questionId);
-      if (result.ok) {
+      // Caught here rather than left to the transition: an action that throws
+      // inside one is rethrown into the error boundary and takes the whole
+      // Prep tab down with it, for what is one panel's failure.
+      const result = await draftAnswer(questionId).catch(() => null);
+      if (!result) {
+        setError("We couldn\u2019t reach Roleform. Check your connection and try again.");
+      } else if (result.ok) {
         setAnswer(result.value);
         onDrafted(questionId);
       } else if (result.error.code === "token_wall" && result.error.wall) {
