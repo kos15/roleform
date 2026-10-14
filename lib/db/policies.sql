@@ -59,6 +59,9 @@ declare
     'interview_rounds',
     'round_reminders',
     'push_subscriptions',
+    -- F29.2: the outbox. Written and read by the sender over the Prisma
+    -- connection; through the anon client, a member sees only their own.
+    'push_deliveries',
     -- F30: the member's study plan, their ticks and the alerts it implies.
     -- The sender reads the reminders over the Prisma connection, like F29's.
     'study_plans',

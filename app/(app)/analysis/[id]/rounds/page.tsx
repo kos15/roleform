@@ -56,6 +56,7 @@ export default async function RoundsTab({ params }: { params: Promise<{ id: stri
             deviceLabel: d.deviceLabel,
             createdAt: d.createdAt.toISOString(),
             lastSentAt: d.lastSentAt?.toISOString() ?? null,
+            enabled: d.enabled,
           }))}
         />
         {!pushConfigured() ? null : (

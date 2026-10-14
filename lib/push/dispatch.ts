@@ -1,9 +1,10 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { reminderCopy, reminderPath, shouldSend } from "@/lib/domain/reminders";
+import { discreetReminderCopy, reminderCopy, reminderPath, shouldSend } from "@/lib/domain/reminders";
+import { discreetStudyCopy } from "@/lib/domain/push";
 import { buildSchedule, localDate, localMinutes, sittingAlertCopy, sittings, studyAlertStale } from "@/lib/domain/study-plan";
 import { getStudyContext } from "@/lib/db/queries/study";
-import { sendToMember } from "./send";
+import { enqueue, type EnqueueResult } from "./outbox";
 
 /**
  * The reminder sender (F29) — the one piece of Roleform that runs on a clock.
@@ -16,6 +17,13 @@ import { sendToMember } from "./send";
  * dies after claiming loses that reminder rather than repeating it, which is
  * the right way round for something that buzzes a phone.
  *
+ * F29.2: a claimed reminder is QUEUED, not sent — one `push_deliveries` row
+ * per enabled device, deduplicated on "round:<reminder id>", carrying a TTL
+ * that ends when the reminder stops being useful. The outbox (outbox.ts)
+ * sends and retries; `sent` here means "handed to the outbox", and
+ * `delivered` counts the device rows queued. What the push services did with
+ * them lives on `push_deliveries`.
+ *
  * No model call, no `ai_runs` row (N13 applied). Logs are counts (N7).
  */
 
@@ -27,6 +35,14 @@ import { sendToMember } from "./send";
  */
 const BATCH = 100;
 const CHUNK = 25;
+
+/** After the round starts, the "how did it go?" nudge stays useful for half a day. */
+const AFTER_ROUND_TTL_MS = 12 * 60 * 60_000;
+
+/** Reminder status from what queueing achieved. */
+function settledAs(result: EnqueueResult): "sent" | "skipped" {
+  return result.reason === "ok" ? "sent" : "skipped";
+}
 
 export interface DispatchSummary {
   due: number;
@@ -72,37 +88,49 @@ export async function dispatchDueReminders(now: Date = new Date()): Promise<Disp
     if (claimed.count === 0) return null; // Another invocation has it.
     if (!shouldSend(round, reminder.lead, now)) return "skipped";
 
-    const copy = reminderCopy(
-      {
-        label: round.label,
-        kind: round.kind,
-        company: round.analysis.company,
-        scheduledAt: round.scheduledAt,
-        timeZone: round.timeZone,
-      },
-      reminder.lead,
-      now,
-    );
-    const result = await sendToMember(reminder.clerkUserId, {
-      ...copy,
-      url: reminderPath(round.analysisId, round.kind, reminder.lead),
-      tag: `round-${round.id}`,
+    const result = await enqueue({
+      clerkUserId: reminder.clerkUserId,
+      category: "round",
+      dedupeKey: `round:${reminder.id}`,
+      payload: (prefs) => ({
+        ...(prefs.notifyDetails
+          ? reminderCopy(
+              {
+                label: round.label,
+                kind: round.kind,
+                company: round.analysis.company,
+                scheduledAt: round.scheduledAt,
+                timeZone: round.timeZone,
+              },
+              reminder.lead,
+              now,
+            )
+          : discreetReminderCopy(round, reminder.lead, now)),
+        url: reminderPath(round.analysisId, round.kind, reminder.lead),
+        tag: `round-${round.id}`,
+      }),
+      // A before-round reminder is worthless once the round starts.
+      expiresAt:
+        reminder.lead === "after_round" ? new Date(now.getTime() + AFTER_ROUND_TTL_MS) : round.scheduledAt,
     });
-
-    if (result.devices === 0) return "skipped"; // Nobody to tell.
-    if (result.delivered > 0) {
-      await db.roundReminder.update({
-        where: { id: reminder.id },
-        data: { status: "sent", delivered: result.delivered },
-      });
-      return "sent";
+    const status = settledAs(result);
+    if (status === "sent") {
+      await db.roundReminder.update({ where: { id: reminder.id }, data: { status, delivered: result.queued } });
     }
-    await db.roundReminder.update({ where: { id: reminder.id }, data: { status: "failed" } });
-    return "failed";
+    return status;
   };
 
   for (let i = 0; i < due.length; i += CHUNK) {
-    const outcomes = await Promise.all(due.slice(i, i + CHUNK).map(settle));
+    const outcomes = await Promise.all(
+      due.slice(i, i + CHUNK).map((r) =>
+        settle(r).catch(async () => {
+          // Claimed but not queued (a DB error mid-way): recorded as failed,
+          // never retried from here — the claim is what keeps it at-most-once.
+          await db.roundReminder.update({ where: { id: r.id }, data: { status: "failed" } }).catch(() => null);
+          return "failed" as const;
+        }),
+      ),
+    );
     for (const outcome of outcomes) if (outcome) summary[outcome] += 1;
   }
 
@@ -139,24 +167,34 @@ export async function dispatchDueReminders(now: Date = new Date()): Promise<Disp
     const startMin = localMinutes(reminder.startsAt, tz);
     const sitting = sittings(schedule).find((s) => s.date === date && s.startMin === startMin);
     if (!sitting) return "skipped";
-    const copy = sittingAlertCopy(sitting, today);
-    const result = await sendToMember(reminder.clerkUserId, {
-      ...copy,
-      url: `/analysis/${reminder.plan.analysisId}/schedule`,
-      tag: `study-${reminder.plan.analysisId}`,
+    const result = await enqueue({
+      clerkUserId: reminder.clerkUserId,
+      category: "study",
+      dedupeKey: `study:${reminder.id}`,
+      payload: (prefs) => ({
+        ...(prefs.notifyDetails ? sittingAlertCopy(sitting, today) : discreetStudyCopy()),
+        url: `/analysis/${reminder.plan.analysisId}/schedule`,
+        tag: `study-${reminder.plan.analysisId}`,
+      }),
+      // Same window studyAlertStale uses: ten minutes past the start, it's noise.
+      expiresAt: new Date(reminder.startsAt.getTime() + 10 * 60_000),
     });
-
-    if (result.devices === 0) return "skipped";
-    if (result.delivered > 0) {
-      await db.studyReminder.update({ where: { id: reminder.id }, data: { status: "sent", delivered: result.delivered } });
-      return "sent";
+    const status = settledAs(result);
+    if (status === "sent") {
+      await db.studyReminder.update({ where: { id: reminder.id }, data: { status, delivered: result.queued } });
     }
-    await db.studyReminder.update({ where: { id: reminder.id }, data: { status: "failed" } });
-    return "failed";
+    return status;
   };
 
   for (let i = 0; i < study.length; i += CHUNK) {
-    const outcomes = await Promise.all(study.slice(i, i + CHUNK).map(settleStudy));
+    const outcomes = await Promise.all(
+      study.slice(i, i + CHUNK).map((r) =>
+        settleStudy(r).catch(async () => {
+          await db.studyReminder.update({ where: { id: r.id }, data: { status: "failed" } }).catch(() => null);
+          return "failed" as const;
+        }),
+      ),
+    );
     for (const outcome of outcomes) if (outcome) summary[outcome] += 1;
   }
 

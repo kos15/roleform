@@ -1891,7 +1891,7 @@ bottom tab bar already pads by `env(safe-area-inset-bottom)`.
 `/_next/static` and `/icons` (public, immutable); and shows pushes and opens their target on tap.
 It **never caches a signed-in page** — an analysis or a profile left in Cache Storage on a shared
 phone would outlive sign-out (N7). A tapped notification can only open an in-app path; anything
-else falls back to `/history`. Registered in production only (in dev the static cache would serve
+else falls back to `/profile` (F29.2). Registered in production only (in dev the static cache would serve
 stale chunks) and served `no-cache` with `Service-Worker-Allowed: /`.
 
 **Install prompts.** `components/install-app.tsx`: Chrome/Edge/Samsung get one button wired to the
@@ -2038,6 +2038,84 @@ still ahead across postings.
 time order; a system-design reminder opens Prep on the System design family; the after-round nudge
 arrives only for a round not yet marked; a round at 09:00 local has no morning-of row.
 
+### F29.2 — Durable push delivery, preferences and device hygiene
+
+F29 sent each reminder inline, once: a 5xx or a timeout from a push service lost it, and a device
+signed out of Roleform kept its owner's reminders. F29.2 makes delivery durable and the device list
+honest. Runbook: `docs/notifications.md`.
+
+**The outbox.** `push_deliveries` — one row per push per device. A reminder coming due (F29/F30)
+or the member's own test is QUEUED there (`lib/push/outbox.ts#enqueue`), never sent inline; the
+reminder row reads `sent` once queued and `delivered` counts the device rows. The sender
+(`processOutbox`, run by the same cron route after the reminders are queued) leases due rows with
+one `UPDATE … FOR UPDATE SKIP LOCKED` (90-second lease; a lapsed lease is retried), and settles each
+by the push service's answer, classified in `lib/domain/push.ts` (pure):
+
+| Answer | Row becomes |
+|---|---|
+| 2xx | `accepted` — the push service took it. **Not** "delivered", never "read": Web Push reports nothing past the push service, and the UI says so. |
+| 404 / 410 | `gone` — the device row is deleted in the same pass |
+| 429, 5xx, timeout, network | `queued` again after 1 · 5 · 15 · 45 minutes (a longer `Retry-After` wins, within an hour) |
+| anything else (400, 403, 413) | `failed` |
+| TTL ran out first | `expired` |
+| device paused, category switched off, or device now another member's | `cancelled` |
+
+At most 5 attempts (CHECK). Every row has an `expires_at` — the round's start for a before-round
+reminder, +12h for the after-round nudge, the sitting's start +10 min for study, 10 min for a test —
+which is also the `TTL` header, so a push service never delivers a reminder for a round already
+under way. `Topic` (= the tag) lets a push service replace an undelivered reminder with the newer
+one; `Urgency: high` for rounds and tests, `normal` for study. `UNIQUE (subscription_id,
+dedupe_key)` (`round:<id>`, `study:<id>`, `test:<uuid>`) makes queueing idempotent. CHECKs: title
+1–120, body ≤ 240, tag ≤ 64, url an in-app path (one leading `/`, no `//`, no backslash), accepted ⇔
+`accepted_at`, sending ⇔ `lease_until`. Logs: `[push] leased= accepted= retrying= failed= expired=
+gone= cancelled= codes=201:3,503:1` — counts and status codes, never an endpoint or text (N7).
+
+There is **no send endpoint**. The cron route sends only what business rows queued; the test
+button sends only to the caller's own devices (5 per 10 minutes, through the outbox like everything
+else, drained at once for "Send a test" and 30 s later — or by the next cron pass — for "Test with
+the app closed").
+
+**Preferences** (`users.notify_rounds`, `notify_study`, `notify_details`; `/profile`). A category
+switched off queues nothing and cancels what is already queued. `notify_details` is **off by
+default**: lock-screen copy is then "Interview reminder · You have a round in 1 hour. Open Roleform
+for the details." / "Study session" — no company, no round name, no topic. On, it is F29's full copy.
+**Per device**, `push_subscriptions.enabled` pauses one device without losing its subscription (no
+new OS prompt to resume); remove deletes the row and, on this device, unsubscribes the browser.
+
+**Reconciliation, sign-out and account switching.** `PushSync` (signed-in pages) never files a
+device by itself any more: when permission is already granted it calls
+`reconcilePushSubscription(sub, previousEndpoint)` → `kept` (touch `last_seen_at`) · `rotated`
+(the push service issued a new endpoint — `pushsubscriptionchange` in the worker re-subscribed —
+and the row for the previous endpoint, remembered in localStorage, takes the new one) · `removed`
+(turned off from another device, or filed under another account → the browser unsubscribes).
+`PushSession` (every page) remembers which member this device was filed for; once nobody, or
+somebody else, is signed in, it calls `POST /api/push/release` with the endpoint **and the
+subscription's `auth` secret** — possession proof, since no session exists after sign-out — and
+unsubscribes. The route deletes only on an exact match, answers 204 either way and is rate limited
+per IP. Independently, an endpoint belongs to whoever filed it last, and the outbox cancels rows
+queued for a device's previous owner.
+
+**The worker** (`public/sw.js`, `rf-v4`) always shows a notification: a payload that is not JSON,
+is empty, or carries a hostile url or tag falls back to "Roleform" / a generic line / `/profile`,
+and if the platform rejects the options a bare notification is shown instead. A tap opens only an
+in-app path that resolves to the worker's own origin (`inAppPath`, identical rules server-side and
+on the device; `/api/…` refused), focusing an open window when there is one. A signed-out tap lands
+on sign-in with the path as `redirect_url`, and the page still checks the member owns what it shows.
+Static caching only keeps same-origin 200s not marked `private`/`no-store`, trimmed to 150 entries.
+
+**Install and opt-in states.** The panel distinguishes unsupported · iOS below 16.4 (update first)
+· iPhone/iPad in a Safari tab (add to Home Screen, open from the icon) · not configured · blocked ·
+off · on. Android without a parked install prompt is pointed at the browser menu's *Install app*.
+Icons are rendered from the one mark by `pnpm icons` (`scripts/app-icons.ts`): apple-touch 180
+opaque with the mark at ~80%, maskable opaque with the mark inside the safe zone at ~70%, "any" at
+~84% on a rounded tile; `ICON_VERSION` 4.
+
+**Acceptance:** `pnpm check:push` passes (path rules on server and in the worker, malformed pushes
+still shown, retry/backoff/TTL, discreet copy, manifest and icon files); a push service 503 is
+retried and later accepted without a second notification; a 410 deletes the device; pausing a
+device or switching a category off stops queued pushes; signing out of a shared phone and in as
+someone else leaves the first member's reminders off that phone.
+
 ## 10. AI layer
 
 | Purpose | Function | Schema | Tier | Retry |
@@ -2092,7 +2170,7 @@ making a wrong state unrepresentable over remembering to check for it.
 
 | Check | Gate | Why it survives |
 |---|---|---|
-| Constraint smoke test — one bad insert per guard: N1, N2, N4, F19 ×4, RLS, the learning engine's OUT-2 / step-duration / fallback-completeness / severity-range guards, and — added across M8–M11 — F23 ×3 (the two new cap ceilings, a paid plan with no expiry), N14 (a roadmap item's FK mismatching its kind), F22 (an "applied" saved job with no date), and RLS re-checked across six own-rows/no-policy tables instead of one. F22.1 adds two (a work mode outside the vocabulary, a recency window past a year). 19 insert cases + 6 RLS reads = 25 cases. | M1, re-run at each of M8/M10/M11's gates | Confirms the safety net is actually connected. Five minutes, once per milestone that adds a guard. |
+| Constraint smoke test — one bad insert per guard: N1, N2, N4, F19 ×4, RLS, the learning engine's OUT-2 / step-duration / fallback-completeness / severity-range guards, and — added across M8–M11 — F23 ×3 (the two new cap ceilings, a paid plan with no expiry), N14 (a roadmap item's FK mismatching its kind), F22 (an "applied" saved job with no date), and RLS re-checked across six own-rows/no-policy tables instead of one. F22.1 adds two (a work mode outside the vocabulary, a recency window past a year). F29.2 adds two (a push url that leaves the app via a backslash, an attempt count past the cap). 21 insert cases + 6 RLS reads = 27 cases. | M1, re-run at each of M8/M10/M11's gates | Confirms the safety net is actually connected. Five minutes, once per milestone that adds a guard. |
 | Fabrication eval — 30 bullets vs postings demanding absent skills | M4 | This is the product's entire promise. Unverified, we ship a claim we never checked. |
 | DOCX round-trip — export, re-import, compare | M6 | Parsability is invisible until a user is rejected because of it. |
 
@@ -2153,9 +2231,13 @@ updateRound(roundId, input)           → null                // F29, re-derives
 setRoundStatus(roundId, status)       → null                // F29, done/cancelled drop pending ones
 deleteRound(roundId)                  → null                // F29, cascades its reminders
 savePushSubscription(sub)             → null                // F29, upsert by endpoint, ≤10 devices
+reconcilePushSubscription(sub, prev)  → kept|rotated|removed // F29.2, never creates a row
 removePushSubscription({id}|{endpoint}) → null              // F29
-sendTestNotification()                → { delivered, devices } // F29, 5 per 10 min
-GET|POST /api/cron/reminders          → DispatchSummary     // F29, Bearer CRON_SECRET; the one clock
+setDeviceEnabled(id, enabled)         → null                // F29.2, pause/resume one device
+setNotificationPrefs(prefs)           → null                // F29.2, rounds · study · details
+sendTestNotification({later?})        → { accepted, devices, retrying } // F29.2, own devices, 5 per 10 min
+GET|POST /api/cron/reminders          → DispatchSummary + push summary // F29, Bearer CRON_SECRET; the one clock
+POST /api/push/release                → 204                 // F29.2, signed-out device, endpoint + auth proof
 
 sendContactMessage(prev, formData)    → ContactState        // F13, public — no session
 updateMemberCaps({ clerkUserId, caps, suspended })          // F15, re-reads role server-side

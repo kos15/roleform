@@ -14,13 +14,21 @@ import { ICON_VERSION } from "@/lib/seo/icons";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    // Stable identity (F29.2): never change `id`, or every installed copy
+    // becomes a different app to the OS. Absent `id`, browsers derive it from
+    // start_url — so moving the start page would orphan installs; this pins it.
     id: "/",
     name: SITE_NAME,
     short_name: SITE_NAME,
     description: SITE_DESCRIPTION,
     start_url: "/analyze",
     scope: "/",
+    // iOS treats only standalone/fullscreen manifests as web apps — the
+    // precondition for Web Push there (WebKit, iOS 16.4).
     display: "standalone",
+    lang: "en-IN",
+    dir: "ltr",
+    prefer_related_applications: false,
     orientation: "portrait",
     // Literal colours: the manifest is read by the OS, not the stylesheet.
     background_color: "#f8f0e3",

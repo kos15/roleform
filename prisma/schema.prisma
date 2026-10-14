@@ -338,10 +338,21 @@ model User {
   /// (CLAUDE.md §8).
   planExpiresAt DateTime? @map("plan_expires_at") @db.Timestamptz
 
+  /// Notification preferences (F29.2). Per category, per member — every
+  /// device of theirs follows them. Off means nothing of that category is
+  /// queued at all; a device can additionally be paused on its own.
+  notifyRounds  Boolean @default(true) @map("notify_rounds")
+  notifyStudy   Boolean @default(true) @map("notify_study")
+  /// Off (the default): lock-screen copy names no company and no round —
+  /// "Interview reminder · in 1 hour". On: the full reminder text. Where
+  /// someone is interviewing is nobody else's business on a shared desk.
+  notifyDetails Boolean @default(false) @map("notify_details")
+
   tokenGrants       TokenGrant[]
   savedJobs         SavedJob[]
   jobSearches       JobSearch[]
   pushSubscriptions PushSubscription[]
+  pushDeliveries    PushDelivery[]
 
   @@map("users")
 }
@@ -1697,7 +1708,6 @@ model PortfolioSite {
  * Every row here is user-authored — the date, the label, the notes. Nothing
  * derived, scheduled or model-written creates or edits a round (N3/N15
  * applied), and there is no model call anywhere on this path (N13 applied).
- *
  * Reminders are the one thing the app does on its own clock. They are rows,
  * not a timer: one per (round, lead), written when the member saves the round,
  * and sent by the single scheduled sender (lib/push/dispatch.ts) that claims a
@@ -1754,7 +1764,8 @@ enum ReminderStatus {
   /// Due, but there was nothing worth sending: the round was moved, finished,
   /// cancelled, already under way, or the member has no device subscribed.
   skipped
-  /// Due and attempted, and every device refused it.
+  /// Due, and every device's delivery was refused at once (F29.2: queueing
+  /// itself failed). Retries live on `push_deliveries`, not here.
   failed
 
   @@map("reminder_status")
@@ -1827,11 +1838,97 @@ model PushSubscription {
   deviceLabel String    @default("") @map("device_label")
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
   lastSentAt  DateTime? @map("last_sent_at") @db.Timestamptz
+  /// Device-level switch (F29.2). Paused keeps the subscription (no new OS
+  /// prompt to turn it back on) but nothing is queued for it.
+  enabled     Boolean   @default(true)
+  /// Last time the device itself confirmed this subscription on an app open
+  /// (reconciliation, components/push-sync.tsx).
+  lastSeenAt  DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz
 
-  user User @relation(fields: [clerkUserId], references: [clerkUserId], onDelete: Cascade)
+  user       User           @relation(fields: [clerkUserId], references: [clerkUserId], onDelete: Cascade)
+  deliveries PushDelivery[]
 
   @@index([clerkUserId], map: "push_subscriptions_user_idx")
   @@map("push_subscriptions")
+}
+
+/// What a push is about (F29.2). Each is a preference the member can turn off,
+/// except `test`, which only ever answers the member's own button.
+enum PushCategory {
+  round
+  study
+  test
+
+  @@map("push_category")
+}
+
+/// Where one push to one device stands. `accepted` means the PUSH SERVICE took
+/// it (HTTP 201) — not that the phone showed it, and never that anyone read
+/// it. Web Push reports nothing past the push service.
+enum PushDeliveryStatus {
+  /// Waiting for its next attempt (`next_attempt_at`).
+  queued
+  /// Leased by a sender until `lease_until`; a lapsed lease is retried.
+  sending
+  accepted
+  /// Refused for good (400/403/413…) or out of attempts.
+  failed
+  /// Its TTL ran out before any push service took it.
+  expired
+  /// The push service said the subscription is gone (404/410); the device row
+  /// was deleted in the same breath.
+  gone
+  /// Not sent on purpose: by the time its turn came the device was paused,
+  /// the category switched off, or the device belonged to another account.
+  cancelled
+
+  @@map("push_delivery_status")
+}
+
+/// The durable outbox (F29.2). One row per push per device. Business events
+/// (a reminder coming due, the member's test) INSERT here; the sender leases
+/// rows (`FOR UPDATE SKIP LOCKED`), sends, and records the outcome, retrying
+/// 429/5xx/timeouts with backoff until `max attempts` or `expires_at`.
+/// `UNIQUE (subscription_id, dedupe_key)` is the idempotency guarantee: the
+/// same reminder can be queued twice and still reach a device once.
+///
+/// Holds exactly what the lock screen shows — title, body, an in-app path —
+/// and never notes, a résumé line or the endpoint (N7, N23).
+model PushDelivery {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId    String             @map("clerk_user_id")
+  /// Null once the device is gone; the row stays as a count.
+  subscriptionId String?            @map("subscription_id") @db.Uuid
+  category       PushCategory
+  /// "round:<reminder id>", "study:<reminder id>", "test:<uuid>".
+  dedupeKey      String             @map("dedupe_key")
+  /// 1–120 / 0–240 characters (CHECK).
+  title          String
+  body           String
+  /// An in-app path: starts with one "/", no "//", no backslash (CHECK).
+  url            String
+  /// Collapses repeats on the device and on the push service (Topic header).
+  tag            String
+  status         PushDeliveryStatus @default(queued)
+  /// 0–5 (CHECK). Incremented when a sender leases the row.
+  attempts       Int                @default(0)
+  nextAttemptAt  DateTime           @default(now()) @map("next_attempt_at") @db.Timestamptz
+  leaseUntil     DateTime?          @map("lease_until") @db.Timestamptz
+  /// After this the push is worthless (a reminder for a round that started).
+  expiresAt      DateTime           @map("expires_at") @db.Timestamptz
+  /// The push service's last HTTP status; null for a network error/timeout.
+  lastStatus     Int?               @map("last_status")
+  acceptedAt     DateTime?          @map("accepted_at") @db.Timestamptz
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user         User              @relation(fields: [clerkUserId], references: [clerkUserId], onDelete: Cascade)
+  subscription PushSubscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@unique([subscriptionId, dedupeKey], map: "push_deliveries_device_dedupe")
+  @@index([status, nextAttemptAt], map: "push_deliveries_due_idx")
+  @@index([clerkUserId, createdAt], map: "push_deliveries_user_idx")
+  @@map("push_deliveries")
 }
 
 /**
