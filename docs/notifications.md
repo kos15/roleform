@@ -63,12 +63,15 @@ select status_code, content from net._http_response order by created desc limit 
 2. **iPhone (iOS 16.4+, Safari):** Share → *Add to Home Screen*. Open from the icon — not from the
    Safari tab; Safari tabs cannot receive pushes.
 3. In the installed app: Profile → *Turn on notifications* → allow → *Send a test*. It should land
-   within seconds.
-4. On an analysis → **Rounds** → pick a type (say *System design*), set it 20 minutes out with
+   within seconds, with the Roleform mark (a white silhouette) in the Android status bar.
+4. *Test with the app closed* → swipe the app away or lock the phone. About 30 seconds later the
+   push arrives with nothing open — this is the path every reminder takes. If it never comes, the
+   VAPID keys are missing on this deployment (Profile says so) or the device's permission is off.
+5. On an analysis → **Rounds** → pick a type (say *System design*), set it 20 minutes out with
    *15 minutes before* ticked. The reminder should arrive within five minutes of its due time, show
    no notes, and open Prep on the System design family. Two hours after the start, the *after*
    nudge should arrive and open the Rounds tab.
-5. Airplane mode, then navigate: the offline page shows, not a browser error.
+6. Airplane mode, then navigate: the offline page shows, not a browser error.
 
 ## Troubleshooting
 

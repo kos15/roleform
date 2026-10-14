@@ -18,6 +18,9 @@ import { getDevices } from "@/lib/db/queries/rounds";
 
 export const metadata = { title: "Your profile" };
 
+/** Room for the 30-second "test with the app closed" push (app/actions/push.ts). */
+export const maxDuration = 60;
+
 export default async function ProfilePage() {
   const { userId } = await auth();
   if (!userId) redirect("/");

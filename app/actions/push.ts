@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -73,7 +74,17 @@ export async function removePushSubscription(by: { id: string } | { endpoint: st
   return ok(null);
 }
 
-export async function sendTestNotification(): Promise<Result<{ delivered: number; devices: number }>> {
+/** How long the "app closed" test waits — long enough to swipe the app away. */
+const CLOSED_TEST_DELAY_MS = 30_000;
+
+/**
+ * Sends a test push now, or — `later` — 30 seconds after replying, so the
+ * member can close the app and see a push arrive with nothing open. The
+ * delayed send runs after the response (`after`), on the same function.
+ */
+export async function sendTestNotification(
+  opts: { later?: boolean } = {},
+): Promise<Result<{ delivered: number; devices: number; later: boolean }>> {
   const user = await requireUser();
   if (!user.ok) return user;
   if (!pushConfigured()) {
@@ -85,14 +96,29 @@ export async function sendTestNotification(): Promise<Result<{ delivered: number
     return err(appError("invalid_input", `That's a few tests already. Try again in ${limited.retryAfterSeconds}s.`));
   }
 
-  const result = await sendToMember(user.value, {
-    title: "Roleform notifications are on",
-    body: "This is where your interview-round reminders will land.",
-    url: "/history",
-    tag: "roleform-test",
-  });
-  if (result.devices === 0) {
+  const devices = await db.pushSubscription.count({ where: { clerkUserId: user.value } });
+  if (devices === 0) {
     return err(appError("not_found", "No device is subscribed yet. Turn notifications on first."));
   }
-  return ok({ delivered: result.delivered, devices: result.devices });
+
+  const clerkUserId = user.value;
+  const send = () =>
+    sendToMember(clerkUserId, {
+      title: opts.later ? "Roleform reached you with the app closed" : "Roleform notifications are on",
+      body: opts.later
+        ? "Background alerts work on this device. Reminders will land like this."
+        : "This is where your interview reminders and study sessions will land.",
+      url: "/history",
+      tag: "roleform-test",
+    });
+
+  if (opts.later) {
+    after(async () => {
+      await new Promise((r) => setTimeout(r, CLOSED_TEST_DELAY_MS));
+      await send();
+    });
+    return ok({ delivered: 0, devices, later: true });
+  }
+  const result = await send();
+  return ok({ delivered: result.delivered, devices: result.devices, later: false });
 }

@@ -4,4 +4,4 @@
  * here is a new URL, so the next add (or Android's WebAPK refresh) fetches the
  * current mark instead of a cached one. Bump it whenever public/icons change.
  */
-export const ICON_VERSION = "2";
+export const ICON_VERSION = "3";

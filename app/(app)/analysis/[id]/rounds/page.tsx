@@ -9,6 +9,9 @@ import { RoundsClient, type RoundView } from "./rounds-client";
 
 export const metadata = { title: "Interview rounds" };
 
+/** Room for the 30-second "test with the app closed" push (app/actions/push.ts). */
+export const maxDuration = 60;
+
 /**
  * F29 — the member's own calendar for this posting, and the reminders it sets
  * off. Every round is something they typed; the app only remembers it and

@@ -2,7 +2,8 @@
  * Roleform service worker (F29). Three jobs, nothing more:
  *
  *   1. Make the app installable and give it a page to show offline.
- *   2. Receive interview-round reminders (Web Push) and show them.
+ *   2. Receive reminders (Web Push) and show them — also when the app is
+ *      closed: the browser wakes this worker for each push.
  *   3. Open the right analysis when a reminder is tapped.
  *
  * What it deliberately does NOT do is cache signed-in pages. A page under
@@ -11,7 +12,7 @@
  * and only the offline page and hashed static assets are ever cached.
  */
 
-const VERSION = "rf-v2";
+const VERSION = "rf-v3";
 const STATIC_CACHE = `${VERSION}-static`;
 const OFFLINE_URL = "/offline";
 const PRECACHE = [
@@ -19,6 +20,7 @@ const PRECACHE = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/icon-maskable-512.png",
+  "/icons/badge-96.png",
 ];
 
 self.addEventListener("install", (event) => {
@@ -83,12 +85,25 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(title, {
       body: typeof data.body === "string" ? data.body : "",
       icon: "/icons/icon-192.png",
-      badge: "/icons/icon-maskable-192.png",
+      // Android paints the status-bar badge from alpha alone: a white
+      // silhouette shows the mark, a full-colour icon shows a blank square.
+      badge: "/icons/badge-96.png",
       tag: typeof data.tag === "string" ? data.tag : undefined,
       renotify: true,
+      timestamp: Date.now(),
+      vibrate: [80, 40, 80],
       data: { url: safePath(data.url) },
     }),
   );
+});
+
+// Push services rotate endpoints. Re-subscribe at once with the same key so
+// the device keeps receiving; the next app open saves the new endpoint
+// (components/push-sync.tsx).
+self.addEventListener("pushsubscriptionchange", (event) => {
+  const options = event.oldSubscription && event.oldSubscription.options;
+  if (!options) return;
+  event.waitUntil(self.registration.pushManager.subscribe(options).catch(() => undefined));
 });
 
 self.addEventListener("notificationclick", (event) => {

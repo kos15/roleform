@@ -81,12 +81,14 @@ export function NotificationsPanel({ devices, compact = false }: { devices: Devi
       router.refresh();
     });
 
-  const test = () =>
+  const test = (later = false) =>
     start(async () => {
       setError(null);
       setNotice(null);
-      const result = await sendTestNotification();
+      const result = await sendTestNotification({ later });
       if (!result.ok) setError(result.error.message);
+      else if (result.value.later)
+        setNotice("Close or lock the app now — the test arrives in about 30 seconds.");
       else
         setNotice(
           result.value.delivered === result.value.devices
@@ -137,8 +139,11 @@ export function NotificationsPanel({ devices, compact = false }: { devices: Devi
         ) : null}
         {state === "on" ? (
           <>
-            <Button size="sm" variant="secondary" onClick={test} busy={pending} disabled={pending}>
+            <Button size="sm" variant="secondary" onClick={() => test()} busy={pending} disabled={pending}>
               <Send className="lucide h-4 w-4" aria-hidden /> Send a test
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => test(true)} disabled={pending}>
+              Test with the app closed
             </Button>
             <Button size="sm" variant="ghost" onClick={turnOff} disabled={pending}>
               Turn off here
