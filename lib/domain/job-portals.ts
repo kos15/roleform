@@ -36,7 +36,7 @@ function slug(s: string): string {
 
 /**
  * The first stated title, same "one primary term" rule
- * `lib/jobs/sources/{adzuna,jooble}.ts` already uses — none of these portals'
+ * the job search query uses — none of these portals'
  * search boxes take a list.
  */
 function primaryTitle(query: Pick<JobQuery, "titles">): string {

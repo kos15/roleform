@@ -380,7 +380,7 @@ async function main() {
         statement: `insert into users (clerk_user_id, email_hash) values ('smoke-user-job', 'x');
           insert into job_listings
             (id, source, external_id, url, title, company, location, snippet, expires_at)
-          values ('00000000-0000-4000-8000-0000000000ee', 'adzuna', 'smoke-ext-1',
+          values ('00000000-0000-4000-8000-0000000000ee', 'freehire', 'smoke-ext-1',
                   'https://example.com/job', 'Smoke Job', 'Acme', 'Remote', 'x',
                   now() + interval '30 days');
           insert into saved_jobs (clerk_user_id, listing_id, status, applied_at)

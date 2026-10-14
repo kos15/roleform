@@ -1430,11 +1430,9 @@ nor a percentage ever appears on the tab.
 job-board APIs, with save, status tracking, and a one-click path into an analysis. It closes the
 loop the other tabs open: find → analyse → roadmap → apply → track.
 
-**Sourcing is documented APIs only — never scraping** (N17). Six adapters ship behind one
-interface, `lib/jobs/sources/{adzuna,jooble,freehire}.ts` implementing `JobSource { id,
-search(keywords, q, signal) → SourceRun, attribution }`: Adzuna (free key, India plus 15
-countries, JSON, a `redirect_url` per listing), Jooble (free key, broad India coverage, one POST)
-freehire (keyless public API, full postings — F22.1), and Greenhouse, Lever and Ashby (vendors'
+**Sourcing is documented APIs only — never scraping** (N17). Four keyless adapters ship behind one
+interface, `lib/jobs/sources/{freehire,greenhouse,lever,ashby}.ts` implementing `JobSource { id,
+search(keywords, q, signal) → SourceRun, attribution }`: freehire (keyless public API, full postings — F22.1), and Greenhouse, Lever and Ashby (vendors'
 public job-board APIs over a curated list of employer boards — F22.2). Each adapter's terms are read once and its
 attribution and rate limits are recorded in its own file before it ships; an adapter with no
 documented terms does not ship. Every provider response crosses the boundary through
@@ -1501,7 +1499,7 @@ portals and a web-search fallback remain refused (N17).
 
 **Query.** `planKeywords` runs up to three of the member's titles (deduped, in their order), or one
 skill-led query when there are none, against every source. **Posted within** (24 hours / 7 / 14 /
-30 days / any; default 14) goes to Adzuna's `max_days_old` and freehire's `posted_within_days`, and
+30 days / any; default 14) goes to freehire's `posted_within_days`, and
 is enforced on our side for every source, because a sort is not a filter. Undated listings are kept
 and marked "Date unknown". The window is part of `query_hash` and stored on `job_searches`.
 

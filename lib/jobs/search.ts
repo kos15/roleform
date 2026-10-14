@@ -1,8 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { db } from "@/lib/db";
-import { adzuna } from "./sources/adzuna";
-import { jooble } from "./sources/jooble";
 import { freehire } from "./sources/freehire";
 import { greenhouse } from "./sources/greenhouse";
 import { lever } from "./sources/lever";
@@ -29,14 +27,14 @@ import type { JobProvider } from "@/lib/generated/prisma/enums";
  * every source is an adapter behind a documented API (N17) — and nothing
  * here calls a model (N13).
  */
-export const SOURCES: JobSource[] = [adzuna, jooble, freehire, greenhouse, lever, ashby];
+export const SOURCES: JobSource[] = [freehire, greenhouse, lever, ashby];
 const SOURCE_TIMEOUT_MS = 8_000;
 const MAX_LISTINGS = 50;
 const CACHE_WINDOW_MS = 12 * 60 * 60 * 1000;
 const LISTING_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const DAY_MS = 86_400_000;
 
-/** `JOBS_DISABLED_SOURCES=jooble,freehire` keeps a source installed but skipped (R2). */
+/** `JOBS_DISABLED_SOURCES=lever,freehire` keeps a source installed but skipped (R2). */
 function disabledSources(): Set<string> {
   return new Set(
     (process.env.JOBS_DISABLED_SOURCES ?? "")

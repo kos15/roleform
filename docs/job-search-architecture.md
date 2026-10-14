@@ -85,7 +85,7 @@ never a number, a ring or "match"), N7 (no PII in logs).
 | R5, R7 | **Adopt** | Parallel per source; per-source 8 s budget; one bounded retry on 429/5xx inside that budget; a failed source is named in the results. |
 | R6, R8 | **Refuse** | A web-search fallback is a search engine standing in for a scraper; a browser-UA retry is evasion. Neither is a documented API (N17). |
 | R9, R10 | **Adopt** | Up to three title variants per search (the member's stated titles; else their recent positions; else a skill-led query), each run against every source. |
-| R11 | **Adopt** | "Posted within" (1 / 7 / 14 / 30 days, or any; default 14) goes to each provider's own filter where it has one (Adzuna `max_days_old`, freehire `posted_within_days`) and is enforced client-side for all. Undated listings are kept and marked "date unknown". Part of the cache key. |
+| R11 | **Adopt** | "Posted within" (1 / 7 / 14 / 30 days, or any; default 14) goes to each provider's own filter where it has one (freehire `posted_within_days`) and is enforced client-side for all. Undated listings are kept and marked "date unknown". Part of the cache key. |
 | R12 | **Adopt** | 25 per call, 50 per search after dedupe (unchanged ceiling). |
 | R13 | **Refuse for now** | Roleform's profile has no languages table. Inventing a language gate would be inferring a fact the member never stated. |
 | R14, R15 | **Adopt** | `lib/domain/job-key.ts` — a pure key from company + title. Cross-source duplicates collapse to one card; listings seen in the member's earlier searches lose their **New** tag; saved listings say so and show their tracker status. Computed on read from rows already stored — no new per-user table. |
@@ -114,7 +114,7 @@ profile ─► buildJobQuery (pure, N19)             query editor (titles · cit
                 │                                          │
                 ▼                                          ▼
         planKeywords: ≤3 variants ───────► runSearch ── per source, in parallel, 8 s each
-                                                │       adzuna · jooble · freehire  → SourceRun
+                                                │       freehire · greenhouse · lever · ashby → SourceRun
                                                 │       Zod at the boundary (N18), drop + count
                                                 ▼
                     clean (entities/HTML) · recency window · closed-at-source drop

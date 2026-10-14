@@ -1363,6 +1363,9 @@ model RoadmapItem {
 
 /// Sourcing adapters, one per documented API this deployment is keyed for.
 /// A new source is a value added here plus an adapter file — never a scrape.
+/// `adzuna` and `jooble` are retired (adapters removed 2026-10-15: only keyless
+/// public APIs ship); the values stay because Postgres can't drop an enum value
+/// and old rows carry them.
 enum JobProvider {
   adzuna
   jooble

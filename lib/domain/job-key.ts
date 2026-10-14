@@ -1,8 +1,8 @@
 /**
  * The canonical job key (F22.1, R14). PURE.
  *
- * One posting reaches us through several doors: Adzuna and Jooble both
- * re-list the same opening, and an employer posts one role in five cities.
+ * One posting reaches us through several doors: freehire and an employer's
+ * own board both list the same opening, and an employer posts one role in five cities.
  * The key is a pure function of company and title, so two searches can never
  * key the same posting differently. Location is left out on purpose: that is
  * what lets `consolidate` say "also posted in 4 other locations" instead of
