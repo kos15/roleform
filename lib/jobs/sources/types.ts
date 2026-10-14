@@ -51,7 +51,7 @@ export const JobListingInSchema = z.object({
 
 export type JobListingIn = z.infer<typeof JobListingInSchema>;
 
-export type SourceId = "adzuna" | "jooble" | "freehire" | "greenhouse" | "lever" | "ashby";
+export type SourceId = "freehire" | "greenhouse" | "lever" | "ashby";
 
 /** What one source did for one search. Counts and codes only — never content (N7). */
 export interface SourceRun {
