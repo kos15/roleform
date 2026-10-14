@@ -5,14 +5,17 @@
  * `https://jooble.org/api/{key}`, body `{ keywords, location }`. Terms read
  * 2026-09-18: free tier, one key per registered application, no published
  * hard rate limit at registration time — treated the same as Adzuna's
- * throttle regardless: a non-2xx or a timeout means this source contributed
- * nothing to this search, never a thrown error. No attribution requirement
- * is published in the developer terms, but every source gets one anyway
- * (JS-6) for the same reason Adzuna's is shown — consistency beats reading
- * the fine print differently per provider.
+ * throttle regardless: a non-2xx or a timeout is reported as this source
+ * failing, never a thrown error. No attribution requirement is published in
+ * the developer terms, but every source gets one anyway (JS-6) for the same
+ * reason Adzuna's is shown — consistency beats reading the fine print
+ * differently per provider.
+ *
+ * Jooble has no recency filter we rely on; the window is enforced on our
+ * side for it (F22.1, R11 — a sort is not a filter).
  */
 import "server-only";
-import { parseListings, type JobListingIn, type JobQuery, type JobSource } from "./types";
+import { emptyRun, fetchJson, parseListings, type JobQuery, type JobSource, type SourceRun } from "./types";
 
 const RESULTS_LIMIT = 25;
 
@@ -20,48 +23,35 @@ function configured(): boolean {
   return Boolean(process.env.JOOBLE_API_KEY);
 }
 
-async function search(query: JobQuery, signal: AbortSignal): Promise<JobListingIn[]> {
+async function search(keywords: string, query: JobQuery, signal: AbortSignal): Promise<SourceRun> {
   const key = process.env.JOOBLE_API_KEY;
-  if (!key) return [];
+  if (!key || !keywords) return emptyRun();
 
-  const keywords = query.titles[0] ?? query.skills.slice(0, 3).join(" ");
-  if (!keywords) return [];
+  const res = await fetchJson(`https://jooble.org/api/${encodeURIComponent(key)}`, {
+    method: "POST",
+    signal,
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      keywords: query.remote ? `${keywords} remote` : keywords,
+      location: query.location || undefined,
+    }),
+  });
+  if ("failure" in res) return emptyRun(res.failure);
 
-  let response: Response;
-  try {
-    response = await fetch(`https://jooble.org/api/${encodeURIComponent(key)}`, {
-      method: "POST",
-      signal,
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({
-        keywords,
-        location: query.location || undefined,
-      }),
-    });
-  } catch {
-    return [];
-  }
-  if (!response.ok) return [];
-
-  let body: unknown;
-  try {
-    body = await response.json();
-  } catch {
-    return [];
-  }
-
-  const jobs = Array.isArray((body as { jobs?: unknown[] })?.jobs)
-    ? (body as { jobs: unknown[] }).jobs.slice(0, RESULTS_LIMIT)
-    : [];
+  const all = (res.body as { jobs?: unknown })?.jobs;
+  if (!Array.isArray(all)) return emptyRun({ kind: "body" });
+  const jobs = all.slice(0, RESULTS_LIMIT);
 
   const candidates = jobs.map(toCandidate).filter((c): c is Record<string, unknown> => c !== null);
-  return parseListings(candidates).listings;
+  const { listings, dropped } = parseListings(candidates);
+  return { listings, dropped: dropped + (jobs.length - candidates.length), closed: 0, failure: null };
 }
 
 /** Jooble's own shape, mapped onto the schema's field names before it is parsed (JS-2). */
 function toCandidate(raw: unknown): Record<string, unknown> | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
+  const type = typeof r.type === "string" ? r.type : "";
 
   return {
     externalId: r.id !== undefined ? String(r.id) : (typeof r.link === "string" ? r.link : ""),
@@ -74,6 +64,9 @@ function toCandidate(raw: unknown): Record<string, unknown> | null {
     salaryMin: null,
     salaryMax: null,
     currency: null,
+    // Jooble's `type` is employment type ("Full-time"); a remote flag only
+    // when it says so in so many words.
+    workMode: /remote/i.test(type) ? "remote" : null,
     raw: r,
   };
 }

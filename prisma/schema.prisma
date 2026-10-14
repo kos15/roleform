@@ -1366,6 +1366,10 @@ model RoadmapItem {
 enum JobProvider {
   adzuna
   jooble
+  freehire
+  greenhouse
+  lever
+  ashby
 
   @@map("job_provider")
 }
@@ -1386,25 +1390,43 @@ enum SavedJobStatus {
 /// reading directly; every read goes through a Server Action that joins via
 /// `saved_jobs` or returns a `searchJobs` result, both scoped by subject.
 model JobListing {
-  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  source     JobProvider
-  externalId String      @map("external_id")
+  id               String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source           JobProvider
+  externalId       String      @map("external_id")
   /// The provider's own field. Never assembled by us (N18).
-  url        String
-  title      String
-  company    String
-  location   String
-  snippet    String
-  postedAt   DateTime?   @map("posted_at") @db.Timestamptz
-  salaryMin  Int?        @map("salary_min")
-  salaryMax  Int?        @map("salary_max")
-  currency   String?
+  url              String
+  title            String
+  company          String
+  location         String
+  snippet          String
+  postedAt         DateTime?   @map("posted_at") @db.Timestamptz
+  salaryMin        Int?        @map("salary_min")
+  salaryMax        Int?        @map("salary_max")
+  currency         String?
+  /// "year" | "month" | … when the provider records one — a yearly and a
+  /// monthly figure must never be compared (F22.1).
+  salaryPeriod     String?     @map("salary_period")
+  /// The full posting, when the provider returns one (freehire). Empty for
+  /// snippet-only sources — `/analyze` reads this to decide whether the
+  /// hand-off is a real posting or a summary (F22.1).
+  description      String      @default("")
+  /// The provider's own canonical skill tags. Never inferred by us; skills
+  /// read out of the text are derived on read, not stored (F22.1).
+  skills           String[]    @default([])
+  /// "remote" | "hybrid" | "onsite" when the provider states it. Null = unknown.
+  workMode         String?     @map("work_mode")
+  /// The posting's own minimum years of experience, when the provider states it.
+  minYears         Int?        @map("min_years")
+  /// How many times the provider has seen this posting re-listed / posted
+  /// across places. A distribution fact, never a verdict (F22.1, R18).
+  repostCount      Int?        @map("repost_count")
+  massPostingCount Int?        @map("mass_posting_count")
   /// The provider's own record, kept for re-normalisation. Never rendered.
-  raw        Json        @default("{}")
-  fetchedAt  DateTime    @default(now()) @map("fetched_at") @db.Timestamptz
+  raw              Json        @default("{}")
+  fetchedAt        DateTime    @default(now()) @map("fetched_at") @db.Timestamptz
   /// 30 days out from `fetchedAt`. Read-filtered (`where expires_at > now()`),
   /// never swept by a job — there is no scheduler (CLAUDE.md §8).
-  expiresAt  DateTime    @map("expires_at") @db.Timestamptz
+  expiresAt        DateTime    @map("expires_at") @db.Timestamptz
 
   hits     JobSearchHit[]
   savedBy  SavedJob[]
@@ -1418,18 +1440,24 @@ model JobListing {
 /// One search, for the cap (F23) and the cache key. No result rows here — see
 /// `JobSearchHit`.
 model JobSearch {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clerkUserId String   @map("clerk_user_id")
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId      String   @map("clerk_user_id")
   /// Hash of the normalised query — titles, location, remote flag, sources.
   /// A repeat within the cache window reads `JobSearchHit` and writes no new
   /// row here, so it never counts against the cap (JS-4).
-  queryHash   String   @map("query_hash")
-  titles      String[] @default([])
-  location    String   @default("")
-  remote      Boolean  @default(false)
-  resultCount Int      @default(0) @map("result_count")
-  sources     String[] @default([])
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  queryHash        String   @map("query_hash")
+  titles           String[] @default([])
+  location         String   @default("")
+  remote           Boolean  @default(false)
+  resultCount      Int      @default(0) @map("result_count")
+  sources          String[] @default([])
+  /// The recency window the search asked for (F22.1). Part of the cache key.
+  postedWithinDays Int      @default(14) @map("posted_within_days")
+  /// Per-source outcome: id, status, counts and an HTTP status — never a
+  /// title, a company or a query term (N7/JS-8). Lets a cached read show the
+  /// same source health the original search did (F22.1, R28).
+  sourceReport     Json     @default("[]") @map("source_report")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   user User           @relation(fields: [clerkUserId], references: [clerkUserId], onDelete: Cascade)
   hits JobSearchHit[]

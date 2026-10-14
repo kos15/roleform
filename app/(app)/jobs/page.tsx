@@ -5,6 +5,7 @@ import { getProfile } from "@/lib/db/queries/profile";
 import { listSavedJobs } from "@/lib/db/queries/jobs";
 import { checkJobSearchAllowance } from "@/lib/auth";
 import { buildJobQuery } from "@/lib/domain/job-query";
+import { latestSearchId, loadResults } from "@/lib/jobs/results";
 import { EmptyState } from "@/components/ui";
 import { PageIntro } from "@/components/page-intro";
 import { JobSearchClient } from "./job-search-client";
@@ -18,6 +19,10 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
  * "fit" (N17/N20). Free makes zero outbound requests: the cap is checked
  * before the query editor renders, and a cap of 0 shows the wall instead
  * (JS-9).
+ *
+ * F22.1: the member's last search opens already triaged. That is a read of
+ * their own rows — no outbound request, no cap unit — re-triaged against the
+ * profile as it is now.
  */
 export default async function JobsPage() {
   const { userId } = await auth();
@@ -48,18 +53,21 @@ export default async function JobsPage() {
   // of 0 on Free means the query editor never even mounts, and no adapter is
   // ever called (JS-9).
   const allowance = await checkJobSearchAllowance(userId);
+  const lastId = allowance.ok ? await latestSearchId(userId) : null;
+  const initial = lastId ? await loadResults(userId, lastId, resume, true) : null;
 
   return (
     <div>
-      <PageIntro kicker="Job search" title="Listings matched to your own profile">
-        Titles, skills and a city — nothing else about your profile leaves this server. Fit is
-        shown as the skills a listing actually mentions, never a score.
+      <PageIntro kicker="Job search" title="Listings sorted against your own profile">
+        Titles, skills and a city — nothing else about your profile leaves this server. Every
+        listing is sorted by facts you can check — your skills it names, the ones it asks for that
+        you lack, its title, where it is — never by a score.
       </PageIntro>
 
       {!allowance.ok && allowance.error.capWall ? (
         <CapNotice wall={allowance.error.capWall} />
       ) : (
-        <JobSearchClient baseQuery={baseQuery} />
+        <JobSearchClient baseQuery={baseQuery} initial={initial} />
       )}
 
       <SavedJobsPanel jobs={saved} />

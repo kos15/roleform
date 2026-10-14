@@ -186,10 +186,11 @@ export const HELP: Record<HelpKey, HelpScreen> = {
   },
   jobs: {
     title: "Jobs",
-    intro: "Search by title and city. Fit is shown as skills, never a score.",
+    intro: "Search by title and city. Listings are sorted by facts you can check — never a score.",
     tips: [
-      { text: "Only titles, skills and a city leave this server when you search.", target: "job-search" },
-      { text: "Save a listing to track it, or Analyse to run it straight through Roleform." },
+      { text: "Only titles, skills and a city leave this server when you search. Up to three titles are searched at once.", target: "job-search" },
+      { text: "Shortlist means your title, two of your skills, a place you’d work and no seniority gap. Each card says why it landed where it did.", target: "job-tiers" },
+      { text: "Save a listing to track it, or Analyse to run it straight through Roleform. Applied and quiet for ten days? The tracker says when a follow-up is normal." },
     ],
   },
   history: {

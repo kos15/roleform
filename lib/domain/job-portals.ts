@@ -106,3 +106,58 @@ export const JOB_PORTALS: JobPortalLink[] = [
     },
   },
 ];
+
+/**
+ * Referral links for one listing (F22.1, R27): a LinkedIn people search for
+ * the company's recruiters, and one for people doing this work there. Links,
+ * never lookups — nothing is fetched, nobody is named, and the member opens
+ * them in their own session. Same standing as the portal buttons above: a
+ * URL they could have typed themselves, carrying a company name and a title
+ * that are already public on the listing, never anything from the profile.
+ */
+export function contactLinks(company: string, title: string): { recruiters: string; team: string } | null {
+  const who = company.trim();
+  if (!who) return null;
+  const role = title
+    .replace(/[([{][^)\]}]*[)\]}]/g, " ")
+    .replace(/\s[-–—|]\s.*$/, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .slice(0, 4)
+    .join(" ");
+  const search = (keywords: string) =>
+    `https://www.linkedin.com/search/results/people/?${new URLSearchParams({
+      keywords,
+      origin: "GLOBAL_SEARCH_HEADER",
+    }).toString()}`;
+  return {
+    recruiters: search(`${who} recruiter`),
+    team: search(role ? `${who} ${role}` : who),
+  };
+}
+
+/** "₹6,00,000–9,00,000 a year". Null when the listing gives no figure. */
+export function formatSalary(
+  min: number | null,
+  max: number | null,
+  currency: string | null,
+  period: string | null,
+): string | null {
+  if (min === null && max === null) return null;
+  const locale = currency === "INR" || currency === null ? "en-IN" : "en-GB";
+  const plain = (n: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n);
+  const fmt = (n: number) => {
+    if (!currency) return plain(n);
+    try {
+      return new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
+    } catch {
+      // A provider's currency field that isn't an ISO code: say it, don't throw.
+      return `${currency} ${plain(n)}`;
+    }
+  };
+  const range = min !== null && max !== null && min !== max ? `${fmt(min)}–${fmt(max)}` : fmt((min ?? max) as number);
+  // A yearly and a monthly figure must never read alike (R4).
+  const per = period ? ` a ${period.replace(/ly$/, "")}` : "";
+  return `${range}${per}`;
+}

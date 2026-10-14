@@ -20,6 +20,11 @@ export interface InitialListing {
   title: string;
   company: string;
   snippet: string;
+  /**
+   * The full posting, when the provider returned one (freehire, F22.1).
+   * Empty for snippet-only sources — then the notice asks for the posting.
+   */
+  description: string;
 }
 
 /**
@@ -31,11 +36,12 @@ export interface InitialListing {
 export function JdInput({ initialListing = null }: { initialListing?: InitialListing | null }) {
   const router = useRouter();
   const [mode, setMode] = useState<"paste" | "upload">("paste");
-  // F22 §3.5 — a job-board API returns a SNIPPET, never the full posting, so
-  // "Analyse" on a saved listing pre-fills it with a notice rather than
-  // pretending it is a real analysis input yet. The member still has to
-  // paste the actual posting for the run to mean anything.
-  const [text, setText] = useState(initialListing?.snippet ?? "");
+  // F22 §3.5 — most job-board APIs return a SNIPPET, never the full posting,
+  // so "Analyse" on such a listing pre-fills it with a notice rather than
+  // pretending it is a real analysis input yet. F22.1: a provider that does
+  // return the whole posting (freehire) pre-fills that instead, and the
+  // notice says where it came from so the member can still check it.
+  const [text, setText] = useState(initialListing?.description || initialListing?.snippet || "");
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -272,8 +278,9 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
           <strong className="font-extrabold">
             {initialListing.title} at {initialListing.company}.
           </strong>{" "}
-          This is the summary the job board gave us. Paste the full posting from the listing for a
-          real analysis.
+          {initialListing.description
+            ? "This is the full posting as the job board sent it. Skim it against the listing before you run — boards sometimes trim the end."
+            : "This is the summary the job board gave us. Paste the full posting from the listing for a real analysis."}
         </p>
       ) : null}
 
