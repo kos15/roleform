@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { SavedJobStatus } from "@/lib/generated/prisma/enums";
+import { trackerHints } from "@/lib/domain/job-tracker";
 
 export interface SavedJobView {
   id: string;
@@ -14,6 +15,8 @@ export interface SavedJobView {
   note: string;
   analysisId: string | null;
   updatedAt: Date;
+  /** Derived on read, shown beside the job, never written onto it (F22.1). */
+  hints: string[];
 }
 
 /**
@@ -24,8 +27,13 @@ export async function listSavedJobs(clerkUserId: string): Promise<SavedJobView[]
   const rows = await db.savedJob.findMany({
     where: { clerkUserId },
     orderBy: { updatedAt: "desc" },
-    include: { listing: { select: { title: true, company: true, location: true, url: true } } },
+    include: {
+      listing: {
+        select: { title: true, company: true, location: true, url: true, postedAt: true, expiresAt: true },
+      },
+    },
   });
+  const now = new Date();
 
   return rows.map((row) => ({
     id: row.id,
@@ -39,6 +47,16 @@ export async function listSavedJobs(clerkUserId: string): Promise<SavedJobView[]
     note: row.note,
     analysisId: row.analysisId,
     updatedAt: row.updatedAt,
+    hints: trackerHints(
+      {
+        status: row.status,
+        appliedAt: row.appliedAt,
+        updatedAt: row.updatedAt,
+        postedAt: row.listing.postedAt,
+        listingExpiresAt: row.listing.expiresAt,
+      },
+      now,
+    ),
   }));
 }
 

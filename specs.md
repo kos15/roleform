@@ -372,9 +372,13 @@ roadmap_items                          -- F21. ★ FABRICATION GUARD, roadmap ed
   CHECK: exactly the FK that matches `kind` is set; `fixed` has none
 
 job_listings                           -- F22. Shared cache, no user id. RLS on, NO policy (JS-9).
-  id, source enum('adzuna','jooble','jsearch'), external_id text,
+  id, source enum('adzuna','jooble','freehire','greenhouse','lever','ashby'), external_id text,
   url, title, company, location, snippet,
-  posted_at, salary_min, salary_max, currency,
+  description text default ''          -- F22.1. The full posting when the provider sends one
+  posted_at, salary_min, salary_max, currency, salary_period,
+  skills text[], work_mode null,       -- F22.1. The provider's own facts, never inferred.
+  min_years null, repost_count null,   --   CHECK work_mode ∈ (remote, hybrid, onsite);
+  mass_posting_count null,             --   CHECK min_years 0..40; counts ≥ 0
   raw jsonb,                           -- the provider's own record, kept for re-normalisation,
                                         -- never rendered (N18)
   fetched_at, expires_at               -- read-time filter (`where expires_at > now()`), not a sweep
@@ -383,7 +387,10 @@ job_listings                           -- F22. Shared cache, no user id. RLS on,
 job_searches                           -- F22. THE cap's source of truth — counted, not `job_search_hits`.
   id, clerk_user_id, query_hash text,
   titles text[], location, remote bool,
-  result_count int, sources text[], created_at
+  posted_within_days int default 14,   -- F22.1. CHECK 0..365, 0 = any date. Part of the cache key.
+  result_count int, sources text[],
+  source_report jsonb default '[]',    -- F22.1. Per source: state + counts + HTTP status. No content (N7).
+  created_at
 
 job_search_hits                        -- F22. Cache membership only, no user id (JS-9).
   search_id → job_searches (cascade), listing_id → job_listings (cascade), rank int
@@ -1423,10 +1430,12 @@ nor a percentage ever appears on the tab.
 job-board APIs, with save, status tracking, and a one-click path into an analysis. It closes the
 loop the other tabs open: find → analyse → roadmap → apply → track.
 
-**Sourcing is documented APIs only — never scraping** (N17). Two adapters ship behind one
-interface, `lib/jobs/sources/{adzuna,jooble}.ts` implementing `JobSource { id, search(q, signal),
-attribution }`: Adzuna (free key, India plus 15 countries, JSON, a `redirect_url` per listing) and
-Jooble (free key, broad India coverage, one POST). Each adapter's terms are read once and its
+**Sourcing is documented APIs only — never scraping** (N17). Six adapters ship behind one
+interface, `lib/jobs/sources/{adzuna,jooble,freehire}.ts` implementing `JobSource { id,
+search(keywords, q, signal) → SourceRun, attribution }`: Adzuna (free key, India plus 15
+countries, JSON, a `redirect_url` per listing), Jooble (free key, broad India coverage, one POST)
+freehire (keyless public API, full postings — F22.1), and Greenhouse, Lever and Ashby (vendors'
+public job-board APIs over a curated list of employer boards — F22.2). Each adapter's terms are read once and its
 attribution and rate limits are recorded in its own file before it ships; an adapter with no
 documented terms does not ship. Every provider response crosses the boundary through
 `JobListingInSchema` (N18) — a malformed record is dropped and counted, never coerced, and never
@@ -1441,8 +1450,8 @@ name, a contact detail, a bullet, a résumé, or a JD — what a model or a log 
 cannot be represented. The query is editable on the page; edits are stored back onto the same
 `preferences` object (user-authored, N3).
 
-**Ranking is deterministic** — `lib/domain/job-rank.ts`: skill overlap (canonical profile skills
-found in title plus snippet) first, recency second, source order third, no model call. Each result
+**Ranking is deterministic** — `lib/domain/job-triage.ts` (F22.1, which replaced `job-rank.ts`):
+named facts sort listings into tiers, no model call. Each result
 shows the overlap as named skill chips, labelled "skill overlap" — never a number, a ring, or the
 word "match" (N20; N4's own rule again, since a snippet earns no coverage score). Every results
 view carries attribution for every source with results (JS-6), unconditionally.
@@ -1472,6 +1481,114 @@ one `job_searches` row, at most 50 listings, and finishes under 8s per source or
 that failed; every rendered `url` equals the provider's own field; attribution renders for every
 source that returned results; saving, status changes and notes survive the listing's cache expiry
 (the FK is `ON DELETE RESTRICT`); nothing beyond counts and `query_hash` is logged.
+
+### F22.1 — Job search triage
+
+The reference workflow this rebuild studied ([`MadsLorentzen/ai-job-search`](https://github.com/MadsLorentzen/ai-job-search);
+the full inventory and the take/adapt/refuse table are in `docs/job-search-architecture.md`) finds
+jobs in four moves: search several boards with several title variants inside a recency window;
+dedupe across boards and across runs; triage what came back against the profile; track what the
+member applied to. F22.1 brings all four to `/jobs` under Roleform's rules. It needs no model
+anywhere (N13) and puts no fit number on the page (N20).
+
+**Sources.** A third adapter, `freehire.ts`: freehire.me's documented public API (terms read
+2026-10-14), keyless, returning the **full posting**, the provider's own skill tags, work mode,
+minimum years, repost / mass-posting counts and a closed marker. Adapters now return a
+`SourceRun` (listings, schema drops, closed drops, failure) instead of an empty array on failure, so
+the page names the source that failed (F22 acceptance). One retry on 429/5xx inside the 8 s
+per-source budget. `JOBS_DISABLED_SOURCES` switches a source off; LinkedIn guest pages, the HTML
+portals and a web-search fallback remain refused (N17).
+
+**Query.** `planKeywords` runs up to three of the member's titles (deduped, in their order), or one
+skill-led query when there are none, against every source. **Posted within** (24 hours / 7 / 14 /
+30 days / any; default 14) goes to Adzuna's `max_days_old` and freehire's `posted_within_days`, and
+is enforced on our side for every source, because a sort is not a filter. Undated listings are kept
+and marked "Date unknown". The window is part of `query_hash` and stored on `job_searches`.
+
+**Dedupe.** `lib/domain/job-key.ts`: a pure key from normalised company + title (legal suffixes,
+bracketed and dashed location tails dropped). The same posting at the same place from two boards
+collapses before the 50-listing cap. The same posting in other places becomes one card: "Also
+posted in …", "Also listed on …". A listing whose key appeared in the member's last 20 searches loses
+its **New** tag. One they saved shows its tracker status instead. All of this is computed on read
+from rows already stored, with no per-user "seen" table.
+
+**Triage** (`lib/domain/job-triage.ts`, PURE, recomputed on every read, never stored):
+
+| Fact | Source |
+|---|---|
+| Your skills it names | profile skills ∩ (provider tags ∪ `skillsIn(title + text)`), via the canonical alias table |
+| Asks for, not on your profile | canonical skills the listing names that the profile doesn't hold |
+| Title lines up | every core word of a stated or held title appears in the listing's (developer ≡ engineer, front-end ≡ frontend; seniority words ignored) |
+| Location | PASS (remote; or the member's city, with aliases) · FLAG (outside the city, country only, not stated, hybrid for a remote-only member) · FAIL only for an explicitly on-site listing against a remote-only member · unchecked when the profile has no city |
+| Seniority | the posting's own minimum years (provider field, else an "N+ years of experience" phrase) ≥ 2 above the profile's merged work years; senior-titled under 3 years; junior-titled at 6+ |
+| Age | posted ≤ 3 days is a strength; > 30 days a caution, never a veto |
+| Distribution | the provider's mass-posting / repost counts, worded as distribution, never as a verdict on the employer |
+
+Tiers: **Ruled out** = location FAIL. **Shortlist** = title lines up, ≥ 2 of your skills, location
+PASS or unchecked, no seniority caution. **Long shot** = 4+ years short of the stated minimum, or
+neither title nor 2 skills. **Worth a look** = everything else. Within a tier: title first, more
+of your skills, fewer missing skills, newer, stored order. Every card lists the strengths and
+cautions behind its tier. The tiers are groupings of named facts. They are not a score, and the
+page shows no number beyond counts (N20).
+
+**Around the results.** *Asked for, not on your profile*: canonical skills that ≥ 2 non-ruled-out
+listings ask for, with counts, pointing to an analysis (whose Learning tab plans the gap).
+*Source health* (`lib/domain/job-health.ts`): ok is silent; empty, degraded (no company on any
+result, markup in most titles, every record dropped) and failed (timeout / network / HTTP status)
+each get one sentence. It is stored on `job_searches.source_report` as counts and codes only, so a
+cached read shows it too. *Contact links* on Shortlist and Worth-a-look cards: LinkedIn
+people-search URLs for the company's recruiters and for people in the role. They are links, never
+lookups. *Analyse* hands a freehire listing's full posting to `/analyze`, with a notice to check it
+against the listing.
+
+**Tracker.** Counts per status (`2 saved · 1 applied`), the member's own note (`setSavedJobNote`),
+and hints derived on read that never move a status (N3/N15 applied). An applied job quiet for ten
+days gets "a short follow-up is normal now". A saved listing older than 30 days, or unseen for 30,
+"may have closed". Nothing is drafted, because drafting needs a model (N13).
+
+The page opens on the member's last search, already triaged. That is a read of their own rows, with
+no outbound request and no cap unit.
+
+**Acceptance:** zero `ai_runs` rows from any `/jobs` path; a failed source is named on the page and
+in `source_report`; every rendered listing URL is the provider's own field; no number other than a
+count appears on a listing; `pnpm check:jobs` passes; logs carry `query_hash` and counts only.
+
+### F22.2 — Employer boards: Greenhouse, Lever, Ashby
+
+Three more sources under N17 as written: each is the ATS vendor's **documented, public, keyless
+job-board API**, published so employers' postings can be shown off-platform (terms read 2026-10-14,
+recorded in each adapter). Calling a vendor's posting API is not a fetch of the employer's own
+page. Every listing's `url` is the vendor's own field (`absolute_url` / `hostedUrl` / `jobUrl`, N18).
+
+**No keyword search exists on these APIs** — each serves one company's whole board — so:
+
+- **The board list is curated** (`lib/jobs/sources/ats-boards.ts`), the same shape as the course
+  catalog. Twelve Greenhouse, six Lever and ten Ashby boards were each checked live on 2026-10-14
+  and listed India-based or remote roles that day. `JOBS_ATS_BOARDS=ats:token,…` adds more per
+  deployment. OpenAI's Ashby board (~13 MB) is left out because it can't be read inside one
+  source's 8 s budget.
+- **Filtering is ours and PURE** (`lib/domain/board-filter.ts`): the title must cover the keyword
+  variant by `titleCovers`, the same rule the triage uses to say a title lines up. The place must
+  be the member's city (with aliases), their country (by name, or the board's own ISO code on
+  Lever), or, for a remote search, remote and in their country or "anywhere / global". A "Remote —
+  US" role is not remote for a member in India.
+- **Boards are cached per server instance for 30 minutes**, and in-flight fetches are shared, so
+  three variants or many members cost one request per board. Failures are cached for 2 minutes so a
+  dead board isn't hammered. Board fetches run on their own 7.5 s clock, so one search giving up
+  never cancels a fetch another search is waiting on. The cache holds at most 600 entries.
+- **Greenhouse** lists are fetched without content (stripe: 450 KB against 5.6 MB). Full content
+  is fetched only for the ≤ 25 postings that passed the filter, within 4 s. A posting whose content
+  is late still ships, title-only. Lever and Ashby include full postings in the board, so Analyse
+  hands over the whole posting.
+- **Health** gains `boards_failed`: "N of its M employer boards didn't answer". The source counts
+  as failed only when every board did.
+
+Newest first before the 25-per-variant cap, so a large board's old postings can't crowd out a small
+board's new ones. Ashby's unlisted postings (`isListed: false`) are skipped.
+
+**Acceptance:** a cold search reads each board once, and a repeat within 30 minutes reads none;
+every listing links to the vendor's own posting URL; `pnpm check:jobs` passes (27 checks);
+`JOBS_DISABLED_SOURCES=greenhouse,lever,ashby` removes all three without a deploy.
 
 ### F23 — Plan changes
 
@@ -1977,7 +2094,7 @@ making a wrong state unrepresentable over remembering to check for it.
 
 | Check | Gate | Why it survives |
 |---|---|---|
-| Constraint smoke test — one bad insert per guard: N1, N2, N4, F19 ×4, RLS, the learning engine's OUT-2 / step-duration / fallback-completeness / severity-range guards, and — added across M8–M11 — F23 ×3 (the two new cap ceilings, a paid plan with no expiry), N14 (a roadmap item's FK mismatching its kind), F22 (an "applied" saved job with no date), and RLS re-checked across six own-rows/no-policy tables instead of one. 17 insert cases + 6 RLS reads = 23 cases. | M1, re-run at each of M8/M10/M11's gates | Confirms the safety net is actually connected. Five minutes, once per milestone that adds a guard. |
+| Constraint smoke test — one bad insert per guard: N1, N2, N4, F19 ×4, RLS, the learning engine's OUT-2 / step-duration / fallback-completeness / severity-range guards, and — added across M8–M11 — F23 ×3 (the two new cap ceilings, a paid plan with no expiry), N14 (a roadmap item's FK mismatching its kind), F22 (an "applied" saved job with no date), and RLS re-checked across six own-rows/no-policy tables instead of one. F22.1 adds two (a work mode outside the vocabulary, a recency window past a year). 19 insert cases + 6 RLS reads = 25 cases. | M1, re-run at each of M8/M10/M11's gates | Confirms the safety net is actually connected. Five minutes, once per milestone that adds a guard. |
 | Fabrication eval — 30 bullets vs postings demanding absent skills | M4 | This is the product's entire promise. Unverified, we ship a claim we never checked. |
 | DOCX round-trip — export, re-import, compare | M6 | Parsability is invisible until a user is rejected because of it. |
 

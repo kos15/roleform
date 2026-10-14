@@ -390,6 +390,39 @@ async function main() {
     ),
   );
 
+  /* ------------------------------------- 5e. F22.1 — triage facts stay in vocabulary */
+
+  // A fourth work mode would be a word the triage has no rule for — it
+  // would read as "unknown" and quietly pass a listing it should flag.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "job_listing with a work_mode outside remote/hybrid/onsite",
+        rule: "F22.1",
+        statement: `insert into job_listings
+            (source, external_id, url, title, company, location, snippet, work_mode, expires_at)
+          values ('freehire', 'smoke-ext-mode', 'https://example.com/job', 'Smoke Job', 'Acme',
+                  'Remote', 'x', 'flexible', now() + interval '30 days')`,
+      },
+      "23514",
+    ),
+  );
+
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "job_search with a recency window past a year",
+        rule: "F22.1",
+        statement: `insert into users (clerk_user_id, email_hash) values ('smoke-user-window', 'x');
+          insert into job_searches (clerk_user_id, query_hash, posted_within_days)
+          values ('smoke-user-window', 'h', 400)`,
+      },
+      "23514",
+    ),
+  );
+
   /* ------------------------------------------ 6. N10 — RLS denies strangers */
   results.push(...(await rlsCheck()));
 

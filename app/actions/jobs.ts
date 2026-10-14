@@ -5,8 +5,9 @@ import { db } from "@/lib/db";
 import { requireUser, checkJobSearchAllowance } from "@/lib/auth";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { getProfile } from "@/lib/db/queries/profile";
-import { buildJobQuery, type JobQuery } from "@/lib/domain/job-query";
-import { findCachedSearch, runSearch, type SearchOutcome } from "@/lib/jobs/search";
+import { buildJobQuery, clampPostedWithin, type JobQuery } from "@/lib/domain/job-query";
+import { findCachedSearchId, runSearch } from "@/lib/jobs/search";
+import { loadResults, type ResultsView } from "@/lib/jobs/results";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 import type { SavedJobStatus } from "@/lib/generated/prisma/enums";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
@@ -18,12 +19,17 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
  * is 0 on Free, so `checkJobSearchAllowance` refuses before either adapter is
  * ever called (JS-9). A repeat of the same query inside the 12h cache window
  * is read back and costs no cap unit and no outbound request (JS-4).
+ *
+ * F22.1: the result comes back triaged (lib/jobs/results.ts) — tiers, named
+ * reasons, New/Saved flags, market gaps and source health — all computed on
+ * read from rows, never by a model (N13).
  */
 export async function searchJobs(overrides?: {
   titles?: string[];
   location?: string;
   remote?: boolean;
-}): Promise<Result<SearchOutcome>> {
+  postedWithinDays?: number;
+}): Promise<Result<ResultsView>> {
   const user = await requireUser();
   if (!user.ok) return user;
 
@@ -35,16 +41,21 @@ export async function searchJobs(overrides?: {
   const resume = profile.resumeJson as unknown as StoredResume;
   const base = buildJobQuery(resume);
   const query: JobQuery = {
-    titles: overrides?.titles ?? base.titles,
+    // Bounded here, not only in the editor: the payload is N19's, and its size is ours.
+    titles: (overrides?.titles ?? base.titles).map((t) => t.trim().slice(0, 80)).filter(Boolean).slice(0, 5),
     skills: base.skills,
-    location: overrides?.location ?? base.location,
+    location: (overrides?.location ?? base.location).trim().slice(0, 80),
     remote: overrides?.remote ?? base.remote,
+    postedWithinDays: clampPostedWithin(overrides?.postedWithinDays),
   };
 
   // JS-4: a cache hit costs nothing — checked before the cap and before any
   // outbound request, the same "free path first" shape the token wall uses.
-  const cached = await findCachedSearch(user.value, query);
-  if (cached) return ok(cached);
+  const cachedId = await findCachedSearchId(user.value, query);
+  if (cachedId) {
+    const view = await loadResults(user.value, cachedId, resume, true);
+    if (view) return ok(view);
+  }
 
   const limited = rateLimit(`jobsearch:${user.value}`, LIMITS.jobSearch.limit, LIMITS.jobSearch.windowSeconds);
   if (!limited.allowed) {
@@ -56,9 +67,11 @@ export async function searchJobs(overrides?: {
   const allowance = await checkJobSearchAllowance(user.value);
   if (!allowance.ok) return allowance;
 
-  const outcome = await runSearch(user.value, query);
+  const { searchId } = await runSearch(user.value, query);
+  const view = await loadResults(user.value, searchId, resume, false);
+  if (!view) return err(appError("storage_failed", "That search ran but couldn't be read back. Try again."));
   revalidatePath("/jobs");
-  return ok(outcome);
+  return ok(view);
 }
 
 /** Save a listing, idempotently (a second click just leaves the row where it is). */
@@ -113,6 +126,21 @@ export async function setSavedJobStatus(
       appliedAt: status === "applied" ? new Date() : undefined,
       ...(note !== undefined ? { note } : {}),
     },
+  });
+  if (updated.count === 0) return err(appError("not_found", "That saved job isn't yours to change."));
+
+  revalidatePath("/jobs");
+  return ok(null);
+}
+
+/** The member's own note on a saved job — user-authored, never derived (N3 applied). */
+export async function setSavedJobNote(savedJobId: string, note: string): Promise<Result<null>> {
+  const user = await requireUser();
+  if (!user.ok) return user;
+
+  const updated = await db.savedJob.updateMany({
+    where: { id: savedJobId, clerkUserId: user.value },
+    data: { note: note.slice(0, 2_000) },
   });
   if (updated.count === 0) return err(appError("not_found", "That saved job isn't yours to change."));
 

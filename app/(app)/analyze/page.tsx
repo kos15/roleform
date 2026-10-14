@@ -30,7 +30,7 @@ export default async function AnalyzePage({
   const listing = listingId
     ? await db.jobListing.findUnique({
         where: { id: listingId },
-        select: { id: true, title: true, company: true, snippet: true },
+        select: { id: true, title: true, company: true, snippet: true, description: true },
       })
     : null;
 
@@ -84,7 +84,15 @@ export default async function AnalyzePage({
         <div className="min-w-0 flex-[1_1_30rem]">
           <JdInput
             initialListing={
-              listing ? { id: listing.id, title: listing.title, company: listing.company, snippet: listing.snippet } : null
+              listing
+                ? {
+                    id: listing.id,
+                    title: listing.title,
+                    company: listing.company,
+                    snippet: listing.snippet,
+                    description: listing.description,
+                  }
+                : null
             }
           />
         </div>

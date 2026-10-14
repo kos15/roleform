@@ -4,18 +4,21 @@
  * Docs: https://developer.adzuna.com/overview — the "Search" endpoint.
  * Terms read 2026-09-18: free developer tier, keyed per-app (`app_id` +
  * `app_key`), rate limited by Adzuna's own throttle (not tracked here — a
- * 429 is treated the same as any other non-2xx: this search's results from
- * Adzuna are empty, the other configured sources still run). Attribution
- * required wherever results are shown: "Jobs by Adzuna", linked to
- * adzuna.in. Country fixed to India (`in`) for v1 — `ADZUNA_COUNTRY`
- * overrides for a different deployment.
+ * 429 is retried once inside the 8s budget, then reported as this source
+ * failing; the other configured sources still run). Attribution required
+ * wherever results are shown: "Jobs by Adzuna", linked to adzuna.in.
+ * Country fixed to India (`in`) for v1 — `ADZUNA_COUNTRY` overrides for a
+ * different deployment.
+ *
+ * F22.1: `max_days_old` is Adzuna's own documented recency filter, so the
+ * window goes to the provider instead of only being enforced on our side.
  *
  * Descriptions returned are snippets, not the full posting (F22 §3.5) — the
  * hand-off into an analysis says so explicitly rather than treating a
  * snippet as something it can honestly score.
  */
 import "server-only";
-import { parseListings, type JobListingIn, type JobQuery, type JobSource } from "./types";
+import { emptyRun, fetchJson, parseListings, type JobQuery, type JobSource, type SourceRun } from "./types";
 
 const BASE = "https://api.adzuna.com/v1/api/jobs";
 const RESULTS_PER_PAGE = 25;
@@ -24,50 +27,36 @@ function configured(): boolean {
   return Boolean(process.env.ADZUNA_APP_ID && process.env.ADZUNA_APP_KEY);
 }
 
-async function search(query: JobQuery, signal: AbortSignal): Promise<JobListingIn[]> {
+async function search(keywords: string, query: JobQuery, signal: AbortSignal): Promise<SourceRun> {
   const appId = process.env.ADZUNA_APP_ID;
   const appKey = process.env.ADZUNA_APP_KEY;
-  if (!appId || !appKey) return [];
+  if (!appId || !appKey || !keywords) return emptyRun();
 
   const country = process.env.ADZUNA_COUNTRY?.trim() || "in";
-  const what = query.titles[0] ?? query.skills.slice(0, 3).join(" ");
-  if (!what) return [];
-
   const params = new URLSearchParams({
     app_id: appId,
     app_key: appKey,
     results_per_page: String(RESULTS_PER_PAGE),
-    what,
+    what: keywords,
     "content-type": "application/json",
   });
-  if (query.location) params.set("where", query.location);
+  // Adzuna's `where` is a place name; the country is already the path.
+  const city = query.location.split(",")[0]?.trim();
+  if (city) params.set("where", city);
+  if (query.postedWithinDays > 0) params.set("max_days_old", String(query.postedWithinDays));
 
-  let response: Response;
-  try {
-    response = await fetch(`${BASE}/${encodeURIComponent(country)}/search/1?${params.toString()}`, {
-      signal,
-      headers: { Accept: "application/json" },
-    });
-  } catch {
-    // Timeout (the caller's AbortSignal) or a network failure. Either way
-    // this source contributed nothing to this search — degrade, don't throw.
-    return [];
-  }
-  if (!response.ok) return [];
+  const res = await fetchJson(`${BASE}/${encodeURIComponent(country)}/search/1?${params.toString()}`, {
+    signal,
+    headers: { Accept: "application/json" },
+  });
+  if ("failure" in res) return emptyRun(res.failure);
 
-  let body: unknown;
-  try {
-    body = await response.json();
-  } catch {
-    return [];
-  }
-
-  const results = Array.isArray((body as { results?: unknown[] })?.results)
-    ? (body as { results: unknown[] }).results
-    : [];
+  const results = (res.body as { results?: unknown })?.results;
+  if (!Array.isArray(results)) return emptyRun({ kind: "body" });
 
   const candidates = results.map(toCandidate).filter((c): c is Record<string, unknown> => c !== null);
-  return parseListings(candidates).listings;
+  const { listings, dropped } = parseListings(candidates);
+  return { listings, dropped: dropped + (results.length - candidates.length), closed: 0, failure: null };
 }
 
 /** Adzuna's own shape, mapped onto the schema's field names before it is parsed (JS-2). */
@@ -88,6 +77,8 @@ function toCandidate(raw: unknown): Record<string, unknown> | null {
     salaryMin: typeof r.salary_min === "number" ? Math.round(r.salary_min) : null,
     salaryMax: typeof r.salary_max === "number" ? Math.round(r.salary_max) : null,
     currency: null,
+    // Adzuna's salary fields are annual figures (developer docs, "salary_min").
+    salaryPeriod: typeof r.salary_min === "number" || typeof r.salary_max === "number" ? "year" : null,
     raw: r,
   };
 }
