@@ -38,9 +38,18 @@ export async function getDevices(clerkUserId: string) {
   const rows = await db.pushSubscription.findMany({
     where: { clerkUserId },
     orderBy: { createdAt: "desc" },
-    select: { id: true, endpoint: true, deviceLabel: true, createdAt: true, lastSentAt: true },
+    select: { id: true, endpoint: true, deviceLabel: true, createdAt: true, lastSentAt: true, enabled: true },
   });
   return rows.map(({ endpoint, ...row }) => ({ ...row, key: endpointKey(endpoint) }));
+}
+
+/** The member's notification preferences (F29.2). */
+export async function getNotifyPrefs(clerkUserId: string) {
+  const row = await db.user.findUnique({
+    where: { clerkUserId },
+    select: { notifyRounds: true, notifyStudy: true, notifyDetails: true },
+  });
+  return row ?? { notifyRounds: true, notifyStudy: true, notifyDetails: false };
 }
 
 export type DeviceRow = Awaited<ReturnType<typeof getDevices>>[number];

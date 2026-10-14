@@ -2,11 +2,26 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, BellOff, Send, Smartphone, X } from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
+import { Bell, BellOff, Pause, Play, Send, Smartphone, X } from "lucide-react";
 import { Button, Card, ErrorRegion, Tag } from "@/components/ui";
 import { InstallApp } from "@/components/install-app";
-import { removePushSubscription, savePushSubscription, sendTestNotification } from "@/app/actions/push";
-import { currentSubscription, endpointKey, pushState, subscribe, unsubscribe, type PushState } from "@/lib/push/client";
+import {
+  removePushSubscription,
+  savePushSubscription,
+  sendTestNotification,
+  setDeviceEnabled,
+  setNotificationPrefs,
+} from "@/app/actions/push";
+import {
+  currentSubscription,
+  endpointKey,
+  pushState,
+  rememberDevice,
+  subscribe,
+  unsubscribe,
+  type PushState,
+} from "@/lib/push/client";
 
 export interface DeviceView {
   id: string;
@@ -14,17 +29,28 @@ export interface DeviceView {
   deviceLabel: string;
   createdAt: string;
   lastSentAt: string | null;
+  /** Paused devices keep their subscription but get nothing (F29.2). */
+  enabled: boolean;
+}
+
+export interface NotifyPrefsView {
+  notifyRounds: boolean;
+  notifyStudy: boolean;
+  notifyDetails: boolean;
 }
 
 const STATE_COPY: Record<PushState, string> = {
   unsupported:
     "This browser can't receive notifications. Chrome, Edge, Firefox and Samsung Internet can — and Safari on iPhone once Roleform is on your Home Screen.",
-  "ios-needs-install": "On iPhone and iPad, notifications only work once Roleform is on your Home Screen.",
+  "ios-update":
+    "Notifications need iOS or iPadOS 16.4 or later — Apple added web app notifications then. Update in Settings → General → Software Update, then add Roleform to your Home Screen.",
+  "ios-needs-install":
+    "On iPhone and iPad (iOS/iPadOS 16.4 or later), notifications only work in Roleform opened from your Home Screen — not in a Safari tab.",
   unconfigured: "Notifications aren't switched on for this site yet.",
   denied:
     "Notifications are blocked for Roleform on this device. Allow them in your browser or phone settings, then come back.",
-  off: "Get a reminder a day before, an hour before or 15 minutes before each interview round you add.",
-  on: "This device gets your interview-round reminders.",
+  off: "Get a reminder before each interview round you add, and before each study session you plan.",
+  on: "This device gets your reminders. Delivery is up to your phone and its push service — a phone that's off or in Focus may show them late, or not at all.",
 };
 
 /**
@@ -32,8 +58,18 @@ const STATE_COPY: Record<PushState, string> = {
  * them. The OS prompt is only ever shown from the Turn on button: a prompt
  * nobody asked for gets a reflexive "Block", and on iPhone it isn't allowed.
  */
-export function NotificationsPanel({ devices, compact = false }: { devices: DeviceView[]; compact?: boolean }) {
+export function NotificationsPanel({
+  devices,
+  prefs,
+  compact = false,
+}: {
+  devices: DeviceView[];
+  /** Shown on the full panel only. */
+  prefs?: NotifyPrefsView;
+  compact?: boolean;
+}) {
   const router = useRouter();
+  const { userId } = useAuth();
   const [state, setState] = useState<PushState | null>(null);
   const [thisKey, setThisKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +103,7 @@ export function NotificationsPanel({ devices, compact = false }: { devices: Devi
         setError(saved.error.message);
         return;
       }
+      if (userId && sub.endpoint) rememberDevice(userId, sub.endpoint);
       await refresh();
       router.refresh();
     });
@@ -88,13 +125,34 @@ export function NotificationsPanel({ devices, compact = false }: { devices: Devi
       const result = await sendTestNotification({ later });
       if (!result.ok) setError(result.error.message);
       else if (result.value.later)
-        setNotice("Close or lock the app now — the test arrives in about 30 seconds.");
-      else
+        setNotice("Close or lock the app now — the test is queued for about 30 seconds from now.");
+      else {
+        // "Accepted" is all Web Push can tell us: the push service took it.
+        // Whether the phone showed it, only the member can see.
+        const { accepted, devices: total, retrying } = result.value;
+        const plural = (n: number) => `${n} device${n === 1 ? "" : "s"}`;
         setNotice(
-          result.value.delivered === result.value.devices
-            ? `Sent to ${result.value.delivered} device${result.value.delivered === 1 ? "" : "s"}.`
-            : `Sent to ${result.value.delivered} of ${result.value.devices} devices — the others didn't answer.`,
+          accepted === total
+            ? `Handed to the push service for ${plural(accepted)}. It should appear within seconds — if it doesn't, check the device's notification settings.`
+            : `Handed over for ${accepted} of ${plural(total)}${retrying ? `; ${retrying} will be retried shortly` : ""}.`,
         );
+      }
+    });
+
+  const toggleDevice = (device: DeviceView) =>
+    start(async () => {
+      setError(null);
+      const result = await setDeviceEnabled(device.id, !device.enabled);
+      if (!result.ok) setError(result.error.message);
+      router.refresh();
+    });
+
+  const savePrefs = (next: NotifyPrefsView) =>
+    start(async () => {
+      setError(null);
+      const result = await setNotificationPrefs(next);
+      if (!result.ok) setError(result.error.message);
+      router.refresh();
     });
 
   const remove = (device: DeviceView) =>
@@ -116,7 +174,7 @@ export function NotificationsPanel({ devices, compact = false }: { devices: Devi
         ) : (
           <BellOff className="lucide h-5 w-5" aria-hidden />
         )}
-        <h3 className="text-[17px]">Round reminders</h3>
+        <h3 className="text-[17px]">Notifications</h3>
         {state === "on" ? <Tag tone="ink">On here</Tag> : null}
       </div>
 
@@ -152,6 +210,38 @@ export function NotificationsPanel({ devices, compact = false }: { devices: Devi
         ) : null}
       </div>
 
+      {!compact && prefs ? (
+        <fieldset className="mt-5 border-t-[1.5px] border-[var(--color-line)] pt-4" disabled={pending}>
+          <legend className="eyebrow mb-2.5">What to send</legend>
+          <div className="space-y-2.5 text-sm">
+            {(
+              [
+                ["notifyRounds", "Interview-round reminders", "Before each round you add, and a nudge after it."],
+                ["notifyStudy", "Study-session alerts", "Just before each session in your study plan."],
+                [
+                  "notifyDetails",
+                  "Show company and round names on the lock screen",
+                  "Off: reminders only say a round is coming and when. Anyone holding your phone can read a lock screen.",
+                ],
+              ] as const
+            ).map(([key, label, hint]) => (
+              <label key={key} className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-5 w-5 flex-none accent-[var(--color-text)]"
+                  checked={prefs[key]}
+                  onChange={(e) => savePrefs({ ...prefs, [key]: e.target.checked })}
+                />
+                <span>
+                  <span className="font-bold">{label}</span>
+                  <span className="block text-[var(--color-text-muted)]">{hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+
       {state === "ios-needs-install" || state === "off" || state === "unsupported" ? (
         <div className="mt-4">
           <InstallApp />
@@ -167,13 +257,27 @@ export function NotificationsPanel({ devices, compact = false }: { devices: Devi
                 <Smartphone className="lucide h-4 w-4 flex-none" aria-hidden />
                 <span className="font-bold">{d.deviceLabel || "Device"}</span>
                 {d.key === thisKey ? <Tag tone="outline">This device</Tag> : null}
+                {d.enabled ? null : <Tag tone="outline">Paused</Tag>}
                 <span className="text-[var(--color-text-muted)]">
                   since {new Date(d.createdAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })}
                 </span>
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm ml-auto"
-                  aria-label={`Stop notifications on ${d.deviceLabel || "this device"}`}
+                  aria-label={`${d.enabled ? "Pause" : "Resume"} notifications on ${d.deviceLabel || "this device"}`}
+                  onClick={() => toggleDevice(d)}
+                  disabled={pending}
+                >
+                  {d.enabled ? (
+                    <Pause className="lucide h-4 w-4" aria-hidden />
+                  ) : (
+                    <Play className="lucide h-4 w-4" aria-hidden />
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  aria-label={`Remove ${d.deviceLabel || "this device"} from notifications`}
                   onClick={() => remove(d)}
                   disabled={pending}
                 >

@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { AgentTools } from "@/components/agent-tools";
 import { PwaRegister } from "@/components/pwa-register";
+import { PushSession } from "@/components/push-session";
 import { INTRO_SCRIPT } from "@/components/landing-intro";
 import { RoleformGuide } from "@/components/roleform-guide";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/seo/site";
@@ -149,6 +150,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <AgentTools />
           <PwaRegister />
+          <PushSession />
           <RoleformGuide />
         </body>
       </html>

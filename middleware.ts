@@ -26,6 +26,9 @@ const isPublic = createRouteMatcher([
   // F29: called by the scheduler, which has no session. It checks
   // CRON_SECRET before reading anything — that is its lock.
   "/api/cron/reminders",
+  // F29.2: a signed-out device asking to be forgotten. No session exists by
+  // then; the device proves possession with its subscription's auth secret.
+  "/api/push/release",
   // The service worker's offline page. Shown when there is no network, so
   // there is no session check it could pass anyway.
   "/offline",

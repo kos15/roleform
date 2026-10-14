@@ -423,6 +423,42 @@ async function main() {
     ),
   );
 
+  /* ---------------------------------- 5f. F29.2 — the push outbox stays in bounds */
+
+  // A tap must open an in-app page. "/\evil.com" is the one a prefix check
+  // misses: WHATWG URL parsing reads it as "//evil.com".
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "push_delivery whose url leaves the app (backslash)",
+        rule: "F29.2",
+        statement: `insert into users (clerk_user_id, email_hash) values ('smoke-user-push', 'x');
+          insert into push_deliveries
+            (clerk_user_id, category, dedupe_key, title, body, url, tag, expires_at)
+          values ('smoke-user-push', 'test', 'test:smoke', 'Hi', '', E'/\\\\evil.com', 'smoke',
+                  now() + interval '1 hour')`,
+      },
+      "23514",
+    ),
+  );
+
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "push_delivery retried past its attempt cap",
+        rule: "F29.2",
+        statement: `insert into users (clerk_user_id, email_hash) values ('smoke-user-push2', 'x');
+          insert into push_deliveries
+            (clerk_user_id, category, dedupe_key, title, body, url, tag, expires_at, attempts)
+          values ('smoke-user-push2', 'test', 'test:smoke', 'Hi', '', '/profile', 'smoke',
+                  now() + interval '1 hour', 6)`,
+      },
+      "23514",
+    ),
+  );
+
   /* ------------------------------------------ 6. N10 — RLS denies strangers */
   results.push(...(await rlsCheck()));
 

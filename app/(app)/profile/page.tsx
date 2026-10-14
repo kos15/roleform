@@ -14,7 +14,7 @@ import { TokenPanel } from "./token-panel";
 import { ProfileEditor } from "./profile-editor";
 import { DeleteAccount } from "./delete-account";
 import { NotificationsPanel } from "@/components/notifications-panel";
-import { getDevices } from "@/lib/db/queries/rounds";
+import { getDevices, getNotifyPrefs } from "@/lib/db/queries/rounds";
 
 export const metadata = { title: "Your profile" };
 
@@ -90,7 +90,9 @@ export default async function ProfilePage() {
             deviceLabel: d.deviceLabel,
             createdAt: d.createdAt.toISOString(),
             lastSentAt: d.lastSentAt?.toISOString() ?? null,
+            enabled: d.enabled,
           }))}
+          prefs={await getNotifyPrefs(userId)}
         />
       </div>
 

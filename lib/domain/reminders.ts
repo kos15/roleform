@@ -350,6 +350,22 @@ export function reminderCopy(
   );
 }
 
+/**
+ * The lock-screen-safe version (F29.2), sent unless the member turned on
+ * "Show details": no company, no round name — only that a round is coming and
+ * when. The time is the member's own; who it is with stays in the app.
+ */
+export function discreetReminderCopy(
+  round: Pick<ReminderCopyInput, "scheduledAt" | "timeZone">,
+  lead: ReminderLead,
+  now: Date,
+): { title: string; body: string } {
+  if (lead === "after_round") return clip("How did your round go?", "Open Roleform to mark it done or add the next one.");
+  const until = untilPhrase(round.scheduledAt, now);
+  const when = until || whenPhrase(round.scheduledAt, round.timeZone, now);
+  return clip("Interview reminder", `You have a round ${when}. Open Roleform for the details.`);
+}
+
 function clip(title: string, body: string) {
   return { title: title.slice(0, 120), body: body.slice(0, 240) };
 }

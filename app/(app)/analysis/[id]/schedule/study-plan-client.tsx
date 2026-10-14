@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Bell, CalendarPlus, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { saveStudyPlan, tickStudySession } from "@/app/actions/study";
 import { savePushSubscription } from "@/app/actions/push";
-import { pushState, registration, subscribe, type PushState } from "@/lib/push/client";
+import { useAuth } from "@clerk/nextjs";
+import { pushState, registration, rememberDevice, subscribe, type PushState } from "@/lib/push/client";
 import {
   ALERT_LABEL,
   DAY_SET_LABEL,
@@ -91,6 +92,7 @@ export function StudyPlanClient({
   const [nowMin, setNowMin] = useState<number | undefined>(undefined);
   const [tz, setTz] = useState("UTC");
   const [push, setPush] = useState<PushState | null>(null);
+  const { userId } = useAuth();
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ when: string; title: string; body: string } | null>(null);
@@ -182,6 +184,7 @@ export function StudyPlanClient({
       if (sub) {
         const saved = await savePushSubscription(sub);
         if (!saved.ok) setError(saved.error.message);
+        else if (userId && sub.endpoint) rememberDevice(userId, sub.endpoint);
       }
       setPush(await pushState());
     });
@@ -246,6 +249,8 @@ export function StudyPlanClient({
         return { label: "Notifications on", can: false, on: true };
       case "denied":
         return { label: "Blocked in browser settings", can: false, on: false };
+      case "ios-update":
+        return { label: "Needs iOS 16.4 or later", can: false, on: false };
       case "off":
         return { label: "Allow notifications", can: true, on: false };
       default:
