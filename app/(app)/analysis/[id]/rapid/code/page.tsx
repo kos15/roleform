@@ -5,6 +5,14 @@ import { BANK } from "@/lib/drill/bank";
 import { CodeChallenge } from "./code-challenge";
 
 /**
+ * The server actions behind this mode run under this route's limits and each
+ * can make a model call (a generated challenge is the longest, with its
+ * sandbox re-check and one corrective retry). Stated explicitly so a change
+ * to the project's default can't cut a generation off mid-call.
+ */
+export const maxDuration = 120;
+
+/**
  * F26 — Code. A timed challenge: a classic DSA problem from the curated bank
  * (zero tokens) or one generated from this posting's technical topics, in the
  * language and difficulty you choose — with hints, the full solution, and a

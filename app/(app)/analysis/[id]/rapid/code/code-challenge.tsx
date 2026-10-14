@@ -33,7 +33,7 @@ import {
   type Difficulty,
 } from "@/lib/domain/drill";
 import { DRILL_ESTIMATES, formatCount } from "@/lib/domain/tokens";
-import { Choice, Prose, formatClock, useCountdown, usePaidAction } from "../shared";
+import { Choice, Prose, formatClock, safely, useCountdown, usePaidAction } from "../shared";
 import type { AttemptView, ChallengeSummary, ChallengeView, SolutionView, TestRun } from "../types";
 
 interface BankEntry {
@@ -220,13 +220,11 @@ function draftKey(id: string) {
 }
 
 function Workspace({ challenge, onBack }: { challenge: ChallengeView; onBack: () => void }) {
-  const [code, setCode] = useState(() => {
-    try {
-      return localStorage.getItem(draftKey(challenge.id)) ?? challenge.starter;
-    } catch {
-      return challenge.starter;
-    }
-  });
+  // The starter renders on the server and on first paint; a saved draft is
+  // restored after hydration. Reading localStorage during the first render
+  // made the server and client disagree about the editor's contents.
+  const [code, setCode] = useState(challenge.starter);
+  const [restored, setRestored] = useState(false);
   const [hints, setHints] = useState(challenge.hints);
   const [solution, setSolution] = useState<SolutionView | null>(challenge.solution);
   const [confirmSolution, setConfirmSolution] = useState(false);
@@ -240,29 +238,42 @@ function Workspace({ challenge, onBack }: { challenge: ChallengeView; onBack: ()
   const python = usePythonRunner();
 
   const endsAt = new Date(challenge.startedAt).getTime() + challenge.minutes * 60_000;
-  const left = useCountdown(endsAt) ?? 0;
+  const left = useCountdown(endsAt);
 
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem(draftKey(challenge.id));
+      if (saved) setCode(saved);
+    } catch {
+      /* a convenience, not storage */
+    }
+    setRestored(true);
+  }, [challenge.id]);
+
+  useEffect(() => {
+    if (!restored) return;
     try {
       localStorage.setItem(draftKey(challenge.id), code);
     } catch {
       /* a convenience, not storage */
     }
-  }, [challenge.id, code]);
+  }, [challenge.id, code, restored]);
 
   const runTests = useCallback(() => {
     setRunError(null);
-    startRunning(async () => {
-      if (challenge.runnable === "server") {
-        const result = await runChallengeTests(challenge.id, code);
-        if (result.ok) setRun(result.value);
-        else setRunError(result.error.message);
-      } else if (challenge.runnable === "browser" && challenge.browserTests) {
-        const result = await python.run(code, challenge.entryName, challenge.browserTests);
-        if ("error" in result) setRunError(result.error);
-        else setRun(result);
-      }
-    });
+    startRunning(() =>
+      safely(async () => {
+        if (challenge.runnable === "server") {
+          const result = await runChallengeTests(challenge.id, code);
+          if (result.ok) setRun(result.value);
+          else setRunError(result.error.message);
+        } else if (challenge.runnable === "browser" && challenge.browserTests) {
+          const result = await python.run(code, challenge.entryName, challenge.browserTests);
+          if ("error" in result) setRunError(result.error);
+          else setRun(result);
+        }
+      }, setRunError),
+    );
   }, [challenge, code, python]);
 
   const doSubmit = () => {
@@ -300,9 +311,9 @@ function Workspace({ challenge, onBack }: { challenge: ChallengeView; onBack: ()
           <ArrowLeft className="lucide h-4 w-4" /> All challenges
         </button>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-[var(--color-text-muted)]">{left >= 0 ? "Time left" : "Over time"}</span>
-          <span className="clock text-2xl" data-over={left < 0 ? "true" : undefined}>
-            {formatClock(left)}
+          <span className="text-sm text-[var(--color-text-muted)]">{left === null || left >= 0 ? "Time left" : "Over time"}</span>
+          <span className="clock text-2xl" data-over={left !== null && left < 0 ? "true" : undefined}>
+            {left === null ? "–:––" : formatClock(left)}
           </span>
         </div>
       </div>
@@ -360,11 +371,14 @@ function Workspace({ challenge, onBack }: { challenge: ChallengeView; onBack: ()
                   size="sm"
                   disabled={freePending}
                   onClick={() =>
-                    startFree(async () => {
-                      const r = await revealHint(challenge.id);
-                      if (r.ok) setHints(r.value);
-                      else setFreeError(r.error.message);
-                    })
+                    startFree(() =>
+                      safely(async () => {
+                        setFreeError(null);
+                        const r = await revealHint(challenge.id);
+                        if (r.ok) setHints(r.value);
+                        else setFreeError(r.error.message);
+                      }, setFreeError),
+                    )
                   }
                 >
                   <Lightbulb className="lucide h-4 w-4" />
@@ -379,11 +393,14 @@ function Workspace({ challenge, onBack }: { challenge: ChallengeView; onBack: ()
                       size="sm"
                       disabled={freePending}
                       onClick={() =>
-                        startFree(async () => {
-                          const r = await revealSolution(challenge.id);
-                          if (r.ok) setSolution(r.value);
-                          else setFreeError(r.error.message);
-                        })
+                        startFree(() =>
+                          safely(async () => {
+                            setFreeError(null);
+                            const r = await revealSolution(challenge.id);
+                            if (r.ok) setSolution(r.value);
+                            else setFreeError(r.error.message);
+                          }, setFreeError),
+                        )
                       }
                     >
                       Show it
@@ -657,9 +674,18 @@ function usePythonRunner() {
 
   const run = useCallback(
     (code: string, entry: string, cases: { args: unknown[]; expected: unknown }[]): Promise<PyResult> => {
+      if (typeof Worker === "undefined") {
+        return Promise.resolve({ error: "This browser can't run Python here. Submit for review and it will be read instead." });
+      }
       const first = !worker.current;
-      worker.current ??= new Worker("/workers/py-runner.js");
-      const w = worker.current;
+      let w: Worker;
+      try {
+        worker.current ??= new Worker("/workers/py-runner.js");
+        w = worker.current;
+      } catch {
+        worker.current = null;
+        return Promise.resolve({ error: "Python couldn't start in this browser. Submit for review and it will be read instead." });
+      }
       const id = ++seq.current;
       // First run downloads the interpreter; later runs only execute.
       const budget = first || !loaded ? 60_000 : 10_000;
@@ -699,8 +725,14 @@ function usePythonRunner() {
           });
           resolve({ results, passed: results.filter((r) => r.passed).length, total: results.length });
         };
-        w.onerror = () => {
+        w.onerror = (event) => {
+          event.preventDefault();
           clearTimeout(timer);
+          // A worker that failed to load its interpreter is dead; the next
+          // run starts a fresh one rather than posting into the void.
+          w.terminate();
+          worker.current = null;
+          setLoaded(false);
           resolve({ error: "Python couldn't load. Check your connection and try again." });
         };
         w.postMessage({ id, code, entry, cases: cases.map((c) => c.args) });
