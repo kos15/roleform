@@ -45,6 +45,7 @@ export type HelpKey =
   | "roadmap"
   | "rapid"
   | "portfolio"
+  | "schedule"
   | "profile"
   | "pricing"
   | "onboarding"
@@ -136,6 +137,16 @@ export const HELP: Record<HelpKey, HelpScreen> = {
       { text: "Topics come from this posting — the ones your résumé shows least of come first." },
       { text: "Pick the minutes you have and the deck resizes to fit." },
       { text: "A classic coding problem is free to start. Only the review of your answer draws on your tokens." },
+    ],
+  },
+  schedule: {
+    title: "Study plan",
+    intro: "Set your interview day and the hours you have. The plan fits every gap in, most important first.",
+    tips: [
+      { text: "Pick the kind of week you have, then switch slots on or off. Tap a slot's days to change them." },
+      { text: "Move a topic up and it gets studied sooner. Switch one off to leave it out." },
+      { text: "Too much for the time? The card at the top offers fixes — apply one and the plan rebuilds." },
+      { text: "Add to my calendar downloads every session with its alert built in." },
     ],
   },
   portfolio: {
@@ -260,7 +271,7 @@ export function helpKeyFor(pathname: string): HelpKey | null {
       if (!third) return "parsing";
       if (
         third === "resumes" || third === "preview" || third === "prep" || third === "learning" ||
-        third === "roadmap" || third === "rapid" || third === "portfolio"
+        third === "roadmap" || third === "rapid" || third === "portfolio" || third === "schedule"
       )
         return third;
       return null;

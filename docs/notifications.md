@@ -24,6 +24,8 @@ Set on Vercel (Production and Preview **separately** — never share keys across
 
 The migration `20261011000000_interview_rounds_push` runs with every deploy (`pnpm build` runs
 `prisma migrate deploy` and `pnpm db:policies`), which also turns RLS on for the three new tables.
+Study-plan alerts (F30, `20261014000000_study_plans`) ride the same route and scheduler — nothing
+extra to install; the sender settles `study_reminders` in the same call, after round reminders.
 
 ## 3. The scheduler (once per environment, and after rotating `CRON_SECRET`)
 

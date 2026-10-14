@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarClock, FileText, GraduationCap, ListChecks, MessageSquareText, Zap, type LucideIcon } from "lucide-react";
+import { CalendarClock, CalendarDays, FileText, GraduationCap, ListChecks, MessageSquareText, Zap, type LucideIcon } from "lucide-react";
 
 /**
  * The three surfaces. Real links rather than client state, so a tab is
@@ -30,6 +30,8 @@ export interface TabCounts {
   drills: number;
   /** F29: the next round still ahead, already phrased ("Thu 16 Oct"), or null. */
   nextRound: string | null;
+  /** F30: "6 sessions", "2h short" or "Set a date" — already phrased. */
+  study: string;
 }
 
 export function AnalysisTabs({
@@ -50,6 +52,7 @@ export function AnalysisTabs({
       count: `${counts.gaps} gap${counts.gaps === 1 ? "" : "s"}`,
       icon: GraduationCap,
     },
+    { slug: "schedule", label: "Study plan", count: counts.study, icon: CalendarDays },
     {
       slug: "roadmap",
       label: "Roadmap",

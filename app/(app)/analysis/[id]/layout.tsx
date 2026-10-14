@@ -7,6 +7,7 @@ import {
   getRequirements,
   getTabCounts,
 } from "@/lib/db/queries/analysis";
+import { getStudyTabCount } from "@/lib/db/queries/study";
 import { readStageState } from "@/lib/pipeline/stages";
 import { ResultsHeader } from "./results-header";
 import { AnalysisTabs } from "./analysis-tabs";
@@ -33,12 +34,14 @@ export default async function AnalysisLayout({
   // are already scoped by user and analysis, so speculating on them costs a
   // wasted query on the parsing path and saves a full round trip on every other
   // one. Only `bulletTexts` genuinely depends on a prior result.
-  const [analysis, requirements, coverage, counts] = await Promise.all([
+  const [analysis, requirements, coverage, tabCounts, study] = await Promise.all([
     getAnalysis(userId, id),
     getRequirements(userId, id),
     getCoverage(userId, id),
     getTabCounts(userId, id),
+    getStudyTabCount(userId, id),
   ]);
+  const counts = { ...tabCounts, study };
   if (!analysis) redirect("/history");
   if (analysis.status !== "ready") return <>{children}</>;
 

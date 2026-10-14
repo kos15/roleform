@@ -1837,6 +1837,53 @@ delivered once even when the route is called twice concurrently; a done or cance
 nothing; a notification shows no notes and opens the posting's prep; a second member cannot read or
 tick another's rounds (RLS); `ai_runs` does not move.
 
+
+### F30 — Study plan
+
+`/analysis/[id]/schedule`, a tab beside Learning ("Study plan", counting "6 sessions", "2h 15m
+short" or "Set a date") and reached from Learning's "Plan it into my week". Design: the prototype's
+"23 Study plan".
+
+**What it is.** Every gap's learning steps — the ones the engine already chose (F7) — fitted into
+the hours the member's week has, from today to the interview, most important topic first. A pure
+function (`buildSchedule`, `lib/domain/study-plan.ts`) re-solved in the browser on every change and
+on the server for alerts; sessions are never stored, so a missed session simply moves forward. No
+model call, no cap, no `ai_runs` row (N13 applied).
+
+**The controls.** 1 Interview day (defaults to the next upcoming round, else two weeks out, labelled
+as a placeholder) and "Keep the day before for revision". 2 Your day: Working professional or
+Student starting windows (Before work 07:00 45m, Lunch 13:15 30m off, After dinner 21:00 60m, Weekend
+morning 10:00 2h 30m; or the student set), each switchable, with a start time, a 15-minute-step
+length (15m–5h) and days cycling Mon–Fri → Every day → Sat & Sun. 3 Topics, reorderable and
+switchable, each with its priority (Must-have ≥ 55 severity, Strong plus ≥ 30, Nice-to-have), total
+and step count. 4 Alerts: 10, 15 or 30 minutes before, or off, with a preview and the device
+permission.
+
+**The solve.** Greedy, as the design specifies: each day's enabled windows in time order (today's
+already-started ones skipped), steps poured in priority order, a step splitting across windows only
+into a gap of 20 minutes or more, nothing placed in under 10. Gaps with no vetted course stay on
+Learning and are counted, not scheduled. The verdict card reads "On track for …" / "Done N days
+early", "Xh short" (with up to three fixes ranked by what they fit: turn on a window, add an hour to
+the weekend, add 15 minutes to weekdays, study on the revision day, leave out the lowest topic) or
+"Pick a date after today". Then day cards, a dashed free-days card when it fits early, the revision
+day's sittings (notes, then stories out loud, an hour each), and the interview day.
+
+**Progress** is the member's own tick (N15 applied): `study_progress` keeps, per learning step and
+local day, how far into the step is done (FK to `learning_steps`, NOT NULL). Ticks on earlier days
+move where today's plan starts; a tick today only marks the session done. Steps are sequential, so
+ticking a later part marks the earlier ones too.
+
+**Alerts.** Each save rewrites the plan's pending `study_reminders` (sittings in the next 14 days;
+back-to-back sessions are one sitting). The F29 sender settles them with the same claim-before-send
+rule, re-solving the plan at send time and wording the sitting as it is then ("GraphQL: GraphQL in
+depth — Today at 21:00 · 1h · Start at Queries"); a sitting the plan has moved off is skipped, not
+sent. Skill and course names only on a lock screen (N7). "Add to my calendar" downloads an .ics of
+every session, the revision sittings and the interview day, with the chosen alert.
+
+**Acceptance:** changing any control rebuilds the plan at once and saves within a second; a short
+plan names how short and offers only fixes that help; ticking survives a reload; no alert ever names
+a topic the plan no longer holds at that time.
+
 ### F29.1 — Round types, countdown and follow-up events
 
 The member tells us **which round** they are preparing for and **when**. `interview_rounds.kind`

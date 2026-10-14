@@ -58,7 +58,12 @@ declare
     -- Prisma connection (a trusted server path); nothing else may.
     'interview_rounds',
     'round_reminders',
-    'push_subscriptions'
+    'push_subscriptions',
+    -- F30: the member's study plan, their ticks and the alerts it implies.
+    -- The sender reads the reminders over the Prisma connection, like F29's.
+    'study_plans',
+    'study_progress',
+    'study_reminders'
   ];
   key_column text;
 begin

@@ -121,6 +121,13 @@ export default async function LearningTab({
             : `${scheduled.length} step${scheduled.length === 1 ? "" : "s"}, ${formatMinutes(plan.totalMin)} of study.`}
           {plan.sequenceNote ? ` ${plan.sequenceNote}` : ""}
         </p>
+        {/* F30: the same steps, fitted into the member's week. */}
+        <Link
+          href={`/analysis/${id}/schedule`}
+          className="btn btn-secondary btn-sm ml-auto no-underline hover:bg-[var(--color-text)] hover:text-[var(--color-accent-500)]"
+        >
+          Plan it into my week <ArrowRight className="lucide h-4 w-4" />
+        </Link>
       </div>
 
       {/* ------------------------------------------------------------- gaps */}

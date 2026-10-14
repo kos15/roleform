@@ -614,6 +614,7 @@ model Analysis {
   codingChallenges   CodingChallenge[]
   portfolioSites     PortfolioSite[]
   interviewRounds    InterviewRound[]
+  studyPlan          StudyPlan?
 
   // F2: identical JD text reuses the prior analysis — no second charge.
   @@unique([clerkUserId, contentHash], map: "analyses_user_content_hash")
@@ -1101,6 +1102,7 @@ model LearningStep {
   unlocksBullet   ExperienceBullet?  @relation(fields: [unlocksBulletId], references: [id], onDelete: Restrict)
   answersQuestion InterviewQuestion? @relation(fields: [answersQuestionId], references: [id], onDelete: Cascade)
   roadmapItems    RoadmapItem[]
+  studyProgress   StudyProgress[]
 
   @@index([planId, ordinal], map: "learning_steps_plan_idx")
   @@index([gapId], map: "learning_steps_gap_idx")
@@ -1799,4 +1801,107 @@ model PushSubscription {
 
   @@index([clerkUserId], map: "push_subscriptions_user_idx")
   @@map("push_subscriptions")
+}
+
+/**
+ * ------------------------------------------------------------ study plan (F30)
+ */
+
+/// What the member's day looks like — it only picks the starting windows.
+enum StudyPersona {
+  pro
+  student
+
+  @@map("study_persona")
+}
+
+/// How long before each study session the alert goes out.
+enum StudyAlert {
+  before_10
+  before_15
+  before_30
+  off
+
+  @@map("study_alert")
+}
+
+/// The member's study plan for one posting (F30): every gap's learning steps
+/// fitted into the hours their week has, before the interview. Only the
+/// member's own choices are stored; the sessions themselves are a pure
+/// function of these, the learning steps and today (lib/domain/study-plan.ts),
+/// re-solved on every read. No model call, no `ai_runs` row (N13 applied).
+model StudyPlan {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId     String       @map("clerk_user_id")
+  /// One plan per analysis; deleting the analysis takes it.
+  analysisId      String       @unique(map: "study_plans_analysis") @map("analysis_id") @db.Uuid
+  /// The day of the interview. Null until the member picks one — the plan
+  /// then runs to the next upcoming round, or two weeks out.
+  interviewOn     DateTime?    @map("interview_on") @db.Date
+  keepRevisionDay Boolean      @default(true) @map("keep_revision_day")
+  persona         StudyPersona @default(pro)
+  /// The weekly study windows — validated by StudyWindowsSchema on every
+  /// write (app/actions/study.ts), at most eight (CHECK).
+  windows         Json         @default("[]")
+  /// Gap ids, most important first. Ids not on this analysis are ignored.
+  topicOrder      String[]     @default([]) @map("topic_order") @db.Uuid
+  /// Gap ids the member switched off.
+  topicsOff       String[]     @default([]) @map("topics_off") @db.Uuid
+  alert           StudyAlert   @default(before_15)
+  /// The IANA zone the windows are in, so a 7:30 PM session alerts at the
+  /// member's 7:30 PM. Validated on write (Intl).
+  timeZone        String       @map("time_zone")
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  analysis  Analysis        @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  progress  StudyProgress[]
+  reminders StudyReminder[]
+
+  @@index([clerkUserId], map: "study_plans_user_idx")
+  @@map("study_plans")
+}
+
+/// How far into a learning step the member has ticked, per day. Written only
+/// by the member's own tick (N15 applied) — nothing derived moves it. The
+/// scheduler starts today's plan where the days before today left off.
+model StudyProgress {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String   @map("clerk_user_id")
+  planId      String   @map("plan_id") @db.Uuid
+  /// NOT NULL: a ticked session is always a session of a real learning step.
+  stepId      String   @map("step_id") @db.Uuid
+  /// The member's local calendar day the tick was made on.
+  doneOn      DateTime @map("done_on") @db.Date
+  /// Minutes into the step that are done, from its start. > 0 (CHECK).
+  upToMin     Int      @map("up_to_min")
+
+  plan StudyPlan    @relation(fields: [planId], references: [id], onDelete: Cascade)
+  step LearningStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, stepId, doneOn], map: "study_progress_plan_step_day")
+  @@map("study_progress")
+}
+
+/// One alert before one study session. Derived from the plan on every save
+/// (pending rows rewritten), sent by the same clocked sender as round
+/// reminders (lib/push/dispatch.ts) with the same claim-before-send rule.
+model StudyReminder {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String         @map("clerk_user_id")
+  planId      String         @map("plan_id") @db.Uuid
+  startsAt    DateTime       @map("starts_at") @db.Timestamptz
+  /// 5–480 minutes (CHECK). What the sitting holds is re-solved at send time.
+  durationMin Int            @map("duration_min")
+  dueAt       DateTime       @map("due_at") @db.Timestamptz
+  status      ReminderStatus @default(pending)
+  /// Set exactly when the sender claimed the row (CHECK).
+  settledAt   DateTime?      @map("settled_at") @db.Timestamptz
+  delivered   Int            @default(0)
+
+  plan StudyPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, startsAt], map: "study_reminders_plan_start")
+  @@index([status, dueAt], map: "study_reminders_due_idx")
+  @@map("study_reminders")
 }
