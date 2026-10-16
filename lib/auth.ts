@@ -1,9 +1,8 @@
 import "server-only";
-import { createHash } from "node:crypto";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { listAdmins } from "@/lib/admin/members";
-import { workspaceDefaults, capsFromDefaults } from "@/lib/admin/defaults";
+import { provisionAccount } from "@/lib/db/queries/provision";
 import { cycleEnd, cycleStart, QUOTA_BY_KEY, type CapWall, type QuotaKey } from "@/lib/domain/quotas";
 import { UNCAPPED, isUncapped, withinCap } from "@/lib/domain/entitlements";
 import { accountTokens } from "@/lib/db/queries/tokens";
@@ -22,10 +21,7 @@ import { canBuyTopup, TOPUPS, type PlanId } from "@/lib/content/pricing";
 import { loadPlan, loadPlanAbove } from "@/lib/plans/catalog";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
-/** N7: the address itself is never stored, only enough to de-duplicate. */
-export function hashEmail(email: string): string {
-  return createHash("sha256").update(email.toLowerCase()).digest("hex");
-}
+export { hashEmail } from "@/lib/db/queries/provision";
 
 /**
  * Create the account row if the webhook hasn't yet.
@@ -35,34 +31,12 @@ export function hashEmail(email: string): string {
  * a user who signs up and clicks straight through. Every one of those leaves a
  * signed-in person with no row and no way to act. Idempotent upsert, so the
  * webhook arriving late is a no-op rather than a conflict.
- *
- * Caps come from the workspace defaults (F15), not from the column defaults —
- * this is the only moment they apply. `update: {}` is what keeps that true: a
- * second call for an existing account must not re-apply a default over caps an
- * admin has since set by hand.
  */
 export async function provisionUser(clerkUserId: string): Promise<void> {
   const clerk = await currentUser();
   const email =
     clerk?.primaryEmailAddress?.emailAddress ?? clerk?.emailAddresses?.[0]?.emailAddress ?? "";
-
-  const defaults = await workspaceDefaults();
-
-  await db.user.upsert({
-    where: { clerkUserId },
-    create: {
-      clerkUserId,
-      emailHash: hashEmail(email),
-      // The cycle anchor (F15, F19). Without it every read of `cycleStart`
-      // falls back to `now`, usage counts from this instant, and no cap
-      // binds — the meter and the seven caps become decorative. Written once,
-      // at creation, and never moved: it is a fixed point the 30-day windows
-      // are laid out around, not a date a scheduler has to maintain.
-      quotaResetsAt: new Date(),
-      ...capsFromDefaults(defaults),
-    },
-    update: {},
-  });
+  await provisionAccount(clerkUserId, email);
 }
 
 // `settlePlan` (F23, PAY-2/PAY-3) lives in lib/db/queries/plan.ts, imported

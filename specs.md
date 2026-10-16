@@ -2189,6 +2189,18 @@ Clerk name** (never over one) and used. Profile import and every profile save do
 profile page has an account-name card that writes Clerk directly (`updateAccountName`). We store no
 copy of the name (N7).
 
+**A name is required (F33.1).** The `(app)` layout renders `NameGate` beside the page: when
+`greetingName` still has nothing (no Clerk first name, none to fill from the profile), a dialog that
+cannot be dismissed asks for a first name (last optional) and writes it through `updateAccountName`.
+Sign out is its only other exit. The page renders in parallel underneath, so a named member waits on
+nothing.
+
+**The admin list is the whole directory.** `listMembers` pages through every Clerk account
+(`getUserList`, 500 a page) rather than looking up only the subjects in `users`. A Clerk account with
+no row — its `user.created` webhook unconfigured or failed, and the person never back to trigger
+`provisionUser` — is provisioned on the spot through `provisionAccount`
+(`lib/db/queries/provision.ts`), the one door all three paths share, on the workspace defaults.
+
 **Session changes refresh the server tree.** `AuthStateSync` (root layout) calls `router.refresh()`
 whenever Clerk's `userId` changes, dropping Next's client router cache — which had kept signed-out
 payloads (including a prefetched `/analyze` that redirected to /sign-in) and left the app looking
