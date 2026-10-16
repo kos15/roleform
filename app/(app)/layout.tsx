@@ -15,6 +15,7 @@ import { SheetAccount } from "@/components/sheet-account";
 import { ProductTour, TourLauncher } from "@/components/product-tour";
 import { currentRole } from "@/lib/admin/role";
 import { HeaderGreeting } from "@/components/header-greeting";
+import { NameGate } from "@/components/name-gate";
 import { featureEnabled } from "@/lib/features";
 
 /** Signed-in and auth surfaces are a person's own data, not search results. */
@@ -130,6 +131,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </main>
 
       <SiteFooter />
+
+      {/* F33.1: an account without a name gets a dialog it can't dismiss.
+          Beside the page, not around it, so the page never waits on it. */}
+      <Suspense fallback={null}>
+        <NameGate />
+      </Suspense>
 
       {/* F29: keeps this device's push subscription on file. Never prompts. */}
       <PushSync />

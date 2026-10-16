@@ -7,6 +7,7 @@ import { formatTokens } from "@/lib/domain/tokens";
 import { effectivePlan } from "@/lib/domain/entitlements";
 import { grantedTokens } from "@/lib/db/queries/tokens";
 import { settlePlan } from "@/lib/db/queries/plan";
+import { provisionAccount } from "@/lib/db/queries/provision";
 import { type PlanId } from "@/lib/content/pricing";
 import { loadPlans } from "@/lib/plans/catalog";
 
@@ -103,6 +104,30 @@ export interface MemberList {
 }
 
 export async function listMembers(): Promise<MemberList> {
+  // The directory first, and all of it. Clerk is who has an account; `users`
+  // is only who we have a row for, and the two drift whenever the
+  // `user.created` webhook was unconfigured or failed and the person never
+  // came back to trigger `provisionUser`. Listing from our table alone left
+  // those people invisible here — so anyone Clerk has and we don't gets their
+  // row now, on the workspace defaults, exactly as either other door would.
+  const directory = await readDirectory();
+  if (directory.reachable && directory.identities.size > 0) {
+    const known = new Set(
+      (
+        await db.user.findMany({
+          where: { clerkUserId: { in: [...directory.identities.keys()] } },
+          select: { clerkUserId: true },
+        })
+      ).map((r) => r.clerkUserId),
+    );
+    const missing = [...directory.identities.entries()].filter(([id]) => !known.has(id));
+    // Sequential: `provisionAccount` reads the defaults row, which is itself an
+    // upsert, and a burst of parallel first-reads would race on creating it.
+    for (const [id, person] of missing) {
+      await provisionAccount(id, person.email === "—" ? "" : person.email);
+    }
+  }
+
   const rows = await db.user.findMany({
     orderBy: { createdAt: "asc" },
     select: {
@@ -122,7 +147,7 @@ export async function listMembers(): Promise<MemberList> {
     },
   });
 
-  if (rows.length === 0) return { members: [], directoryReachable: true };
+  if (rows.length === 0) return { members: [], directoryReachable: directory.reachable };
 
   // PAY-2: the panel never quotes a plan that has already lapsed. A row whose
   // stored plan disagrees with `effectivePlan` is settled — written back to
@@ -159,8 +184,6 @@ export async function listMembers(): Promise<MemberList> {
     Promise.all(settled.map((row) => grantedTokens(row.clerkUserId))),
     Promise.all(settled.map((row) => activityFor(row.clerkUserId))),
   ]);
-
-  const directory = await resolveIdentities(settled.map((r) => r.clerkUserId));
 
   const members = settled.map((row, i): Member => {
     const person = directory.identities.get(row.clerkUserId);
@@ -301,17 +324,17 @@ interface Identity {
   role: Role;
 }
 
-/** Clerk's `user_id` filter rides in the query string; 100 per call keeps it short. */
-const DIRECTORY_BATCH = 100;
+/** Clerk's page ceiling for `getUserList`. */
+const DIRECTORY_PAGE = 500;
+/** A runaway guard, not a product limit: 100 pages is 50,000 accounts. */
+const DIRECTORY_MAX_PAGES = 100;
 
 /**
- * Directory reads for the whole page, batched. Each batch fails on its own, so
- * one bad call costs the names of at most one batch — a single all-or-nothing
- * call used to blank every name on the page at once.
+ * Every account in the Clerk directory, paged. A page that fails ends the walk
+ * with what was read so far rather than blanking the page: the panel is still
+ * useful without names — usage and caps are ours.
  */
-async function resolveIdentities(
-  userIds: string[],
-): Promise<{ identities: Map<string, Identity>; reachable: boolean }> {
+async function readDirectory(): Promise<{ identities: Map<string, Identity>; reachable: boolean }> {
   const identities = new Map<string, Identity>();
   let client: Awaited<ReturnType<typeof clerkClient>>;
   try {
@@ -320,44 +343,51 @@ async function resolveIdentities(
     return { identities, reachable: false };
   }
 
-  const batches: string[][] = [];
-  for (let i = 0; i < userIds.length; i += DIRECTORY_BATCH) {
-    batches.push(userIds.slice(i, i + DIRECTORY_BATCH));
-  }
-
-  const results = await Promise.allSettled(
-    batches.map((ids) => client.users.getUserList({ userId: ids, limit: ids.length })),
-  );
-
-  for (const result of results) {
-    if (result.status !== "fulfilled") continue;
-    for (const u of result.value.data) {
-      const primary = u.primaryEmailAddress ?? u.emailAddresses[0] ?? null;
-      const email = primary?.emailAddress ?? "";
-      const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
-      const directoryName = fullName || u.username || "";
-      identities.set(u.id, {
-        // An email-code signup has no name at all; the address's local part is
-        // what an admin would recognise them by.
-        name: directoryName || email.split("@")[0] || "No name on file",
-        nameSource: directoryName ? "directory" : "email",
-        email: email || "—",
-        emailVerified: primary?.verification?.status === "verified",
-        imageUrl: u.hasImage ? u.imageUrl : null,
-        signInMethods: signInMethods(u),
-        lastSignInAt: u.lastSignInAt,
-        lastActiveAt: u.lastActiveAt,
-        blocked: u.banned ? "banned" : u.locked ? "locked" : null,
-        role: roleFromMetadata(u.publicMetadata),
+  let reachable = false;
+  for (let page = 0; page < DIRECTORY_MAX_PAGES; page++) {
+    let batch: Awaited<ReturnType<typeof client.users.getUserList>>;
+    try {
+      batch = await client.users.getUserList({
+        limit: DIRECTORY_PAGE,
+        offset: page * DIRECTORY_PAGE,
+        orderBy: "+created_at",
       });
+    } catch {
+      // Swallowed rather than logged: a trace would carry subjects (N7). The
+      // page says the directory was unreachable instead.
+      break;
     }
+    reachable = true;
+    for (const u of batch.data) identities.set(u.id, identityOf(u));
+    if (batch.data.length < DIRECTORY_PAGE || identities.size >= batch.totalCount) break;
   }
 
-  // Failures are swallowed rather than logged: the panel is still useful
-  // without names — usage and caps are ours — and a trace would carry subjects
-  // (N7). The page says the directory was unreachable instead.
-  const reachable = results.length === 0 || results.some((r) => r.status === "fulfilled");
   return { identities, reachable };
+}
+
+type DirectoryUser = Awaited<
+  ReturnType<Awaited<ReturnType<typeof clerkClient>>["users"]["getUserList"]>
+>["data"][number];
+
+function identityOf(u: DirectoryUser): Identity {
+  const primary = u.primaryEmailAddress ?? u.emailAddresses[0] ?? null;
+  const email = primary?.emailAddress ?? "";
+  const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+  const directoryName = fullName || u.username || "";
+  return {
+    // An email-code signup from before names were required has no name at
+    // all; the address's local part is what an admin would recognise them by.
+    name: directoryName || email.split("@")[0] || "No name on file",
+    nameSource: directoryName ? "directory" : "email",
+    email: email || "—",
+    emailVerified: primary?.verification?.status === "verified",
+    imageUrl: u.hasImage ? u.imageUrl : null,
+    signInMethods: signInMethods(u),
+    lastSignInAt: u.lastSignInAt,
+    lastActiveAt: u.lastActiveAt,
+    blocked: u.banned ? "banned" : u.locked ? "locked" : null,
+    role: roleFromMetadata(u.publicMetadata),
+  };
 }
 
 function signInMethods(u: {
