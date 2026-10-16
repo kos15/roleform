@@ -35,7 +35,7 @@ export default async function AdminPage({
   // The counts are two cheap COUNTs and they decide what the header says, so
   // they are read on every admin view. The messages themselves — other people's
   // words — are read only when the panel is actually open.
-  const [members, stats, defaults, counts, messages] = await Promise.all([
+  const [{ members, directoryReachable }, stats, defaults, counts, messages] = await Promise.all([
     listMembers(),
     workspaceStats(),
     showDefaults ? workspaceDefaults() : Promise.resolve(null),
@@ -93,7 +93,17 @@ export default async function AdminPage({
 
       {showDefaults && defaults ? <WorkspaceDefaultsPanel defaults={defaults} /> : null}
       {showInbox && messages ? (
-        <InboxPanel messages={messages} mailConfigured={isMailConfigured()} />
+        <InboxPanel
+          messages={messages}
+          mailConfigured={isMailConfigured()}
+          // Only the senders who are members, and only their name — enough to
+          // say who wrote in without pasting an account ID into the page.
+          accounts={Object.fromEntries(
+            members
+              .filter((m) => messages.some((msg) => msg.clerkUserId === m.clerkUserId))
+              .map((m) => [m.clerkUserId, `${m.name} · ${m.plan}`]),
+          )}
+        />
       ) : null}
 
       <div className="mb-6 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr))]">
@@ -124,7 +134,7 @@ export default async function AdminPage({
         })}
       </div>
 
-      <AdminPanel members={members} />
+      <AdminPanel members={members} directoryReachable={directoryReachable} />
 
       {/* Rolled up from the list we already have — the plan strip costs no
           second query, which is why it can sit on a force-dynamic page. */}

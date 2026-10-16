@@ -42,12 +42,41 @@ export interface MemberUsage {
   jobSearches: number;
 }
 
+/**
+ * Lifetime facts about the account, for the detail card. Counts of rows the
+ * member generated, never their content — the panel still does not read a
+ * profile, a résumé or a posting.
+ */
+export interface MemberActivity {
+  analysesTotal: number;
+  /** Formatted server-side so the client never hydrates a different locale. */
+  lastAnalysisAt: string | null;
+  roadmapsTotal: number;
+  jobSearchesTotal: number;
+}
+
 export interface Member {
   clerkUserId: string;
-  /** From Clerk. Falls back to the subject when the directory has no name. */
+  /**
+   * From Clerk: full name, else username, else the address's local part.
+   * Only when the directory has no record does it fall back to a short form
+   * of the subject — `nameSource` says which one this is.
+   */
   name: string;
+  nameSource: "directory" | "email" | "subject";
   email: string;
+  emailVerified: boolean;
   initials: string;
+  /** Clerk's own avatar URL — a Clerk-hosted image, never one we assemble. */
+  imageUrl: string | null;
+  /** How they sign in: "Google", "Password", … From Clerk. */
+  signInMethods: string[];
+  lastSignIn: string | null;
+  lastActive: string | null;
+  /** Banned or locked in Clerk — separate from our own `suspended`. */
+  clerkBlocked: "banned" | "locked" | null;
+  /** True when the directory answered and had no record for this subject. */
+  missingFromDirectory: boolean;
   /** The row's own value, for anything that has to match a plan (lib/admin/plans.ts). */
   planId: PlanId;
   /** The same fact, spelled the way the panel prints it. */
@@ -59,11 +88,20 @@ export interface Member {
   joined: string;
   caps: Record<QuotaKey, number>;
   used: MemberUsage;
+  activity: MemberActivity;
   /** One-off tokens granted or bought, all time. Outside the cap. */
   topupTokens: number;
+  /** The day the cycle caps are currently counted from. */
+  cycleStartedAt: string;
 }
 
-export async function listMembers(): Promise<Member[]> {
+export interface MemberList {
+  members: Member[];
+  /** False when every directory call failed — names are then short subjects. */
+  directoryReachable: boolean;
+}
+
+export async function listMembers(): Promise<MemberList> {
   const rows = await db.user.findMany({
     orderBy: { createdAt: "asc" },
     select: {
@@ -83,7 +121,7 @@ export async function listMembers(): Promise<Member[]> {
     },
   });
 
-  if (rows.length === 0) return [];
+  if (rows.length === 0) return { members: [], directoryReachable: true };
 
   // PAY-2: the panel never quotes a plan that has already lapsed. A row whose
   // stored plan disagrees with `effectivePlan` is settled — written back to
@@ -110,24 +148,35 @@ export async function listMembers(): Promise<Member[]> {
     }),
   );
 
-  const [usage, topups] = await Promise.all([
+  const [usage, topups, activity] = await Promise.all([
     Promise.all(settled.map((row) => usageFor(row.clerkUserId, cycleStart(row.quotaResetsAt)))),
     // Granted, not unspent: the panel is answering "what has this member been
     // given", which is the number an admin deciding whether to grant more
     // actually needs. What is LEFT of it is the member's own header pill.
     Promise.all(settled.map((row) => grantedTokens(row.clerkUserId))),
+    Promise.all(settled.map((row) => activityFor(row.clerkUserId))),
   ]);
 
   const directory = await resolveIdentities(settled.map((r) => r.clerkUserId));
 
-  return settled.map((row, i) => {
-    const person = directory.get(row.clerkUserId);
-    const name = person?.name ?? "Unnamed member";
+  const members = settled.map((row, i): Member => {
+    const person = directory.identities.get(row.clerkUserId);
+    const name = person?.name ?? shortSubject(row.clerkUserId);
     return {
       clerkUserId: row.clerkUserId,
       name,
+      nameSource: person?.nameSource ?? "subject",
       email: person?.email ?? "—",
-      initials: initialsOf(name),
+      emailVerified: person?.emailVerified ?? false,
+      initials: person ? initialsOf(name) : "··",
+      imageUrl: person?.imageUrl ?? null,
+      signInMethods: person?.signInMethods ?? [],
+      lastSignIn: person?.lastSignInAt ? formatMoment(new Date(person.lastSignInAt)) : null,
+      lastActive: person?.lastActiveAt ? formatMoment(new Date(person.lastActiveAt)) : null,
+      clerkBlocked: person?.blocked ?? null,
+      // Only meaningful when the directory answered: an unreachable directory
+      // says nothing about whether this person is in it.
+      missingFromDirectory: directory.reachable && !person,
       planId: row.plan,
       plan: planById(row.plan).name,
       planExpiresAt: row.planExpiresAt
@@ -138,7 +187,11 @@ export async function listMembers(): Promise<Member[]> {
       // than one that costs a directory read.
       role: person?.role ?? "member",
       suspended: row.suspended,
-      joined: row.createdAt.toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
+      joined: row.createdAt.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }),
       caps: {
         tokens: row.capTokens,
         analyses: row.capAnalyses,
@@ -149,9 +202,49 @@ export async function listMembers(): Promise<Member[]> {
         jobSearches: row.capJobSearches,
       },
       used: usage[i],
+      activity: activity[i],
       topupTokens: topups[i],
+      cycleStartedAt: cycleStart(row.quotaResetsAt).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+      }),
     };
   });
+
+  return { members, directoryReachable: directory.reachable };
+}
+
+async function activityFor(clerkUserId: string): Promise<MemberActivity> {
+  const [analyses, roadmapsTotal, jobSearchesTotal] = await Promise.all([
+    db.analysis.aggregate({
+      where: { clerkUserId },
+      _count: { _all: true },
+      _max: { createdAt: true },
+    }),
+    db.roadmap.count({ where: { clerkUserId } }),
+    db.jobSearch.count({ where: { clerkUserId } }),
+  ]);
+  return {
+    analysesTotal: analyses._count._all,
+    lastAnalysisAt: analyses._max.createdAt ? formatMoment(analyses._max.createdAt) : null,
+    roadmapsTotal,
+    jobSearchesTotal,
+  };
+}
+
+function formatMoment(date: Date): string {
+  return date.toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** `user_2abc…xyz` → `Member …xyz`: rows stay distinguishable without a name. */
+function shortSubject(clerkUserId: string): string {
+  return `Member …${clerkUserId.slice(-6)}`;
 }
 
 async function usageFor(clerkUserId: string, since: Date): Promise<MemberUsage> {
@@ -194,33 +287,86 @@ async function usageFor(clerkUserId: string, since: Date): Promise<MemberUsage> 
 
 interface Identity {
   name: string;
+  nameSource: "directory" | "email";
   email: string;
+  emailVerified: boolean;
+  imageUrl: string | null;
+  signInMethods: string[];
+  lastSignInAt: number | null;
+  lastActiveAt: number | null;
+  blocked: "banned" | "locked" | null;
   role: Role;
 }
 
+/** Clerk's `user_id` filter rides in the query string; 100 per call keeps it short. */
+const DIRECTORY_BATCH = 100;
+
 /**
- * One directory call for the whole page. Clerk pages at 500; past that this
- * needs a cursor loop, and past a few thousand members it needs a search box
- * instead of a list — both are the same change, and neither is due yet.
+ * Directory reads for the whole page, batched. Each batch fails on its own, so
+ * one bad call costs the names of at most one batch — a single all-or-nothing
+ * call used to blank every name on the page at once.
  */
-async function resolveIdentities(userIds: string[]): Promise<Map<string, Identity>> {
-  const map = new Map<string, Identity>();
+async function resolveIdentities(
+  userIds: string[],
+): Promise<{ identities: Map<string, Identity>; reachable: boolean }> {
+  const identities = new Map<string, Identity>();
+  let client: Awaited<ReturnType<typeof clerkClient>>;
   try {
-    const client = await clerkClient();
-    const list = await client.users.getUserList({ userId: userIds, limit: 500 });
-    for (const u of list.data) {
-      const name = [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || "";
-      map.set(u.id, {
-        name: name || "Unnamed member",
-        email: u.primaryEmailAddress?.emailAddress ?? "—",
+    client = await clerkClient();
+  } catch {
+    return { identities, reachable: false };
+  }
+
+  const batches: string[][] = [];
+  for (let i = 0; i < userIds.length; i += DIRECTORY_BATCH) {
+    batches.push(userIds.slice(i, i + DIRECTORY_BATCH));
+  }
+
+  const results = await Promise.allSettled(
+    batches.map((ids) => client.users.getUserList({ userId: ids, limit: ids.length })),
+  );
+
+  for (const result of results) {
+    if (result.status !== "fulfilled") continue;
+    for (const u of result.value.data) {
+      const primary = u.primaryEmailAddress ?? u.emailAddresses[0] ?? null;
+      const email = primary?.emailAddress ?? "";
+      const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+      const directoryName = fullName || u.username || "";
+      identities.set(u.id, {
+        // An email-code signup has no name at all; the address's local part is
+        // what an admin would recognise them by.
+        name: directoryName || email.split("@")[0] || "No name on file",
+        nameSource: directoryName ? "directory" : "email",
+        email: email || "—",
+        emailVerified: primary?.verification?.status === "verified",
+        imageUrl: u.hasImage ? u.imageUrl : null,
+        signInMethods: signInMethods(u),
+        lastSignInAt: u.lastSignInAt,
+        lastActiveAt: u.lastActiveAt,
+        blocked: u.banned ? "banned" : u.locked ? "locked" : null,
         role: roleFromMetadata(u.publicMetadata),
       });
     }
-  } catch {
-    // The panel is still useful without names — usage and caps are ours. It is
-    // not useful with a stack trace, and the trace would carry subjects (N7).
   }
-  return map;
+
+  // Failures are swallowed rather than logged: the panel is still useful
+  // without names — usage and caps are ours — and a trace would carry subjects
+  // (N7). The page says the directory was unreachable instead.
+  const reachable = results.length === 0 || results.some((r) => r.status === "fulfilled");
+  return { identities, reachable };
+}
+
+function signInMethods(u: {
+  passwordEnabled: boolean;
+  externalAccounts: { provider: string }[];
+}): string[] {
+  const methods = u.externalAccounts.map((a) => {
+    const provider = a.provider.replace(/^oauth_/, "");
+    return provider.charAt(0).toUpperCase() + provider.slice(1);
+  });
+  if (u.passwordEnabled) methods.push("Password");
+  return methods.length > 0 ? [...new Set(methods)] : ["Email code"];
 }
 
 export interface WorkspaceStat {

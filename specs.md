@@ -1097,6 +1097,15 @@ mirror.
 usage counts from our tables and cannot read a member's profile, résumés, answers or postings — not
 as policy but because the RLS policy keyed to the subject does not admit it.
 
+The directory is read in batches of 100, each failing on its own, so one bad call cannot blank every
+name. A member with no name in Clerk is shown by their address's local part; a member Clerk cannot
+be reached for is shown as `Member …<last six of the subject>`, and the panel says the directory is
+unreachable. The list is searchable (name, email, plan, account ID) and filterable (admins, paid, at a
+cap, suspended). The detail card adds, from Clerk: avatar, sign-in methods, email verification, last
+sign-in and last active, banned/locked; and from our tables: lifetime analyses (with the last one's
+date), roadmaps, job searches, top-ups and the current cycle start — counts only, never content. The
+support inbox names a signed-in sender by their member name instead of printing the subject.
+
 **Enforcement**, each at its own seam:
 
 | Cap | Where | Behaviour at the cap |

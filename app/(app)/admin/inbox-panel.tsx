@@ -21,9 +21,12 @@ import type { InboxMessage } from "@/lib/admin/inbox";
 export function InboxPanel({
   messages,
   mailConfigured,
+  accounts,
 }: {
   messages: InboxMessage[];
   mailConfigured: boolean;
+  /** Clerk subject → "Name · Plan", for senders who were signed in. */
+  accounts: Record<string, string>;
 }) {
   const [openId, setOpenId] = useState<string | null>(messages[0]?.id ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -117,7 +120,11 @@ export function InboxPanel({
                     <dl className="mb-3.5 flex flex-wrap gap-x-6 gap-y-1 text-[11.5px] text-[var(--color-text-muted)]">
                       <div className="flex gap-1.5">
                         <dt>Account</dt>
-                        <dd className="font-medium">{message.clerkUserId ?? "signed out"}</dd>
+                        <dd className="font-medium">
+                          {message.clerkUserId
+                            ? (accounts[message.clerkUserId] ?? "member no longer listed")
+                            : "sent while signed out"}
+                        </dd>
                       </div>
                       <div className="flex gap-1.5">
                         <dt>Receipt to sender</dt>
