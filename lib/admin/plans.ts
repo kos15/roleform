@@ -12,7 +12,7 @@
  * is the one an admin can act on.
  */
 
-import { PLANS, type Plan, type PlanId } from "@/lib/content/pricing";
+import type { Plan, PlanId } from "@/lib/content/pricing";
 import { QUOTAS, type QuotaKey } from "@/lib/domain/quotas";
 
 export interface PlanRollup {
@@ -28,8 +28,8 @@ export interface PlanMember {
   caps: Record<QuotaKey, number>;
 }
 
-export function rollUpPlans(members: PlanMember[]): PlanRollup[] {
-  return PLANS.map((plan) => {
+export function rollUpPlans(members: PlanMember[], plans: Plan[]): PlanRollup[] {
+  return plans.map((plan) => {
     const on = members.filter((m) => m.planId === plan.id);
     return {
       plan,

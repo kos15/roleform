@@ -365,8 +365,11 @@ model PlanPurchase {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   clerkUserId String   @map("clerk_user_id")
   plan        PlanTier
-  /// The payment id. UNIQUE, always.
+  /// The payment id, or `admin:<uuid>` for an admin grant. UNIQUE, always.
   reference   String   @unique
+  /// The admin who assigned the plan by hand (N21). Null on a payment —
+  /// nobody granted that. CHECKed: an `admin:` reference has a granter.
+  grantedBy   String?  @map("granted_by")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([clerkUserId], map: "plan_purchases_user_idx")
@@ -431,6 +434,127 @@ model WorkspaceSettings {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("workspace_settings")
+}
+
+/// Site-wide feature switches (F31). One row per switchable surface; a
+/// missing row means ON. Deliberately not per plan — a plan IS its caps (N22),
+/// so "who may use job search" is still `cap_job_searches`. A switch answers a
+/// different question: "is this surface open on this deployment at all".
+enum FeatureKey {
+  jobs
+  portfolio
+  rapid
+  roadmap
+  study
+  rounds
+
+  @@map("feature_key")
+}
+
+model FeatureSwitch {
+  key       FeatureKey @id
+  enabled   Boolean    @default(true)
+  updatedBy String?    @map("updated_by")
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("feature_switches")
+}
+
+/// The public plan catalog, as an admin last saved it (F31). A missing row
+/// means the plan is still on the defaults in lib/content/pricing.ts. The
+/// pricing page, checkout, the webhook and the admin panel all read this
+/// through lib/plans/catalog.ts, so what is printed and what is charged come
+/// from one row. CHECKed by hand: Free costs 0, a paid plan at least ₹1
+/// (Razorpay's floor), caps within the same bounds as `users`.
+model PlanConfig {
+  id         PlanTier @id
+  name       String
+  pricePaise Int      @map("price_paise")
+  unit       String
+  tagline    String
+  cta        String
+  featured   Boolean  @default(false)
+
+  capTokens      Int @map("cap_tokens")
+  capAnalyses    Int @map("cap_analyses")
+  capResumes     Int @map("cap_resumes")
+  capAnswers     Int @map("cap_answers")
+  capCourses     Int @map("cap_courses")
+  capRoadmaps    Int @map("cap_roadmaps")
+  capJobSearches Int @map("cap_job_searches")
+
+  updatedBy String?  @map("updated_by")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("plan_configs")
+}
+
+/// Promo codes (F32). Percent OR flat — CHECKed so a row cannot carry both or
+/// neither. Applies to plan purchases only, never to top-ups.
+enum PromoKind {
+  percent
+  flat
+
+  @@map("promo_kind")
+}
+
+model PromoCode {
+  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Upper-case, A–Z 0–9 and dashes, 3–24 chars (CHECK). Unique.
+  code           String     @unique
+  /// The festive name shown in the banner and on the pricing card.
+  label          String
+  kind           PromoKind
+  percentOff     Int?       @map("percent_off")
+  amountOffPaise Int?       @map("amount_off_paise")
+  /// Which plans the code discounts. Never empty (CHECK).
+  plans          PlanTier[]
+  startsAt       DateTime   @default(now()) @map("starts_at") @db.Timestamptz
+  endsAt         DateTime?  @map("ends_at") @db.Timestamptz
+  /// Captured redemptions allowed across everyone. Null = unlimited.
+  maxRedemptions Int?       @map("max_redemptions")
+  active         Boolean    @default(true)
+  /// Shown in the marquee on the landing page and analysis pages while live.
+  showBanner     Boolean    @default(true) @map("show_banner")
+  bannerText     String?    @map("banner_text")
+  createdBy      String     @map("created_by")
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
+
+  redemptions PromoRedemption[]
+
+  @@map("promo_codes")
+}
+
+enum PromoRedemptionStatus {
+  pending
+  captured
+
+  @@map("promo_redemption_status")
+}
+
+/// One discounted checkout (F32). Written `pending` when the order is created
+/// with the discounted amount, flipped to `captured` by the Razorpay webhook —
+/// which checks the captured amount against THIS row rather than the list
+/// price (N21). One captured redemption per member per code: a partial UNIQUE
+/// index added by hand in the migration.
+model PromoRedemption {
+  id          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  promoId     String                @map("promo_id") @db.Uuid
+  clerkUserId String                @map("clerk_user_id")
+  plan        PlanTier
+  orderId     String                @unique @map("order_id")
+  listPaise   Int                   @map("list_paise")
+  amountPaise Int                   @map("amount_paise")
+  status      PromoRedemptionStatus @default(pending)
+  paymentId   String?               @unique @map("payment_id")
+  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  capturedAt  DateTime?             @map("captured_at") @db.Timestamptz
+
+  promo PromoCode @relation(fields: [promoId], references: [id], onDelete: Restrict)
+
+  @@index([promoId, status], map: "promo_redemptions_promo_idx")
+  @@index([clerkUserId], map: "promo_redemptions_user_idx")
+  @@map("promo_redemptions")
 }
 
 /// Support mail (F16). Not user-owned content in the résumé sense, but it

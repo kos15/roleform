@@ -12,6 +12,7 @@ import { portfolioMaterials } from "@/lib/domain/portfolio";
 import { EXPERIENCE_IDS, siteData, tuneSite } from "@/lib/domain/portfolio-site";
 import { exportPortfolioHtml } from "@/lib/render/portfolio/export";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
+import { requireFeature } from "@/lib/features";
 
 /**
  * F28 — the in-app portfolio build. One per account, ever. No model call
@@ -26,6 +27,8 @@ import { appError, err, ok, type Result } from "@/lib/domain/types";
  * The curated prompt needs no action at all: it is assembled on the page.
  */
 export async function buildPortfolio(analysisId: string, rawChoices: unknown): Promise<Result<{ html: string }>> {
+  const featureOn = await requireFeature("portfolio");
+  if (!featureOn.ok) return featureOn;
   const user = await requireUser();
   if (!user.ok) return user;
 

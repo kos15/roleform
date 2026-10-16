@@ -1,9 +1,12 @@
 "use server";
 
+import { auth } from "@clerk/nextjs/server";
 import { requireUser } from "@/lib/auth";
 import { z } from "zod";
 import { createOrder, verifyPaymentSignature, type RazorpayOrder } from "@/lib/payments/razorpay";
-import { planById, topupById, canBuyTopup, type PlanId } from "@/lib/content/pricing";
+import { topupById, canBuyTopup, type PlanId } from "@/lib/content/pricing";
+import { loadPlan } from "@/lib/plans/catalog";
+import { pricePromo, type PricedPromo } from "@/lib/promo/server";
 import { db } from "@/lib/db";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
@@ -21,20 +24,77 @@ import { appError, err, ok, type Result } from "@/lib/domain/types";
  * network tab.
  */
 
-export async function startPlanCheckout(planId: PlanId): Promise<Result<RazorpayOrder>> {
+const PlanIdSchema = z.enum(["free", "pro", "ultra"]);
+
+/**
+ * F32: a promo code, when given, is priced here on the server and written as
+ * a `pending` redemption keyed by the order id. The webhook checks the
+ * captured amount against THAT row — never against anything the browser sent.
+ */
+export async function startPlanCheckout(
+  planId: PlanId,
+  promoCode?: string,
+): Promise<Result<RazorpayOrder>> {
   const user = await requireUser();
   if (!user.ok) return user;
 
-  const plan = planById(planId);
+  const id = PlanIdSchema.safeParse(planId);
+  if (!id.success) return err(appError("invalid_input", "We don't sell that plan."));
+
+  const plan = await loadPlan(id.data);
   if (plan.pricePaise <= 0) {
     return err(appError("invalid_input", "That plan is free — there's nothing to pay for."));
   }
 
-  return createOrder({
-    amountPaise: plan.pricePaise,
+  let promo: PricedPromo | null = null;
+  if (promoCode && promoCode.trim()) {
+    const priced = await pricePromo(promoCode, plan.id, user.value);
+    if (!priced.ok) return priced;
+    promo = priced.value;
+  }
+
+  const order = await createOrder({
+    amountPaise: promo ? promo.amountPaise : plan.pricePaise,
     clerkUserId: user.value,
-    notes: { kind: "plan", plan: plan.id },
+    notes: promo
+      ? { kind: "plan", plan: plan.id, promo: promo.promoId }
+      : { kind: "plan", plan: plan.id },
   });
+  if (!order.ok || !promo) return order;
+
+  await db.promoRedemption.create({
+    data: {
+      promoId: promo.promoId,
+      clerkUserId: user.value,
+      plan: plan.id,
+      orderId: order.value.id,
+      listPaise: promo.listPaise,
+      amountPaise: promo.amountPaise,
+    },
+  });
+  return order;
+}
+
+/**
+ * The "Apply" button on /pricing. Works signed out — a visitor comparing
+ * prices should see what the code does before making an account. Signed in,
+ * it also says whether this member has already used it.
+ */
+export async function previewPromo(
+  planId: PlanId,
+  promoCode: string,
+): Promise<Result<Omit<PricedPromo, "promoId">>> {
+  const id = PlanIdSchema.safeParse(planId);
+  if (!id.success) return err(appError("invalid_input", "We don't sell that plan."));
+  if (typeof promoCode !== "string" || promoCode.length > 40) {
+    return err(appError("invalid_input", "That isn't a code we recognise."));
+  }
+  const { userId } = await auth();
+  const priced = await pricePromo(promoCode, id.data, userId ?? null);
+  if (!priced.ok) return priced;
+  const { promoId: _omit, ...rest } = priced.value;
+  void _omit;
+  return ok(rest);
 }
 
 /**

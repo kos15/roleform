@@ -49,8 +49,8 @@ analysis as much as to résumé bullets.
 | N18 | Every provider response crosses the boundary through a Zod schema. A listing's `url` is the provider's own field; the app never assembles one. Bad records are dropped and counted, never coerced. | N6 and N8 for third-party data. A URL we built is a link we cannot vouch for. |
 | N19 | A job query carries titles, canonical skill names, a city and a remote flag. Never a name, contact detail, bullet, résumé or JD. `JobQuery` has no field for them. | N7 at the egress. Wrong states unrepresentable. |
 | N20 | Fit between a listing and the profile is shown as named facts — skills it names, skills it asks for that you lack, title, location, stated years. Listings may be grouped into tiers (Shortlist / Worth a look / Long shot / Ruled out) only by those facts, with the reasons on every card. No number, no ring, no "match". | N4: the match score is coverage over a full posting; a snippet cannot earn it. A tier is a sort, not a score. |
-| N21 | A paid plan has an expiry; Free has none (CHECK). Lapse is settled by one function on read. Nothing else lowers a plan, and nothing raises one except the webhook on a captured payment of the right amount. | A plan granted forever for one payment is the revenue bug; two writers to `users.plan` is the next one. |
-| N22 | A plan **is** its caps: every plan-gated capability is a `QuotaKey` with a column, a CHECK, a `PLANS` value, a `NOTES` line and an enforcement seam that counts rows. No boolean feature flags per plan. | The pricing page prints `QUOTAS`; a gate outside it is a promise the page cannot show and the admin cannot move. |
+| N21 | A paid plan has an expiry; Free has none (CHECK). Lapse is settled by one function on read. Nothing raises a plan except (a) the webhook on a captured payment of the right amount — the live `plan_configs` price, or the `promo_redemptions` row checkout wrote for that order — or (b) an admin's `assignMemberPlan`, which always sets an expiry and writes an audited `plan_purchases` row (`admin:` reference + `granted_by`, CHECKed). Nothing else lowers a plan. | A plan granted forever for one payment is the revenue bug; an unaudited writer to `users.plan` is the next one. |
+| N22 | A plan **is** its caps: every plan-gated capability is a `QuotaKey` with a column, a CHECK, a `PLANS` value, a `NOTES` line and an enforcement seam that counts rows. No boolean feature flags per plan. Site-wide switches (`feature_switches`, F31) are allowed: they open or close a surface for everyone and never vary by plan. | The pricing page prints `QUOTAS`; a gate outside it is a promise the page cannot show and the admin cannot move. |
 | N23 | Interview rounds are user-authored facts; reminders are rows derived from them. The sender claims a row before it sends, pushes only label · company · time · an in-app path (never notes), and logs counts. The service worker never caches a signed-in page. `/api/cron/reminders` is the only scheduled path in the product. | A reminder is the one thing we do on our own clock — it has to arrive at most once, honest about when, and safe on a lock screen. |
 
 ## 3. The fabrication boundary
@@ -246,6 +246,10 @@ lib/
     bundles.ts               precomputed retrieval — a PK lookup, never a search
     build-plan.ts            the S3→S7 request path. ONE model call.
     validate.ts              OUT-1: every resource id resolves to a live row
+  plans/catalog.ts           F31: the live plan catalog (`plan_configs` over `PLANS`) — every price read goes here
+  promo/server.ts            F32: price a code, list banners; the pure half is lib/domain/promo.ts
+  features.ts                F31: site-wide switches — requireFeaturePage (404) / requireFeature (action)
+  account/name.ts            F33: greeting name; fills a blank Clerk name from the profile
   push/                      F29: send.ts (web-push, SERVER ONLY) · dispatch.ts (claims due reminders)
                              · client.ts (browser subscribe/unsubscribe; no server imports)
   drill/                     F26 rapid prep: bank.ts (curated DSA problems, checked by
@@ -317,7 +321,9 @@ That's the standard.
   and for rapid prep (F26) `RevisionDeck`, `QuizRound`, `CodingChallenge`, `CodeAttempt`,
   and for the portfolio (F28) `PortfolioSite`,
   and for rounds and reminders (F29) `InterviewRound` (with its `RoundKind`), `RoundReminder`, `PushSubscription`,
-  and for durable push (F29.2) `PushDelivery` (the outbox row; "accepted" means the push service took it, never "delivered").
+  and for durable push (F29.2) `PushDelivery` (the outbox row; "accepted" means the push service took it, never "delivered"),
+  and for admin controls (F31) `FeatureSwitch` (with its `FeatureKey`), `PlanConfig` (the live public plan; `PLANS` is only the default),
+  and for promos (F32) `PromoCode`, `PromoRedemption` ("captured" means the webhook saw the payment).
   Note in particular: the learning engine's spec calls a catalogued thing a *resource*; in this repo
   it is a **`Course`**. There is one table, not two — a parallel `Resource` model would be exactly
   the synonym this rule exists to prevent.

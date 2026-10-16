@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import {
   getBullets,
   getEvidenceCounts,
@@ -13,6 +13,7 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 import { TokenPanel } from "./token-panel";
 import { ProfileEditor } from "./profile-editor";
 import { DeleteAccount } from "./delete-account";
+import { AccountName } from "./account-name";
 import { NotificationsPanel } from "@/components/notifications-panel";
 import { getDevices, getNotifyPrefs } from "@/lib/db/queries/rounds";
 
@@ -25,10 +26,14 @@ export default async function ProfilePage() {
   const { userId } = await auth();
   if (!userId) redirect("/");
 
-  const loaded = await getProfileWithDocument(userId);
+  const [loaded, clerkUser] = await Promise.all([getProfileWithDocument(userId), currentUser()]);
+  const accountName = (
+    <AccountName firstName={clerkUser?.firstName ?? ""} lastName={clerkUser?.lastName ?? ""} />
+  );
   if (!loaded) {
     return (
       <div className="max-w-2xl space-y-5">
+        {accountName}
         <EmptyState title="No profile yet">
           Import a résumé and Roleform will have something to work from.
         </EmptyState>
@@ -65,6 +70,8 @@ export default async function ProfilePage() {
         Everything a tailored résumé can say has to exist here first. Each entry shows how often it
         has actually been used as evidence — the ones at zero are the ones worth rewriting.
       </PageIntro>
+
+      {accountName}
 
       {/* The meter goes INTO the editor's left column rather than under it, as
           in the design: it is the first thing on this screen, above the corpus

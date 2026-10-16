@@ -17,6 +17,7 @@ import {
   type RoundKind,
 } from "@/lib/domain/reminders";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
+import { requireFeature } from "@/lib/features";
 
 /**
  * Interview rounds (F29). Every field here is the member's own — the date,
@@ -66,6 +67,8 @@ function revalidate(analysisId: string) {
 }
 
 export async function createRound(analysisId: string, input: RoundInputValue): Promise<Result<{ id: string }>> {
+  const featureOn = await requireFeature("rounds");
+  if (!featureOn.ok) return featureOn;
   const user = await requireUser();
   if (!user.ok) return user;
   const value = parse(input);
@@ -116,6 +119,8 @@ export async function createRound(analysisId: string, input: RoundInputValue): P
 }
 
 export async function updateRound(roundId: string, input: RoundInputValue): Promise<Result<null>> {
+  const featureOn = await requireFeature("rounds");
+  if (!featureOn.ok) return featureOn;
   const user = await requireUser();
   if (!user.ok) return user;
   const value = parse(input);

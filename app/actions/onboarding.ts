@@ -18,6 +18,7 @@ import {
 } from "@/lib/ai/schemas/resume-json";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 import type { ExtractProfileResult } from "@/lib/ai/schemas/resume-json";
+import { fillClerkNameIfBlank } from "@/lib/account/name";
 
 /**
  * Onboarding (F1, specs §14).
@@ -278,6 +279,9 @@ export async function commitProfile(
     sourceDocumentId: documentId,
   });
 
+  // F33: the résumé's name fills a blank account name, never overwrites one.
+  await fillClerkNameIfBlank(user.value, (parsed.data as StoredResume).basics.name);
+
   revalidatePath("/profile");
   revalidatePath("/analyze");
   return ok(result);
@@ -304,6 +308,8 @@ export async function updateProfile(draft: unknown): Promise<Result<{ profileId:
     profileId: existing.id,
     resume: parsed.data as StoredResume,
   });
+
+  await fillClerkNameIfBlank(user.value, parsed.data.basics.name);
 
   revalidatePath("/profile");
   return ok({ profileId: result.profileId });

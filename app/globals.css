@@ -1044,6 +1044,85 @@
     .promo-glow::before { animation: none; }
   }
 
+  /* F32 festive-offer strip. Marigold ground, ink type (§9: marigold is a
+     fill, never a text colour). The track holds two identical halves and
+     slides by one, so the loop has no seam. Paused on hover and focus; still
+     under reduced motion. */
+  .promo-marquee {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-bottom: clamp(1rem, 2.5vw, 1.5rem);
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background: var(--color-accent-500);
+    color: var(--color-text);
+    animation: promo-flash 2.4s ease-in-out 2;
+  }
+  .promo-marquee__viewport {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0.55rem 0 0.55rem 1rem;
+    color: inherit;
+    mask-image: linear-gradient(90deg, transparent, black 4%, black 96%, transparent);
+  }
+  .promo-marquee__track {
+    display: flex;
+    width: max-content;
+    animation: promo-scroll 32s linear infinite;
+  }
+  .promo-marquee:hover .promo-marquee__track,
+  .promo-marquee:focus-within .promo-marquee__track { animation-play-state: paused; }
+  .promo-marquee__half { display: flex; flex: none; }
+  .promo-marquee__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding-right: 2.75rem;
+    font-weight: 700;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+  .promo-marquee__spark { animation: promo-twinkle 1.6s ease-in-out infinite; }
+  .promo-marquee__code {
+    border: 1.5px dashed var(--color-text);
+    border-radius: var(--radius-pill);
+    padding: 0.05rem 0.6rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    background: var(--color-bg-raised);
+  }
+  .promo-marquee__ends { font-weight: 600; opacity: 0.8; }
+  .promo-marquee__close {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    margin-right: 0.25rem;
+    border-radius: var(--radius-pill);
+    color: inherit;
+  }
+  .promo-marquee__close:hover { background: var(--color-accent-600); }
+  @keyframes promo-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes promo-twinkle {
+    0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    50% { transform: scale(1.25) rotate(12deg); opacity: 0.7; }
+  }
+  @keyframes promo-flash {
+    0%, 100% { background: var(--color-accent-500); }
+    50% { background: var(--color-sage-500); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .promo-marquee,
+    .promo-marquee__track,
+    .promo-marquee__spark { animation: none; }
+  }
+
   /* F28 portfolio studio (design "22 Portfolio studio"). */
   .hover-tint:hover:not(:disabled) { background: var(--color-hover) !important; }
   .pf-solid:hover { background: var(--color-accent-800) !important; }

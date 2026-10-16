@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { planById } from "@/lib/content/pricing";
+import { loadPlan } from "@/lib/plans/catalog";
 import { settlePlan } from "@/lib/db/queries/plan";
 import { RenewalNotice } from "@/components/renewal-notice";
 
@@ -36,7 +36,7 @@ export async function RenewalBanner() {
   return (
     <RenewalNotice
       planId={user.plan}
-      planName={planById(user.plan).name}
+      planName={(await loadPlan(user.plan)).name}
       expiresOn={user.planExpiresAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
       daysLeft={daysLeft}
     />

@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { QuotaKey } from "@/lib/domain/quotas";
-import { planById } from "@/lib/content/pricing";
+import { loadPlan } from "@/lib/plans/catalog";
 
 /**
  * The caps a new account is provisioned with (F15).
@@ -27,7 +27,7 @@ export async function workspaceDefaults(): Promise<WorkspaceDefaults> {
   // gets, and a new account that quietly started on the Pro numbers would
   // make that page wrong on its first sentence. Seeded once — an admin who
   // raises a default afterwards is not overwritten on the next read.
-  const free = planById("free").caps;
+  const free = (await loadPlan("free")).caps;
 
   const row = await db.workspaceSettings.upsert({
     where: { id: "workspace" },

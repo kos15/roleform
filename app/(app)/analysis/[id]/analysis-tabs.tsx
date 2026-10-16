@@ -37,9 +37,12 @@ export interface TabCounts {
 export function AnalysisTabs({
   analysisId,
   counts,
+  hidden = [],
 }: {
   analysisId: string;
   counts: TabCounts;
+  /** F31: tab slugs whose feature is switched off site-wide. */
+  hidden?: string[];
 }) {
   const pathname = usePathname();
 
@@ -78,7 +81,7 @@ export function AnalysisTabs({
 
   return (
     <div className="tab-bar" data-tour="tabs" role="tablist" aria-label="Analysis sections">
-      {tabs.map((tab) => {
+      {tabs.filter((tab) => !hidden.includes(tab.slug)).map((tab) => {
         const href = `/analysis/${analysisId}/${tab.slug}`;
         // A preview is a résumé opened, not a fourth place to be. Matching only
         // the exact path left every tab unselected there, so the bar said you

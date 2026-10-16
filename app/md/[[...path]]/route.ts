@@ -1,17 +1,21 @@
 import { markdownFor, markdownPaths } from "@/lib/seo/markdown";
 import { absoluteUrl } from "@/lib/seo/site";
+import { loadPlans } from "@/lib/plans/catalog";
 
 /**
  * Markdown mirror of a public page. Reached by rewrite from `/<path>.md` and
  * from any public URL requested with `Accept: text/markdown` (middleware.ts),
  * so agents fetch compact text instead of parsing the rendered page.
  */
-export const dynamic = "force-static";
+// Regenerated every five minutes rather than frozen at build: /pricing's
+// mirror quotes the live plan catalog an admin can edit (F31), and saving a
+// plan also revalidates this path directly.
+export const revalidate = 300;
 
 export async function GET(_request: Request, { params }: { params: Promise<{ path?: string[] }> }) {
   const { path } = await params;
   const pagePath = `/${(path ?? []).join("/")}`;
-  const body = markdownFor(pagePath);
+  const body = markdownFor(pagePath, await loadPlans());
   if (!body) return new Response("Not found\n", { status: 404, headers: { "Content-Type": "text/plain" } });
 
   return new Response(body, {

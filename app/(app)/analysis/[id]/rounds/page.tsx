@@ -6,6 +6,7 @@ import { countdownPhrase, whenPhrase } from "@/lib/domain/reminders";
 import { pushConfigured } from "@/lib/push/send";
 import { NotificationsPanel } from "@/components/notifications-panel";
 import { RoundsClient, type RoundView } from "./rounds-client";
+import { requireFeaturePage } from "@/lib/features";
 
 export const metadata = { title: "Interview rounds" };
 
@@ -18,6 +19,8 @@ export const maxDuration = 60;
  * taps them on the shoulder. No model call, no cap, no `ai_runs` row.
  */
 export default async function RoundsTab({ params }: { params: Promise<{ id: string }> }) {
+  // F31: switched off site-wide → a plain 404.
+  await requireFeaturePage("rounds");
   const { id } = await params;
   const { userId } = await auth();
   if (!userId) redirect("/");

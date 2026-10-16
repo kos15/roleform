@@ -11,6 +11,8 @@ import { getStudyTabCount } from "@/lib/db/queries/study";
 import { readStageState } from "@/lib/pipeline/stages";
 import { ResultsHeader } from "./results-header";
 import { AnalysisTabs } from "./analysis-tabs";
+import { featureStates } from "@/lib/features";
+import { PromoMarquee } from "@/components/promo-marquee";
 
 /**
  * F4 — results header, always adjacent to the three buckets (N4).
@@ -34,13 +36,21 @@ export default async function AnalysisLayout({
   // are already scoped by user and analysis, so speculating on them costs a
   // wasted query on the parsing path and saves a full round trip on every other
   // one. Only `bulletTexts` genuinely depends on a prior result.
-  const [analysis, requirements, coverage, tabCounts, study] = await Promise.all([
+  const [analysis, requirements, coverage, tabCounts, study, features] = await Promise.all([
     getAnalysis(userId, id),
     getRequirements(userId, id),
     getCoverage(userId, id),
     getTabCounts(userId, id),
     getStudyTabCount(userId, id),
+    featureStates(),
   ]);
+  // F31: a switched-off surface loses its tab as well as its page.
+  const hidden = [
+    !features.study && "schedule",
+    !features.roadmap && "roadmap",
+    !features.rapid && "rapid",
+    !features.rounds && "rounds",
+  ].filter((slug): slug is string => Boolean(slug));
   const counts = { ...tabCounts, study };
   if (!analysis) redirect("/history");
   if (analysis.status !== "ready") return <>{children}</>;
@@ -54,6 +64,7 @@ export default async function AnalysisLayout({
 
   return (
     <div>
+      <PromoMarquee />
       <ResultsHeader
         analysis={{
           jdSource: analysis.jdSource,
@@ -76,7 +87,7 @@ export default async function AnalysisLayout({
         bulletTexts={Object.fromEntries(bulletTexts)}
       />
       <div className="mb-[clamp(1.75rem,3vw,2.5rem)] mt-[clamp(2.75rem,5vw,4rem)] h-px bg-[var(--color-line)]" />
-      <AnalysisTabs analysisId={id} counts={counts} />
+      <AnalysisTabs analysisId={id} counts={counts} hidden={hidden} />
       <div className="mt-[clamp(2.25rem,4vw,3.5rem)]">{children}</div>
     </div>
   );

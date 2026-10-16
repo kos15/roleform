@@ -5,6 +5,7 @@ import { getRoadmap } from "@/lib/db/queries/roadmap";
 import { EmptyState } from "@/components/ui";
 import { Checklist } from "./checklist";
 import { BuildButton } from "./build-button";
+import { requireFeaturePage } from "@/lib/features";
 
 /**
  * F21 — Roadmap. Compiled once, on demand, from rows the analysis already
@@ -12,6 +13,8 @@ import { BuildButton } from "./build-button";
  * (N13), and ticking is the user's own record of working through it (N15).
  */
 export default async function RoadmapTab({ params }: { params: Promise<{ id: string }> }) {
+  // F31: switched off site-wide → a plain 404.
+  await requireFeaturePage("roadmap");
   const { id } = await params;
   const { userId } = await auth();
   if (!userId) redirect("/");

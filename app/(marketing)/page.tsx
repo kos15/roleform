@@ -7,6 +7,8 @@ import { JsonLd } from "@/components/json-ld";
 import { FaqList } from "@/components/faq-list";
 import { GUIDES, HOME_FAQS } from "@/lib/content/guides";
 import { faqSchema, graph, organizationSchema, softwareSchema, websiteSchema } from "@/lib/seo/schema";
+import { loadPlans } from "@/lib/plans/catalog";
+import { PromoMarquee } from "@/components/promo-marquee";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo/site";
 import type { Metadata } from "next";
@@ -55,8 +57,10 @@ export default async function MarketingPage() {
     <div>
       <LandingIntro drafts={TEMPLATES.length} />
       <JsonLd
-        data={graph(organizationSchema(), websiteSchema(), softwareSchema(), faqSchema(HOME_FAQS))}
+        data={graph(organizationSchema(), websiteSchema(), softwareSchema(await loadPlans()), faqSchema(HOME_FAQS))}
       />
+      {/* F32: renders nothing unless an admin has a live, advertised code. */}
+      <PromoMarquee className="intro-item" />
       <LandingHome hrefs={hrefs} />
 
       <section aria-labelledby="guides-heading" className="mt-[clamp(3rem,6vw,4.5rem)]">

@@ -10,7 +10,7 @@ import {
   formatResetDate,
   formatResetIn,
 } from "@/lib/domain/tokens";
-import { planById } from "@/lib/content/pricing";
+import { loadPlan } from "@/lib/plans/catalog";
 import { isUncapped } from "@/lib/domain/entitlements";
 import { settlePlan } from "@/lib/db/queries/plan";
 import { Tag } from "@/components/ui";
@@ -41,7 +41,7 @@ export async function TokenPanel({ clerkUserId }: { clerkUserId: string }) {
     where: { clerkUserId },
     select: { plan: true, quotaResetsAt: true, role: true, planExpiresAt: true },
   });
-  const plan = planById(user?.plan ?? "free");
+  const plan = await loadPlan(user?.plan ?? "free");
 
   // An uncapped account has a usage number and no ceiling, so every reading
   // built from `total` — "left of", the bar, "runs left at today's rate" — is

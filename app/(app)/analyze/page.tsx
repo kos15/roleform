@@ -8,6 +8,7 @@ import { draftsPerRun } from "@/lib/db/queries/entitlement";
 import { Card, EmptyState } from "@/components/ui";
 import { JdInput } from "./jd-input";
 import { QueuedRuns } from "./queued-runs";
+import { PromoMarquee } from "@/components/promo-marquee";
 
 export default async function AnalyzePage({
   searchParams,
@@ -52,6 +53,7 @@ export default async function AnalyzePage({
 
   return (
     <div>
+      <PromoMarquee />
       <div className="rise-in mb-[clamp(2rem,4vw,3rem)] max-w-[760px]">
         <p className="eyebrow mb-3.5">Step 1 of 3 · The posting</p>
         <h1 className="mb-5 text-[clamp(3rem,6.4vw,6rem)] leading-[0.92]">

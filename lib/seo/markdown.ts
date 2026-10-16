@@ -8,7 +8,7 @@
  */
 import { DOCS, type DocSlug } from "@/lib/content/docs";
 import { GUIDES, HOME_FAQS, guideBySlug, type Guide } from "@/lib/content/guides";
-import { COMPARE_ROWS, PLANS, PLAN_ROWS, PRICING_REFUSALS, TOPUPS } from "@/lib/content/pricing";
+import { compareRows, PLANS, PLAN_ROWS, PRICING_REFUSALS, TOPUPS, type Plan } from "@/lib/content/pricing";
 import { SPEND_BASIS, SUPPORT_SPEND, SUPPORT_TIERS } from "@/lib/content/support";
 import { displayCap } from "@/lib/domain/quotas";
 import { RUN_ESTIMATE, TOKEN_STAGES, formatCount } from "@/lib/domain/tokens";
@@ -49,12 +49,12 @@ ${PUBLIC_PAGES.filter((p) => p.path !== "/").map((p) => `- [${p.title}](${absolu
 ${footer("/")}`;
 }
 
-export function pricingMarkdown(): string {
+export function pricingMarkdown(plans: Plan[] = PLANS): string {
   return `# Pricing — ${SITE_NAME}
 
 Every plan runs the same four-stage analysis with the same rule: nothing is invented. Plans differ only in how much you can do, metered in tokens (a full analysis is about ${formatCount(RUN_ESTIMATE)} tokens). Prices in INR, inclusive of tax. A paid plan lasts 30 days from payment and does not auto-renew.
 
-${PLANS.map(
+${plans.map(
   (p) => `## ${p.name}
 - Price: ${p.price} ${p.unit}
 - ${p.tagline}
@@ -63,9 +63,9 @@ ${PLAN_ROWS.map((r) => `- ${r.label}: ${displayCap(r.key, p.caps[r.key])} ${r.un
 ).join("\n\n")}
 
 ## Side by side
-| What you get | ${PLANS.map((p) => p.name).join(" | ")} |
-|---|${PLANS.map(() => "---").join("|")}|
-${COMPARE_ROWS.map((r) => `| ${r.label} (${r.unit}) | ${r.cells.join(" | ")} |`).join("\n")}
+| What you get | ${plans.map((p) => p.name).join(" | ")} |
+|---|${plans.map(() => "---").join("|")}|
+${compareRows(plans).map((r) => `| ${r.label} (${r.unit}) | ${r.cells.join(" | ")} |`).join("\n")}
 
 ## Top-ups (any paid plan; never renew, never expire)
 ${TOPUPS.map((t) => `- ${formatCount(t.tokens)} tokens — ${t.price} (${t.note})`).join("\n")}
@@ -186,10 +186,10 @@ ${footer("/contact")}`;
 }
 
 /** Markdown for a public path, or null when the path has no mirror. */
-export function markdownFor(path: string): string | null {
+export function markdownFor(path: string, plans: Plan[] = PLANS): string | null {
   const clean = path.replace(/\/+$/, "") || "/";
   if (clean === "/" || clean === "/index") return home();
-  if (clean === "/pricing") return pricingMarkdown();
+  if (clean === "/pricing") return pricingMarkdown(plans);
   if (clean === "/templates") return templates();
   if (clean === "/guides") return guidesIndex();
   if (clean === "/support") return support();
@@ -259,6 +259,6 @@ ${GUIDES.map((g) => `- [${g.title}](${absoluteUrl(`/guides/${g.slug}.md`)}): ${g
 }
 
 /** /llms-full.txt — every public page's Markdown in one request. */
-export function llmsFullTxt(): string {
-  return [llmsTxt(), ...markdownPaths().map((p) => markdownFor(p) ?? "")].join("\n\n---\n\n");
+export function llmsFullTxt(plans: Plan[] = PLANS): string {
+  return [llmsTxt(), ...markdownPaths().map((p) => markdownFor(p, plans) ?? "")].join("\n\n---\n\n");
 }

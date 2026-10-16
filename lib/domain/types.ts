@@ -120,7 +120,9 @@ export type AppErrorCode =
   /** A dependency this deployment hasn't been given keys for (F17). */
   | "misconfigured"
   /** A third party we call answered badly, or not at all (F17). */
-  | "upstream_failed";
+  | "upstream_failed"
+  /** An admin switched this surface off site-wide (F31). */
+  | "feature_off";
 
 export interface AppError {
   code: AppErrorCode;

@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { Suspense } from "react";
 // Clerk v7 replaced <SignedIn>/<SignedOut> with <Show when="signed-in" | "signed-out">.
-import { Show, SignInButton } from "@clerk/nextjs";
+import { Show } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { Brand } from "@/components/brand";
 import { SiteFooter } from "@/components/site-footer";
 import { NavLinks } from "@/components/nav-links";
 import { MobileTabBar } from "@/components/mobile-tabbar";
 import { SheetAccount } from "@/components/sheet-account";
-import { Button } from "@/components/ui";
 import { currentRole } from "@/lib/admin/role";
+import { featureEnabled } from "@/lib/features";
 
 /**
  * Chrome for the public surfaces: the landing page and everything a person
@@ -60,11 +60,12 @@ export default async function MarketingLayout({ children }: { children: React.Re
 
         <div className="ml-auto flex flex-none items-center gap-2">
           <Show when="signed-out">
-            <SignInButton mode="modal">
-              <Button variant="ghost" className="wide-only">
-                Sign in
-              </Button>
-            </SignInButton>
+            {/* The routed page, not the modal: after a modal sign-in the page
+                underneath stayed rendered for a signed-out visitor until a
+                reload. The route lands on a fresh server render. */}
+            <Link href="/sign-in" className="btn btn-ghost wide-only no-underline">
+              Sign in
+            </Link>
           </Show>
           <Link href="/analyze" className="btn btn-primary no-underline">
             Open Roleform
@@ -90,9 +91,13 @@ export default async function MarketingLayout({ children }: { children: React.Re
 }
 
 async function TabBar({ clerkUserId, account }: { clerkUserId: string; account: React.ReactNode }) {
-  const isAdmin = (await currentRole(clerkUserId)) === "admin";
+  const [isAdmin, jobs] = await Promise.all([
+    currentRole(clerkUserId).then((r) => r === "admin"),
+    featureEnabled("jobs"),
+  ]);
   return (
     <MobileTabBar
+      jobs={jobs}
       extraLinks={
         isAdmin ? [{ href: "/admin", label: "Admin", hint: "Members, caps and the support inbox" }] : []
       }

@@ -12,6 +12,7 @@ import { JobSearchClient } from "./job-search-client";
 import { SavedJobsPanel } from "./saved-jobs-panel";
 import { CapNotice } from "./cap-notice";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
+import { requireFeaturePage } from "@/lib/features";
 
 /**
  * F22 — Job search. Listings from documented APIs, matched to the profile's
@@ -25,6 +26,8 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
  * profile as it is now.
  */
 export default async function JobsPage() {
+  // F31: switched off site-wide → a plain 404.
+  await requireFeaturePage("jobs");
   const { userId } = await auth();
   if (!userId) redirect("/");
 

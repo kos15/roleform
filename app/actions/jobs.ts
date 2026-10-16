@@ -11,6 +11,7 @@ import { loadResults, type ResultsView } from "@/lib/jobs/results";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 import type { SavedJobStatus } from "@/lib/generated/prisma/enums";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
+import { requireFeature } from "@/lib/features";
 
 /**
  * Job search (F22).
@@ -30,6 +31,8 @@ export async function searchJobs(overrides?: {
   remote?: boolean;
   postedWithinDays?: number;
 }): Promise<Result<ResultsView>> {
+  const featureOn = await requireFeature("jobs");
+  if (!featureOn.ok) return featureOn;
   const user = await requireUser();
   if (!user.ok) return user;
 
@@ -76,6 +79,8 @@ export async function searchJobs(overrides?: {
 
 /** Save a listing, idempotently (a second click just leaves the row where it is). */
 export async function saveJob(listingId: string): Promise<Result<{ savedJobId: string }>> {
+  const featureOn = await requireFeature("jobs");
+  if (!featureOn.ok) return featureOn;
   const user = await requireUser();
   if (!user.ok) return user;
 

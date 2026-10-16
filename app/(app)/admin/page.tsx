@@ -6,16 +6,24 @@ import { assertAdminOr404 } from "@/lib/admin/guard";
 import { adminKicker } from "@/lib/workspace";
 import { inboxCounts, listContactMessages } from "@/lib/admin/inbox";
 import { isMailConfigured } from "@/lib/mail/config";
+import { featureStates } from "@/lib/features";
+import { loadPlans } from "@/lib/plans/catalog";
+import { listPromos } from "@/lib/promo/server";
 import { AdminPanel } from "./admin-panel";
 import { InboxPanel } from "./inbox-panel";
 import { PlansPanel } from "./plans-panel";
 import { rollUpPlans } from "@/lib/admin/plans";
 import { WorkspaceDefaultsPanel } from "./workspace-defaults";
+import { FeaturesPanel } from "./features-panel";
+import { PromosPanel } from "./promos-panel";
 
 export const metadata: Metadata = { title: "Admin" };
 
 /** Caps and usage change under you; a cached admin panel is a wrong one. */
 export const dynamic = "force-dynamic";
+
+type Panel = "members" | "plans" | "promos" | "features" | "defaults" | "inbox";
+const PANELS: Panel[] = ["members", "plans", "promos", "features", "defaults", "inbox"];
 
 export default async function AdminPage({
   searchParams,
@@ -26,73 +34,113 @@ export default async function AdminPage({
   // so the page is never one refactor away from rendering for a member.
   await assertAdminOr404();
 
-  const { panel } = await searchParams;
-  const showDefaults = panel === "defaults";
-  const showInbox = panel === "inbox";
+  const { panel: raw } = await searchParams;
+  const panel: Panel = PANELS.includes(raw as Panel) ? (raw as Panel) : "members";
 
-  // The defaults read is an upsert (it seeds its own row), so it is issued only
-  // when the panel is actually open rather than writing on every page view.
-  // The counts are two cheap COUNTs and they decide what the header says, so
-  // they are read on every admin view. The messages themselves — other people's
-  // words — are read only when the panel is actually open.
-  const [{ members, directoryReachable }, stats, defaults, counts, messages] = await Promise.all([
-    listMembers(),
+  // Each panel reads only what it shows. The defaults read is an upsert (it
+  // seeds its own row), and the inbox holds other people's words — both are
+  // read only when open. The counts decide what the tab bar says, so they are
+  // read on every view.
+  const needMembers = panel === "members" || panel === "plans" || panel === "inbox";
+  const [memberList, stats, counts, plans] = await Promise.all([
+    needMembers ? listMembers() : Promise.resolve(null),
     workspaceStats(),
-    showDefaults ? workspaceDefaults() : Promise.resolve(null),
     inboxCounts(),
-    showInbox ? listContactMessages() : Promise.resolve(null),
+    loadPlans(),
   ]);
+  const [defaults, messages, features, promos] = await Promise.all([
+    panel === "defaults" ? workspaceDefaults() : Promise.resolve(null),
+    panel === "inbox" ? listContactMessages() : Promise.resolve(null),
+    panel === "features" ? featureStates() : Promise.resolve(null),
+    panel === "promos" ? listPromos() : Promise.resolve(null),
+  ]);
+  const members = memberList?.members ?? [];
+
+  const tabs: { id: Panel; label: string }[] = [
+    { id: "members", label: "Members" },
+    { id: "plans", label: "Plans" },
+    { id: "promos", label: "Promo codes" },
+    { id: "features", label: "Features" },
+    { id: "defaults", label: "New-account defaults" },
+    { id: "inbox", label: counts.unhandled > 0 ? `Support inbox · ${counts.unhandled}` : "Support inbox" },
+  ];
 
   return (
     <div className="rise-in">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div className="max-w-[60ch]">
-          <div className="card-kicker mb-2">{adminKicker()}</div>
-          <h1 className="mb-2 text-[clamp(1.625rem,4vw,2.25rem)]">Generation controls</h1>
-          <p className="text-[0.9rem] leading-relaxed text-[var(--color-text-muted)]">
-            Caps are per member, not pooled. A member who hits one is told which cap and who to
-            ask — they never see a silent failure. Names and addresses come from the identity
-            provider; we hold only a hash, and this panel never reads a member&rsquo;s profile,
-            résumés or postings.
+      <div className="mb-6 max-w-[64ch]">
+        <div className="card-kicker mb-2">{adminKicker()}</div>
+        <h1 className="mb-2 text-[clamp(1.625rem,4vw,2.25rem)]">Admin</h1>
+        <p className="text-[0.9rem] leading-relaxed text-[var(--color-text-muted)]">
+          Members and their caps, the public plans, promo codes and which features are open. Names
+          and addresses come from the identity provider; this panel never reads a member&rsquo;s
+          profile, résumés or postings.
+        </p>
+        {/* Said here rather than only inside the inbox: a message that never
+            reached an inbox is invisible everywhere else. */}
+        {counts.undelivered > 0 ? (
+          <p className="mt-2 text-[0.85rem] text-[var(--color-accent-700)]">
+            {counts.undelivered === 1
+              ? "One support message was filed but never emailed to us."
+              : `${counts.undelivered} support messages were filed but never emailed to us.`}{" "}
+            <Link href="/admin?panel=inbox">Read them in the inbox</Link>.
           </p>
-          {/* Said here rather than only inside the panel: a message that never
-              reached an inbox is invisible everywhere else, so the one page an
-              admin does open has to volunteer it. */}
-          {counts.undelivered > 0 ? (
-            <p className="mt-2 text-[0.85rem] text-[var(--color-accent-700)]">
-              {counts.undelivered === 1
-                ? "One support message was filed but never emailed to us."
-                : `${counts.undelivered} support messages were filed but never emailed to us.`}{" "}
-              <Link href="/admin?panel=inbox">Read them in the inbox</Link>.
-            </p>
-          ) : null}
-        </div>
-
-        {/* Both are links rather than buttons: each is a different view of this
-            page, so each deserves a URL an admin can share or come back to. */}
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href={showDefaults ? "/admin" : "/admin?panel=defaults"}
-            className="btn btn-secondary btn-sm no-underline"
-            aria-expanded={showDefaults}
-          >
-            Workspace defaults
-          </Link>
-          {/* The count is on the button because an unread support message is
-              the one thing on this page that is waiting on a person. */}
-          <Link
-            href={showInbox ? "/admin" : "/admin?panel=inbox"}
-            className="btn btn-secondary btn-sm no-underline"
-            aria-expanded={showInbox}
-          >
-            Support inbox
-            {counts.unhandled > 0 ? ` · ${counts.unhandled}` : ""}
-          </Link>
-        </div>
+        ) : null}
       </div>
 
-      {showDefaults && defaults ? <WorkspaceDefaultsPanel defaults={defaults} /> : null}
-      {showInbox && messages ? (
+      {/* Links, not buttons: each panel is a URL an admin can share or return to. */}
+      <nav aria-label="Admin sections" className="mb-6 flex flex-wrap gap-2">
+        {tabs.map((tab) => (
+          <Link
+            key={tab.id}
+            href={tab.id === "members" ? "/admin" : `/admin?panel=${tab.id}`}
+            aria-current={panel === tab.id ? "page" : undefined}
+            className={`btn btn-sm no-underline ${panel === tab.id ? "btn-primary" : "btn-secondary"}`}
+          >
+            {tab.label}
+          </Link>
+        ))}
+      </nav>
+
+      {panel === "members" ? (
+        <>
+          <div className="mb-6 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr))]">
+            {stats.map((stat) => {
+              const pct = stat.of && stat.of > 0 ? Math.min(100, (stat.value / stat.of) * 100) : 0;
+              return (
+                <div
+                  key={stat.label}
+                  className="rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] px-[1.125rem] py-4"
+                >
+                  <div className="mb-2 text-[11px] uppercase tracking-[0.09em] text-[var(--color-text-muted)]">
+                    {stat.label}
+                  </div>
+                  <div className="mb-2.5 flex items-baseline gap-2">
+                    <span className="display text-[1.625rem] leading-none">{stat.value}</span>
+                    <span className="text-xs text-[var(--color-text-muted)]">{stat.sub}</span>
+                  </div>
+                  <div className="h-[5px] overflow-hidden rounded-[var(--radius-pill)] bg-[var(--color-bg-sunken)]">
+                    <div
+                      className="h-full rounded-[var(--radius-pill)] bg-[var(--color-sage-500)]"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <AdminPanel
+            members={members}
+            directoryReachable={memberList?.directoryReachable ?? true}
+            plans={plans.map((p) => ({ id: p.id, name: p.name }))}
+          />
+        </>
+      ) : null}
+
+      {panel === "plans" ? <PlansPanel plans={plans} rollup={rollUpPlans(members, plans)} /> : null}
+      {panel === "promos" && promos ? <PromosPanel promos={promos} plans={plans} /> : null}
+      {panel === "features" && features ? <FeaturesPanel states={features} /> : null}
+      {panel === "defaults" && defaults ? <WorkspaceDefaultsPanel defaults={defaults} /> : null}
+      {panel === "inbox" && messages ? (
         <InboxPanel
           messages={messages}
           mailConfigured={isMailConfigured()}
@@ -105,40 +153,6 @@ export default async function AdminPage({
           )}
         />
       ) : null}
-
-      <div className="mb-6 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr))]">
-        {stats.map((stat) => {
-          const pct = stat.of && stat.of > 0 ? Math.min(100, (stat.value / stat.of) * 100) : 0;
-          return (
-            <div
-              key={stat.label}
-              className="rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] px-[1.125rem] py-4"
-            >
-              <div className="mb-2 text-[11px] uppercase tracking-[0.09em] text-[var(--color-text-muted)]">
-                {stat.label}
-              </div>
-              <div className="mb-2.5 flex items-baseline gap-2">
-                <span className="display text-[1.625rem] leading-none">
-                  {stat.value}
-                </span>
-                <span className="text-xs text-[var(--color-text-muted)]">{stat.sub}</span>
-              </div>
-              <div className="h-[5px] overflow-hidden rounded-[var(--radius-pill)] bg-[var(--color-bg-sunken)]">
-                <div
-                  className="h-full rounded-[var(--radius-pill)] bg-[var(--color-sage-500)]"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <AdminPanel members={members} directoryReachable={directoryReachable} />
-
-      {/* Rolled up from the list we already have — the plan strip costs no
-          second query, which is why it can sit on a force-dynamic page. */}
-      <PlansPanel rollup={rollUpPlans(members)} />
     </div>
   );
 }

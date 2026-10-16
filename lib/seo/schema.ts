@@ -4,7 +4,7 @@
  * guides from lib/content/guides — so the structured data cannot claim
  * something the visible page doesn't.
  */
-import { PLANS } from "@/lib/content/pricing";
+import { PLANS, type Plan } from "@/lib/content/pricing";
 import type { Guide } from "@/lib/content/guides";
 import { TEMPLATES, ratingFor } from "@/lib/render/templates";
 import { FOUNDER, SITE_DEFINITION, SITE_DESCRIPTION, SITE_NAME, SITE_URL, absoluteUrl } from "./site";
@@ -41,7 +41,7 @@ export function websiteSchema(): Json {
   };
 }
 
-export function softwareSchema(): Json {
+export function softwareSchema(plans: Plan[] = PLANS): Json {
   return {
     "@type": "SoftwareApplication",
     "@id": APP_ID,
@@ -61,7 +61,7 @@ export function softwareSchema(): Json {
       "DOCX and PDF export",
       "Nothing invented: every generated bullet traces to one you wrote",
     ],
-    offers: PLANS.map((plan) => ({
+    offers: plans.map((plan) => ({
       "@type": "Offer",
       name: plan.name,
       price: (plan.pricePaise / 100).toFixed(2),

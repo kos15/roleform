@@ -167,6 +167,24 @@ alter table public.plan_purchases enable row level security;
 alter table public.plan_purchases force row level security;
 drop policy if exists "public read" on public.plan_purchases;
 
+-- ------------------------------------------ admin controls and promos (F31/F32)
+-- feature_switches and plan_configs are operator configuration, like
+-- workspace_settings. promo_codes are read by the app server to price a
+-- checkout and print a banner — never by a browser holding a JWT, which would
+-- let anyone list every live code. promo_redemptions carry a subject, but are
+-- written only by checkout and the webhook over the Prisma connection and
+-- read only by the admin panel. RLS on, NO policy, for all four.
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['feature_switches', 'plan_configs', 'promo_codes', 'promo_redemptions'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('alter table public.%I force row level security', t);
+    execute format('drop policy if exists "public read" on public.%I', t);
+  end loop;
+end $$;
+
 -- ------------------------------------------------------------- job listings
 -- job_listings is the shared cache underneath F22: one row per posting a
 -- provider returned, carrying no clerk_user_id. The listing is public content

@@ -6,6 +6,7 @@ import { requireUser, checkRoadmapAllowance } from "@/lib/auth";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import { createRoadmap, getRoadmap, roadmapExists } from "@/lib/db/queries/roadmap";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
+import { requireFeature } from "@/lib/features";
 
 /**
  * Building a roadmap (F21).
@@ -17,6 +18,8 @@ import { appError, err, ok, type Result } from "@/lib/domain/types";
  * costs nothing to have started.
  */
 export async function buildRoadmap(analysisId: string): Promise<Result<{ roadmapId: string }>> {
+  const featureOn = await requireFeature("roadmap");
+  if (!featureOn.ok) return featureOn;
   const user = await requireUser();
   if (!user.ok) return user;
 

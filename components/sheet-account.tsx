@@ -3,6 +3,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { accountTokens } from "@/lib/db/queries/tokens";
 import { currentRole, initialsOf } from "@/lib/admin/role";
 import { formatCount } from "@/lib/domain/tokens";
+import { greetingName } from "@/lib/account/name";
 
 /**
  * The account row at the top of the mobile sheet.
@@ -26,10 +27,13 @@ export async function SheetAccount() {
     accountTokens(userId),
   ]);
 
+  // F33: the profile's name fills a blank account name (greetingName), so a
+  // member who signed up with only an email still gets called something.
   const name =
     [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+    (await greetingName(userId)) ||
     user?.username ||
-    "Your account";
+    "Add your name";
 
   const roleLabel = role === "admin" ? "Admin" : "Member";
   const line = account

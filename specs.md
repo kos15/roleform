@@ -2125,6 +2125,78 @@ retried and later accepted without a second notification; a 410 deletes the devi
 device or switching a category off stops queued pushes; signing out of a shared phone and in as
 someone else leaves the first member's reminders off that phone.
 
+
+### F31 — Admin controls: feature switches, editable plans, plan by hand
+
+**Feature switches.** `feature_switches` — one row per `FeatureKey` (`jobs`, `portfolio`, `rapid`,
+`roadmap`, `study`, `rounds`); a missing row is ON, and a read failure is ON (a switch closes a
+surface on purpose; an outage is not a purpose). Site-wide, never per plan: per-plan access is still a
+cap (N22). Off means: the surface's pages call `requireFeaturePage` and 404; its nav link, analysis
+tab or promo card is not rendered; its write actions call `requireFeature` and refuse with
+`feature_off` and a sentence. Nothing already made is deleted. Admin → Features.
+
+**Editable public plans.** `plan_configs` — one row per `PlanTier` an admin has saved; a missing row
+means the shipped defaults in `lib/content/pricing.ts`. Every surface that prints or charges a price
+reads `lib/plans/catalog.ts#loadPlans()`: /pricing (and its metadata, JSON-LD, Markdown mirror and
+`llms-full.txt`), checkout, the Razorpay webhook's amount check, the token and cap walls, `settlePlan`,
+the workspace defaults seed and the admin panel. CHECKs: Free costs 0; a paid plan costs at least ₹1
+(Razorpay's floor); caps share the `users` bounds. One featured plan at most. Saving never moves an
+existing member — a paid member picks up new caps on their next purchase. "Reset to defaults" deletes
+the row. Admin → Plans.
+
+**A member's plan by hand.** Admin → Members → Change plan. Paid plans need an end date (≤ 1 year,
+end of that day IST) and write that plan's current caps — the same write a purchase makes. Each paid
+assignment is a `plan_purchases` row with an `admin:<uuid>` reference and `granted_by` (CHECK: an
+`admin:` reference has a granter, a payment never does). Free clears the expiry and drops to the Free
+caps.
+
+**Members list.** Searchable and filterable; the detail card shows Clerk facts (avatar, sign-in
+methods, email verification, last sign-in/active, banned/locked) and our counts (see F15 Identity).
+
+### F32 — Promo codes and the festive banner
+
+`promo_codes`: code (A–Z 0–9 and dashes, 3–24, unique), label, `kind` percent (1–90) **or** flat
+(≥ ₹1) — CHECKed XOR — the paid plans it applies to (never Free, never empty), start, optional end,
+optional max captured redemptions, `active`, `show_banner`, optional banner text. A code's discount is
+fixed once created; pause and create another instead. Codes apply to plans, never to top-ups.
+
+**Pricing is decided once, on the server.** `lib/domain/promo.ts#discountedPaise` (pure) clamps to
+[₹1, list]. Checkout (`startPlanCheckout(planId, code)`) prices the code, creates the Razorpay order
+for the discounted amount with `notes.promo`, then writes a `pending` `promo_redemptions` row keyed by
+the order id. The webhook (N21) checks the captured amount against **that row** — not the list price,
+and never anything the browser sent; a promo note with no matching row (or a row for another member
+or plan) falls back to the list price, so a forged note buys nothing. On success the row flips to
+`captured` with its payment id. A partial UNIQUE index allows one captured redemption per member per
+code; the max-redemptions limit is checked at checkout (a capture is never refused — the money moved).
+
+States, derived (`promoState`): live · scheduled · ended · paused · used-up. /pricing has "Have a promo
+code?" on each paid card; `?promo=CODE` pre-applies it quietly (a code that doesn't fit one card says
+nothing there). `previewPromo` works signed out.
+
+**The banner.** `components/promo-marquee.tsx` — a marigold strip at the top of the landing page,
+/analyze and every analysis page, rendered only while at least one code is live and `show_banner`.
+Seamless CSS marquee, a brief colour flash on arrival, pauses on hover/focus, static under
+`prefers-reduced-motion`, dismissible for the browser session. It links to `/pricing?promo=CODE`.
+Codes not on the banner are never sent to a browser. Admin → Promo codes shows used/limit, open
+checkouts and revenue taken per code.
+
+### F33 — Names and the session
+
+**Greeting.** The header shows "Hi, {first name}" (or "Add your name" linking to `/profile#your-name`)
+instead of Clerk's `showName`, which printed an email for name-less signups. `greetingName` reads
+Clerk's first name; if blank and the profile has `basics.name`, that name is copied **into a blank
+Clerk name** (never over one) and used. Profile import and every profile save do the same fill. The
+profile page has an account-name card that writes Clerk directly (`updateAccountName`). We store no
+copy of the name (N7).
+
+**Session changes refresh the server tree.** `AuthStateSync` (root layout) calls `router.refresh()`
+whenever Clerk's `userId` changes, dropping Next's client router cache — which had kept signed-out
+payloads (including a prefetched `/analyze` that redirected to /sign-in) and left the app looking
+stuck until a manual reload. The marketing header's Sign in is the routed page, not the modal;
+/sign-in and /sign-up redirect an already-signed-in visitor (same-site `redirect_url` or /analyze);
+`ClerkProvider` carries the fallback redirects and `afterSignOutUrl`.
+
+
 ## 10. AI layer
 
 | Purpose | Function | Schema | Tier | Retry |

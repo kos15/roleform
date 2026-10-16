@@ -7,6 +7,7 @@ import { PwaRegister } from "@/components/pwa-register";
 import { PushSession } from "@/components/push-session";
 import { INTRO_SCRIPT } from "@/components/landing-intro";
 import { RoleformGuide } from "@/components/roleform-guide";
+import { AuthStateSync } from "@/components/auth-state-sync";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/seo/site";
 import { ICON_VERSION } from "@/lib/seo/icons";
 
@@ -138,7 +139,15 @@ const clerkAppearance = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider appearance={clerkAppearance}>
+    <ClerkProvider
+      appearance={clerkAppearance}
+      // Where a session lands when nothing asked for somewhere specific —
+      // set once here so the modal, the routed pages and Clerk's own hosted
+      // steps (verification, SSO callback) all agree.
+      signInFallbackRedirectUrl="/analyze"
+      signUpFallbackRedirectUrl="/analyze"
+      afterSignOutUrl="/"
+    >
       {/* The head script may set data-intro on <html> before hydration, so
           React is told not to expect the server's attributes there. */}
       <html lang="en" className={`${anton.variable} ${figtree.variable}`} suppressHydrationWarning>
@@ -148,6 +157,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </head>
         <body>
           {children}
+          <AuthStateSync />
           <AgentTools />
           <PwaRegister />
           <PushSession />

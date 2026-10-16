@@ -26,6 +26,7 @@ import {
   type StudyPersona,
 } from "@/lib/domain/study-plan";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
+import { requireFeature } from "@/lib/features";
 
 /**
  * F30 — saving the study plan and ticking sessions. Every value written here
@@ -77,6 +78,8 @@ const TickInput = z.object({
 export type StudyTickInput = z.input<typeof TickInput>;
 
 export async function saveStudyPlan(analysisId: string, input: StudySaveInput): Promise<Result<null>> {
+  const featureOn = await requireFeature("study");
+  if (!featureOn.ok) return featureOn;
   const user = await requireUser();
   if (!user.ok) return user;
   const parsed = SaveInput.safeParse(input);

@@ -6,6 +6,7 @@ import { localDate } from "@/lib/domain/study-plan";
 import { pushConfigured } from "@/lib/push/send";
 import { EmptyState } from "@/components/ui";
 import { StudyPlanClient } from "./study-plan-client";
+import { requireFeaturePage } from "@/lib/features";
 
 export const metadata = { title: "Study plan" };
 
@@ -17,6 +18,8 @@ export const metadata = { title: "Study plan" };
  * No model call, no cap, no `ai_runs` row.
  */
 export default async function SchedulePage({ params }: { params: Promise<{ id: string }> }) {
+  // F31: switched off site-wide → a plain 404.
+  await requireFeaturePage("study");
   const { id } = await params;
   const { userId } = await auth();
   if (!userId) redirect("/");

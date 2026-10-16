@@ -7,7 +7,8 @@ import { formatTokens } from "@/lib/domain/tokens";
 import { effectivePlan } from "@/lib/domain/entitlements";
 import { grantedTokens } from "@/lib/db/queries/tokens";
 import { settlePlan } from "@/lib/db/queries/plan";
-import { planById, type PlanId } from "@/lib/content/pricing";
+import { type PlanId } from "@/lib/content/pricing";
+import { loadPlans } from "@/lib/plans/catalog";
 
 /**
  * The member list behind the admin panel (F15).
@@ -128,11 +129,13 @@ export async function listMembers(): Promise<MemberList> {
   // Free — before it is rendered, the same write `lib/auth.ts`'s allowance
   // checks perform the next time this member tries to do anything. Most rows
   // are unaffected and pass through unchanged.
+  const plans = await loadPlans();
+  const planNamed = (id: PlanId) => plans.find((p) => p.id === id)!;
   const settled = await Promise.all(
     rows.map(async (row) => {
       if (effectivePlan(row) === row.plan) return row;
       await settlePlan(row.clerkUserId);
-      const free = planById("free").caps;
+      const free = planNamed("free").caps;
       return {
         ...row,
         plan: "free" as PlanId,
@@ -178,7 +181,7 @@ export async function listMembers(): Promise<MemberList> {
       // says nothing about whether this person is in it.
       missingFromDirectory: directory.reachable && !person,
       planId: row.plan,
-      plan: planById(row.plan).name,
+      plan: planNamed(row.plan).name,
       planExpiresAt: row.planExpiresAt
         ? row.planExpiresAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
         : null,

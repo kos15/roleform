@@ -33,6 +33,12 @@ export interface Plan {
   featured?: boolean;
 }
 
+/**
+ * The DEFAULT catalog (F31). An admin can override any of these from the
+ * panel; the live catalog is `loadPlans()` in lib/plans/catalog.ts, which
+ * reads `plan_configs` and falls back to these rows for any plan nobody has
+ * edited. Pure code that only needs ids or ordering may still read this.
+ */
 export const PLANS: Plan[] = [
   {
     id: "free",
@@ -70,8 +76,20 @@ export const PLANS: Plan[] = [
   },
 ];
 
-export function planById(id: PlanId): Plan {
-  const plan = PLANS.find((p) => p.id === id);
+export const PLAN_IDS: PlanId[] = ["free", "pro", "ultra"];
+
+/** `49900` → `₹499`, `129900` → `₹1,299`. Indian grouping, no paise when whole. */
+export function formatPrice(paise: number): string {
+  const rupees = paise / 100;
+  return `₹${rupees.toLocaleString("en-IN", {
+    minimumFractionDigits: Number.isInteger(rupees) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/** The default row for a plan — see `loadPlan` for the live one. */
+export function planById(id: PlanId, plans: Plan[] = PLANS): Plan {
+  const plan = plans.find((p) => p.id === id);
   if (!plan) throw new Error(`unknown plan: ${id}`);
   return plan;
 }
@@ -83,9 +101,9 @@ export function planById(id: PlanId): Plan {
  * all. Derived from the list order rather than hard-coded, so adding a tier is
  * one entry above and nothing else.
  */
-export function planAbove(id: PlanId): Plan | null {
-  const i = PLANS.findIndex((p) => p.id === id);
-  return i >= 0 && i < PLANS.length - 1 ? PLANS[i + 1] : null;
+export function planAbove(id: PlanId, plans: Plan[] = PLANS): Plan | null {
+  const i = plans.findIndex((p) => p.id === id);
+  return i >= 0 && i < plans.length - 1 ? plans[i + 1] : null;
 }
 
 /**
@@ -190,23 +208,28 @@ export interface CompareRow {
   cells: string[];
 }
 
-export const COMPARE_ROWS: CompareRow[] = [
-  ...QUOTAS.map((q) => ({
-    label: q.label,
-    unit: q.unit,
-    cells: PLANS.map((p) => displayCap(q.key, p.caps[q.key])),
-  })),
-  {
-    label: "What a full run costs",
-    unit: "about, measured from ai_runs",
-    cells: PLANS.map(() => formatCount(RUN_ESTIMATE)),
-  },
-  {
-    label: "One-off top-ups",
-    unit: "never renew, never expire",
-    cells: PLANS.map((p) => (canBuyTopup(p.id) ? "✓" : "—")),
-  },
-];
+export function compareRows(plans: Plan[] = PLANS): CompareRow[] {
+  return [
+    ...QUOTAS.map((q) => ({
+      label: q.label,
+      unit: q.unit,
+      cells: plans.map((p) => displayCap(q.key, p.caps[q.key])),
+    })),
+    {
+      label: "What a full run costs",
+      unit: "about, measured from ai_runs",
+      cells: plans.map(() => formatCount(RUN_ESTIMATE)),
+    },
+    {
+      label: "One-off top-ups",
+      unit: "never renew, never expire",
+      cells: plans.map((p) => (canBuyTopup(p.id) ? "✓" : "—")),
+    },
+  ];
+}
+
+/** The default catalog's table. Pages with the live catalog call `compareRows(plans)`. */
+export const COMPARE_ROWS: CompareRow[] = compareRows();
 
 /**
  * What the page will not claim, stated on the page (F17).

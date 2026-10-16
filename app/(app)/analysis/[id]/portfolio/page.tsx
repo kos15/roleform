@@ -10,6 +10,7 @@ import { portfolioMaterials } from "@/lib/domain/portfolio";
 import { siteData } from "@/lib/domain/portfolio-site";
 import { EmptyState } from "@/components/ui";
 import { PortfolioStudio } from "./portfolio-studio";
+import { requireFeaturePage } from "@/lib/features";
 
 /**
  * F28 — portfolio site, reached from the promo card on the Resumes tab.
@@ -20,6 +21,8 @@ import { PortfolioStudio } from "./portfolio-studio";
  */
 
 export default async function PortfolioPage({ params }: { params: Promise<{ id: string }> }) {
+  // F31: switched off site-wide → a plain 404.
+  await requireFeaturePage("portfolio");
   const { id } = await params;
   const { userId } = await auth();
   if (!userId) redirect("/");

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { grantTokens, updateMemberCaps } from "@/app/actions/admin";
+import { assignMemberPlan } from "@/app/actions/admin-controls";
 import { Button, ErrorRegion, Tag } from "@/components/ui";
 import { clampCap, displayCap, QUOTAS, type QuotaKey } from "@/lib/domain/quotas";
 import { formatCount, formatTokens } from "@/lib/domain/tokens";
@@ -52,9 +54,11 @@ function matchesFilter(member: Member, filter: Filter): boolean {
 export function AdminPanel({
   members,
   directoryReachable,
+  plans,
 }: {
   members: Member[];
   directoryReachable: boolean;
+  plans: { id: string; name: string }[];
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
@@ -357,6 +361,8 @@ export function AdminPanel({
             </dd>
           </dl>
 
+          <PlanAssign key={selected.clerkUserId} member={selected} plans={plans} />
+
           {selected.missingFromDirectory ? (
             <p className="mb-4 rounded-[var(--radius-md)] bg-[var(--color-accent-100)] px-3.5 py-2.5 text-xs leading-relaxed text-[var(--color-accent-800)]">
               Clerk has no record of this account — it was most likely deleted there. Its rows here
@@ -544,6 +550,80 @@ export function AdminPanel({
           </span>
         </div>
       </aside>
+    </div>
+  );
+}
+
+/**
+ * Put this member on a plan by hand (F31; N21 as amended). A paid plan needs
+ * an end date and writes that plan's current caps — the same write a payment
+ * makes — so any cap overrides below are replaced. Audited server-side.
+ */
+function PlanAssign({ member, plans }: { member: Member; plans: { id: string; name: string }[] }) {
+  const router = useRouter();
+  const inThirty = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+  const [plan, setPlan] = useState<string>(member.planId);
+  const [until, setUntil] = useState(inThirty);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  function assign() {
+    setError(null);
+    setDone(false);
+    startTransition(async () => {
+      const result = await assignMemberPlan({
+        clerkUserId: member.clerkUserId,
+        plan: plan as "free" | "pro" | "ultra",
+        until: plan === "free" ? undefined : until,
+      });
+      if (!result.ok) {
+        setError(result.error.message);
+        return;
+      }
+      setDone(true);
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="mb-4 rounded-[var(--radius-md)] border border-[var(--color-line)] px-3.5 py-3">
+      <div className="mb-1 text-[0.85rem] font-semibold">Change plan</div>
+      <p className="mb-2.5 text-xs leading-snug text-[var(--color-text-muted)]">
+        Gift or correct a plan without a payment. It takes that plan&rsquo;s current caps and is
+        recorded against your account.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          className="input w-auto py-1.5"
+          value={plan}
+          aria-label="Plan"
+          onChange={(e) => setPlan(e.target.value)}
+        >
+          {plans.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        {plan !== "free" ? (
+          <label className="flex items-center gap-1.5 text-xs">
+            until
+            <input
+              className="input w-auto py-1.5"
+              type="date"
+              value={until}
+              min={new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setUntil(e.target.value)}
+            />
+          </label>
+        ) : null}
+        <Button size="sm" variant="secondary" onClick={assign} busy={pending} disabled={pending}>
+          Apply
+        </Button>
+      </div>
+      {error ? <p className="mt-2 text-xs text-accent-body">{error}</p> : null}
+      {done ? <p className="mt-2 text-xs text-[var(--color-sage-800)]">Plan updated.</p> : null}
     </div>
   );
 }

@@ -14,6 +14,8 @@ import { PushSync } from "@/components/push-sync";
 import { SheetAccount } from "@/components/sheet-account";
 import { ProductTour, TourLauncher } from "@/components/product-tour";
 import { currentRole } from "@/lib/admin/role";
+import { HeaderGreeting } from "@/components/header-greeting";
+import { featureEnabled } from "@/lib/features";
 
 /** Signed-in and auth surfaces are a person's own data, not search results. */
 export const metadata: Metadata = { robots: { index: false, follow: false } };
@@ -35,10 +37,10 @@ const viewerIsAdmin = cache(async (): Promise<boolean> => {
   return userId ? (await currentRole(userId)) === "admin" : false;
 });
 
-function headerLinks(isAdmin: boolean) {
+function headerLinks(isAdmin: boolean, jobs = true) {
   return [
     { href: "/analyze", label: "New analysis", match: ["/analyze", "/analysis", "/onboarding"] },
-    { href: "/jobs", label: "Jobs" },
+    ...(jobs ? [{ href: "/jobs", label: "Jobs" }] : []),
     { href: "/history", label: "History" },
     { href: "/profile", label: "Profile" },
     { href: "/pricing", label: "Pricing" },
@@ -49,12 +51,13 @@ function headerLinks(isAdmin: boolean) {
 const ADMIN_SHEET_LINK = { href: "/admin", label: "Admin", hint: "Members, caps and the support inbox" };
 
 async function HeaderNav() {
-  return <NavLinks className="wide-only" links={headerLinks(await viewerIsAdmin())} />;
+  const [isAdmin, jobs] = await Promise.all([viewerIsAdmin(), featureEnabled("jobs")]);
+  return <NavLinks className="wide-only" links={headerLinks(isAdmin, jobs)} />;
 }
 
 async function TabBar({ account }: { account: React.ReactNode }) {
-  const isAdmin = await viewerIsAdmin();
-  return <MobileTabBar extraLinks={isAdmin ? [ADMIN_SHEET_LINK] : []} account={account} />;
+  const [isAdmin, jobs] = await Promise.all([viewerIsAdmin(), featureEnabled("jobs")]);
+  return <MobileTabBar extraLinks={isAdmin ? [ADMIN_SHEET_LINK] : []} account={account} jobs={jobs} />;
 }
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -97,22 +100,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           <span aria-hidden className="wide-only h-[30px] w-px bg-[var(--color-line)]" />
 
+          {/* The first name, or a prompt to add one (F33). Ours rather than
+              UserButton's showName, which printed an email address for anyone
+              who signed up without a name. */}
+          <Suspense fallback={null}>
+            <HeaderGreeting />
+          </Suspense>
+
           {/* UserButton stays at every width: it is the only way out of the
-              session. The name beside it is hidden below 1180px by CSS. */}
-          <UserButton
-            showName
-            appearance={{
-              elements: {
-                avatarBox: { width: 44, height: 44 },
-                userButtonOuterIdentifier: {
-                  fontWeight: 800,
-                  fontSize: 16,
-                  color: "var(--color-text)",
-                  fontFamily: "var(--font-body)",
-                },
-              },
-            }}
-          />
+              session. */}
+          <UserButton appearance={{ elements: { avatarBox: { width: 44, height: 44 } } }} />
         </div>
       </header>
 

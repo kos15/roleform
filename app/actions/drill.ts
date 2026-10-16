@@ -46,6 +46,7 @@ import type {
   SolutionView,
   TestRun,
 } from "@/app/(app)/analysis/[id]/rapid/types";
+import { requireFeature } from "@/lib/features";
 
 /**
  * F26 — rapid prep. Revise, a timed round, a timed coding challenge.
@@ -78,6 +79,8 @@ const NO_TOPICS = appError(
 /* ---------------------------------------------------------------- revision */
 
 export async function buildRevisionDeck(analysisId: string, minutes: number): Promise<Result<DeckView>> {
+  const featureOn = await requireFeature("rapid");
+  if (!featureOn.ok) return featureOn;
   const user = await requireUser();
   if (!user.ok) return user;
   if (!isRevisionBudget(minutes)) return err(appError("invalid_input", "Pick one of the offered times."));
@@ -126,6 +129,8 @@ export async function startQuizRound(
   count: number,
   difficulty: string,
 ): Promise<Result<RoundView>> {
+  const featureOn = await requireFeature("rapid");
+  if (!featureOn.ok) return featureOn;
   const user = await requireUser();
   if (!user.ok) return user;
   const level = z.enum(DIFFICULTIES).safeParse(difficulty);
@@ -173,6 +178,8 @@ export async function startQuizRound(
 
 /** A finished round, played again from the top. Same questions, no model call. */
 export async function retakeQuizRound(roundId: string): Promise<Result<RoundView>> {
+  const featureOn = await requireFeature("rapid");
+  if (!featureOn.ok) return featureOn;
   const user = await requireUser();
   if (!user.ok) return user;
   const source = await db.quizRound.findFirst({ where: { clerkUserId: user.value, id: roundId } });
@@ -238,6 +245,8 @@ const StartSchema = z.object({
 });
 
 export async function startChallenge(input: z.infer<typeof StartSchema>): Promise<Result<ChallengeView>> {
+  const featureOn = await requireFeature("rapid");
+  if (!featureOn.ok) return featureOn;
   const user = await requireUser();
   if (!user.ok) return user;
   const parsed = StartSchema.safeParse(input);
@@ -329,6 +338,8 @@ async function loadChallenge(clerkUserId: string, challengeId: string) {
 
 /** JavaScript only — the one language the server can run. No model call. */
 export async function runChallengeTests(challengeId: string, code: string): Promise<Result<TestRun>> {
+  const featureOn = await requireFeature("rapid");
+  if (!featureOn.ok) return featureOn;
   const user = await requireUser();
   if (!user.ok) return user;
   if (code.length > MAX_CODE_CHARS) return err(appError("invalid_input", "That code is longer than we accept."));
@@ -396,6 +407,8 @@ export async function submitChallenge(
   code: string,
   browserRun: { passed: number; total: number; failing: CaseResult[] } | null,
 ): Promise<Result<AttemptView>> {
+  const featureOn = await requireFeature("rapid");
+  if (!featureOn.ok) return featureOn;
   const user = await requireUser();
   if (!user.ok) return user;
   if (code.trim().length < 10) return err(appError("invalid_input", "Write a solution before submitting."));

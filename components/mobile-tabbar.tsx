@@ -29,7 +29,10 @@ import { Briefcase, ChevronRight, CircleDollarSign, FilePlus2, Menu, UserRound }
 export function MobileTabBar({
   extraLinks = [],
   account,
+  jobs = true,
 }: {
+  /** F31: false when job search is switched off site-wide — the tab goes. */
+  jobs?: boolean;
   /** Rows only some accounts get (the admin row), prepended to the sheet. Passed
       from the server layout so the admin link never ships in a member's
       JavaScript — it exists only in the payload of an admin's request. */
@@ -80,12 +83,14 @@ export function MobileTabBar({
 
       <nav className="tabbar" aria-label="Primary">
         <Tab href="/analyze" label="New" on={working} icon={<FilePlus2 className="lucide h-5 w-5" />} />
-        <Tab
-          href="/jobs"
-          label="Jobs"
-          on={pathname.startsWith("/jobs")}
-          icon={<Briefcase className="lucide h-5 w-5" />}
-        />
+        {jobs ? (
+          <Tab
+            href="/jobs"
+            label="Jobs"
+            on={pathname.startsWith("/jobs")}
+            icon={<Briefcase className="lucide h-5 w-5" />}
+          />
+        ) : null}
         <Tab
           href="/profile"
           label="Profile"

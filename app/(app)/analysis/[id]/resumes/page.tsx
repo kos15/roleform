@@ -8,6 +8,7 @@ import { TemplateThumb } from "@/components/template-thumb";
 import { PortfolioPromo } from "@/components/portfolio-promo";
 import { db } from "@/lib/db";
 import { DownloadAll } from "./download-all";
+import { featureEnabled } from "@/lib/features";
 
 /**
  * F5 — Tab 1: "N drafts, same evidence".
@@ -93,7 +94,9 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
         })}
       </div>
 
-      <PortfolioPromo analysisId={id} used={portfolio?.status === "ready"} />
+      {(await featureEnabled("portfolio")) ? (
+        <PortfolioPromo analysisId={id} used={portfolio?.status === "ready"} />
+      ) : null}
     </section>
   );
 }

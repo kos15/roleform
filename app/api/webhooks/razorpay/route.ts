@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { verifyWebhookSignature } from "@/lib/payments/razorpay";
-import { PLANS, planById, topupById, type PlanId } from "@/lib/content/pricing";
+import { PLAN_IDS, topupById, type PlanId } from "@/lib/content/pricing";
+import { capColumns, loadPlan } from "@/lib/plans/catalog";
 import { deliver } from "@/lib/mail/deliver";
 import { SUPPORT_EMAIL } from "@/lib/mail/addresses";
 
@@ -51,7 +52,9 @@ export async function POST(request: Request) {
   let event: {
     event?: string;
     payload?: {
-      payment?: { entity?: { id?: string; amount?: number; notes?: Record<string, string> } };
+      payment?: {
+        entity?: { id?: string; order_id?: string; amount?: number; notes?: Record<string, string> };
+      };
     };
   };
   try {
@@ -83,7 +86,13 @@ export async function POST(request: Request) {
   // Anything else is a plan purchase. `kind` is absent on orders created before
   // top-ups existed, and those were all Pro — so the fallback is Pro, not a
   // refusal that would strand a payment already taken.
-  return raisePlan(clerkUserId, (notes.plan ?? "pro") as PlanId, entity?.id, entity?.amount);
+  return raisePlan(
+    clerkUserId,
+    (notes.plan ?? "pro") as PlanId,
+    entity?.id,
+    entity?.amount,
+    notes.promo ? entity?.order_id : undefined,
+  );
 }
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -93,18 +102,32 @@ async function raisePlan(
   planId: PlanId,
   paymentId: string | undefined,
   amountPaise: number | undefined,
+  promoOrderId: string | undefined,
 ): Promise<Response> {
-  if (!PLANS.some((p) => p.id === planId)) {
+  if (!PLAN_IDS.includes(planId)) {
     return new Response("unknown plan", { status: 200 });
   }
-  const plan = planById(planId);
+  const plan = await loadPlan(planId);
 
-  if (amountPaise !== undefined && amountPaise !== plan.pricePaise) {
+  // F32: a discounted order is checked against the redemption row checkout
+  // wrote when it priced the order — the amount decided once, on the server.
+  // A promo order with no such row is treated as an ordinary one, so the list
+  // price applies and a forged note buys nothing.
+  const redemption = promoOrderId
+    ? await db.promoRedemption.findUnique({ where: { orderId: promoOrderId } })
+    : null;
+  const usable =
+    redemption && redemption.clerkUserId === clerkUserId && redemption.plan === plan.id
+      ? redemption
+      : null;
+  const expectedPaise = usable ? usable.amountPaise : plan.pricePaise;
+
+  if (amountPaise !== undefined && amountPaise !== expectedPaise) {
     await fileAmountMismatch({
       clerkUserId,
       kind: "plan",
-      wanted: plan.name,
-      expectedPaise: plan.pricePaise,
+      wanted: usable ? `${plan.name} (promo)` : plan.name,
+      expectedPaise,
       capturedPaise: amountPaise,
       paymentId,
     });
@@ -137,18 +160,21 @@ async function raisePlan(
   // the Clerk handler's out-of-order guard.
   await db.user.updateMany({
     where: { clerkUserId },
-    data: {
-      plan: plan.id,
-      planExpiresAt,
-      capTokens: plan.caps.tokens,
-      capAnalyses: plan.caps.analyses,
-      capResumes: plan.caps.resumes,
-      capAnswers: plan.caps.answers,
-      capCourses: plan.caps.courses,
-      capRoadmaps: plan.caps.roadmaps,
-      capJobSearches: plan.caps.jobSearches,
-    },
+    data: { plan: plan.id, planExpiresAt, ...capColumns(plan.caps) },
   });
+
+  if (usable && usable.status === "pending") {
+    try {
+      await db.promoRedemption.update({
+        where: { id: usable.id },
+        data: { status: "captured", paymentId, capturedAt: new Date() },
+      });
+    } catch {
+      // The partial unique index refused a second captured use by the same
+      // member (two tabs, two orders). The plan is already granted — the money
+      // moved — so the row stays pending and the admin sees it in the counts.
+    }
+  }
 
   return new Response("ok", { status: 200 });
 }

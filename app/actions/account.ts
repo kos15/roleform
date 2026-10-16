@@ -3,7 +3,10 @@
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { BUCKET_EXPORTS, BUCKET_RESUMES, removePrefix } from "@/lib/supabase/storage";
-import { ok, type Result } from "@/lib/domain/types";
+import { appError, err, ok, type Result } from "@/lib/domain/types";
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
+import { setClerkName } from "@/lib/account/name";
 
 /**
  * Account deletion (M7.4, specs §11).
@@ -45,4 +48,24 @@ export async function deleteAccount(): Promise<Result<{ objectsDeleted: number }
   ]);
 
   return ok({ objectsDeleted });
+}
+
+const NameSchema = z.object({
+  firstName: z.string().trim().min(1).max(60),
+  lastName: z.string().trim().max(60),
+});
+
+/**
+ * The account's own name (F33) — what the header greets you by. Written to
+ * Clerk, the source of truth for identity; we keep no copy (N7).
+ */
+export async function updateAccountName(input: { firstName: string; lastName: string }): Promise<Result<null>> {
+  const user = await requireUser();
+  if (!user.ok) return user;
+  const parsed = NameSchema.safeParse(input);
+  if (!parsed.success) return err(appError("invalid_input", "Add at least a first name (up to 60 characters)."));
+  const saved = await setClerkName(user.value, parsed.data.firstName, parsed.data.lastName);
+  if (!saved) return err(appError("upstream_failed", "We couldn't reach the sign-in service. Try again in a moment."));
+  revalidatePath("/", "layout");
+  return ok(null);
 }

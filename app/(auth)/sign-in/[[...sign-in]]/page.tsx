@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 import { AuthSplit } from "@/components/auth-split";
 import { SignIn } from "@clerk/nextjs";
 
@@ -20,7 +22,20 @@ export const metadata: Metadata = { title: "Sign in" };
  * state for a new account and the working screen for everyone else, so one
  * destination is correct for both.
  */
-export default function SignInPage() {
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect_url?: string }>;
+}) {
+  // Already signed in: Clerk's card would render an empty "you're signed in"
+  // state and sit there. Send them where they were going instead — same-site
+  // paths only, so this is not an open redirect.
+  const { userId } = await auth();
+  if (userId) {
+    const { redirect_url } = await searchParams;
+    redirect(redirect_url && /^\/(?!\/)/.test(redirect_url) ? redirect_url : "/analyze");
+  }
+
   return (
     <AuthSplit kicker="Sign in" title="Your own words, retargeted.">
       <SignIn fallbackRedirectUrl="/analyze" signUpUrl="/sign-up" />

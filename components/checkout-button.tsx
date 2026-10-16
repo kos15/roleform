@@ -52,8 +52,11 @@ export function CheckoutButton({
   variant = "primary",
   className,
   onPurchased,
+  promoCode,
 }: {
   purchase: Purchase;
+  /** F32: priced on the server; the browser only names it. Plans only. */
+  promoCode?: string;
   label: string;
   /** Shown inside the provider's window. Never carries a subject or address. */
   description: string;
@@ -76,14 +79,18 @@ export function CheckoutButton({
 
     const order =
       purchase.kind === "plan"
-        ? await startPlanCheckout(purchase.id as PlanId)
+        ? await startPlanCheckout(purchase.id as PlanId, promoCode)
         : await startTopupCheckout(purchase.id);
 
     if (!order.ok) {
       // Signed out is the ordinary case on a public page, not a failure worth
       // an error region — send them to sign in and bring them back here.
       if (order.error.code === "unauthenticated") {
-        router.push("/sign-in?redirect_url=/pricing");
+        router.push(
+          `/sign-in?redirect_url=${encodeURIComponent(
+            promoCode ? `/pricing?promo=${encodeURIComponent(promoCode)}` : "/pricing",
+          )}`,
+        );
         return;
       }
       setError(order.error.message);

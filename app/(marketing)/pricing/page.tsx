@@ -6,30 +6,44 @@ import { auth } from "@clerk/nextjs/server";
 import { PageIntro, Bullet } from "@/components/page-intro";
 import { Tag } from "@/components/ui";
 import { displayCap } from "@/lib/domain/quotas";
-import { COMPARE_ROWS, PLANS, PLAN_ROWS, PRICING_REFUSALS, TOPUPS } from "@/lib/content/pricing";
+import { compareRows, PLAN_ROWS, PRICING_REFUSALS, TOPUPS } from "@/lib/content/pricing";
+import { loadPlans } from "@/lib/plans/catalog";
 import { RUN_ESTIMATE, TOKEN_STAGES, formatCount } from "@/lib/domain/tokens";
-import { CheckoutButton } from "@/components/checkout-button";
+import { PlanCheckout } from "@/components/plan-checkout";
 import { db } from "@/lib/db";
 import { settlePlan } from "@/lib/db/queries/plan";
 import { JsonLd } from "@/components/json-ld";
 import { breadcrumbSchema, graph, softwareSchema } from "@/lib/seo/schema";
 
-export const metadata: Metadata = pageMetadata({
-  title: "Pricing: free resume tailoring, Pro ₹499/month",
-  description:
-    "Tailor your résumé free — 3 analyses a month. Pro (₹499/month) unlocks all 11 ATS-rated templates, job search and more; Ultra (₹1,299) for coaches.",
-  path: "/pricing",
-});
+/** Built from the live catalog (F31) — a title quoting last month's price is a lie in a search result. */
+export async function generateMetadata(): Promise<Metadata> {
+  const plans = await loadPlans();
+  const [free, pro, ultra] = plans;
+  return pageMetadata({
+    title: `Pricing: free resume tailoring, ${pro.name} ${pro.price}/month`,
+    description: `Tailor your résumé free — ${free.caps.analyses} analyses a month. ${pro.name} (${pro.price}/month) unlocks more templates, job search and more; ${ultra.name} (${ultra.price}) for coaches.`,
+    path: "/pricing",
+  });
+}
 
 /**
  * F17 — pricing.
  *
- * Every number on this page is a cap the code enforces (lib/content/pricing.ts),
+ * Every number on this page is a cap the code enforces (lib/plans/catalog.ts —
+ * the admin-editable catalog over the defaults in lib/content/pricing.ts),
  * so the table cannot drift from what actually happens when you reach one. The
  * refusals at the bottom are there for the same reason the four pipeline stages
  * publish theirs: this is the page a product is most tempted to overclaim on.
  */
-export default async function PricingPage() {
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ promo?: string }>;
+}) {
+  const plans = await loadPlans();
+  const COMPARE_ROWS = compareRows(plans);
+  const { promo } = await searchParams;
+  const initialCode = typeof promo === "string" && promo.length <= 24 ? promo : undefined;
   // Public route (middleware.ts) — signed-out visitors read `null` here and
   // every card shows its ordinary CTA. Settled first (F23, PAY-2) so a
   // lapsed member sees "Go Pro" again rather than a stale "Renew" on a plan
@@ -44,7 +58,7 @@ export default async function PricingPage() {
     <div>
       <JsonLd
         data={graph(
-          softwareSchema(),
+          softwareSchema(plans),
           breadcrumbSchema([
             { name: "Home", path: "/" },
             { name: "Pricing", path: "/pricing" },
@@ -58,7 +72,7 @@ export default async function PricingPage() {
       </PageIntro>
 
       <div className="mb-[clamp(3rem,6vw,4.5rem)] grid items-stretch gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr))]">
-        {PLANS.map((plan) => (
+        {plans.map((plan) => (
           <div
             key={plan.id}
             className={`flex flex-col gap-4 rounded-[var(--radius-xl)] px-[26px] py-7 ${
@@ -97,12 +111,13 @@ export default async function PricingPage() {
             </dl>
 
             {plan.pricePaise > 0 ? (
-              <CheckoutButton
-                purchase={{ kind: "plan", id: plan.id }}
+              <PlanCheckout
+                planId={plan.id}
+                planName={plan.name}
+                listPrice={plan.price}
                 label={currentPlanId === plan.id ? `Renew ${plan.name}` : plan.cta}
-                description={`Roleform — ${plan.name}, one month`}
                 variant={plan.featured ? "primary" : "secondary"}
-                className="min-h-[50px] w-full"
+                initialCode={initialCode}
               />
             ) : (
               <Link href="/onboarding" className="btn btn-secondary min-h-[50px] w-full no-underline">
@@ -191,7 +206,7 @@ export default async function PricingPage() {
         <div className="table-scroll rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)]">
           <div className="grid min-w-[36rem] [grid-template-columns:minmax(11rem,1.6fr)_repeat(3,minmax(6rem,1fr))]">
             <div className="eyebrow px-6 py-4">What you get</div>
-            {PLANS.map((plan) => (
+            {plans.map((plan) => (
               <div
                 key={plan.id}
                 className={`display px-3 py-4 text-center text-xl ${
@@ -210,9 +225,9 @@ export default async function PricingPage() {
                 </div>
                 {row.cells.map((cell, i) => (
                   <div
-                    key={PLANS[i].id}
+                    key={plans[i].id}
                     className={`border-t border-[var(--color-line)] px-3 py-3.5 text-center text-sm tabular-nums ${
-                      PLANS[i].featured ? "bg-[var(--color-accent-100)] font-extrabold" : ""
+                      plans[i].featured ? "bg-[var(--color-accent-100)] font-extrabold" : ""
                     }`}
                   >
                     {cell}

@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import { SectionTitle } from "@/components/ui";
 import { RapidNav } from "./rapid-nav";
+import { requireFeaturePage } from "@/lib/features";
 
 /**
  * F26 — Rapid prep. Three drills on the posting's own topics, one route each
@@ -22,6 +23,8 @@ export default async function RapidLayout({
   children: React.ReactNode;
   params: Promise<{ id: string }>;
 }) {
+  // F31: switched off site-wide → a plain 404.
+  await requireFeaturePage("rapid");
   const { id } = await params;
   const { userId } = await auth();
   if (!userId) redirect("/");

@@ -18,7 +18,8 @@ import {
   type SpendKind,
   type TokenWall,
 } from "@/lib/domain/tokens";
-import { canBuyTopup, planAbove, planById, TOPUPS, type PlanId } from "@/lib/content/pricing";
+import { canBuyTopup, TOPUPS, type PlanId } from "@/lib/content/pricing";
+import { loadPlan, loadPlanAbove } from "@/lib/plans/catalog";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 /** N7: the address itself is never stored, only enough to de-duplicate. */
@@ -140,14 +141,14 @@ async function buildWall(
 ): Promise<TokenWall> {
   const row = await db.user.findUnique({ where: { clerkUserId }, select: { plan: true } });
   const planId = (row?.plan ?? "free") as PlanId;
-  const up = planAbove(planId);
+  const up = await loadPlanAbove(planId);
 
   return {
     kind,
     estimate: SPEND[kind].estimate,
     shortfall: short,
     balance: account.balance,
-    planName: planById(planId).name,
+    planName: (await loadPlan(planId)).name,
     stages: TOKEN_STAGES,
     resetDate: formatResetDate(account.resetsAt),
     resetIn: formatResetIn(account.resetsAt),
@@ -411,7 +412,7 @@ async function buildCapWall(
   planId: PlanId,
 ): Promise<CapWall> {
   const def = QUOTA_BY_KEY[key];
-  const up = planAbove(planId);
+  const up = await loadPlanAbove(planId);
   const admins = await listAdmins();
 
   return {

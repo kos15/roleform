@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { effectivePlan } from "@/lib/domain/entitlements";
-import { planById } from "@/lib/content/pricing";
+import { capColumns, loadPlan } from "@/lib/plans/catalog";
 
 /**
  * Settle a lapsed plan (F23, PAY-2/PAY-3).
@@ -35,7 +35,7 @@ export async function settlePlan(clerkUserId: string): Promise<void> {
 
   if (effectivePlan(row) !== "free") return;
 
-  const free = planById("free").caps;
+  const free = (await loadPlan("free")).caps;
   await db.user.updateMany({
     // Scoped by the values just read, so a race — a purchase landing between
     // this read and this write — matches zero rows rather than clobbering it.
@@ -43,13 +43,7 @@ export async function settlePlan(clerkUserId: string): Promise<void> {
     data: {
       plan: "free",
       planExpiresAt: null,
-      capTokens: free.tokens,
-      capAnalyses: free.analyses,
-      capResumes: free.resumes,
-      capAnswers: free.answers,
-      capCourses: free.courses,
-      capRoadmaps: free.roadmaps,
-      capJobSearches: free.jobSearches,
+      ...capColumns(free),
     },
   });
 }
