@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { grantTokens, updateMemberCaps } from "@/app/actions/admin";
 import { assignMemberPlan } from "@/app/actions/admin-controls";
@@ -54,10 +55,13 @@ function matchesFilter(member: Member, filter: Filter): boolean {
 export function AdminPanel({
   members,
   directoryReachable,
+  syncedFromDirectory = 0,
   plans,
 }: {
   members: Member[];
   directoryReachable: boolean;
+  /** Accounts provisioned from Clerk on this page load. */
+  syncedFromDirectory?: number;
   plans: { id: string; name: string }[];
 }) {
   const [query, setQuery] = useState("");
@@ -176,6 +180,14 @@ export function AdminPanel({
               : `${visible.length} of ${members.length} accounts`}
           </span>
         </div>
+
+        {syncedFromDirectory > 0 ? (
+          <p className="note mb-3 text-xs leading-relaxed">
+            {syncedFromDirectory === 1
+              ? "1 new member synced from Clerk."
+              : `${syncedFromDirectory} new members synced from Clerk.`}
+          </p>
+        ) : null}
 
         {!directoryReachable ? (
           <p className="note mb-3 text-xs leading-relaxed">
@@ -336,6 +348,17 @@ export function AdminPanel({
               {selected.activity.lastAnalysisAt
                 ? ` · last ${selected.activity.lastAnalysisAt}`
                 : ""}
+              {selected.activity.analysesTotal > 0 ? (
+                <>
+                  {" · "}
+                  <Link
+                    href={`/admin?panel=history&member=${encodeURIComponent(selected.clerkUserId)}`}
+                    className="font-semibold"
+                  >
+                    View history
+                  </Link>
+                </>
+              ) : null}
             </Detail>
             <Detail label="Roadmaps">{selected.activity.roadmapsTotal} all time</Detail>
             <Detail label="Job searches">{selected.activity.jobSearchesTotal} all time</Detail>

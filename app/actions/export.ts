@@ -14,7 +14,7 @@ import { renderPdf } from "@/lib/render/pdf";
 import { renderDocx } from "@/lib/render/docx";
 import { zipFiles } from "@/lib/render/zip";
 import { templateById } from "@/lib/render/templates";
-import { BUCKET_EXPORTS, exportPath, signedUrl, uploadObject } from "@/lib/supabase/storage";
+import { BUCKET_EXPORTS, exportPath, removeObjects, signedUrl, uploadObject } from "@/lib/supabase/storage";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 
@@ -35,8 +35,20 @@ export async function exportDraft(
   const built = await buildOne(user.value, draftId, format);
   if (!built.ok) return built;
 
-  const path = exportPath(user.value, built.value.analysisId, built.value.filename);
+  // A fresh key per export. Re-exporting used to overwrite one fixed key, and
+  // the CDN in front of `exports` could keep handing back the earlier render,
+  // so a draft regenerated against the posting downloaded as the old file.
+  const path = exportPath(
+    user.value,
+    built.value.analysisId,
+    built.value.filename.replace(/(\.[a-z]+)$/, `-${Date.now().toString(36)}$1`),
+  );
   const { bytes } = await uploadObject(BUCKET_EXPORTS, path, built.value.body, MIME[format]);
+
+  const superseded = await db.export.findMany({
+    where: { clerkUserId: user.value, draftId, format },
+    select: { id: true, storagePath: true },
+  });
 
   await db.export.create({
     data: {
@@ -49,7 +61,21 @@ export async function exportDraft(
     },
   });
 
-  return ok({ signedUrl: await signedUrl(BUCKET_EXPORTS, path), filename: built.value.filename });
+  // Only the newest render of a draft is kept; older ones are unreachable anyway.
+  await removeObjects(
+    BUCKET_EXPORTS,
+    superseded.map((e) => e.storagePath).filter((p) => p !== path),
+  );
+  if (superseded.length > 0) {
+    await db.export.deleteMany({ where: { id: { in: superseded.map((e) => e.id) } } });
+  }
+
+  return ok({
+    // A PDF opens in a tab, so it must not be sent as an attachment; the stamp
+    // rides at the end of its name instead. A DOCX downloads under the plain one.
+    signedUrl: await signedUrl(BUCKET_EXPORTS, path, format === "docx" ? built.value.filename : undefined),
+    filename: built.value.filename,
+  });
 }
 
 /**
@@ -82,8 +108,16 @@ export async function exportAll(
   }
 
   const zip = await zipFiles(files);
-  const path = exportPath(user.value, analysisId, "all.zip");
+  const path = exportPath(user.value, analysisId, `all-${Date.now().toString(36)}.zip`);
   const { bytes } = await uploadObject(BUCKET_EXPORTS, path, zip, "application/zip");
+  const supersededZips = await db.export.findMany({
+    where: { clerkUserId: user.value, analysisId, format: "zip" },
+    select: { id: true, storagePath: true },
+  });
+  await removeObjects(BUCKET_EXPORTS, supersededZips.map((e) => e.storagePath));
+  if (supersededZips.length > 0) {
+    await db.export.deleteMany({ where: { id: { in: supersededZips.map((e) => e.id) } } });
+  }
 
   await db.export.create({
     data: {
@@ -101,7 +135,7 @@ export async function exportAll(
   console.info(`[export] all analysis=${analysisId} files=${files.length} ms=${elapsedMs}`);
 
   return ok({
-    signedUrl: await signedUrl(BUCKET_EXPORTS, path),
+    signedUrl: await signedUrl(BUCKET_EXPORTS, path, "all.zip"),
     fileCount: files.length,
     elapsedMs,
   });
@@ -135,6 +169,7 @@ async function buildOne(
       sourceBulletId: t.sourceBulletId,
       rewrittenText: t.rewrittenText,
       transform: t.transform,
+      originalText: t.originalText,
     })),
     orderedSkills: resume.x_orderedSkills ?? [],
     summary: resume.basics.summary,

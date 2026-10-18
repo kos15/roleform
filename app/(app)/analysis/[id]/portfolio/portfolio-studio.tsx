@@ -555,7 +555,7 @@ export function PortfolioStudio({
               </div>
             </div>
           )}
-          <p style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: MUTED }}>
+          <p className="more-copy" style={{ margin: 0, fontSize: 13, lineHeight: 1.55, color: MUTED }}>
             The preview is your profile as it stands. Dashed spots are empty photo slots — click one to fill it.
           </p>
         </div>
@@ -757,7 +757,7 @@ export function PortfolioStudio({
               />
             </label>
             <FineTune site={siteData} choices={choices} set={set} />
-            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55, color: MUTED }}>
+            <p className="more-copy" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55, color: MUTED }}>
               Everything here is optional — anything you leave blank falls back to your profile. Any figure or link on the page still comes from your profile.
             </p>
           </div>

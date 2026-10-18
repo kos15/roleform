@@ -92,10 +92,8 @@ export default async function LearningTab({
         <h2 className="mb-2.5">
           {shown.length} thing{shown.length === 1 ? "" : "s"} to close before this interview
         </h2>
-        <p className="max-w-[64ch] text-base leading-relaxed text-[var(--color-text-muted)]">
-          {plan.opening ||
-            "Ordered by how much of this posting each one unlocks. Where we can tie one to a " +
-              "bullet on your résumé or a question you're likely to be asked, we show that too."}
+        <p className="max-w-[64ch] text-[15px] leading-relaxed text-[var(--color-text-muted)] sm:text-base">
+          {plan.opening || "Ordered by how much of this posting each one unlocks."}
           {filtered ? " Filtered to the skills you came here for." : ""}
           {wanted && !filtered
             ? " Nothing in the plan matched the skills you came from, so this is all of it."
@@ -158,12 +156,12 @@ export default async function LearningTab({
                 </div>
 
                 {gap.whyItMatters ? (
-                  <p className="mb-1.5 text-base leading-relaxed">{gap.whyItMatters}</p>
+                  <p className="mb-1.5 text-[15px] leading-relaxed sm:text-base">{gap.whyItMatters}</p>
                 ) : null}
-                <p className="text-[15px] leading-relaxed text-[var(--color-text-muted)]">{gap.note}</p>
+                <p className="text-sm leading-relaxed text-[var(--color-text-muted)] sm:text-[15px]">{gap.note}</p>
 
                 {gap.jdQuote ? (
-                  <blockquote className="mt-3 flex gap-2 text-sm italic text-[var(--color-text-muted)]">
+                  <blockquote className="more-copy mt-3 flex gap-2 text-sm italic text-[var(--color-text-muted)]">
                     <span
                       aria-hidden
                       className="display text-2xl not-italic leading-[0.9] text-[var(--color-accent-600)]"
@@ -207,7 +205,7 @@ export default async function LearningTab({
                         href={step.entryUrl ?? step.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`block rounded-[var(--radius-md)] bg-[var(--color-bg-tint)] px-[18px] py-4 no-underline transition-transform hover:-translate-y-0.5 ${
+                        className={`block rounded-[var(--radius-md)] bg-[var(--color-bg-tint)] px-3.5 py-3.5 no-underline sm:px-[18px] sm:py-4 transition-transform hover:-translate-y-0.5 ${
                           step.deferred ? "opacity-50" : ""
                         }`}
                       >
@@ -241,7 +239,7 @@ export default async function LearningTab({
                         ) : null}
 
                         {step.note ? (
-                          <p className="mb-2.5 text-sm leading-normal text-[var(--color-text-muted)]">{step.note}</p>
+                          <p className="more-copy mb-2.5 text-sm leading-normal text-[var(--color-text-muted)]">{step.note}</p>
                         ) : null}
 
                         <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -263,7 +261,7 @@ export default async function LearningTab({
 
             {/* ------------------------------------ the proof-of-learning loop */}
             {gap.unlocksBullet || gap.answersQuestion ? (
-              <div className="mt-3.5 grid gap-[18px] rounded-[var(--radius-md)] bg-[var(--color-sage-200)] px-5 py-[18px] [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
+              <div className="mt-3.5 grid gap-[18px] rounded-[var(--radius-md)] bg-[var(--color-sage-200)] px-4 py-4 sm:px-5 sm:py-[18px] [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
                 {gap.unlocksBullet ? (
                   <div>
                     <p className="mb-1.5 flex items-center gap-1.5 text-sm font-extrabold">
@@ -302,8 +300,7 @@ export default async function LearningTab({
 
       {plan.fallbackCount > 0 ? (
         <p className="mt-6 max-w-[62ch] text-sm leading-relaxed text-[var(--color-text-muted)]">
-          {plan.fallbackCount} of these has no vetted material in our catalog yet, so it points at
-          a roadmap instead. We log every one of those — it&rsquo;s how we decide what to add next.
+          {plan.fallbackCount} of these has no vetted material yet, so it points at a roadmap.
         </p>
       ) : null}
     </section>

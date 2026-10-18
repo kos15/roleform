@@ -399,13 +399,12 @@ export function OnboardingFlow() {
 
       <Card
         flat
-        className="card-outline px-6 py-[22px] text-[15px] leading-relaxed text-[var(--color-text-muted)]"
+        className="card-outline px-4 py-4 text-[15px] leading-relaxed text-[var(--color-text-muted)] sm:px-6 sm:py-[22px]"
       >
         <div className="mb-2 flex items-center gap-2 text-base font-extrabold text-[var(--color-text)]">
           <CheckCircle2 className="lucide h-[18px] w-[18px]" /> You review everything before it saves
         </div>
-        We show you what we read, next to what you uploaded. Nothing enters your profile until
-        you confirm it.
+        <span className="more-copy">Nothing enters your profile until you confirm it.</span>
         {/* Two pills of `nowrap` text: without wrapping they push the whole
             onboarding page into a sideways scroll on any phone. */}
         <div className="mt-3.5 flex flex-wrap gap-2">

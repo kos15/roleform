@@ -47,6 +47,12 @@ export async function downloadObject(bucket: string, path: string): Promise<Buff
   return Buffer.from(await data.arrayBuffer());
 }
 
+/** Best-effort removal of superseded objects; a failure leaves a stale file, never a broken export. */
+export async function removeObjects(bucket: string, paths: string[]): Promise<void> {
+  if (paths.length === 0) return;
+  await supabaseAdmin.storage.from(bucket).remove(paths).catch(() => undefined);
+}
+
 export async function removePrefix(bucket: string, prefix: string): Promise<number> {
   const { data, error } = await supabaseAdmin.storage.from(bucket).list(prefix, { limit: 1000 });
   if (error) throw new Error(`storage list failed: ${error.message}`);
@@ -75,10 +81,15 @@ export async function removePrefix(bucket: string, prefix: string): Promise<numb
  * bucket for distribution and TTLs only — the signature stays the authorisation
  * mechanism, and the bucket stays private (CLAUDE.md §6).
  */
-export async function signedUrl(bucket: string, path: string): Promise<string> {
+export async function signedUrl(
+  bucket: string,
+  path: string,
+  /** The name the browser saves it under, when the stored key carries a version stamp. */
+  downloadAs?: string,
+): Promise<string> {
   const { data, error } = await supabaseAdmin.storage
     .from(bucket)
-    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS, downloadAs ? { download: downloadAs } : undefined);
   if (error || !data) throw new Error(`signed url failed: ${error?.message}`);
 
   const base = process.env.NEXT_PUBLIC_FILES_BASE_URL;

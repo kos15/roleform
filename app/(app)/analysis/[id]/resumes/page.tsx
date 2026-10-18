@@ -56,7 +56,7 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
             {drafts.length} draft{drafts.length === 1 ? "" : "s"}, same evidence
           </h2>
           {summary ? (
-            <p className="text-base leading-relaxed text-[var(--color-text-muted)]">{summary}</p>
+            <p className="more-copy text-base leading-relaxed text-[var(--color-text-muted)]">{summary}</p>
           ) : null}
         </div>
         <DownloadAll analysisId={id} />
@@ -64,7 +64,7 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
 
       <div
         data-tour="shelf"
-        className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(238px,100%),1fr))]"
+        className="grid grid-cols-2 gap-3 sm:gap-5 sm:[grid-template-columns:repeat(auto-fill,minmax(min(238px,100%),1fr))]"
       >
         {drafts.map((draft) => {
           const template = templateById(draft.templateId);
@@ -75,11 +75,11 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
               href={`/analysis/${id}/preview/${draft.templateId}`}
               className="no-underline"
             >
-              <Card className="card-link flex h-full flex-col gap-3.5 px-3.5 pb-[18px] pt-3.5">
+              <Card className="card-link flex h-full flex-col gap-2.5 px-2.5 pb-3.5 pt-2.5 sm:gap-3.5 sm:px-3.5 sm:pb-[18px] sm:pt-3.5">
                 <TemplateThumb template={template} />
                 <div className="px-1.5">
-                  <h3 className="mb-1.5 text-[19px]">{template.name}</h3>
-                  <p className="text-sm leading-normal text-[var(--color-text-muted)]">{template.blurb}</p>
+                  <h3 className="mb-1.5 text-[15px] sm:text-[19px]">{template.name}</h3>
+                  <p className="more-copy text-sm leading-normal text-[var(--color-text-muted)]">{template.blurb}</p>
                 </div>
                 <div className="mt-auto flex flex-wrap gap-1.5 px-1.5">
                   <Tag tone="muted">{draft.pageCount} page{draft.pageCount === 1 ? "" : "s"}</Tag>

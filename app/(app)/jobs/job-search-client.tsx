@@ -241,9 +241,8 @@ export function JobSearchClient({ baseQuery, initial }: { baseQuery: JobQuery; i
                 ))}
               </div>
               <p className="max-w-[64ch] text-[14px] leading-relaxed text-[var(--color-text-muted)]">
-                Skills these listings keep naming that your profile doesn&rsquo;t. Analyse one of them
-                and its Learning tab plans how to close the gap — nothing is added to your profile
-                until you add it.
+                Skills these listings keep naming that your profile doesn&rsquo;t. Analyse one to plan
+                how to close the gap.
               </p>
             </Card>
           ) : null}

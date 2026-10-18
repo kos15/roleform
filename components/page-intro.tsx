@@ -19,7 +19,7 @@ export function PageIntro({
       <p className="eyebrow mb-3.5">{kicker}</p>
       <h1 className="mb-[18px]">{title}</h1>
       {children ? (
-        <p className="text-[17px] leading-relaxed text-[var(--color-text-muted)]">{children}</p>
+        <p className="text-[15px] leading-relaxed text-[var(--color-text-muted)] sm:text-[17px]">{children}</p>
       ) : null}
     </div>
   );

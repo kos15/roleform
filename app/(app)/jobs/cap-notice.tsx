@@ -17,7 +17,7 @@ export function CapNotice({ wall }: { wall: CapWall }) {
         <Tag tone="ink">Off on your plan</Tag>
       </div>
       <h2 className="mb-2.5 text-[40px] leading-none">Job search is a Pro feature</h2>
-      <p className="mb-4 max-w-[56ch] text-[15px] leading-relaxed">
+      <p className="more-copy mb-4 max-w-[56ch] text-[15px] leading-relaxed">
         The analysis underneath — coverage, résumés, prep, the roadmap — is the same on every plan.
         Job search is gated by plan, not by quality.
       </p>

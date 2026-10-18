@@ -39,15 +39,29 @@ export interface DraftBullet {
   sourceBulletId: string;
   rewrittenText: string;
   transform: "verbatim" | "rephrase" | "requantify" | "omit";
+  /** The text the rewrite was made from — the fallback key when `bulletIds` has no entry. */
+  originalText?: string;
+}
+
+/** Whitespace and case only: the same sentence, not a similar one. */
+function normalise(text: string): string {
+  return text.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 /**
  * Builds a draft's render model.
  *
  * `bulletIds` maps "work.0.highlights.1" → experience_bullets.id, so a tailored
- * bullet lands back in the role it came from. A rewrite that lost its mapping
- * falls back to the user's original text — never dropped silently, and never
- * attached to the wrong employer.
+ * bullet lands back in the role it came from. Where that map has no entry for a
+ * path, the rewrite is found by the original text it was made from (stored on
+ * every tailored bullet), still only within the highlight it rewrites — so a
+ * missing map entry no longer silently ships the untailored wording. Only when
+ * neither matches does the user's original text render — never dropped, and
+ * never attached to the wrong employer.
+ *
+ * Within each role, bullets lead in the order the pipeline ranked them against
+ * the posting (`tailored` arrives in that order — CLAUDE.md §3, reorder is a
+ * legal transformation). Untailored bullets keep their own order after them.
  */
 export function buildRenderModel(args: {
   resume: StoredResume;
@@ -58,6 +72,24 @@ export function buildRenderModel(args: {
   const { resume } = args;
   const bulletIds = resume.x_roleform?.bulletIds ?? {};
   const bySourceId = new Map(args.tailored.map((t) => [t.sourceBulletId, t]));
+  const rankBySourceId = new Map(args.tailored.map((t, i) => [t.sourceBulletId, i]));
+  const byOriginal = new Map<string, DraftBullet>();
+  for (const t of args.tailored) {
+    if (t.originalText) byOriginal.set(normalise(t.originalText), t);
+  }
+
+  // One highlight list → the bullets a draft prints, ranked and with omits gone.
+  const tailorList = (highlights: string[], pathPrefix: string): string[] =>
+    highlights
+      .map((original, hi) => {
+        const id = bulletIds[`${pathPrefix}.highlights.${hi}`];
+        const tailoredBullet = (id ? bySourceId.get(id) : undefined) ?? byOriginal.get(normalise(original));
+        const rank = tailoredBullet ? (rankBySourceId.get(tailoredBullet.sourceBulletId) ?? Infinity) : Infinity;
+        return { hi, rank, tailoredBullet, original };
+      })
+      .filter((b) => b.tailoredBullet?.transform !== "omit")
+      .sort((a, b) => a.rank - b.rank || a.hi - b.hi)
+      .map((b) => b.tailoredBullet?.rewrittenText || b.original);
   const hidePhone = resume.x_roleform?.sensitivity.hidePhone ?? false;
   const hideAddress = resume.x_roleform?.sensitivity.hideAddress ?? false;
 
@@ -71,14 +103,7 @@ export function buildRenderModel(args: {
   ].filter((p) => p && p.trim().length > 0);
 
   const roles: RenderRole[] = resume.work.map((work, wi) => {
-    const bullets = work.highlights
-      .map((original, hi) => {
-        const id = bulletIds[`work.${wi}.highlights.${hi}`];
-        const tailoredBullet = id ? bySourceId.get(id) : undefined;
-        if (tailoredBullet?.transform === "omit") return null;
-        return tailoredBullet?.rewrittenText ?? original;
-      })
-      .filter((b): b is string => b !== null);
+    const bullets = tailorList(work.highlights, `work.${wi}`);
 
     return {
       employer: work.name,
@@ -100,14 +125,7 @@ export function buildRenderModel(args: {
       name: p.name,
       description: p.description,
       dates: p.startDate ? formatRange(p.startDate, p.endDate) : "",
-      bullets: p.highlights
-        .map((original, hi) => {
-          const id = bulletIds[`projects.${pi}.highlights.${hi}`];
-          const tailoredBullet = id ? bySourceId.get(id) : undefined;
-          if (tailoredBullet?.transform === "omit") return null;
-          return tailoredBullet?.rewrittenText ?? original;
-        })
-        .filter((b): b is string => b !== null),
+      bullets: tailorList(p.highlights, `projects.${pi}`),
     })),
     education: resume.education.map((e) => ({
       institution: e.institution,

@@ -186,42 +186,40 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
   }
 
   const interviewField = (
-    <fieldset className="rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] px-[22px] py-[18px]">
+    <fieldset className="rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] px-4 py-4 sm:px-[22px] sm:py-[18px]">
       <legend className="sr-only">Interview date (optional)</legend>
       <p aria-hidden className="mb-1 text-[15px] font-extrabold">
         Interview date{" "}
         <span className="font-semibold text-[var(--color-text-muted)]">· optional</span>
       </p>
       <p className="mb-3.5 text-sm leading-relaxed text-[var(--color-text-muted)]">
-        Already have one? We&rsquo;ll remind you before it — a few days ahead, the day before and
-        that morning. Skip it if you don&rsquo;t know yet; you can add rounds later.
+        We&rsquo;ll remind you before it. You can add rounds later.
       </p>
       <div className="flex flex-wrap gap-3">
-        <label className="flex flex-col gap-1.5 text-[13px] font-extrabold">
+        <label className="flex min-w-0 flex-1 basis-36 flex-col gap-1.5 text-[13px] font-extrabold sm:flex-none">
           Date
           <input
             type="date"
-            className="input w-[13rem]"
+            className="input w-full sm:w-[13rem]"
             value={interviewDate}
             min={today}
             onChange={(e) => setInterviewDate(e.target.value)}
             disabled={busy}
           />
         </label>
-        <label className="flex flex-col gap-1.5 text-[13px] font-extrabold">
-          Time (if you know it)
+        <label className="flex min-w-0 flex-1 basis-28 flex-col gap-1.5 text-[13px] font-extrabold sm:flex-none">
+          Time (optional)
           <input
             type="time"
-            className="input w-[10rem]"
+            className="input w-full sm:w-[10rem]"
             value={interviewTime}
             onChange={(e) => setInterviewTime(e.target.value)}
             disabled={busy}
           />
         </label>
       </div>
-      <p className="mt-3 text-[13px] text-[var(--color-text-muted)]">
-        Reminders arrive as notifications once they&rsquo;re turned on for this device — from
-        the analysis&rsquo;s Rounds tab or your profile.
+      <p className="more-copy mt-3 text-[13px] text-[var(--color-text-muted)]">
+        Turn on notifications from the Rounds tab or your profile to get them.
       </p>
     </fieldset>
   );
@@ -279,8 +277,8 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
             {initialListing.title} at {initialListing.company}.
           </strong>{" "}
           {initialListing.description
-            ? "This is the full posting as the job board sent it. Skim it against the listing before you run — boards sometimes trim the end."
-            : "This is the summary the job board gave us. Paste the full posting from the listing for a real analysis."}
+            ? "Full posting from the job board. Boards sometimes trim the end."
+            : "Only the board's summary. Paste the full posting for a real analysis."}
         </p>
       ) : null}
 
@@ -292,7 +290,7 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
             placeholder="Paste the full posting — responsibilities, requirements, the lot."
             value={text}
             onChange={(e) => setText(e.target.value)}
-            className="min-h-[22rem] rounded-[var(--radius-lg)] border-transparent bg-[var(--color-bg-raised)] px-[26px] py-6 text-[15px] leading-[1.65]"
+            className="min-h-[16rem] rounded-[var(--radius-lg)] border-transparent bg-[var(--color-bg-raised)] px-4 py-4 text-[15px] leading-[1.65] sm:min-h-[22rem] sm:px-[26px] sm:py-6"
           />
           <div className="mt-[18px]">{interviewField}</div>
           <div className="mt-[18px] flex flex-wrap items-center justify-between gap-3.5">
@@ -335,7 +333,7 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
               const dropped = e.dataTransfer.files[0];
               if (dropped) setFile(dropped);
             }}
-            className="block cursor-pointer rounded-[var(--radius-lg)] border-2 border-dashed px-7 py-14 text-center transition-[background-color,border-color,transform] duration-200"
+            className="block cursor-pointer rounded-[var(--radius-lg)] border-2 border-dashed px-5 py-9 text-center sm:px-7 sm:py-14 transition-[background-color,border-color,transform] duration-200"
             style={{
               borderColor: dragging ? "var(--color-accent-600)" : "var(--color-line-strong)",
               background: dragging ? "var(--color-accent-100)" : "var(--color-bg-raised)",
@@ -348,12 +346,12 @@ export function JdInput({ initialListing = null }: { initialListing?: InitialLis
             >
               <FileUp className="lucide h-6 w-6" />
             </span>
-            <span className="display block text-[28px] leading-[1.05]">
+            <span className="display block break-words text-[22px] leading-[1.05] sm:text-[28px]">
               {file
                 ? file.name
                 : dragging
                   ? "Drop it — we'll take it from here"
-                  : "Drop the posting here, or choose a file"}
+                  : "Drop the posting here"}
             </span>
             <span className="mb-5 mt-2 block text-sm text-[var(--color-text-muted)]">
               {ACCEPTED_DOCUMENT_SHORT} · up to 4 MB

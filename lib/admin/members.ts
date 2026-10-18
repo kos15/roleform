@@ -9,6 +9,8 @@ import { grantedTokens } from "@/lib/db/queries/tokens";
 import { settlePlan } from "@/lib/db/queries/plan";
 import { type PlanId } from "@/lib/content/pricing";
 import { loadPlans } from "@/lib/plans/catalog";
+import { capsFromDefaults, workspaceDefaults } from "@/lib/admin/defaults";
+import { hashEmail } from "@/lib/email-hash";
 
 /**
  * The member list behind the admin panel (F15).
@@ -100,9 +102,27 @@ export interface MemberList {
   members: Member[];
   /** False when every directory call failed — names are then short subjects. */
   directoryReachable: boolean;
+  /** Accounts Clerk had and we had no row for, provisioned on this read. */
+  syncedFromDirectory: number;
 }
 
+/**
+ * Every visit to the panel reads the WHOLE Clerk directory — the instance the
+ * deployment's `CLERK_SECRET_KEY` points at, so production on production — and
+ * provisions a `users` row for anyone Clerk has and we don't.
+ *
+ * The `user.created` webhook and `provisionUser` are the two doors into an
+ * account, and both are best-effort: a webhook never configured, or a person
+ * who signed up and never came back, left someone in Clerk and missing here,
+ * with no way for an admin to see them or set their caps. The row is what an
+ * account looks like before its first visit — workspace-default caps, the same
+ * cycle anchor — through `createMany({ skipDuplicates })`, so a row that
+ * already exists is never touched and caps an admin set by hand stay set.
+ */
 export async function listMembers(): Promise<MemberList> {
+  const directory = await readDirectory();
+  const syncedFromDirectory = directory.complete ? await provisionMissing(directory.users) : 0;
+
   const rows = await db.user.findMany({
     orderBy: { createdAt: "asc" },
     select: {
@@ -122,7 +142,9 @@ export async function listMembers(): Promise<MemberList> {
     },
   });
 
-  if (rows.length === 0) return { members: [], directoryReachable: true };
+  if (rows.length === 0) {
+    return { members: [], directoryReachable: directory.reachable, syncedFromDirectory };
+  }
 
   // PAY-2: the panel never quotes a plan that has already lapsed. A row whose
   // stored plan disagrees with `effectivePlan` is settled — written back to
@@ -160,10 +182,16 @@ export async function listMembers(): Promise<MemberList> {
     Promise.all(settled.map((row) => activityFor(row.clerkUserId))),
   ]);
 
-  const directory = await resolveIdentities(settled.map((r) => r.clerkUserId));
+  // The full read already holds everyone; only when it was cut short are the
+  // rows it missed looked up by id, batched as before.
+  const lookedUp = directory.complete
+    ? { identities: new Map<string, Identity>(), reachable: true }
+    : await resolveIdentities(settled.map((r) => r.clerkUserId).filter((id) => !directory.identities.has(id)));
+  const identities = new Map([...directory.identities, ...lookedUp.identities]);
+  const reachable = directory.reachable || lookedUp.reachable;
 
   const members = settled.map((row, i): Member => {
-    const person = directory.identities.get(row.clerkUserId);
+    const person = identities.get(row.clerkUserId);
     const name = person?.name ?? shortSubject(row.clerkUserId);
     return {
       clerkUserId: row.clerkUserId,
@@ -179,7 +207,7 @@ export async function listMembers(): Promise<MemberList> {
       clerkBlocked: person?.blocked ?? null,
       // Only meaningful when the directory answered: an unreachable directory
       // says nothing about whether this person is in it.
-      missingFromDirectory: directory.reachable && !person,
+      missingFromDirectory: reachable && !person,
       planId: row.plan,
       plan: planNamed(row.plan).name,
       planExpiresAt: row.planExpiresAt
@@ -214,7 +242,99 @@ export async function listMembers(): Promise<MemberList> {
     };
   });
 
-  return { members, directoryReachable: directory.reachable };
+  return { members, directoryReachable: reachable, syncedFromDirectory };
+}
+
+/**
+ * The sync alone, for admin panels that don't list members. Same rules as
+ * `listMembers`: only a complete directory read provisions anyone.
+ */
+export async function syncFromDirectory(): Promise<{ synced: number; reachable: boolean }> {
+  const directory = await readDirectory();
+  return {
+    synced: directory.complete ? await provisionMissing(directory.users) : 0,
+    reachable: directory.reachable,
+  };
+}
+
+/** Clerk's page ceiling. */
+const DIRECTORY_PAGE = 500;
+/** 100 pages = 50,000 accounts: a bound on one render, not a product limit. */
+const DIRECTORY_MAX_PAGES = 100;
+
+type DirectoryUser = Awaited<
+  ReturnType<Awaited<ReturnType<typeof clerkClient>>["users"]["getUserList"]>
+>["data"][number];
+
+/**
+ * The whole directory, paged. `complete` only when every page answered and the
+ * last one came back short — anything less and nobody is provisioned off it,
+ * because a partial list would read as "these are all the people there are".
+ */
+async function readDirectory(): Promise<{
+  users: DirectoryUser[];
+  identities: Map<string, Identity>;
+  reachable: boolean;
+  complete: boolean;
+}> {
+  const users: DirectoryUser[] = [];
+  let reachable = false;
+  let complete = false;
+  try {
+    const client = await clerkClient();
+    for (let page = 0; page < DIRECTORY_MAX_PAGES; page++) {
+      const batch = await client.users.getUserList({
+        limit: DIRECTORY_PAGE,
+        offset: page * DIRECTORY_PAGE,
+        orderBy: "+created_at",
+      });
+      reachable = true;
+      users.push(...batch.data);
+      if (batch.data.length < DIRECTORY_PAGE || users.length >= batch.totalCount) {
+        complete = true;
+        break;
+      }
+    }
+  } catch {
+    // N7: no log line carrying subjects. The page says the directory was
+    // unreachable, and the by-id lookup below still gets a chance.
+  }
+  return {
+    users,
+    identities: new Map(users.map((u) => [u.id, identityOf(u)])),
+    reachable,
+    complete,
+  };
+}
+
+/** Rows for the directory's people we have never seen. Returns how many were new. */
+async function provisionMissing(users: DirectoryUser[]): Promise<number> {
+  if (users.length === 0) return 0;
+  // Every id we hold, not an IN over the directory: a directory in the tens of
+  // thousands would run past Postgres's bind-parameter limit.
+  const known = new Set(
+    (await db.user.findMany({ select: { clerkUserId: true } })).map((r) => r.clerkUserId),
+  );
+  const missing = users.filter((u) => !known.has(u.id));
+  if (missing.length === 0) return 0;
+
+  const caps = capsFromDefaults(await workspaceDefaults());
+  const { count } = await db.user.createMany({
+    data: missing.map((u) => {
+      const email = (u.primaryEmailAddress ?? u.emailAddresses[0] ?? null)?.emailAddress ?? "";
+      return {
+        clerkUserId: u.id,
+        // N7: the hash, never the address — the same as both other doors.
+        emailHash: hashEmail(email),
+        // Joined is when they signed up with Clerk, not when we noticed.
+        createdAt: new Date(u.createdAt),
+        quotaResetsAt: new Date(),
+        ...caps,
+      };
+    }),
+    skipDuplicates: true,
+  });
+  return count;
 }
 
 async function activityFor(clerkUserId: string): Promise<MemberActivity> {
@@ -331,26 +451,7 @@ async function resolveIdentities(
 
   for (const result of results) {
     if (result.status !== "fulfilled") continue;
-    for (const u of result.value.data) {
-      const primary = u.primaryEmailAddress ?? u.emailAddresses[0] ?? null;
-      const email = primary?.emailAddress ?? "";
-      const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
-      const directoryName = fullName || u.username || "";
-      identities.set(u.id, {
-        // An email-code signup has no name at all; the address's local part is
-        // what an admin would recognise them by.
-        name: directoryName || email.split("@")[0] || "No name on file",
-        nameSource: directoryName ? "directory" : "email",
-        email: email || "—",
-        emailVerified: primary?.verification?.status === "verified",
-        imageUrl: u.hasImage ? u.imageUrl : null,
-        signInMethods: signInMethods(u),
-        lastSignInAt: u.lastSignInAt,
-        lastActiveAt: u.lastActiveAt,
-        blocked: u.banned ? "banned" : u.locked ? "locked" : null,
-        role: roleFromMetadata(u.publicMetadata),
-      });
-    }
+    for (const u of result.value.data) identities.set(u.id, identityOf(u));
   }
 
   // Failures are swallowed rather than logged: the panel is still useful
@@ -358,6 +459,27 @@ async function resolveIdentities(
   // (N7). The page says the directory was unreachable instead.
   const reachable = results.length === 0 || results.some((r) => r.status === "fulfilled");
   return { identities, reachable };
+}
+
+function identityOf(u: DirectoryUser): Identity {
+  const primary = u.primaryEmailAddress ?? u.emailAddresses[0] ?? null;
+  const email = primary?.emailAddress ?? "";
+  const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+  const directoryName = fullName || u.username || "";
+  return {
+    // An email-code signup has no name at all; the address's local part is
+    // what an admin would recognise them by.
+    name: directoryName || email.split("@")[0] || "No name on file",
+    nameSource: directoryName ? "directory" : "email",
+    email: email || "—",
+    emailVerified: primary?.verification?.status === "verified",
+    imageUrl: u.hasImage ? u.imageUrl : null,
+    signInMethods: signInMethods(u),
+    lastSignInAt: u.lastSignInAt,
+    lastActiveAt: u.lastActiveAt,
+    blocked: u.banned ? "banned" : u.locked ? "locked" : null,
+    role: roleFromMetadata(u.publicMetadata),
+  };
 }
 
 function signInMethods(u: {

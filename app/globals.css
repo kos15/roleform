@@ -1430,6 +1430,59 @@
   /* Lucide ships at stroke-width 2.25 across the app */
   .lucide { stroke-width: 2.25; }
 
+  /* ---------------------------------------------------------------------------
+     Phones (≤640px)
+
+     Members told us the app read as a wall of text on a phone. Two moves:
+     everything steps down a size, and `.more-copy` marks secondary prose — the
+     explanation under a heading, the "why" under a control — which a phone
+     drops so the controls and the facts come first. Nothing load-bearing may
+     carry it: the score's three buckets (N4), a gap's honesty line, an error.
+  --------------------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .more-copy { display: none !important; }
+
+    h1 { font-size: clamp(2.25rem, 11vw, 3rem); }
+    h2 { font-size: clamp(1.75rem, 8vw, 2.25rem); }
+    h3 { font-size: 1.05rem; }
+
+    .card { padding: 1.1rem; }
+    .dialog { padding: 1.25rem; }
+    .note { font-size: 0.875rem; line-height: 1.5; gap: 10px; }
+
+    .btn { padding: 0 1.1rem; }
+    .btn-lg { min-height: 50px; padding: 0 1.4rem; font-size: 1rem; }
+
+    .table th,
+    .table td { padding: 0.75rem 0.9rem; }
+
+    /* Seven 142px cards stacked one per row were ~1,100px of scrolling before
+       any content. On a phone they become one swipeable strip of chips. */
+    .tab-bar {
+      display: flex;
+      gap: 8px;
+      padding-bottom: 4px;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-snap-type: x proximity;
+      scrollbar-width: none;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab-bar a { flex: none; scroll-snap-align: start; }
+    .tab-bar button {
+      min-height: 0;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px 8px 8px;
+      border-radius: var(--radius-pill);
+    }
+    .tab-bar button:hover { transform: none; }
+    .tab-bar .tab-dot { width: 28px; height: 28px; }
+    .tab-bar .tab-label { font-size: 0.875rem; white-space: nowrap; }
+    .tab-bar .tab-count { margin-top: 0; font-size: 0.75rem; white-space: nowrap; }
+  }
+
   /* Clerk's user button carries the member's name beside the avatar; the header
      drops it before it crowds the links. */
   @media (max-width: 1180px) {

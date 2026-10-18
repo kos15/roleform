@@ -61,11 +61,9 @@ export default async function AnalyzePage({
           <br />
           {drafts} tailored out.
         </h1>
-        <p className="max-w-[62ch] text-[17px] leading-relaxed text-[var(--color-text-muted)] [text-wrap:pretty]">
-          Paste or drop the posting. Roleform reads it, scores how much of it your own profile can
-          evidence, and returns {drafts} draft{drafts === 1 ? "" : "s"}, the questions this posting
-          invites, and the gaps it exposes. Nothing is invented — every bullet traces back to
-          something you wrote.
+        <p className="max-w-[62ch] text-[15px] leading-relaxed text-[var(--color-text-muted)] [text-wrap:pretty] sm:text-[17px]">
+          Paste the posting. You get {drafts} draft{drafts === 1 ? "" : "s"}, likely questions and
+          your gaps. Nothing is invented.
         </p>
       </div>
 
@@ -99,7 +97,7 @@ export default async function AnalyzePage({
           />
         </div>
 
-        <aside className="flex min-w-0 flex-[0_1_22rem] flex-col gap-[18px] pt-[58px]">
+        <aside className="flex min-w-0 flex-[0_1_22rem] flex-col gap-[18px] sm:pt-[58px]">
           {/* The profile card: filename · Parsed · N yrs · N skills (F1). */}
           <Card flat className="p-6">
             <p className="eyebrow mb-3.5">Your profile</p>
@@ -117,9 +115,8 @@ export default async function AnalyzePage({
                 </span>
               </span>
             </div>
-            <p className="mb-[18px] text-sm leading-normal text-[var(--color-text-muted)]">
-              This is the only corpus we draw on. Bullets get reordered, reworded and re-weighted —
-              never invented.
+            <p className="more-copy mb-[18px] text-sm leading-normal text-[var(--color-text-muted)]">
+              The only source we draw on. Bullets are reordered and reworded — never invented.
             </p>
             {/* The DS classes rather than <Button> — a <button> inside an <a> is
                 invalid, and this is a link that happens to look like a button. */}
@@ -128,13 +125,13 @@ export default async function AnalyzePage({
             </Link>
           </Card>
 
-          <div className="rounded-[var(--radius-lg)] border-[1.5px] border-[var(--color-line)] p-6">
+          <div className="more-copy rounded-[var(--radius-lg)] border-[1.5px] border-[var(--color-line)] p-6">
             <p className="eyebrow mb-4">What comes back</p>
             <ol className="flex flex-col gap-3.5 text-[15px] leading-normal">
               {[
-                `${drafts} drafts across classic, sidebar and creative — each with a computed ATS rating`,
-                "The questions this posting suggests, by family, with frameworks not scripts",
-                "Requirements you can't yet evidence, and vetted courses that close them",
+                `${drafts} drafts, each with a computed ATS rating`,
+                "Likely questions, with answer frameworks",
+                "Your gaps, and vetted courses to close them",
               ].map((text, i) => (
                 <li key={i} className="flex gap-3.5">
                   <span className="display text-[22px] leading-[1.1] text-[var(--color-accent-600)]">
