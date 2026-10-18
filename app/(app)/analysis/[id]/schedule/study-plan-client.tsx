@@ -274,9 +274,8 @@ export function StudyPlanClient({
           <h2 id="study-heading" className="m-0 mb-2.5 text-[clamp(2.5rem,4.8vw,4.25rem)] leading-[0.95]">
             Your study plan
           </h2>
-          <p className="m-0 max-w-[64ch] text-base leading-[1.6] text-[var(--color-text-muted)] [text-wrap:pretty]">
-            Every gap from this analysis, fitted into the hours your week actually has, with the most important topic
-            first. Change anything and the plan rebuilds.
+          <p className="more-copy m-0 max-w-[64ch] text-base leading-[1.6] text-[var(--color-text-muted)] [text-wrap:pretty]">
+            Your gaps, fitted into your week, most important first.
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5">
@@ -388,8 +387,8 @@ export function StudyPlanClient({
 
           <div className={`${CARD} gap-1.5 pb-2`}>
             <p className="eyebrow m-0">3 · Topics, most important first</p>
-            <p className="m-0 mb-1.5 text-sm leading-normal text-[var(--color-text-muted)]">
-              Move a topic up and it gets studied sooner. Switch one off to leave it out.
+            <p className="more-copy m-0 mb-1.5 text-sm leading-normal text-[var(--color-text-muted)]">
+              Move a topic up to study it sooner; switch one off to skip it.
             </p>
             <div>
               {plan.topics.map((t, i) => (

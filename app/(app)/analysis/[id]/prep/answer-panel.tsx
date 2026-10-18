@@ -160,8 +160,8 @@ export function AnswerPanel({
       ) : (
         <p className="text-sm text-accent-body">
           {isGap
-            ? "Nothing in your profile evidences this one — so the answer above stays general on purpose. Say what you'd do, not what you've done."
-            : "Your profile doesn't have a bullet that speaks to this directly. Answer it on the substance above rather than reaching for an example that isn't there."}
+            ? "Nothing in your profile evidences this, so the answer stays general. Say what you'd do, not what you've done."
+            : "No bullet speaks to this directly. Answer on the substance, not an example you don't have."}
         </p>
       )}
 
@@ -199,7 +199,7 @@ export function AnswerPanel({
                 href={course.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-[34px] items-center gap-2 rounded-[var(--radius-pill)] border-[1.5px] border-[var(--color-text)] px-3.5 text-[13px] font-bold no-underline"
+                className="inline-flex min-h-[34px] max-w-full flex-wrap items-center gap-2 rounded-[var(--radius-pill)] border-[1.5px] border-[var(--color-text)] px-3.5 text-[13px] font-bold no-underline"
               >
                 <BookOpen className="lucide h-3.5 w-3.5" />
                 {course.title}
@@ -211,9 +211,8 @@ export function AnswerPanel({
         </div>
       ) : null}
 
-      <p className="text-xs text-[var(--color-text-muted)]">
-        Drafted for this posting. The substance is general knowledge; anything in your voice is
-        tied to a bullet you wrote.
+      <p className="more-copy text-xs text-[var(--color-text-muted)]">
+        Anything in your voice is tied to a bullet you wrote.
       </p>
     </div>
   );

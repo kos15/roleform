@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listMembers, workspaceStats } from "@/lib/admin/members";
+import { listMembers, syncFromDirectory, workspaceStats } from "@/lib/admin/members";
+import { listHistory } from "@/lib/admin/history";
 import { workspaceDefaults } from "@/lib/admin/defaults";
 import { assertAdminOr404 } from "@/lib/admin/guard";
 import { adminKicker } from "@/lib/workspace";
@@ -16,34 +17,40 @@ import { rollUpPlans } from "@/lib/admin/plans";
 import { WorkspaceDefaultsPanel } from "./workspace-defaults";
 import { FeaturesPanel } from "./features-panel";
 import { PromosPanel } from "./promos-panel";
+import { HistoryPanel } from "./history-panel";
 
 export const metadata: Metadata = { title: "Admin" };
 
 /** Caps and usage change under you; a cached admin panel is a wrong one. */
 export const dynamic = "force-dynamic";
 
-type Panel = "members" | "plans" | "promos" | "features" | "defaults" | "inbox";
-const PANELS: Panel[] = ["members", "plans", "promos", "features", "defaults", "inbox"];
+type Panel = "members" | "history" | "plans" | "promos" | "features" | "defaults" | "inbox";
+const PANELS: Panel[] = ["members", "history", "plans", "promos", "features", "defaults", "inbox"];
 
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ panel?: string }>;
+  searchParams: Promise<{ panel?: string; member?: string }>;
 }) {
   // The layout already turned non-admins away with a 404; asserted again here
   // so the page is never one refactor away from rendering for a member.
   await assertAdminOr404();
 
-  const { panel: raw } = await searchParams;
+  const { panel: raw, member: memberParam } = await searchParams;
   const panel: Panel = PANELS.includes(raw as Panel) ? (raw as Panel) : "members";
 
   // Each panel reads only what it shows. The defaults read is an upsert (it
   // seeds its own row), and the inbox holds other people's words — both are
   // read only when open. The counts decide what the tab bar says, so they are
   // read on every view.
-  const needMembers = panel === "members" || panel === "plans" || panel === "inbox";
+  //
+  // Every view syncs the Clerk directory first (lib/admin/members.ts), so a
+  // person who signed up appears here without anyone pressing anything. The
+  // member list does it as part of its own read; other panels do it alone.
+  const needMembers =
+    panel === "members" || panel === "plans" || panel === "inbox" || panel === "history";
   const [memberList, stats, counts, plans] = await Promise.all([
-    needMembers ? listMembers() : Promise.resolve(null),
+    needMembers ? listMembers() : syncFromDirectory().then(() => null),
     workspaceStats(),
     inboxCounts(),
     loadPlans(),
@@ -54,15 +61,19 @@ export default async function AdminPage({
     panel === "features" ? featureStates() : Promise.resolve(null),
     panel === "promos" ? listPromos() : Promise.resolve(null),
   ]);
+  const historyFor = memberParam && memberParam.length > 0 ? memberParam : null;
+  const history =
+    panel === "history" ? await listHistory({ clerkUserId: historyFor ?? undefined }) : null;
   const members = memberList?.members ?? [];
 
   const tabs: { id: Panel; label: string }[] = [
     { id: "members", label: "Members" },
+    { id: "history", label: "History" },
     { id: "plans", label: "Plans" },
     { id: "promos", label: "Promo codes" },
     { id: "features", label: "Features" },
-    { id: "defaults", label: "New-account defaults" },
-    { id: "inbox", label: counts.unhandled > 0 ? `Support inbox · ${counts.unhandled}` : "Support inbox" },
+    { id: "defaults", label: "Defaults" },
+    { id: "inbox", label: counts.unhandled > 0 ? `Inbox · ${counts.unhandled}` : "Inbox" },
   ];
 
   return (
@@ -71,9 +82,7 @@ export default async function AdminPage({
         <div className="card-kicker mb-2">{adminKicker()}</div>
         <h1 className="mb-2 text-[clamp(1.625rem,4vw,2.25rem)]">Admin</h1>
         <p className="text-[0.9rem] leading-relaxed text-[var(--color-text-muted)]">
-          Members and their caps, the public plans, promo codes and which features are open. Names
-          and addresses come from the identity provider; this panel never reads a member&rsquo;s
-          profile, résumés or postings.
+          Members sync from Clerk on every visit.
         </p>
         {/* Said here rather than only inside the inbox: a message that never
             reached an inbox is invisible everywhere else. */}
@@ -88,13 +97,16 @@ export default async function AdminPage({
       </div>
 
       {/* Links, not buttons: each panel is a URL an admin can share or return to. */}
-      <nav aria-label="Admin sections" className="mb-6 flex flex-wrap gap-2">
+      <nav
+        aria-label="Admin sections"
+        className="-mx-4 mb-6 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+      >
         {tabs.map((tab) => (
           <Link
             key={tab.id}
             href={tab.id === "members" ? "/admin" : `/admin?panel=${tab.id}`}
             aria-current={panel === tab.id ? "page" : undefined}
-            className={`btn btn-sm no-underline ${panel === tab.id ? "btn-primary" : "btn-secondary"}`}
+            className={`btn btn-sm flex-none no-underline ${panel === tab.id ? "btn-primary" : "btn-secondary"}`}
           >
             {tab.label}
           </Link>
@@ -131,11 +143,19 @@ export default async function AdminPage({
           <AdminPanel
             members={members}
             directoryReachable={memberList?.directoryReachable ?? true}
+            syncedFromDirectory={memberList?.syncedFromDirectory ?? 0}
             plans={plans.map((p) => ({ id: p.id, name: p.name }))}
           />
         </>
       ) : null}
 
+      {panel === "history" && history ? (
+        <HistoryPanel
+          rows={history}
+          members={members.map((m) => ({ id: m.clerkUserId, name: m.name }))}
+          memberId={historyFor}
+        />
+      ) : null}
       {panel === "plans" ? <PlansPanel plans={plans} rollup={rollUpPlans(members, plans)} /> : null}
       {panel === "promos" && promos ? <PromosPanel promos={promos} plans={plans} /> : null}
       {panel === "features" && features ? <FeaturesPanel states={features} /> : null}

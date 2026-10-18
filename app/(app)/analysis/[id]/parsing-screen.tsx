@@ -217,9 +217,8 @@ export function ParsingScreen({
           <h1 className="text-[clamp(2.75rem,5.5vw,5rem)] leading-[0.92]">
             This run is waiting on your allowance
           </h1>
-          <p className="text-[17px] leading-relaxed text-[var(--color-text-muted)]">
-            The posting is stored — nothing has been read, matched or rewritten, and nothing has
-            been charged. It will be here when the balance is.
+          <p className="text-[15px] leading-relaxed text-[var(--color-text-muted)] sm:text-[17px]">
+            The posting is saved. Nothing has run and nothing has been charged.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => setDismissed(false)}>Show my options</Button>
@@ -277,8 +276,8 @@ export function ParsingScreen({
     <div>
       <div className="rise-in max-w-[980px]">
         <p className="eyebrow mb-3.5">Step 2 of 3 · {progressPct}% complete</p>
-        <h1 className="mb-[18px] text-[clamp(2.9rem,6vw,5.75rem)] leading-[0.92]">{current.label}</h1>
-        <p className="mb-7 max-w-[60ch] text-[17px] leading-relaxed text-[var(--color-text-muted)]">
+        <h1 className="mb-[18px] text-[clamp(2.25rem,6vw,5.75rem)] leading-[0.92]">{current.label}</h1>
+        <p className="more-copy mb-7 max-w-[60ch] text-[17px] leading-relaxed text-[var(--color-text-muted)]">
           {current.description}
         </p>
 

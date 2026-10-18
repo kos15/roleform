@@ -1,5 +1,5 @@
 import "server-only";
-import { createHash } from "node:crypto";
+import { hashEmail } from "@/lib/email-hash";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { listAdmins } from "@/lib/admin/members";
@@ -22,10 +22,8 @@ import { canBuyTopup, TOPUPS, type PlanId } from "@/lib/content/pricing";
 import { loadPlan, loadPlanAbove } from "@/lib/plans/catalog";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
-/** N7: the address itself is never stored, only enough to de-duplicate. */
-export function hashEmail(email: string): string {
-  return createHash("sha256").update(email.toLowerCase()).digest("hex");
-}
+// Re-exported: callers have always imported it from here.
+export { hashEmail } from "@/lib/email-hash";
 
 /**
  * Create the account row if the webhook hasn't yet.

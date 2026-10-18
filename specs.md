@@ -527,6 +527,13 @@ section does not exist: `/admin` (any sub-path, any query) returns the ordinary 
 is a Clerk directory fetch, so it is read behind Suspense with the member's links as the fallback —
 no page, and no loading skeleton, waits on it.
 
+**Phones (≤640px).** Members reported the app read as a wall of text on a phone. Below 640px
+type and padding step down a size, the analysis tabs become one swipeable strip of chips instead of
+stacked cards, History is a list instead of a sideways-scrolling table, and `.more-copy` hides
+secondary prose (standfirsts, the "why" under a control). Nothing load-bearing carries `.more-copy`:
+the score's buckets and coverage note (N4), a gap's honesty line, errors and refusals stay on every
+screen.
+
 **When a screen crashes** it gets the house error screen (`components/route-error.tsx`, wired as
 `error.tsx` in `(app)`, `(marketing)` and the root, plus `global-error.tsx`), never Next's bare
 "Application error" line. *Try again* refreshes the server half and re-renders; a tab left over from
@@ -889,8 +896,19 @@ extraction.
 
 **DOCX** (`docx` npm) — the submission artifact. Named paragraph styles, list paragraphs, no floating elements.
 **PDF** (`@react-pdf/renderer`) — the human artifact. Chosen over Puppeteer because Chromium is ~100 MB against Vercel's 50 MB default function limit and react-pdf renders in under 500ms versus 2–5 seconds. Accepted tradeoff: constrained component set, flexbox yes, CSS Grid no, no pseudo-selectors. Templates are designed to that constraint, not ported from web CSS.
-**Download all** — 6 × 2 zipped to `exports/{user}/{analysis}/all.zip`, served via `files.koustubh.org`.
+**Download all** — 6 × 2 zipped to `exports/{user}/{analysis}/all-{stamp}.zip`, served via `files.koustubh.org`.
 Filenames `Firstname-Lastname-Company-Role-Template.docx`.
+
+**Every export gets a fresh storage key** (the filename with `-{stamp}` before the extension). A DOCX
+or zip is sent under the plain filename. A PDF opens in a tab, so it carries the stamp in its name. Re-exporting used to overwrite one fixed key, and the CDN in front of
+`exports` could hand back the earlier render. The superseded object for the same draft and format is
+removed once the new one is up.
+
+**What the draft prints** (`lib/render/model.ts`, shared by preview, PDF and DOCX): each role's
+bullets lead in the order the pipeline ranked them against the posting (§3, reorder), then any
+untailored bullets in their own order. A rewrite is matched to its highlight by `x_roleform.bulletIds`,
+or, where the map has no entry, by the original text stored on the tailored bullet. That way a missing
+map entry no longer silently prints the untailored wording. `omit` drops the bullet from the draft only.
 
 **The PDF and the preview are one design in two renderers.** `lib/render/pdf/index.tsx` and
 `preview-surface.tsx` must agree on structure — same header shape, same section order, same rail on the
@@ -1097,14 +1115,29 @@ mirror.
 usage counts from our tables and cannot read a member's profile, résumés, answers or postings — not
 as policy but because the RLS policy keyed to the subject does not admit it.
 
-The directory is read in batches of 100, each failing on its own, so one bad call cannot blank every
-name. A member with no name in Clerk is shown by their address's local part; a member Clerk cannot
+**Directory sync.** Every visit to `/admin`, whichever panel, pages through the **whole** Clerk
+directory (500 per page; the instance is whichever `CLERK_SECRET_KEY` the deployment carries, so
+production reads production) and provisions a `users` row for anyone Clerk has and we don't: hashed
+address (N7), workspace-default caps, a fresh cycle anchor, and `createdAt` set to the Clerk sign-up.
+`createMany({ skipDuplicates })`, so an existing row and its hand-set caps are never touched. Only a
+complete read provisions anyone; a cut-short read falls back to looking names up by id. This is the
+third door into an account, beside `provisionUser` and `user.created`, and the one that catches
+whatever the other two missed.
+
+If the full read fails, the directory is read in batches of 100, each failing on its own, so one bad
+call cannot blank every name. A member with no name in Clerk is shown by their address's local part; a member Clerk cannot
 be reached for is shown as `Member …<last six of the subject>`, and the panel says the directory is
 unreachable. The list is searchable (name, email, plan, account ID) and filterable (admins, paid, at a
 cap, suspended). The detail card adds, from Clerk: avatar, sign-in methods, email verification, last
 sign-in and last active, banned/locked; and from our tables: lifetime analyses (with the last one's
 date), roadmaps, job searches, top-ups and the current cycle start — counts only, never content. The
 support inbox names a signed-in sender by their member name instead of printing the subject.
+
+**History panel** (`/admin?panel=history[&member=…]`). Every member's F10 History, newest first, or
+one member's from the detail card's "View history" link: role, company, coverage score, status, date,
+and how many drafts, questions, gaps and downloads the run produced. It shows the History row and
+counts, never a bullet, an answer or the posting text, and it does not open the analysis itself:
+those pages stay scoped to their owner.
 
 **Enforcement**, each at its own seam:
 

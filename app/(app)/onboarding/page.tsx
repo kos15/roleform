@@ -26,13 +26,13 @@ export default async function OnboardingPage() {
     <div className="max-w-[1000px]">
       <p className="eyebrow mb-3.5">Your résumé</p>
       <h1 className="mb-5">{replacing ? "Replace your résumé" : "Import your résumé"}</h1>
-      <p className="mb-3 max-w-[58ch] text-[17px] leading-relaxed text-[var(--color-text-muted)]">
+      <p className="more-copy mb-3 max-w-[58ch] text-[17px] leading-relaxed text-[var(--color-text-muted)]">
         {replacing
-          ? "Your current profile stays exactly as it is until you confirm the review screen. Past analyses are never rewritten — each one kept the wording it was built from."
-          : "We read it once and keep the facts. Every posting after this is a lens over the same experience."}
+          ? "Your current profile stays as it is until you confirm. Past analyses are never rewritten."
+          : "We read it once and keep the facts."}
       </p>
       {/* The product's law, stated where the user first hands over their document. */}
-      <p className="mb-[clamp(1.75rem,4vw,2.75rem)] max-w-[58ch] text-[17px] leading-relaxed">
+      <p className="mb-[clamp(1.75rem,4vw,2.75rem)] max-w-[58ch] text-[15px] leading-relaxed sm:text-[17px]">
         We retarget this résumé against each posting.{" "}
         <strong className="rounded-[6px] bg-[var(--color-accent-500)] px-1.5 py-px">
           Nothing is invented

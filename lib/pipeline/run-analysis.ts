@@ -840,6 +840,7 @@ async function writeDrafts(args: {
       sourceBulletId: t.sourceBulletId,
       rewrittenText: t.rewrittenText,
       transform: t.transform,
+      originalText: t.originalText,
     })),
     orderedSkills,
     summary: resumeJson.basics.summary,

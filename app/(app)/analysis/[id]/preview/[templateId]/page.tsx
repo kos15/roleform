@@ -58,6 +58,7 @@ export default async function PreviewPage({
       sourceBulletId: t.sourceBulletId,
       rewrittenText: t.rewrittenText,
       transform: t.transform,
+      originalText: t.originalText,
     })),
     orderedSkills: resume.x_orderedSkills ?? [],
     summary: resume.basics.summary,
@@ -94,8 +95,8 @@ export default async function PreviewPage({
 
       <aside className="flex min-w-0 flex-[0_1_21rem] flex-col gap-5">
         <div>
-          <h2 className="mb-2.5 text-[40px] leading-none">{template.name}</h2>
-          <p className="mb-3.5 text-[15px] leading-normal text-[var(--color-text-muted)]">
+          <h2 className="mb-2.5 text-[32px] leading-none sm:text-[40px]">{template.name}</h2>
+          <p className="more-copy mb-3.5 text-[15px] leading-normal text-[var(--color-text-muted)]">
             {template.blurb}
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -111,7 +112,7 @@ export default async function PreviewPage({
           {/* The rating's own reasons, read off the structural flags the rating
               was computed from (N5) — never a hand-written justification, which
               would be free to drift away from the badge beside it. */}
-          <div className="mt-3.5 text-[13px] leading-normal text-[var(--color-text-muted)]">
+          <div className="more-copy mt-3.5 text-[13px] leading-normal text-[var(--color-text-muted)]">
             {/* The sentence version, in the template's own terms. It cannot
                 contradict the list below it: `assertTemplates()` checks the
                 violation count it claims against the flags, and the seed script
@@ -157,8 +158,8 @@ export default async function PreviewPage({
           <div className="rounded-[22px] bg-[var(--color-sage-200)] px-[22px] py-5">
             <h3 className="mb-2 text-[17px]">Still not evidenced</h3>
             <p className="mb-3 text-sm leading-normal">
-              This posting asks for these, and nothing in your profile evidences them. We
-              didn&rsquo;t add them.
+              The posting asks for these; your profile doesn&rsquo;t show them, so we didn&rsquo;t
+              add them.
             </p>
             <div className="mb-3.5 flex flex-wrap gap-1.5">
               {draft.missing.map((m) => (

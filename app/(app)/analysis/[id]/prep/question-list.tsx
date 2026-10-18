@@ -138,9 +138,8 @@ export function QuestionList({
     <section>
       <div className="mb-6 max-w-[760px]">
         <h2 className="mb-2.5">{questions.length} questions this posting suggests</h2>
-        <p className="max-w-[62ch] text-base leading-relaxed text-[var(--color-text-muted)]">
-          Each framework is scaffolding for your own answer, not a script — and never a claim you
-          can&rsquo;t make. Open one and ask for the full answer when you want to rehearse it.
+        <p className="more-copy max-w-[62ch] text-base leading-relaxed text-[var(--color-text-muted)]">
+          Frameworks for your own answer, not scripts. Open one to draft the full answer.
         </p>
       </div>
 
@@ -177,10 +176,10 @@ export function QuestionList({
                   // answers" link (RLE spec §1). The proof-of-learning loop is
                   // only worth binding if the user can actually walk it.
                   id={`q-${q.id}`}
-                  className={`rounded-[22px] px-[22px] py-5 ${isOpen ? "shadow-[var(--shadow-md)]" : ""}`}
+                  className={`rounded-[22px] px-4 py-4 sm:px-[22px] sm:py-5 ${isOpen ? "shadow-[var(--shadow-md)]" : ""}`}
                 >
                   <Accordion.Header>
-                    <Accordion.Trigger className="group flex w-full items-start gap-4 text-left">
+                    <Accordion.Trigger className="group flex w-full items-start gap-3 text-left sm:gap-4">
                       <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[var(--radius-pill)] bg-[var(--color-bg-tint)] text-[13px] font-extrabold tabular-nums group-data-[state=open]:bg-[var(--color-sage-500)]">
                         {i + 1}
                       </span>
@@ -204,7 +203,7 @@ export function QuestionList({
                   </Accordion.Header>
 
                   <Accordion.Content className="accordion-content overflow-hidden">
-                    <div className="mt-5 space-y-5 pl-[50px]">
+                    <div className="mt-4 space-y-4 sm:mt-5 sm:space-y-5 sm:pl-[50px]">
                       <div>
                         <p className="eyebrow mb-1.5">Why they ask</p>
                         <p className="answer-prose text-[var(--color-text-muted)]">{q.whyTheyAsk}</p>
@@ -224,9 +223,8 @@ export function QuestionList({
 
                       {q.type === "gap" ? (
                         <p className="max-w-[62ch] rounded-[var(--radius-sm)] bg-[var(--color-sage-200)] px-3.5 py-3 text-[14.5px] leading-relaxed">
-                          This one probes something your profile can&rsquo;t evidence. The
-                          framework above is about positioning honestly — what you lean on
-                          instead, and what you&rsquo;re doing about it.
+                          Your profile can&rsquo;t evidence this. Position honestly: what you lean
+                          on instead, and what you&rsquo;re doing about it.
                         </p>
                       ) : (
                         <div>

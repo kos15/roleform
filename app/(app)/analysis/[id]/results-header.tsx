@@ -66,7 +66,7 @@ export function ResultsHeader({
 
   return (
     <div>
-      <p className="mb-[clamp(1.25rem,3vw,2.5rem)] flex flex-wrap items-center gap-2.5 text-[17px]">
+      <p className="mb-[clamp(1.25rem,3vw,2.5rem)] flex flex-wrap items-center gap-2.5 text-[15px] sm:text-[17px]">
         <Link href="/history" className="font-bold no-underline">
           History
         </Link>
@@ -98,16 +98,16 @@ export function ResultsHeader({
             </p>
           ) : null}
 
-          <h1 className="mb-[22px] text-[clamp(3.25rem,7.8vw,7.6rem)]">
+          <h1 className="mb-[22px] break-words text-[clamp(2.25rem,7.8vw,7.6rem)]">
             {analysis.title ?? "This role"}
           </h1>
           {meta.length ? (
-            <p className="mb-[18px] text-[17px] text-[var(--color-text-muted)]">
+            <p className="mb-[18px] text-[15px] text-[var(--color-text-muted)] sm:text-[17px]">
               {meta.map((m) => m.value).join(" · ")}
             </p>
           ) : null}
           <p className="mb-1 text-[17px] font-extrabold">{analysis.scoreVerdict}</p>
-          <p className="max-w-[56ch] text-base leading-relaxed text-[var(--color-text-muted)]">
+          <p className="max-w-[56ch] text-[15px] leading-relaxed text-[var(--color-text-muted)] sm:text-base">
             {analysis.scoreNote}
           </p>
         </div>
@@ -117,7 +117,7 @@ export function ResultsHeader({
               directly below it — never one without the other. */}
           <div
             data-tour="score"
-            className="relative flex min-h-[320px] flex-[1_1_220px] flex-col items-center rounded-[26px] bg-[var(--color-bg-raised)] px-[22px] pb-11 pt-[30px] text-center"
+            className="relative flex min-h-[260px] flex-[1_1_220px] flex-col items-center sm:min-h-[320px] rounded-[26px] bg-[var(--color-bg-raised)] px-[22px] pb-11 pt-[30px] text-center"
           >
             <span className="tag tag-outline absolute -top-[52px] left-1/2 min-h-10 -translate-x-1/2 bg-[var(--color-bg)] px-4 text-[15px] font-extrabold">
               № {requirements.length} requirement{requirements.length === 1 ? "" : "s"}
@@ -175,7 +175,7 @@ export function ResultsHeader({
 
           <div
             aria-hidden
-            className="relative min-h-[320px] flex-[1.35_1_280px] rounded-[26px] bg-[var(--color-accent-500)] px-6 py-7"
+            className="relative hidden min-h-[320px] flex-[1.35_1_280px] rounded-[26px] sm:block bg-[var(--color-accent-500)] px-6 py-7"
           >
             <div className="relative z-[2] flex flex-col items-start gap-[13px]">
               {meta.map(({ key, value, icon: Icon }) => (
@@ -232,8 +232,8 @@ export function ResultsHeader({
       </div>
 
       <InfoNote className="mt-[26px]">
-        This is requirement coverage — how much of this posting your own profile can evidence.
-        It isn&rsquo;t a prediction, and no employer&rsquo;s system produced it.
+        Requirement coverage: how much of this posting your profile can evidence. Not a
+        prediction, and not an employer&rsquo;s ATS score.
       </InfoNote>
     </div>
   );
@@ -268,7 +268,7 @@ function Bucket({
   return (
     // min-w-0: a grid item defaults to min-width:auto, so without this a long
     // requirement widens the whole track instead of wrapping inside the card.
-    <div className={`min-w-0 rounded-[var(--radius-lg)] px-[22px] pb-6 pt-[22px] ${paint.card}`}>
+    <div className={`min-w-0 rounded-[var(--radius-lg)] px-4 pb-5 pt-4 sm:px-[22px] sm:pb-6 sm:pt-[22px] ${paint.card}`}>
       <div className="mb-4 flex items-center gap-2.5">
         <h3 className="text-[19px]">{title}</h3>
         <span className="grid h-7 min-w-7 place-items-center rounded-[var(--radius-pill)] bg-[var(--color-text)] px-2 text-[13px] font-extrabold text-[var(--color-accent-500)]">

@@ -106,9 +106,8 @@ export function RoundsClient({
       <div className="mb-6 max-w-[640px]">
         <h2 className="mb-2.5">Your rounds</h2>
         <p className="text-base leading-relaxed text-[var(--color-text-muted)]">
-          Tell us which round you&rsquo;re preparing for{company ? ` at ${company}` : ""} and when it is.
-          We&rsquo;ll count you down to it, point you at the prep that fits that round, and check in
-          afterwards.
+          Add your round{company ? ` at ${company}` : ""} and its date. We&rsquo;ll count down and
+          point you at the right prep.
         </p>
       </div>
 
