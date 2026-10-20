@@ -270,6 +270,16 @@ enum TokenGrantSource {
   @@map("token_grant_source")
 }
 
+/// Where extra analyses came from (counts-only pricing). `token_conversion` is
+/// the one-off move of unspent token top-ups into analyses.
+enum AnalysisGrantSource {
+  purchase
+  admin
+  token_conversion
+
+  @@map("analysis_grant_source")
+}
+
 /// Where one outbound mail got to (F16). Four states because "we never tried"
 /// and "we tried and it bounced" are different facts to an admin reading the
 /// inbox: `disabled` means this deployment has no mail keys, so the row is the
@@ -350,6 +360,7 @@ model User {
   notifyDetails Boolean @default(false) @map("notify_details")
 
   tokenGrants       TokenGrant[]
+  analysisGrants    AnalysisGrant[]
   savedJobs         SavedJob[]
   jobSearches       JobSearch[]
   pushSubscriptions PushSubscription[]
@@ -405,6 +416,26 @@ model TokenGrant {
 
   @@index([clerkUserId], map: "token_grants_user_idx")
   @@map("token_grants")
+}
+
+/// Extra analyses from a pack (counts-only pricing, Oct 2026). Never renew,
+/// never expire; spent only after the month's `cap_analyses` (an analysis
+/// spent from here is stamped `analyses.from_bonus`). Same idempotency shape as
+/// token_grants: one row per payment, `reference` unique.
+model AnalysisGrant {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String              @map("clerk_user_id")
+  analyses    Int
+  source      AnalysisGrantSource
+  /// Payment id, `admin:<uuid>`, or `conv:<clerk id>` for the token conversion. Unique, always.
+  reference   String              @unique
+  grantedBy   String?             @map("granted_by")
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [clerkUserId], references: [clerkUserId], onDelete: Cascade)
+
+  @@index([clerkUserId], map: "analysis_grants_user_idx")
+  @@map("analysis_grants")
 }
 
 /// The caps a NEW account is created with (F15).
@@ -689,6 +720,8 @@ model Analysis {
   profileId      String         @map("profile_id") @db.Uuid
   jdSource       JdSource       @map("jd_source")
   jdFilename     String?        @map("jd_filename")
+  /// Paid from an extra-analysis pack rather than the month's cap.
+  fromBonus      Boolean        @default(false) @map("from_bonus")
   rawText        String         @map("raw_text")
   contentHash    String         @map("content_hash")
   company        String?

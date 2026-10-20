@@ -68,7 +68,7 @@ ${PLAN_ROWS.map((r) => `- ${r.label}: ${displayCap(r.key, p.caps[r.key])} ${r.un
 ${compareRows(plans).map((r) => `| ${r.label} (${r.unit}) | ${r.cells.join(" | ")} |`).join("\n")}
 
 ## Top-ups (any paid plan; never renew, never expire)
-${TOPUPS.map((t) => `- ${formatCount(t.tokens)} tokens — ${t.price} (${t.note})`).join("\n")}
+${TOPUPS.map((t) => `- ${t.analyses} extra analyses — ${t.price} (${t.note})`).join("\n")}
 
 ## What a token pays for
 ${TOKEN_STAGES.map((s) => `- ${s.stage}: about ${formatCount(s.estimate)}`).join("\n")}

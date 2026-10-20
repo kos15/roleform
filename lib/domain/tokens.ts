@@ -144,6 +144,15 @@ export function formatCount(n: number): string {
 
 /* ------------------------------------------------------------------- wall */
 
+/** An extra-analysis pack, offered on a wall (counts-only pricing). */
+export interface TopupOffer {
+  id: string;
+  name: string;
+  price: string;
+  analyses: number;
+  note: string;
+}
+
 /** One exit out of the wall that costs money. Rendered as a card. */
 export interface TokenWallOffer {
   id: string;
@@ -186,7 +195,7 @@ export interface TokenWall {
   /** null on the top plan. */
   upgrade: TokenWallOffer | null;
   /** Empty on Free — see `TOPUPS` in lib/content/pricing.ts. */
-  topups: TokenWallOffer[];
+  topups: TopupOffer[];
 }
 
 /** "26 Aug". The date a refusal names, so nobody has to count 30 days. */

@@ -104,14 +104,14 @@ export function planAbove(id: PlanId, plans: Plan[] = PLANS): Plan | null {
 }
 
 /**
- * One-off token packs (F19).
+ * Extra-analysis packs (F19, counts-only pricing Oct 2026).
  *
  * **They never renew and they never expire.** That is the only thing that
- * distinguishes a top-up from a cap: the plan allowance does not carry across a
- * cycle and an unspent top-up does (the carry rule lives in
- * lib/db/queries/tokens.ts), so buying one late in a month is not a partial
- * purchase. A pack that expired at the turnover would be a
- * worse cap sold at a higher price.
+ * distinguishes a pack from a cap: the month's analyses do not carry across a
+ * cycle and unspent extra analyses do (`analysesAvailable` in
+ * lib/domain/entitlements.ts), so buying one late in a month is not a partial
+ * purchase. A pack that expired at the turnover would be a worse cap sold at a
+ * higher price.
  *
  * Free accounts cannot buy them. A top-up is a release valve on a plan you are
  * already paying for, not a way to buy the product one run at a time — and
@@ -119,27 +119,26 @@ export function planAbove(id: PlanId, plans: Plan[] = PLANS): Plan | null {
  */
 export interface Topup {
   id: string;
-  tokens: number;
+  /** Extra analyses the pack adds. Spent only after the month's cap runs out. */
+  analyses: number;
   price: string;
   pricePaise: number;
   note: string;
 }
 
 export const TOPUPS: Topup[] = [
-  {
-    id: "topup-100k",
-    tokens: 100_000,
-    price: "₹99",
-    pricePaise: 9_900,
-    note: `About ${Math.floor(100_000 / RUN_ESTIMATE)} more full analyses`,
-  },
-  {
-    id: "topup-300k",
-    tokens: 300_000,
-    price: "₹249",
-    pricePaise: 24_900,
-    note: `About ${Math.floor(300_000 / RUN_ESTIMATE)} more full analyses`,
-  },
+  { id: "topup-5a", analyses: 5, price: "₹99", pricePaise: 9_900, note: "Never expires" },
+  { id: "topup-15a", analyses: 15, price: "₹249", pricePaise: 24_900, note: "Never expires" },
+];
+
+/**
+ * The token packs sold before counts-only pricing (Oct 2026). Not on sale —
+ * kept only so an order placed before the switch and paid after it is still
+ * credited by the webhook, with exactly what was bought.
+ */
+export const LEGACY_TOKEN_TOPUPS: Array<{ id: string; tokens: number; pricePaise: number }> = [
+  { id: "topup-100k", tokens: 100_000, pricePaise: 9_900 },
+  { id: "topup-300k", tokens: 300_000, pricePaise: 24_900 },
 ];
 
 export function topupById(id: string): Topup | null {

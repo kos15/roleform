@@ -124,6 +124,9 @@ export async function createAnalysis(input: {
       status: "parsing",
       stageState: { injection: injection.patterns },
       listingId: input.listingId ?? null,
+      // Paid from a pack rather than the month's cap — the stored fact that
+      // `bonusSpent` counts (lib/domain/entitlements.ts#analysesAvailable).
+      fromBonus: allowance.value.fromBonus,
       // Stamped only when the wall was real. Queuing a run we could afford
       // would park a posting for no reason and hide it behind a reset date.
       queuedAt: walled ? new Date() : null,

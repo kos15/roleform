@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { listAdmins } from "@/lib/admin/members";
 import { workspaceDefaults, capsFromDefaults } from "@/lib/admin/defaults";
 import { cycleEnd, cycleStart, QUOTA_BY_KEY, type CapWall, type QuotaKey } from "@/lib/domain/quotas";
-import { UNCAPPED, isUncapped, practiceSessionWhere, withinCap } from "@/lib/domain/entitlements";
+import { UNCAPPED, analysesAvailable, isUncapped, practiceSessionWhere, withinCap } from "@/lib/domain/entitlements";
 import { accountTokens } from "@/lib/db/queries/tokens";
 import { settlePlan } from "@/lib/db/queries/plan";
 import {
@@ -164,10 +164,10 @@ async function buildWall(
     topups: canBuyTopup(planId)
       ? TOPUPS.map((t) => ({
           id: t.id,
-          name: `${formatCount(t.tokens)} tokens`,
+          name: `${t.analyses} extra analyses`,
           price: t.price,
-          tokens: t.tokens,
-          note: `${t.note}. One-off — nothing renews, and anything unspent carries into the next cycle.`,
+          analyses: t.analyses,
+          note: "One-off — nothing renews, and anything unspent carries into the next cycle.",
         }))
       : [],
   };
@@ -202,7 +202,7 @@ export async function requireUser(): Promise<Result<string>> {
  */
 export async function checkAnalysisAllowance(
   clerkUserId: string,
-): Promise<Result<{ used: number; cap: number }>> {
+): Promise<Result<{ used: number; cap: number; fromBonus: boolean; bonusLeft: number }>> {
   // Settled first (PAY-2): a lapsed member is checked against Free's cap,
   // not a plan nobody is still paying for.
   await settlePlan(clerkUserId);
@@ -233,13 +233,21 @@ export async function checkAnalysisAllowance(
     );
   }
 
-  const used = await db.analysis.count({
-    where: { clerkUserId, createdAt: { gte: cycleStart(row.quotaResetsAt) } },
-  });
+  // Plan-paid runs this cycle; pack-paid runs are counted against the pack.
+  const [used, granted, bonusSpent] = await Promise.all([
+    db.analysis.count({ where: { clerkUserId, fromBonus: false, createdAt: { gte: cycleStart(row.quotaResetsAt) } } }),
+    db.analysisGrant.aggregate({ where: { clerkUserId }, _sum: { analyses: true } }),
+    db.analysis.count({ where: { clerkUserId, fromBonus: true } }),
+  ]);
+  const bonusGranted = granted._sum.analyses ?? 0;
 
   // Suspension is checked above and is NOT bypassed for an uncapped account:
   // it is a deliberate block, not a ceiling (lib/domain/entitlements.ts).
-  if (!withinCap(row.role, row.capAnalyses, used)) {
+  const withinPlan = withinCap(row.role, row.capAnalyses, used);
+  const available = withinPlan
+    ? { allowed: true, fromBonus: false }
+    : analysesAvailable({ cap: row.capAnalyses, usedThisCycle: used, bonusGranted, bonusSpent });
+  if (!available.allowed) {
     // PAY-4/PAY-5: every cap refusal carries the value it was raised from, so
     // the UI can open the same dialog the token wall does rather than a plain
     // sentence with nowhere to go.
@@ -255,7 +263,12 @@ export async function checkAnalysisAllowance(
     });
   }
 
-  return ok({ used, cap: isUncapped(row.role) ? UNCAPPED : row.capAnalyses });
+  return ok({
+    used,
+    cap: isUncapped(row.role) ? UNCAPPED : row.capAnalyses,
+    fromBonus: available.fromBonus,
+    bonusLeft: Math.max(0, bonusGranted - bonusSpent - (available.fromBonus ? 1 : 0)),
+  });
 }
 
 /**

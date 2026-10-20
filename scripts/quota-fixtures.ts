@@ -6,8 +6,8 @@
  */
 import assert from "node:assert/strict";
 import { QUOTAS, displayCap } from "../lib/domain/quotas";
-import { PLANS } from "../lib/content/pricing";
-import { practiceSessionWhere } from "../lib/domain/entitlements";
+import { PLANS, TOPUPS, LEGACY_TOKEN_TOPUPS } from "../lib/content/pricing";
+import { practiceSessionWhere, analysesAvailable, convertedAnalyses } from "../lib/domain/entitlements";
 import { capColumns } from "../lib/plans/catalog";
 import { capsFromDefaults } from "../lib/admin/defaults";
 
@@ -49,6 +49,27 @@ check("buying a plan writes every cap, practice included — one column per QUOT
 check("a new account gets every cap from the workspace defaults, practice included", () => {
   const cols = capsFromDefaults(PLANS[0].caps as never) as Record<string, number>;
   for (const q of QUOTAS) assert.equal(cols[q.column], PLANS[0].caps[q.key], q.column);
+});
+
+console.log("extra-analysis packs (2)");
+check("inside the monthly cap, an analysis comes from the plan", () => {
+  assert.deepEqual(analysesAvailable({ cap: 3, usedThisCycle: 2, bonusGranted: 5, bonusSpent: 0 }), { allowed: true, fromBonus: false });
+});
+check("past the cap, an unspent bonus analysis is used", () => {
+  assert.deepEqual(analysesAvailable({ cap: 3, usedThisCycle: 3, bonusGranted: 5, bonusSpent: 0 }), { allowed: true, fromBonus: true });
+});
+check("past the cap with the bonus spent, the run is refused", () => {
+  assert.deepEqual(analysesAvailable({ cap: 3, usedThisCycle: 3, bonusGranted: 5, bonusSpent: 5 }), { allowed: false, fromBonus: false });
+});
+check("unspent token top-ups convert to analyses, rounded up", () => {
+  assert.equal(convertedAnalyses(30_001, 20_000), 2);
+  assert.equal(convertedAnalyses(0, 20_000), 0);
+});
+check("packs are +5 analyses for ₹99 and +15 for ₹249", () => {
+  assert.deepEqual(TOPUPS.map((t) => [t.analyses, t.pricePaise]), [[5, 9_900], [15, 24_900]]);
+});
+check("the old token packs stay creditable for orders placed before the switch", () => {
+  assert.deepEqual(LEGACY_TOKEN_TOPUPS.map((t) => t.id), ["topup-100k", "topup-300k"]);
 });
 
 console.log(`ok — ${passed} checks`);

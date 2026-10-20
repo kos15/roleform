@@ -120,3 +120,26 @@ export function planLapsed(
 export function practiceSessionWhere(clerkUserId: string, since: Date) {
   return { clerkUserId, createdAt: { gte: since }, aiRunId: { not: null } };
 }
+
+/**
+ * Whether one more analysis can start, and where it is paid from. The plan's
+ * monthly cap is spent first; past it, an unspent extra analysis from a pack
+ * (counts-only pricing). `usedThisCycle` counts only plan-paid runs, and
+ * `bonusSpent` is the all-time count of runs stamped `from_bonus` — a stored
+ * fact, not a reconstruction, because past caps are not recorded.
+ */
+export function analysesAvailable(args: {
+  cap: number;
+  usedThisCycle: number;
+  bonusGranted: number;
+  bonusSpent: number;
+}): { allowed: boolean; fromBonus: boolean } {
+  if (args.usedThisCycle < args.cap) return { allowed: true, fromBonus: false };
+  if (args.bonusGranted - args.bonusSpent > 0) return { allowed: true, fromBonus: true };
+  return { allowed: false, fromBonus: false };
+}
+
+/** Unspent token top-ups → extra analyses at the pre-change run estimate, rounded up (never down). */
+export function convertedAnalyses(unspentTokens: number, runEstimate: number): number {
+  return unspentTokens <= 0 ? 0 : Math.ceil(unspentTokens / runEstimate);
+}

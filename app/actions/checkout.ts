@@ -98,7 +98,7 @@ export async function previewPromo(
 }
 
 /**
- * A one-off token pack (F19).
+ * A one-off extra-analysis pack (F19, counts-only pricing).
  *
  * Refused on Free, on the server, because that is where the rule has to live:
  * the wall already hides the card, and a hidden card is a UI decision, not an
@@ -120,7 +120,7 @@ export async function startTopupCheckout(topupId: string): Promise<Result<Razorp
     return err(
       appError(
         "invalid_input",
-        "Top-ups are for paid plans. On Free, the way to more tokens is a plan — or the reset, which costs nothing.",
+        "Extra-analysis packs are for paid plans. On Free, the way to more analyses is a plan — or the monthly reset, which costs nothing.",
       ),
     );
   }

@@ -36,6 +36,8 @@ declare
     'exports',
     'ai_runs',
     'token_grants',
+    -- Counts-only pricing: extra analyses bought in packs. Own rows only.
+    'analysis_grants',
     -- F21: the roadmap is compiled from a member's own rows and its ticks
     -- are theirs alone.
     'roadmaps',

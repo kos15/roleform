@@ -205,7 +205,7 @@ export default async function PricingPage({
               >
                 <div>
                   <div className="text-base font-extrabold tabular-nums">
-                    {formatCount(topup.tokens)} tokens
+                    +{topup.analyses} analyses
                   </div>
                   <div className="text-[13px] text-[var(--color-text-muted)]">{topup.note}</div>
                 </div>
