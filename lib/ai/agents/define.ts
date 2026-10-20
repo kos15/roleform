@@ -6,6 +6,7 @@ import type { CheckVerdict } from "../checkers/types";
 import type { Result } from "@/lib/domain/types";
 import { PROMPT_SEPARATOR } from "./prompt";
 import { applyInputGuards, outputGuardProblem, type GuardId } from "./guards";
+import { checkInjection } from "../checkers/injection";
 
 /**
  * One agent per AI task (agent design §6.1).
@@ -35,6 +36,8 @@ export interface AgentDef<I, S extends z.ZodType> {
   /** Corrective retries for schema, output-guard and verify failures. */
   retries: number;
   inputGuards: GuardId[];
+  /** What the input is, for the Jev injection check (`injection_jev`). */
+  documentKind?: "posting" | "resume";
   outputGuards: GuardId[];
   /** A rule the schema cannot express. Return the correction, or null. */
   verify?: (value: z.infer<S>, input: I) => string | null | Promise<string | null>;
@@ -67,6 +70,11 @@ export async function runAgent<I, S extends z.ZodType>(
 ): Promise<Result<RunOutcome<z.infer<S>>>> {
   const guarded = applyInputGuards(agent.dynamicContext(input), agent.inputGuards);
   // Names and counts only — the flagged text is member or posting content (N7).
+  if (agent.inputGuards.includes("injection_jev") && agent.documentKind) {
+    // Flag and proceed (IN-5). The ai_runs row is the count; nothing else changes.
+    const verdict = await checkInjection(guarded.text, agent.documentKind, ctx);
+    if (verdict.flagged) guarded.flags.push("injection:jev");
+  }
   if (guarded.flags.length > 0) console.warn(`[agent] ${agent.name} input flags: ${guarded.flags.join(",")}`);
 
   const head = agent.staticContext ? agent.staticContext(input) : "";

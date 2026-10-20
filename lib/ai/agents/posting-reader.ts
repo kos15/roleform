@@ -33,6 +33,7 @@ export const postingReader = defineAgent({
   // No "size": analyzeJd already cuts the posting to JD_MAX_CHARS before wrapping it,
   // and truncating the wrapped text could cut off the closing tag.
   inputGuards: ["injection_regex", "injection_jev", "protected"],
+  documentKind: "posting",
   outputGuards: [],
   verify: (value, i) => {
     // An evidenceQuote that isn't in the posting is a fabricated requirement.

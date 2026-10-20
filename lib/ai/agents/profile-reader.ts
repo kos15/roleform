@@ -47,6 +47,7 @@ export const profileReader = defineAgent({
   // screen is the count billed — no hidden retries here.
   retries: 0,
   inputGuards: ["injection_regex", "injection_jev"],
+  documentKind: "resume",
   outputGuards: [],
   verify: (value) => {
     const roles = value.work.filter((w) => w.name.trim() || w.position.trim());

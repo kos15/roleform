@@ -22,6 +22,7 @@ import { verdictFrom, correctionFor, CHECK_KINDS } from "../lib/ai/checkers/verd
 import { fabricationRequest, answerClaimRequest, JevResponseSchema } from "../lib/ai/checkers/requests";
 import { decideAfterCheck, budgetsAfterGuardRetry } from "../lib/ai/checkers/loop";
 import { SKIPPED } from "../lib/ai/checkers/verdict";
+import { injectionRequest } from "../lib/ai/checkers/requests";
 
 let passed = 0;
 const pending: Promise<void>[] = [];
@@ -245,6 +246,20 @@ check("spending the guard retry leaves the checker's rewrite untouched (separate
 check("exactly the three claim-bearing agents carry a checker", () => {
   const withChecker = Object.values(AGENTS).filter((a) => "checker" in a && a.checker).map((a) => a.name).sort();
   assert.deepEqual(withChecker, ["question_answer", "tailor_bullet", "tailor_summary"]);
+});
+
+console.log("injection check (6)");
+check("the injection question is worded for the document it reads", () => {
+  const posting = injectionRequest("text", "posting", "jev-latest");
+  const resume = injectionRequest("text", "resume", "jev-latest");
+  assert.match(String((posting.questions.instructs_ai as { instructions: string }).instructions), /describe a job/);
+  assert.match(String((resume.questions.instructs_ai as { instructions: string }).instructions), /career/);
+});
+check("only the two document readers run the Jev injection check, each with its document kind", () => {
+  const readers = Object.values(AGENTS)
+    .filter((a) => a.inputGuards.includes("injection_jev"))
+    .map((a) => [a.name, (a as { documentKind?: string }).documentKind]);
+  assert.deepEqual(readers.sort(), [["analyze_jd", "posting"], ["extract_profile", "resume"]]);
 });
 
 void Promise.all(pending).then(() => console.log(`ok — ${passed} checks`));
