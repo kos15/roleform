@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { AgentTools } from "@/components/agent-tools";
 import { PwaRegister } from "@/components/pwa-register";
+import { RfWaitDefine } from "@/components/wait-overlay";
 import { PushSession } from "@/components/push-session";
 import { INTRO_SCRIPT } from "@/components/landing-intro";
 import { RoleformGuide } from "@/components/roleform-guide";
@@ -160,6 +161,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthStateSync />
           <AgentTools />
           <PwaRegister />
+          <RfWaitDefine />
           <PushSession />
           <RoleformGuide />
         </body>

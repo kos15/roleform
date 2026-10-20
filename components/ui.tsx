@@ -19,16 +19,22 @@ export function Button({
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost";
   size?: "sm" | "lg";
-  /** Server-side work is under way. Drives the breathe animation, nothing else. */
+  /** Server-side work is under way. Drives the breathe animation and the chasing dots. */
   busy?: boolean;
 }) {
+  const { children, ...rest } = props;
   return (
     <button
       data-busy={busy ? "true" : undefined}
       aria-busy={busy || undefined}
       className={cn("btn", `btn-${variant}`, size && `btn-${size}`, className)}
-      {...props}
-    />
+      {...rest}
+    >
+      {/* The chasing dots from the waits design (2d): the click is answered
+          inside the button the moment it lands. Defined by RfWaitDefine. */}
+      {busy ? <rf-wait kind="dots" tone={variant === "primary" ? "dark" : undefined} aria-hidden /> : null}
+      {children}
+    </button>
   );
 }
 

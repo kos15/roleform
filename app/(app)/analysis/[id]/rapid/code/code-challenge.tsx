@@ -21,6 +21,7 @@ import {
   submitChallenge,
 } from "@/app/actions/drill";
 import { Button, Card, ErrorRegion, Skeleton, Tag } from "@/components/ui";
+import { WaitOverlay } from "@/components/wait-overlay";
 import {
   CHALLENGE_MINUTES,
   CODE_LANGUAGES,
@@ -163,6 +164,15 @@ export function CodeChallenge({
       )}
 
       {start.feedback}
+      <WaitOverlay
+        open={start.pending}
+        kind="blobs"
+        eyebrow="Code challenge"
+        lines={["Writing the problem"]}
+        sub="Every hidden test runs against a reference solution first."
+        still="Still writing. Checking the tests takes a moment."
+        long="Taking longer than usual. Hang tight."
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <Button

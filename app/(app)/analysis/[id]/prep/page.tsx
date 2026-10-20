@@ -46,9 +46,8 @@ export default async function PrepTab({
   if (questions.length === 0) {
     return (
       <EmptyState title="Prep didn't generate for this posting">
-        Your résumés and match are unaffected — a failure on one surface never takes the rest of
-        the analysis with it. There is no way to re-run this tab on its own; running the posting
-        again is a fresh analysis, and it is charged like one.
+        Your résumés and match are unaffected. Running the posting again is a fresh analysis,
+        charged like one.
       </EmptyState>
     );
   }

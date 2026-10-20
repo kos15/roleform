@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckCircle2, History, Play, RotateCcw, Sparkles, XCircle } from "lucide-react";
 import { openQuizRound, retakeQuizRound, startQuizRound, submitQuizRound } from "@/app/actions/drill";
 import { Button, Card, Skeleton, Tag } from "@/components/ui";
+import { WaitOverlay } from "@/components/wait-overlay";
 import { DIFFICULTIES, QUIZ_LENGTHS, SECONDS_PER_QUESTION, type Difficulty, type QuizLength } from "@/lib/domain/drill";
 import { DRILL_ESTIMATES, formatCount } from "@/lib/domain/tokens";
 import { Choice, Prose, usePaidAction } from "../shared";
@@ -80,6 +81,15 @@ export function QuizRound({ analysisId, rounds }: { analysisId: string; rounds: 
       </div>
 
       {start.feedback}
+      <WaitOverlay
+        open={start.pending}
+        kind="blobs"
+        eyebrow="Quiz round"
+        lines={["Writing your round"]}
+        sub="Questions come from the topics this posting leans on."
+        still="Still writing. Longer rounds take a little longer."
+        long="Taking longer than usual. Hang tight."
+      />
 
       {start.pending ? (
         <Card className="max-w-[760px] space-y-3" role="status" aria-label="Writing your round">

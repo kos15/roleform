@@ -635,6 +635,19 @@ four named steps resolving in sequence with a per-row status: *Reading the posti
 your profile → Rewriting your resume → Preparing questions and courses.* Streamed, never a fake timer.
 A stage failure stops there and says what failed — a spinner that lies is worse than an error.
 
+**The wait card (Oct 2026, design "Roleform waits" v2).** While a run streams, the galaxy card from
+`<rf-wait>` (`components/rf-wait/rf-wait.js`, typed as `components/wait-overlay.tsx`) floats over the
+page: eyebrow, elapsed clock, one pip per stage, the running stage's label scrambling into place, and
+the red panda reacting as stages land. Its `stage` is the same running stage the page shows — never a
+timer — and the design's ETA file counter was dropped for that reason. On the run's last word the
+card plays its finish (≈1.4s) before the redirect; a failure or a token wall closes it and the page
+says what happened. No cancel button: the run continues server-side either way (`after()`), which
+the card's 20-second line says. The same element serves every wait over ~5s — **papers** for résumé
+import (its three real steps) and Download all, **blobs** for the revision deck, quiz round and code
+challenge (one line, no pips: those calls have no stages to report) — and its `dots` kind is what
+`<Button busy>` shows inside the button. Portfolio build (≈4s) keeps its inline bar. Colours come
+from the marigold tokens on `:root`; motion honours `prefers-reduced-motion`.
+
 **A failed run stays on this screen.** The redirect to the results fires only when the stream ends
 without a failed stage; a run that broke would otherwise be dropped on a résumés tab with no header
 and no tabs. Beside *Try another posting* there is **Pick it up again**, which re-POSTs the same
@@ -1235,6 +1248,14 @@ the UI: "you can top up forever" is how a free tier stops being a free tier.
 The free row is also what `workspaceDefaults()` **seeds** a fresh install with, so a new account
 really does start on the numbers the page publishes. Seeded once — an admin who raises a default
 afterwards is not overwritten on the next read.
+
+**Layout (Oct 2026).** Each plan card reads name · one-line tagline · price · **the button** · the
+caps as a ticked list (a cap at 0 shows a dash, dimmed — the absence stays visible). The billing note
+sits under the cards. The comparison table draws ✓/— as icons; what each cap does when you reach it
+(`PLAN_ROWS[].note`) is one disclosure under the table rather than a section of seven paragraphs.
+**Billing questions** (`BILLING_FAQ`) render with `FaqList` and as FAQPage JSON-LD, and are in
+`/pricing.md`; every answer is a fact the code enforces (no auto-renew, early renewal stacks on the
+current expiry, lapse keeps read access, Razorpay in INR inclusive of tax).
 
 **Refusals, published on the page** for the same reason the four pipeline stages publish theirs:
 paying does not move the match score (it is requirement coverage — a fact about your own document),
@@ -2203,7 +2224,7 @@ or plan) falls back to the list price, so a forged note buys nothing. On success
 code; the max-redemptions limit is checked at checkout (a capture is never refused — the money moved).
 
 States, derived (`promoState`): live · scheduled · ended · paused · used-up. /pricing has "Have a promo
-code?" on each paid card; `?promo=CODE` pre-applies it quietly (a code that doesn't fit one card says
+code?" on each paid card; `?promo=CODE` (or `?coupon=CODE`, the name most shared links use) pre-applies it quietly (a code that doesn't fit one card says
 nothing there). `previewPromo` works signed out.
 
 **The banner.** `components/promo-marquee.tsx` — a marigold strip at the top of the landing page,

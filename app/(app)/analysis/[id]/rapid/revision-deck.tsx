@@ -5,6 +5,7 @@ import { Check, Eye, Play, RotateCcw, Sparkles, Square } from "lucide-react";
 import { buildRevisionDeck } from "@/app/actions/drill";
 import { Button, Skeleton, Tag } from "@/components/ui";
 import { InfoNote } from "@/components/info-note";
+import { WaitOverlay } from "@/components/wait-overlay";
 import { REVISION_BUDGETS, cardsForBudget, type RevisionBudget } from "@/lib/domain/drill";
 import { DRILL_ESTIMATES, formatCount } from "@/lib/domain/tokens";
 import { Choice, Prose, formatClock, useCountdown, usePaidAction } from "./shared";
@@ -43,6 +44,15 @@ export function RevisionDeck({ analysisId, decks }: { analysisId: string; decks:
       />
 
       {feedback}
+      <WaitOverlay
+        open={pending}
+        kind="blobs"
+        eyebrow="Revision deck"
+        lines={["Writing your cards"]}
+        sub="Cards come from the topics this posting leans on."
+        still="Still writing. Bigger decks take a little longer."
+        long="Taking longer than usual. Hang tight."
+      />
 
       {cards ? (
         <Deck key={minutes} cards={cards} minutes={minutes} />

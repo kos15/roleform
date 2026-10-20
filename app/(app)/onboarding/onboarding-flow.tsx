@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { WaitOverlay } from "@/components/wait-overlay";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { AlertTriangle, CheckCircle2, Circle, ClipboardPaste, Loader2, RotateCcw, Upload } from "lucide-react";
 import { Button, Card, ErrorRegion, Tag, Textarea } from "@/components/ui";
@@ -62,6 +63,13 @@ const LABELS: Record<StepKey, string> = {
   upload: "Upload",
   read: "Read the text",
   structure: "Build your profile",
+};
+
+/** The papers card's heading per step — the same steps as LABELS, said as work in progress. */
+const WAIT_LINES: Record<StepKey, string> = {
+  upload: "Opening your file",
+  read: "Reading the text",
+  structure: "Building your profile",
 };
 
 const RETRY_REASON: Partial<Record<ModelFailure, string>> = {
@@ -244,6 +252,35 @@ export function OnboardingFlow() {
     });
   }
 
+  // The papers card (design 2b) over every phase, so it can play its finish
+  // as the review screen arrives. Its stage is the step `mark` set active —
+  // real state, never a timer. A failure closes it; the page says what broke.
+  const stepKeys = Object.keys(LABELS) as StepKey[];
+  // The furthest step reached, so the line never falls back between steps.
+  const reached = stepKeys.reduce((n, k, i) => (progress.steps[k] !== "pending" ? i : n), 0);
+  const overlay = (
+    <WaitOverlay
+      open={phase.kind === "working" || phase.kind === "review"}
+      kind="papers"
+      eyebrow={filename}
+      lines={stepKeys.map((k) => WAIT_LINES[k])}
+      stage={reached}
+      state={phase.kind === "review" ? "done" : "working"}
+      sub="Nothing is saved until you review it."
+      still="Still reading. Long résumés take a little longer."
+      long="Taking longer than usual. Keep this page open."
+      done="Got it"
+    />
+  );
+
+  return (
+    <>
+      {overlay}
+      {view()}
+    </>
+  );
+
+  function view() {
   if (phase.kind === "review") {
     return (
       <>
@@ -414,6 +451,7 @@ export function OnboardingFlow() {
       </Card>
     </div>
   );
+  }
 }
 
 function StepRow({

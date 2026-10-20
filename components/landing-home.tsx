@@ -76,7 +76,7 @@ export function LandingHome({ hrefs }: { hrefs: LandingHrefs }) {
             {/* The product's law, in the product's own copy. */}
             <p style={i(5)} className="intro-item mb-[34px] max-w-[46ch] text-[clamp(16px,1.4vw,17px)] leading-[1.55] [text-wrap:pretty]">
               <strong className="rounded-[6px] bg-[var(--color-accent-500)] px-1.5 py-px">Nothing is invented.</strong>{" "}
-              Every line comes from your real work — what you can&rsquo;t back up becomes a to-learn list, not a lie.
+              Every line is your real work.
             </p>
             <div style={i(6)} className="intro-item flex flex-wrap items-center gap-x-[18px] gap-y-3.5">
               <Link href={hrefs.start} data-help="landing-cta" className="btn btn-primary btn-lg no-underline">
@@ -99,9 +99,9 @@ export function LandingHome({ hrefs }: { hrefs: LandingHrefs }) {
       />
       <ol className="grid gap-[clamp(20px,2.4vw,32px)] [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
         {[
-          ["Add your résumé once", "Upload it and check what we read. It becomes the profile everything else draws on."],
-          ["Paste any posting", "Any role, any field. Roleform reads what it asks for and how much of it you already cover."],
-          ["Get the full kit", "Tailored drafts, likely questions, a gap plan and a checklist — all for that one role."],
+          ["Add your résumé once", "Upload it and check what we read."],
+          ["Paste any posting", "Any role, any field."],
+          ["Get the full kit", "Drafts, questions, gaps and a checklist."],
         ].map(([title, body], n) => (
           <li key={title} data-rv data-rv-d={n * 90} className="flex flex-col gap-3.5">
             <div className="flex items-center gap-3.5">
@@ -129,12 +129,12 @@ export function LandingHome({ hrefs }: { hrefs: LandingHrefs }) {
       <SectionHead
         eyebrow="Everything inside"
         title={["Every step of the", "switch, covered."]}
-        lede="Each tool hands its work to the next, so nothing you do for one step is wasted on the next."
+        lede="Each tool hands its work to the next."
       />
       <div className="mt-[clamp(24px,3vw,48px)] flex flex-col gap-[clamp(72px,9vw,136px)]">
         <Feature
           n={1} kicker="Find" title="Find roles worth applying to" panel="bg-[var(--color-bg-raised)]"
-          body="Search postings, save the promising ones and see where every application stands."
+          body="Find, save and track every role you apply to."
           points={["Search and save in one place", "A status for every role", "One tap to analyse a listing"]}
           cta={{ href: hrefs.jobs, label: "Search jobs" }}
         >
@@ -142,7 +142,7 @@ export function LandingHome({ hrefs }: { hrefs: LandingHrefs }) {
         </Feature>
         <Feature
           n={2} kicker="Fit" title="Know your fit before you apply" panel="bg-[var(--color-accent-500)]"
-          body="Paste any posting and see how much of it your experience already covers — and exactly what’s missing."
+          body="See what a posting asks for, and how much you already cover."
           points={["Works for any role or field", "Covered, partial and missing", "No made-up ATS score"]}
           cta={{ href: hrefs.analyze, label: "Analyse a posting" }}
         >
@@ -150,7 +150,7 @@ export function LandingHome({ hrefs }: { hrefs: LandingHrefs }) {
         </Feature>
         <Feature
           n={3} kicker="Tailor" title="A résumé shaped for every role" panel="bg-[var(--color-sage-500)]"
-          body={`${drafts} drafts from the same true evidence, rewritten in the posting’s own language.`}
+          body={`${drafts} drafts from your real experience, in the posting’s words.`}
           points={["Classic to creative templates", "An honest ATS rating on each", "Every line traces back to you"]}
           cta={{ href: hrefs.resumes, label: "See the drafts" }}
         >
@@ -158,7 +158,7 @@ export function LandingHome({ hrefs }: { hrefs: LandingHrefs }) {
         </Feature>
         <Feature
           n={4} kicker="Rehearse" title="The questions you’ll actually face" panel="bg-[var(--color-bg-raised)]"
-          body="Drawn from the posting itself, each pointing at the story you should answer from."
+          body="Each question points at the story to answer with."
           points={["Role-specific and behavioural", "The story to answer from", "Full worked answers"]}
           cta={{ href: hrefs.prep, label: "Practise questions" }}
         >
@@ -166,7 +166,7 @@ export function LandingHome({ hrefs }: { hrefs: LandingHrefs }) {
         </Feature>
         <Feature
           n={5} kicker="Cram" title="Rapid prep for the night before" panel="bg-[var(--color-text)]"
-          body="Revise the posting’s topics, quiz yourself against the clock, then solve one under interview conditions."
+          body="Revise, quiz yourself, then solve one against the clock."
           points={["Quick topic revision", "Timed self-tests", "One live run-through"]}
           cta={{ href: hrefs.rapid, label: "Start rapid prep" }}
         >
@@ -174,7 +174,7 @@ export function LandingHome({ hrefs }: { hrefs: LandingHrefs }) {
         </Feature>
         <Feature
           n={6} kicker="Grow" title="Close the gaps that matter" panel="bg-[var(--color-bg-raised)]"
-          body="What the posting wants that you can’t show yet — ranked by how often it’s asked for."
+          body="What you can’t show yet, ranked by how often it’s asked for."
           points={["Ranked by demand", "Vetted courses to close each", "Never faked on your résumé"]}
           cta={{ href: hrefs.learning, label: "See your gaps" }}
         >
@@ -182,7 +182,7 @@ export function LandingHome({ hrefs }: { hrefs: LandingHrefs }) {
         </Feature>
         <Feature
           n={7} kicker="Plan" title="One checklist to the finish line" panel="bg-[var(--color-sage-500)]"
-          body="Prepare, rehearse, learn, apply — every step for this role, in order, ticked off as you go."
+          body="Every step for this role, in order."
           points={["Four clear stages", "Each step opens its tool", "Progress saved as you go"]}
           cta={{ href: hrefs.roadmap, label: "Open the roadmap" }}
         >
@@ -198,7 +198,7 @@ export function LandingHome({ hrefs }: { hrefs: LandingHrefs }) {
         </Feature>
         <Feature
           n={9} kicker="Track" title="Every application, in one place" panel="bg-[var(--color-sage-300)]"
-          body="Each posting you’ve analysed, with its drafts, prep and plan — ready when the recruiter calls back."
+          body="Every posting you’ve analysed, ready when they call back."
           points={["Every analysis saved", "Drafts and prep kept together", "Pick up where you left off"]}
           cta={{ href: hrefs.history, label: "View history" }}
         >

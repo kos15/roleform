@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, CircleDashed, Loader2, TriangleAlert } from "lucide-react";
 import { Button, ErrorRegion } from "@/components/ui";
 import { StageFigure } from "@/components/stage-figure";
-import { InfoNote } from "@/components/info-note";
+import { WaitOverlay } from "@/components/wait-overlay";
 import { TokenWallDialog } from "@/components/token-wall";
 import { STAGES, type StageKey, type StageState, type StageUpdate } from "@/lib/pipeline/stages";
 import type { AppError } from "@/lib/domain/types";
@@ -52,6 +52,8 @@ export function ParsingScreen({
   // effect firing twice per attempt; this is what makes a second attempt a
   // different attempt rather than a re-render.
   const [attempt, setAttempt] = useState(0);
+  // The run's last word was success: the card plays its finish, then we go.
+  const [finishing, setFinishing] = useState(false);
 
   // A run that arrived already failed does not restart itself — that would bill
   // a member for reloading a page. It restarts when they ask, which is what
@@ -185,8 +187,12 @@ export function ParsingScreen({
         return;
       }
 
-      router.refresh();
-      router.push(`/analysis/${analysisId}/resumes`);
+      setFinishing(true);
+      setTimeout(() => {
+        if (controller.signal.aborted) return;
+        router.refresh();
+        router.push(`/analysis/${analysisId}/resumes`);
+      }, 1400);
     })().catch(() => {
       started.current = false;
       setFailed("The connection dropped partway through.");
@@ -332,9 +338,21 @@ export function ParsingScreen({
         })}
       </ol>
 
-      <InfoNote className="mt-9">
-        A stage that fails stops there and says what failed — we resume rather than restart.
-      </InfoNote>
+      {/* The galaxy card (design 2a) over the page. Its stage is the one the
+          pipeline says is running — the same `current` the page shows. */}
+      <WaitOverlay
+        open
+        kind="galaxy"
+        eyebrow="Analysing the posting"
+        lines={STAGES.map((s) => s.label)}
+        stage={STAGES.indexOf(current)}
+        state={finishing ? "done" : "working"}
+        sub="Every line we write stays keyed to something you actually did."
+        still="Still going. This part reads every requirement against your own words."
+        long="Taking longer than usual. You can leave — it keeps running and waits in History."
+        done="Your drafts are ready"
+        run={attempt}
+      />
     </div>
   );
 }
