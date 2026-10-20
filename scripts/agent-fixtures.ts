@@ -12,6 +12,9 @@ import { postingReader } from "../lib/ai/agents/posting-reader";
 import { profileReader } from "../lib/ai/agents/profile-reader";
 import { bulletTailor } from "../lib/ai/agents/bullet-tailor";
 import { summaryTailor } from "../lib/ai/agents/summary-tailor";
+import { questionWriter } from "../lib/ai/agents/question-writer";
+import { answerWriter } from "../lib/ai/agents/answer-writer";
+import { learningPlanner } from "../lib/ai/agents/learning-planner";
 
 let passed = 0;
 const pending: Promise<void>[] = [];
@@ -132,5 +135,23 @@ console.log("ported agents (3b)");
     assert.deepEqual(summaryTailor.outputGuards, ["no_urls", "tone"]);
   });
 }
+
+console.log("ported agents (3c)");
+check("QuestionWriter verify demands exactly four likely questions and real bullet ids", async () => {
+  const input = { jobTitle: "T", company: "", requirements: [], bullets: [{ id: "b1", text: "x" }], absentRequirements: [] } as never;
+  const q = (likely: boolean, ids: string[], type = "behavioural") => ({ type, likely, evidenceBulletIds: ids });
+  const three = { questions: [q(true, ["b1"]), q(true, ["b1"]), q(true, ["b1"])] } as never;
+  assert.match((await questionWriter.verify!(three, input)) ?? "", /Exactly four/);
+  const invented = { questions: [q(true, ["b9"]), q(true, ["b1"]), q(true, ["b1"]), q(true, ["b1"])] } as never;
+  assert.match((await questionWriter.verify!(invented, input)) ?? "", /do not exist: b9/);
+});
+check("AnswerWriter verify rejects a hook citing a bullet it was not shown", async () => {
+  const input = { evidenceBullets: [{ id: "b1" }], otherBullets: [{ id: "b2" }] } as never;
+  assert.notEqual(await answerWriter.verify!({ resumeHooks: [{ bulletId: "b3" }] } as never, input), null);
+  assert.equal(await answerWriter.verify!({ resumeHooks: [{ bulletId: "b2" }] } as never, input), null);
+});
+check("LearningPlanner has no checker (N12: exactly one model call per run)", () => {
+  assert.equal(learningPlanner.checker, undefined);
+});
 
 void Promise.all(pending).then(() => console.log(`ok — ${passed} checks`));
