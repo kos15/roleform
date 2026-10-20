@@ -1,9 +1,8 @@
 import "server-only";
-import { runStructured } from "./run";
-import { TailoredBulletSchema, TailorSummarySchema } from "./schemas/tailored-bullets";
-import { PROMPT_VERSIONS, SYSTEM } from "./prompts";
+import { runAgent } from "./agents/define";
+import { bulletTailor } from "./agents/bullet-tailor";
+import { summaryTailor } from "./agents/summary-tailor";
 import { checkFabrication } from "@/lib/domain/fabrication";
-import { noUrls } from "@/lib/domain/guardrails";
 import type { DomainBullet, DomainRequirement, Result, Transform } from "@/lib/domain/types";
 
 /**
@@ -67,53 +66,11 @@ export async function tailorBullet(args: {
     };
   }
 
-  const outcome = await runStructured({
-    purpose: "tailor_bullet",
-    promptVersion: PROMPT_VERSIONS.tailorBullets,
-    model: "writer",
-    schema: TailoredBulletSchema,
-    system: SYSTEM.tailorBullets,
-    prompt: [
-      `Role being applied for: ${args.jobTitle}`,
-      ``,
-      `<requirement necessity="${requirement.necessity}">`,
-      requirement.text,
-      `</requirement>`,
-      ``,
-      `<bullet id="${bullet.id}">`,
-      bullet.text,
-      `</bullet>`,
-    ].join("\n"),
-    reasoningEffort: "low",
-    clerkUserId: args.clerkUserId,
-    analysisId: args.analysisId,
-    maxOutputTokens: 200,
-    // A 200-token answer that hasn't arrived in 30s isn't coming. The 120s
-    // default let one stuck call hold a whole run; this fails open to the
-    // original bullet instead, like any other failure here.
-    timeoutMs: 30_000,
-    // specs §10: one retry, then fail open to the original.
-    retries: 1,
-    verify: (value) => {
-      // M4.2 — id verification. An invented id never reaches the FK.
-      if (value.sourceBulletId !== bullet.id) {
-        return `sourceBulletId must be exactly "${bullet.id}". You returned "${value.sourceBulletId}".`;
-      }
-      // M4.3 — content guardrails, before we spend a second round trip on it.
-      const findings = checkFabrication({
-        source: bullet.text,
-        rewritten: value.rewrittenText,
-        profileTerms: args.profileTerms,
-      });
-      if (findings.length > 0) {
-        return findings
-          .map((f) => `Remove "${f.token}" — ${f.reason}. Only what the source bullet states.`)
-          .join(" ");
-      }
-      // GR-3: a résumé bullet is never a place a model puts a link.
-      return noUrls(value.rewrittenText);
-    },
-  });
+  const outcome = await runAgent(
+    bulletTailor,
+    { jobTitle: args.jobTitle, bullet, requirement, profileTerms: args.profileTerms },
+    { clerkUserId: args.clerkUserId, analysisId: args.analysisId },
+  );
 
   // Fail open to the original. A verbatim bullet is always defensible; a
   // fabricated one is the single failure this product cannot survive.
@@ -180,37 +137,15 @@ export async function tailorSummary(args: {
   tailored: TailoredResult[];
   profileTerms: string[];
 }): Promise<Result<{ summary: string; professionalSummary: string; aiRunId: string }>> {
-  const bulletText = args.tailored
-    .filter((t) => t.transform !== "omit")
-    .map((t) => `- ${t.rewrittenText}`)
-    .join("\n");
-
-  const outcome = await runStructured({
-    purpose: "tailor_summary",
-    promptVersion: PROMPT_VERSIONS.tailorSummary,
-    model: "writer-fast",
-    schema: TailorSummarySchema,
-    system: SYSTEM.tailorSummary,
-    prompt: `Role: ${args.jobTitle}\n\nBullets already on the résumé:\n${bulletText}`,
-    reasoningEffort: "low",
-    clerkUserId: args.clerkUserId,
-    analysisId: args.analysisId,
-    maxOutputTokens: 400,
-    // Falls back to the stock line below on timeout, so waiting longer buys nothing.
-    timeoutMs: 45_000,
-    retries: 1,
-    verify: (value) => {
-      const findings = checkFabrication({
-        source: args.tailored.map((t) => t.rewrittenText).join(" "),
-        rewritten: value.professionalSummary,
-        profileTerms: args.profileTerms,
-      });
-      if (findings.length > 0) {
-        return findings.map((f) => `Remove "${f.token}" — ${f.reason}.`).join(" ");
-      }
-      return noUrls(value);
+  const outcome = await runAgent(
+    summaryTailor,
+    {
+      jobTitle: args.jobTitle,
+      bullets: args.tailored.filter((t) => t.transform !== "omit").map((t) => t.rewrittenText),
+      profileTerms: args.profileTerms,
     },
-  });
+    { clerkUserId: args.clerkUserId, analysisId: args.analysisId },
+  );
 
   if (!outcome.ok) {
     return {

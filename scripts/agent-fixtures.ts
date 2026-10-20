@@ -10,6 +10,8 @@ import { assemblePrompt, PROMPT_SEPARATOR } from "../lib/ai/agents/prompt";
 import { applyInputGuards, outputGuardProblem } from "../lib/ai/agents/guards";
 import { postingReader } from "../lib/ai/agents/posting-reader";
 import { profileReader } from "../lib/ai/agents/profile-reader";
+import { bulletTailor } from "../lib/ai/agents/bullet-tailor";
+import { summaryTailor } from "../lib/ai/agents/summary-tailor";
 
 let passed = 0;
 const pending: Promise<void>[] = [];
@@ -102,5 +104,33 @@ check("ProfileReader ceiling doubles for reasoning and grows after a truncation"
   assert.equal(f({ text: "x".repeat(3_000), previousFailure: null }), 8_000);
   assert.ok(f({ text: "x".repeat(3_000), previousFailure: "truncated" }) > 8_000);
 });
+
+console.log("ported agents (3b)");
+{
+  const input = {
+    jobTitle: "Data Analyst",
+    bullet: { id: "b1", text: "Built weekly sales reports in Excel for the regional team." } as never,
+    requirement: { id: "r1", necessity: "required", text: "Reporting in Excel" } as never,
+    profileTerms: ["Excel"],
+  };
+  check("BulletTailor verify rejects an invented bullet id", async () => {
+    const out = { sourceBulletId: "b9", rewrittenText: "x", transform: "rephrase" } as never;
+    assert.match((await bulletTailor.verify!(out, input as never)) ?? "", /sourceBulletId must be exactly "b1"/);
+  });
+  check("BulletTailor verify rejects a tool the profile never states", async () => {
+    const out = { sourceBulletId: "b1", rewrittenText: "Built weekly sales dashboards in PowerBI for the regional team.", transform: "rephrase" } as never;
+    assert.notEqual(await bulletTailor.verify!(out, input as never), null);
+  });
+  check("BulletTailor sends one requirement and one bullet, never the posting", () => {
+    const p = assemblePrompt(bulletTailor, input as never);
+    assert.ok(p.startsWith("Role being applied for: Data Analyst"));
+    assert.ok(p.includes('<bullet id="b1">'));
+    assert.ok(!p.includes("<posting>"));
+  });
+  check("tailoring agents declare links and tone as output guards", () => {
+    assert.deepEqual(bulletTailor.outputGuards, ["no_urls", "tone"]);
+    assert.deepEqual(summaryTailor.outputGuards, ["no_urls", "tone"]);
+  });
+}
 
 void Promise.all(pending).then(() => console.log(`ok — ${passed} checks`));
