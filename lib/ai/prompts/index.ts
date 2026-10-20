@@ -36,9 +36,9 @@
  */
 
 export const PROMPT_VERSIONS = {
-  extractProfile: "extract-profile@3",
-  transcribeDocument: "transcribe-document@1",
-  analyzeJd: "analyze-jd@3",
+  extractProfile: "extract-profile@4",
+  transcribeDocument: "transcribe-document@2",
+  analyzeJd: "analyze-jd@4",
   tailorBullets: "tailor-bullets@3",
   tailorSummary: "tailor-summary@3",
   generateQuestions: "interview-questions@4",

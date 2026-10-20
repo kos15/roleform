@@ -8,12 +8,19 @@ import assert from "node:assert/strict";
 import { MODELS, openaiOptions } from "../lib/ai/models";
 import { assemblePrompt, PROMPT_SEPARATOR } from "../lib/ai/agents/prompt";
 import { applyInputGuards, outputGuardProblem } from "../lib/ai/agents/guards";
+import { postingReader } from "../lib/ai/agents/posting-reader";
+import { profileReader } from "../lib/ai/agents/profile-reader";
 
 let passed = 0;
-function check(name: string, fn: () => void) {
-  fn();
-  passed++;
-  console.log(`  ✓ ${name}`);
+const pending: Promise<void>[] = [];
+function check(name: string, fn: () => void | Promise<void>) {
+  const r = fn();
+  const done = () => {
+    passed++;
+    console.log(`  ✓ ${name}`);
+  };
+  if (r instanceof Promise) pending.push(r.then(done));
+  else done();
 }
 
 console.log("models");
@@ -78,4 +85,22 @@ check("clean output passes every output guard", () => {
   assert.equal(outputGuardProblem({ t: "Led the migration of billing to Postgres." }, ["no_urls", "tone"]), null);
 });
 
-console.log(`ok — ${passed} checks`);
+console.log("ported agents (3a)");
+check("PostingReader verify rejects a quote the posting does not contain, accepts one it does", async () => {
+  const text = "We need 5 years of TypeScript and experience with Postgres in production.";
+  const req = (quote: string) => ({ requirements: [{ evidenceQuote: quote }] }) as never;
+  assert.notEqual(await postingReader.verify!(req("Kubernetes at scale"), { text }), null);
+  assert.equal(await postingReader.verify!(req("5 years of TypeScript"), { text }), null);
+});
+check("PostingReader prompt: static instruction first, posting after the separator", () => {
+  const p = assemblePrompt(postingReader, { text: "BODY" });
+  assert.ok(p.startsWith("Extract the requirements from this posting."));
+  assert.ok(p.endsWith("<posting>\nBODY\n</posting>"));
+});
+check("ProfileReader ceiling doubles for reasoning and grows after a truncation", () => {
+  const f = profileReader.maxOutputTokens as (i: { text: string; previousFailure: null | "truncated" }) => number;
+  assert.equal(f({ text: "x".repeat(3_000), previousFailure: null }), 8_000);
+  assert.ok(f({ text: "x".repeat(3_000), previousFailure: "truncated" }) > 8_000);
+});
+
+void Promise.all(pending).then(() => console.log(`ok — ${passed} checks`));

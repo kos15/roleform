@@ -28,7 +28,8 @@ export interface AgentDef<I, S extends z.ZodType> {
   /** This call's own data. Input guards apply to this part only. */
   dynamicContext: (input: I) => string;
   reasoningEffort: ReasoningEffort;
-  maxOutputTokens: number;
+  /** Includes reasoning tokens. A function when the ceiling depends on the input. */
+  maxOutputTokens: number | ((input: I) => number);
   timeoutMs?: number;
   /** Corrective retries for schema, output-guard and verify failures. */
   retries: number;
@@ -72,7 +73,8 @@ export async function runAgent<I, S extends z.ZodType>(
     cacheKey: `${agent.name}@${agent.promptVersion}`,
     clerkUserId: ctx.clerkUserId,
     analysisId: ctx.analysisId,
-    maxOutputTokens: agent.maxOutputTokens,
+    maxOutputTokens:
+      typeof agent.maxOutputTokens === "function" ? agent.maxOutputTokens(input) : agent.maxOutputTokens,
     timeoutMs: agent.timeoutMs,
     retries: agent.retries,
     files: agent.files?.(input),
