@@ -12,7 +12,9 @@ import { capColumns } from "../lib/plans/catalog";
 import { capsFromDefaults } from "../lib/admin/defaults";
 import { fairUseCeiling, WORST_CASE } from "../lib/domain/tokens";
 import { lowCountNotice } from "../lib/domain/quotas";
-import { withFairUseFloor } from "../lib/domain/tokens";
+import { withFairUseFloor, fairUseWall, headroomFor } from "../lib/domain/tokens";
+import { FEATURES } from "../lib/domain/features";
+import { readFileSync } from "node:fs";
 import { ANALYSIS_TOKEN_CEILING } from "../lib/domain/tokens";
 import { unspentTopups } from "../lib/db/queries/tokens";
 import { PRE_CHANGE_ALLOWANCE } from "../lib/domain/entitlements";
@@ -139,6 +141,36 @@ check("I3: raising counts by hand lifts the hidden ceiling with them", () => {
   const floored = withFairUseFloor(caps);
   assert.ok(floored.tokens >= fairUseCeiling(caps, WORST_CASE));
   assert.equal(withFairUseFloor({ ...PLANS[0].caps, tokens: 19_000_000 }).tokens, 19_000_000);
+});
+
+console.log("deferred minors");
+const wallArgs = {
+  planName: "Pro",
+  resetDate: "26 Oct",
+  resetIn: "in 5 days",
+  upgrade: { id: "ultra", name: "Ultra", price: "₹1,299", note: "More" },
+  topups: [{ id: "topup-5a", name: "5 extra analyses", price: "₹99", analyses: 5, note: "One-off" }],
+};
+check("M3: analysis packs are offered only on an analysis wall", () => {
+  assert.equal(fairUseWall({ kind: "analysis", ...wallArgs }).topups.length, 1);
+  assert.equal(fairUseWall({ kind: "answer", ...wallArgs }).topups.length, 0);
+  assert.equal(fairUseWall({ kind: "quiz", ...wallArgs }).topups.length, 0);
+});
+check("M3: a pack's headroom lifts the ceiling for analyses only", () => {
+  assert.equal(headroomFor("analysis", 120_000), 120_000);
+  assert.equal(headroomFor("answer", 120_000), 0);
+  assert.equal(headroomFor("challenge", 120_000), 0);
+});
+check("M4: the wall the browser receives carries no balance, shortfall, estimate or stages", () => {
+  const wall = fairUseWall({ kind: "analysis", ...wallArgs }) as unknown as Record<string, unknown>;
+  for (const k of ["balance", "shortfall", "estimate", "stages"]) assert.ok(!(k in wall), k);
+});
+check("M6: the usage panel uses radius tokens, not pixel radii (N9)", () => {
+  const src = readFileSync("app/(app)/profile/usage-panel.tsx", "utf8");
+  assert.doesNotMatch(src, /rounded-\[\d+px\]/);
+});
+check("M7: the AI fact-checkers switch says it also covers the injection check", () => {
+  assert.match(FEATURES.find((f) => f.key === "ai_checkers")!.description, /injection/i);
 });
 
 console.log(`ok — ${passed} checks`);

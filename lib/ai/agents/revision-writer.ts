@@ -32,7 +32,7 @@ export const revisionWriter = defineAgent({
   reasoningEffort: "low",
   maxOutputTokens: (i) => (300 + i.count * 230) * 2,
   retries: 1,
-  inputGuards: [],
+  inputGuards: ["pii"],
   // Prep scope: odds and comparison banned; teaching about weaknesses is not.
   outputGuards: ["no_urls", "tone_prep"],
   verify: (value, i) => {

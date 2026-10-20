@@ -10,6 +10,8 @@ import { getProfile } from "@/lib/db/queries/profile";
 import { findByContentHash } from "@/lib/db/queries/analysis";
 import { JD_MIN_CHARS, scanForInjection } from "@/lib/domain/guardrails";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
+import { analysesAvailable } from "@/lib/domain/entitlements";
+import { cycleStart } from "@/lib/domain/quotas";
 
 /**
  * Creating an analysis (F2).
@@ -113,26 +115,59 @@ export async function createAnalysis(input: {
 
   // The row IS the charge — see lib/auth.ts. A create that throws leaves
   // nothing behind, so there is no refund to get wrong.
-  const row = await db.analysis.create({
-    data: {
-      clerkUserId: user.value,
-      profileId: profile.id,
-      jdSource: input.source,
-      jdFilename: filename,
-      rawText,
-      contentHash,
-      status: "parsing",
-      stageState: { injection: injection.patterns },
-      listingId: input.listingId ?? null,
-      // Paid from a pack rather than the month's cap — the stored fact that
-      // `bonusSpent` counts (lib/domain/entitlements.ts#analysesAvailable).
-      fromBonus: allowance.value.fromBonus,
-      // Stamped only when the wall was real. Queuing a run we could afford
-      // would park a posting for no reason and hide it behind a reset date.
-      queuedAt: walled ? new Date() : null,
-    },
-    select: { id: true },
+  //
+  // Decided again inside a per-member advisory lock: the check above ran
+  // before the injection scan and the token check, so two runs started at
+  // once could both see the last analysis — from the month or from a pack —
+  // and both take it. Under the lock the second one sees the first's row.
+  const row = await db.$transaction(async (tx) => {
+    await tx.$executeRaw`select pg_advisory_xact_lock(hashtext(${user.value}))`;
+    let fromBonus = false;
+    if (Number.isFinite(allowance.value.cap)) {
+      const member = await tx.user.findUnique({ where: { clerkUserId: user.value }, select: { quotaResetsAt: true } });
+      const usedThisCycle = await tx.analysis.count({
+        where: { clerkUserId: user.value, fromBonus: false, createdAt: { gte: cycleStart(member?.quotaResetsAt ?? null) } },
+      });
+      const granted = await tx.analysisGrant.aggregate({ where: { clerkUserId: user.value }, _sum: { analyses: true } });
+      const bonusSpent = await tx.analysis.count({ where: { clerkUserId: user.value, fromBonus: true } });
+      const decision = analysesAvailable({
+        cap: allowance.value.cap,
+        usedThisCycle,
+        bonusGranted: granted._sum.analyses ?? 0,
+        bonusSpent,
+      });
+      if (!decision.allowed) return null;
+      fromBonus = decision.fromBonus;
+    }
+    return tx.analysis.create({
+      data: {
+        clerkUserId: user.value,
+        profileId: profile.id,
+        jdSource: input.source,
+        jdFilename: filename,
+        rawText,
+        contentHash,
+        status: "parsing",
+        stageState: { injection: injection.patterns },
+        listingId: input.listingId ?? null,
+        // Paid from a pack rather than the month's cap — the stored fact that
+        // `bonusSpent` counts (lib/domain/entitlements.ts#analysesAvailable).
+        fromBonus,
+        // Stamped only when the wall was real. Queuing a run we could afford
+        // would park a posting for no reason and hide it behind a reset date.
+        queuedAt: walled ? new Date() : null,
+      },
+      select: { id: true },
+    });
   });
+  if (!row) {
+    return err(
+      appError(
+        "quota_exhausted",
+        "Another run just used your last analysis this cycle. Your existing analyses stay available.",
+      ),
+    );
+  }
 
   if (input.listingId) await bindSavedJob(user.value, input.listingId, row.id);
 

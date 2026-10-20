@@ -30,7 +30,7 @@ export const quizWriter = defineAgent({
   reasoningEffort: "low",
   maxOutputTokens: (i) => (300 + i.count * 190) * 2,
   retries: 1,
-  inputGuards: [],
+  inputGuards: ["pii"],
   outputGuards: ["no_urls", "tone_prep"],
   verify: (value) => {
     for (const [n, q] of value.questions.entries()) {

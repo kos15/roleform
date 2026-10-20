@@ -1328,8 +1328,11 @@ The résumé templates remain exempt from the brand and render black on white (�
 > rounded up (`pnpm topups:convert`), and legacy token-pack orders still credit tokens. Rapid prep
 > has its own count, **practice sessions** (`cap_practice`, 3/40/150): a deck, round or challenge the
 > model wrote counts one; retakes, bank problems and reviews are free. `pnpm check:tokencopy` fails
-> if member-facing copy mentions tokens. The text below is the meter's history and still describes
-> the internal mechanics.
+> if member-facing copy mentions tokens. Packs are offered — and their headroom lifts the ceiling —
+> only on an analysis wall; the wall the browser receives carries no balance, shortfall or estimate
+> (`fairUseWall`). A new analysis is decided again inside a per-member advisory lock, so two runs
+> started at once cannot both take the last one. The Résumés tab now opens with the portfolio card.
+> The text below is the meter's history and still describes the internal mechanics.
 
 The fifth cap, and the only one that measures what a run *costs* rather than how many of them there
 were. An analysis of a 400-word posting and one of a six-page posting are both "1" to `capAnalyses`,

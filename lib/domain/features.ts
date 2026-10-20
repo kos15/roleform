@@ -17,7 +17,7 @@ export const FEATURES: FeatureDef[] = [
     key: "ai_checkers",
     label: "AI fact-checkers",
     description:
-      "Jev checks every tailored bullet, summary and full answer for claims the member's profile can't back. Off leaves the built-in rules on their own.",
+      "Jev checks every tailored bullet, summary and full answer for claims the member's profile can't back, and runs the prompt-injection check on postings and résumés. Off leaves the built-in rules on their own.",
   },
   {
     key: "jobs",

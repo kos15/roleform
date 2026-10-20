@@ -8,7 +8,7 @@
  */
 import { z } from "zod";
 import { CHECK_KINDS } from "./verdict";
-import type { CheckKind } from "./types";
+import type { FabricationCheckKind } from "./types";
 
 export interface SystemOneRequest {
   model: string;
@@ -32,7 +32,7 @@ export const JevResponseSchema = z.object({
 });
 export type JevResponse = z.infer<typeof JevResponseSchema>;
 
-const KIND_CRITERIA: Record<CheckKind, string> = {
+const KIND_CRITERIA: Record<FabricationCheckKind, string> = {
   metric: "It states a number, percentage or count the source does not state.",
   tool: "It names a tool, technology, language or platform the member's profile does not state.",
   seniority: "It raises the member's title, ownership, leadership or seniority beyond the source.",

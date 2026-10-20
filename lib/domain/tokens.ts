@@ -158,7 +158,6 @@ export interface TokenWallOffer {
   id: string;
   name: string;
   price: string;
-  tokens: number;
   note: string;
 }
 
@@ -174,16 +173,15 @@ export interface TokenWallOffer {
  * action returns, so there is no second place where a wall could be assembled
  * differently and disagree with the enforcement that raised it.
  */
+/**
+ * What the browser receives when the fair-use ceiling refuses work (counts-only
+ * pricing). No balance, shortfall, estimate or stage costs: members never see
+ * tokens, and a number the page does not render should not be in the payload
+ * either. Built only by `fairUseWall`.
+ */
 export interface TokenWall {
   kind: SpendKind;
-  /** What we expect the refused work to cost. */
-  estimate: number;
-  /** estimate − left. Always > 0 when a wall is raised. */
-  shortfall: number;
-  balance: TokenBalance;
   planName: string;
-  /** Per-stage estimates, so "where the 20,000 would go" is itemised. */
-  stages: TokenStage[];
   resetDate: string;
   resetIn: string;
   /**
@@ -260,4 +258,37 @@ export function fairUseCeiling(
  */
 export function withFairUseFloor<C extends { tokens: number; analyses: number; answers: number; practice: number }>(caps: C): C {
   return { ...caps, tokens: Math.max(caps.tokens, fairUseCeiling(caps, WORST_CASE)) };
+}
+
+/**
+ * The fair-use wall, as the browser receives it. Packs are extra ANALYSES, so
+ * they are offered only when an analysis was refused — on an answer or a
+ * practice wall they would sell something that does not help.
+ */
+export function fairUseWall(args: {
+  kind: SpendKind;
+  planName: string;
+  resetDate: string;
+  resetIn: string;
+  upgrade: TokenWallOffer | null;
+  topups: TopupOffer[];
+}): TokenWall {
+  return {
+    kind: args.kind,
+    planName: args.planName,
+    resetDate: args.resetDate,
+    resetIn: args.resetIn,
+    // Only an analysis carries a stored posting to come back to.
+    canQueue: args.kind === "analysis",
+    upgrade: args.upgrade,
+    topups: args.kind === "analysis" ? args.topups : [],
+  };
+}
+
+/**
+ * Unspent extra analyses lift the hidden ceiling — for analyses only. A pack
+ * bought for analyses is not a way past the ceiling on answers or practice.
+ */
+export function headroomFor(kind: SpendKind, bonusHeadroom: number): number {
+  return kind === "analysis" ? bonusHeadroom : 0;
 }

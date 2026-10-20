@@ -31,7 +31,7 @@ export async function UsagePanel({ clerkUserId }: { clerkUserId: string }) {
   ];
 
   return (
-    <section data-help="usage-panel" className="rounded-[26px] bg-[var(--color-accent-500)] p-[clamp(1.25rem,2.6vw,1.9rem)]">
+    <section data-help="usage-panel" className="rounded-[var(--radius-xl)] bg-[var(--color-accent-500)] p-[clamp(1.25rem,2.6vw,1.9rem)]">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="eyebrow mb-2 text-[var(--color-text)]">This cycle</p>
@@ -40,7 +40,7 @@ export async function UsagePanel({ clerkUserId }: { clerkUserId: string }) {
               ? `${counts.analyses.used} analyses run`
               : `${(counts.analyses.left ?? 0) + counts.analyses.bonusLeft} analyses left`}
           </h3>
-          <p className="text-[14.5px] leading-normal">
+          <p className="text-sm leading-normal">
             {uncapped ? (
               "Admin · no limits"
             ) : (
@@ -57,7 +57,7 @@ export async function UsagePanel({ clerkUserId }: { clerkUserId: string }) {
         {uncapped ? <Tag tone="outline" className="min-h-8 px-3.5 font-extrabold">Unlimited</Tag> : null}
       </div>
 
-      <ul className="flex list-none flex-col gap-2.5 rounded-[18px] bg-[var(--color-bg-raised)] p-[18px] text-sm">
+      <ul className="flex list-none flex-col gap-2.5 rounded-[var(--radius-md)] bg-[var(--color-bg-raised)] p-[18px] text-sm">
         {rows.map(({ label, line, extra }) => (
           <li key={label} className="flex items-baseline justify-between gap-3">
             <span className="min-w-0 flex-1">{label}</span>
