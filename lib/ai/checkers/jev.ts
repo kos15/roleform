@@ -44,9 +44,15 @@ export async function jevAsk(args: {
     if (response.ok) {
       const result = JevResponseSchema.safeParse(await response.json());
       if (result.success) parsed = result.data;
+      // A shape we don't recognise would otherwise turn every checker into a
+      // silent no-op. Status and purpose only — never the state or answer (N7).
+      else console.warn(`[jev] ${args.purpose} unparseable response (${result.error.issues.length} issues)`);
+    } else {
+      console.warn(`[jev] ${args.purpose} HTTP ${response.status}`);
     }
-  } catch {
+  } catch (e) {
     // Timeout or network — fail open, recorded below.
+    console.warn(`[jev] ${args.purpose} ${e instanceof Error ? e.name : "error"}`);
   }
 
   await db.aiRun

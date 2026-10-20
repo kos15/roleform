@@ -143,3 +143,13 @@ export function analysesAvailable(args: {
 export function convertedAnalyses(unspentTokens: number, runEstimate: number): number {
   return unspentTokens <= 0 ? 0 : Math.ceil(unspentTokens / runEstimate);
 }
+
+/**
+ * Each plan's token allowance before counts-only pricing (Oct 2026). Frozen:
+ * the migration that made tokens a fair-use ceiling raised `cap_tokens`, and
+ * measuring old overruns against the raised figure would forgive every one of
+ * them — a spent top-up would convert as if it were new. Used only by
+ * `scripts/convert-token-topups.ts`. Plan defaults; a hand-set pre-change cap
+ * is not recorded anywhere, so the plan's figure is the honest approximation.
+ */
+export const PRE_CHANGE_ALLOWANCE = { free: 60_000, pro: 800_000, ultra: 3_000_000 } as const;

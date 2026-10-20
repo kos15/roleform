@@ -51,3 +51,7 @@ next-env.d.ts
 
 # Eval reports (scripts/evals) — local output, never committed
 scripts/evals/reports/
+
+# Editor swap files (one was committed by accident, Oct 2026)
+*.swp
+.*.sw?

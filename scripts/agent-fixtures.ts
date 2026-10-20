@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import { MODELS, openaiOptions } from "../lib/ai/models";
 import { assemblePrompt, PROMPT_SEPARATOR } from "../lib/ai/agents/prompt";
-import { applyInputGuards, outputGuardProblem } from "../lib/ai/agents/guards";
+import { applyInputGuards, outputGuardProblem, injectionCheckText } from "../lib/ai/agents/guards";
 import { postingReader } from "../lib/ai/agents/posting-reader";
 import { profileReader } from "../lib/ai/agents/profile-reader";
 import { bulletTailor } from "../lib/ai/agents/bullet-tailor";
@@ -23,6 +23,7 @@ import { fabricationRequest, answerClaimRequest, JevResponseSchema } from "../li
 import { decideAfterCheck, budgetsAfterGuardRetry } from "../lib/ai/checkers/loop";
 import { SKIPPED } from "../lib/ai/checkers/verdict";
 import { injectionRequest } from "../lib/ai/checkers/requests";
+import { sumUsage } from "../lib/ai/usage";
 
 let passed = 0;
 const pending: Promise<void>[] = [];
@@ -260,6 +261,41 @@ check("only the two document readers run the Jev injection check, each with its 
     .filter((a) => a.inputGuards.includes("injection_jev"))
     .map((a) => [a.name, (a as { documentKind?: string }).documentKind]);
   assert.deepEqual(readers.sort(), [["analyze_jd", "posting"], ["extract_profile", "resume"]]);
+});
+
+console.log("review fixes");
+check("C1: pii redaction never touches a bullet id, even an all-digit UUID group", () => {
+  const ids = ["12345678-abcd-4ef0-9123-456789012345", "abcdef12-1234-4567-8901-234567890123", "00000000-0000-4000-8000-000000000000"];
+  for (const id of ids) {
+    const r = applyInputGuards(`- id=${id} :: Built reports\n<bullet id="${id}">`, ["pii"]);
+    assert.ok(r.text.includes(`id=${id}`) && r.text.includes(`<bullet id="${id}">`), id);
+  }
+  assert.ok(!applyInputGuards("Call +91 98765 43210 today", ["pii"]).text.includes("98765"));
+});
+check("I4: usage is summed across every attempt, not just the last", () => {
+  assert.deepEqual(
+    sumUsage([
+      { inputTokens: 100, outputTokens: 20, cachedInputTokens: 10 },
+      { inputTokens: 120, outputTokens: 30, cachedInputTokens: 0 },
+    ]),
+    { inputTokens: 220, outputTokens: 50, cachedInputTokens: 10 },
+  );
+});
+check("M1: cached input never exceeds input (the ai_runs CHECK can't throw)", () => {
+  assert.deepEqual(sumUsage([{ inputTokens: 0, outputTokens: 5, cachedInputTokens: 40 }]), {
+    inputTokens: 0,
+    outputTokens: 5,
+    cachedInputTokens: 0,
+  });
+});
+check("I5: the checker model is TypeSafe's documented alias", () => {
+  assert.equal(MODELS.checker, "jev-latest");
+});
+
+check("I6: the Jev injection check never sees a résumé's contact details", () => {
+  const t = injectionCheckText("Asha Example\nasha@example.com · +91 98765 43210\nBuilt dashboards.");
+  assert.ok(!t.includes("asha@example.com") && !t.includes("98765"));
+  assert.ok(t.includes("Built dashboards."));
 });
 
 void Promise.all(pending).then(() => console.log(`ok — ${passed} checks`));

@@ -46,7 +46,7 @@ export const PLANS: Plan[] = [
     pricePaise: 0,
     unit: "forever",
     tagline: "Tailor against a real posting and see your gaps.",
-    caps: { tokens: 300_000, analyses: 3, resumes: 2, answers: 3, courses: 2, roadmaps: 1, jobSearches: 0, practice: 3 },
+    caps: { tokens: 530_000, analyses: 3, resumes: 2, answers: 3, courses: 2, roadmaps: 1, jobSearches: 0, practice: 3 },
     cta: "Start free",
   },
   {
@@ -56,7 +56,7 @@ export const PLANS: Plan[] = [
     pricePaise: 49_900,
     unit: "per month",
     tagline: "For an active search: every template, answers, roadmaps and job search.",
-    caps: { tokens: 3_960_000, analyses: 40, resumes: 11, answers: 40, courses: 4, roadmaps: 40, jobSearches: 60, practice: 40 },
+    caps: { tokens: 6_960_000, analyses: 40, resumes: 11, answers: 40, courses: 4, roadmaps: 40, jobSearches: 60, practice: 40 },
     cta: "Go Pro",
     featured: true,
   },
@@ -67,7 +67,7 @@ export const PLANS: Plan[] = [
     pricePaise: 129_900,
     unit: "per month",
     tagline: "For coaches and career centres running many searches.",
-    caps: { tokens: 15_150_000, analyses: 150, resumes: 11, answers: 200, courses: 6, roadmaps: 150, jobSearches: 200, practice: 150 },
+    caps: { tokens: 26_400_000, analyses: 150, resumes: 11, answers: 200, courses: 6, roadmaps: 150, jobSearches: 200, practice: 150 },
     cta: "Go Ultra",
   },
 ];
@@ -133,11 +133,13 @@ export const TOPUPS: Topup[] = [
 /**
  * The token packs sold before counts-only pricing (Oct 2026). Not on sale —
  * kept only so an order placed before the switch and paid after it is still
- * credited by the webhook, with exactly what was bought.
+ * credited by the webhook, as the analyses it was sold as.
  */
-export const LEGACY_TOKEN_TOPUPS: Array<{ id: string; tokens: number; pricePaise: number }> = [
-  { id: "topup-100k", tokens: 100_000, pricePaise: 9_900 },
-  { id: "topup-300k", tokens: 300_000, pricePaise: 24_900 },
+export const LEGACY_TOKEN_TOPUPS: Array<{ id: string; analyses: number; pricePaise: number }> = [
+  // Sold as "about 5 / 15 more full analyses" at the same prices as today's
+  // packs, so that is what they credit — tokens now buy nothing visible.
+  { id: "topup-100k", analyses: 5, pricePaise: 9_900 },
+  { id: "topup-300k", analyses: 15, pricePaise: 24_900 },
 ];
 
 export function topupById(id: string): Topup | null {

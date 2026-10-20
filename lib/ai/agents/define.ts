@@ -5,7 +5,7 @@ import type { ReasoningEffort } from "../models";
 import type { CheckVerdict } from "../checkers/types";
 import type { Result } from "@/lib/domain/types";
 import { PROMPT_SEPARATOR } from "./prompt";
-import { applyInputGuards, outputGuardProblem, type GuardId } from "./guards";
+import { applyInputGuards, injectionCheckText, outputGuardProblem, type GuardId } from "./guards";
 import { checkInjection } from "../checkers/injection";
 
 /**
@@ -72,7 +72,7 @@ export async function runAgent<I, S extends z.ZodType>(
   // Names and counts only — the flagged text is member or posting content (N7).
   if (agent.inputGuards.includes("injection_jev") && agent.documentKind) {
     // Flag and proceed (IN-5). The ai_runs row is the count; nothing else changes.
-    const verdict = await checkInjection(guarded.text, agent.documentKind, ctx);
+    const verdict = await checkInjection(injectionCheckText(guarded.text), agent.documentKind, ctx);
     if (verdict.flagged) guarded.flags.push("injection:jev");
   }
   if (guarded.flags.length > 0) console.warn(`[agent] ${agent.name} input flags: ${guarded.flags.join(",")}`);

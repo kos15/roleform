@@ -220,7 +220,11 @@ export function formatResetIn(date: Date, now: Date = new Date()): string {
  * long before this ceiling (N22).
  */
 export const WORST_CASE: Record<SpendKind, number> = {
-  analysis: SPEND.analysis.estimate * 3,
+  // Not estimate × 3: one run may spend the whole tailoring ceiling
+  // (ANALYSIS_TOKEN_CEILING, 60K) plus up to four in-flight bullet calls that
+  // finish past it (~10K), the reading, matching and questions stages at × 3
+  // (~35K) and the learning engine's own 15K ceiling — ≈ 120K.
+  analysis: 120_000,
   answer: SPEND.answer.estimate * 3,
   revision: SPEND.revision.estimate * 3,
   quiz: SPEND.quiz.estimate * 3,
@@ -245,4 +249,15 @@ export function fairUseCeiling(
     (caps.analyses * worst.analysis + caps.answers * worst.answer + caps.practice * practice) * 1.25 +
     bonusAnalyses * worst.analysis;
   return Math.ceil(spend / 10_000) * 10_000;
+}
+
+/**
+ * Caps with the hidden ceiling lifted to what the printed counts can spend
+ * (N22, fair use). Every writer of a cap set runs through this — plan
+ * configs, an admin editing one member, workspace defaults — so raising a
+ * count by hand can never leave the ceiling binding first. Never lowers a
+ * ceiling someone set higher.
+ */
+export function withFairUseFloor<C extends { tokens: number; analyses: number; answers: number; practice: number }>(caps: C): C {
+  return { ...caps, tokens: Math.max(caps.tokens, fairUseCeiling(caps, WORST_CASE)) };
 }

@@ -330,7 +330,7 @@ model User {
   /// from `ai_runs`, which already records the real input and output tokens of
   /// every call — so a run that dies half-way costs exactly what it burned,
   /// and no crash between two writes can drift a balance that isn't stored.
-  capTokens Int @default(300000) @map("cap_tokens") // per cycle — the hidden fair-use ceiling
+  capTokens Int @default(530000) @map("cap_tokens") // per cycle — the hidden fair-use ceiling
 
   /// The roadmap tab's build cap (F21). Counted from `roadmaps` rows created
   /// in the cycle — a roadmap costs zero tokens, so this is the only limiter.
@@ -455,7 +455,7 @@ model WorkspaceSettings {
   /// `settings` row we have to remember not to duplicate.
   id String @id @default("workspace")
 
-  capTokens      Int @default(300000) @map("cap_tokens")
+  capTokens      Int @default(530000) @map("cap_tokens")
   capAnalyses    Int @default(40) @map("cap_analyses")
   capResumes     Int @default(11) @map("cap_resumes")
   capAnswers     Int @default(40) @map("cap_answers")

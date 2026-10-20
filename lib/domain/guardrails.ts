@@ -46,7 +46,22 @@ export const JD_MAX_CHARS = 20_000;
  *
  * Names are retained — they appear in project attributions — per IN-4.
  */
+const UUID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
+
+/**
+ * Ids ride in the same text as the prose (`id=<uuid> :: bullet text`), and a
+ * UUID group of eight digits looks exactly like a phone number to the pattern
+ * below — about 1 id in 12 used to come out as `[PHONE]`, after which the
+ * model could not cite the bullet it was shown. Ids are set aside before any
+ * pattern runs and put back after, so redaction only ever touches prose.
+ */
 export function redactPii(text: string): string {
+  const ids: string[] = [];
+  const shielded = text.replace(UUID, (id) => `\u0000${ids.push(id) - 1}\u0000`);
+  return redactProse(shielded).replace(/\u0000(\d+)\u0000/g, (_, i: string) => ids[Number(i)]);
+}
+
+function redactProse(text: string): string {
   return text
     .replace(/\b[\w.+-]+@[\w-]+\.[\w.-]{2,}\b/g, "[EMAIL]")
     .replace(/\bhttps?:\/\/\S*\.(?:png|jpe?g|gif|webp|avif)\b/gi, "[PHOTO]")

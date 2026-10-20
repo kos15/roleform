@@ -12,6 +12,10 @@ import { capColumns } from "../lib/plans/catalog";
 import { capsFromDefaults } from "../lib/admin/defaults";
 import { fairUseCeiling, WORST_CASE } from "../lib/domain/tokens";
 import { lowCountNotice } from "../lib/domain/quotas";
+import { withFairUseFloor } from "../lib/domain/tokens";
+import { ANALYSIS_TOKEN_CEILING } from "../lib/domain/tokens";
+import { unspentTopups } from "../lib/db/queries/tokens";
+import { PRE_CHANGE_ALLOWANCE } from "../lib/domain/entitlements";
 
 let passed = 0;
 function check(name: string, fn: () => void) {
@@ -115,6 +119,26 @@ check("the plan table never prints the internal quota", () => {
   assert.ok(!rows.includes("Fair-use limit"));
   assert.ok(!rows.some((l) => /run costs/i.test(l)));
   assert.ok(!PLAN_ROWS.some((r) => r.key === "tokens"));
+});
+
+console.log("review fixes");
+check("I1: conversion measures past overruns against the PRE-change allowance", () => {
+  // A Pro member overran 800K by 300K last cycle: the 300K pack is spent.
+  const usage = { current: 0, past: [1_100_000] };
+  assert.equal(convertedAnalyses(unspentTopups(300_000, usage, PRE_CHANGE_ALLOWANCE.pro), 20_000), 0);
+  assert.deepEqual(PRE_CHANGE_ALLOWANCE, { free: 60_000, pro: 800_000, ultra: 3_000_000 });
+});
+check("I2: a legacy token pack paid after the switch credits the analyses it was sold as", () => {
+  assert.deepEqual(LEGACY_TOKEN_TOPUPS.map((t) => [t.id, t.analyses]), [["topup-100k", 5], ["topup-300k", 15]]);
+});
+check("I3: one analysis's worst case covers the whole per-run ceiling", () => {
+  assert.ok(WORST_CASE.analysis >= ANALYSIS_TOKEN_CEILING);
+});
+check("I3: raising counts by hand lifts the hidden ceiling with them", () => {
+  const caps = { ...PLANS[0].caps, analyses: 100, tokens: 1 };
+  const floored = withFairUseFloor(caps);
+  assert.ok(floored.tokens >= fairUseCeiling(caps, WORST_CASE));
+  assert.equal(withFairUseFloor({ ...PLANS[0].caps, tokens: 19_000_000 }).tokens, 19_000_000);
 });
 
 console.log(`ok — ${passed} checks`);

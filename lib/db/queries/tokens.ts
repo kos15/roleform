@@ -108,7 +108,7 @@ export interface CycleUsage {
  * before the anchor — which is why the sign is preserved and only the
  * strictly-earlier buckets count as past.
  */
-async function usageByCycle(clerkUserId: string, anchor: Date): Promise<CycleUsage> {
+export async function usageByCycle(clerkUserId: string, anchor: Date): Promise<CycleUsage> {
   const rows = await db.$queryRaw<{ bucket: number; used: bigint }[]>`
     select
       floor(extract(epoch from (ai."created_at" - ${anchor}::timestamptz)) / ${CYCLE_DAYS * 86400})::int

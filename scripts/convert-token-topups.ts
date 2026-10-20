@@ -16,8 +16,9 @@
  */
 import "./env";
 import { db } from "../lib/db";
-import { accountTokens } from "../lib/db/queries/tokens";
-import { convertedAnalyses } from "../lib/domain/entitlements";
+import { grantedTokens, unspentTopups, usageByCycle } from "../lib/db/queries/tokens";
+import { PRE_CHANGE_ALLOWANCE, convertedAnalyses } from "../lib/domain/entitlements";
+import { cycleStart } from "../lib/domain/quotas";
 
 /** RUN_ESTIMATE before counts-only pricing (lib/domain/tokens.ts, 2026-10-21). Frozen on purpose. */
 const PRE_CHANGE_RUN_ESTIMATE = 20_000;
@@ -35,8 +36,19 @@ async function main() {
       skipped++;
       continue;
     }
-    const account = await accountTokens(clerkUserId);
-    const extra = convertedAnalyses(account?.balance.topups ?? 0, PRE_CHANGE_RUN_ESTIMATE);
+    // Measured here rather than through accountTokens: that now reads the
+    // RAISED cap_tokens (which would forgive every past overrun) and adds the
+    // headroom of any new pack (which would convert analyses into more
+    // analyses). Overruns are judged against the allowance the member had
+    // when they spent them.
+    const user = await db.user.findUnique({ where: { clerkUserId }, select: { plan: true, quotaResetsAt: true } });
+    if (!user) continue;
+    const [usage, granted] = await Promise.all([
+      usageByCycle(clerkUserId, cycleStart(user.quotaResetsAt)),
+      grantedTokens(clerkUserId),
+    ]);
+    const unspent = unspentTopups(granted, usage, PRE_CHANGE_ALLOWANCE[user.plan]);
+    const extra = convertedAnalyses(unspent, PRE_CHANGE_RUN_ESTIMATE);
     if (extra === 0) continue;
     members++;
     analyses += extra;

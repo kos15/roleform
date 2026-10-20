@@ -3,7 +3,7 @@ import { cache } from "react";
 import { db } from "@/lib/db";
 import { PLANS, formatPrice, planAbove, type Plan, type PlanId } from "@/lib/content/pricing";
 import type { QuotaKey } from "@/lib/domain/quotas";
-import { WORST_CASE, fairUseCeiling } from "@/lib/domain/tokens";
+import { withFairUseFloor } from "@/lib/domain/tokens";
 
 /**
  * The live plan catalog (F31).
@@ -41,10 +41,12 @@ export const loadPlans = cache(async (): Promise<Plan[]> => {
       caps: {
         // An admin can move the counts; the hidden ceiling follows them so a
         // printed count always binds first (N22, fair use).
-        tokens: Math.max(
-          row.capTokens,
-          fairUseCeiling({ analyses: row.capAnalyses, answers: row.capAnswers, practice: row.capPractice }, WORST_CASE),
-        ),
+        tokens: withFairUseFloor({
+          tokens: row.capTokens,
+          analyses: row.capAnalyses,
+          answers: row.capAnswers,
+          practice: row.capPractice,
+        }).tokens,
         analyses: row.capAnalyses,
         resumes: row.capResumes,
         answers: row.capAnswers,

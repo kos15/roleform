@@ -21,7 +21,7 @@ export const MODELS: Record<ModelRole, string> = {
   "writer-fast": "gpt-5-mini",
   // TypeSafe's alias for its current Jev release. Confirm against
   // `GET https://api.typesafe.ai/v1/models` when the key is provisioned.
-  checker: "jev",
+  checker: "jev-latest",
 };
 
 export function modelFor(role: WriterRole): LanguageModel {

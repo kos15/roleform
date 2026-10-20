@@ -88,3 +88,13 @@ export function outputGuardProblem(value: unknown, guards: GuardId[]): string | 
   }
   return null;
 }
+
+/**
+ * What the Jev injection check reads. Always redacted: spotting instructions
+ * aimed at an AI needs the prose, never a name, email or phone — and the
+ * owner cleared bullets and drafts for TypeSafe, not contact details. The
+ * writer itself (ProfileReader) still gets the original text.
+ */
+export function injectionCheckText(text: string): string {
+  return redactPii(text);
+}

@@ -68,7 +68,7 @@ export const QUOTAS: QuotaDefinition[] = [
     period: "cycle",
     step: 50_000,
     min: 0,
-    max: 20_000_000,
+    max: 30_000_000,
     abbreviate: true,
     internal: true,
     description:

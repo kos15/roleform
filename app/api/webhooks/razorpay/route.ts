@@ -198,7 +198,7 @@ async function creditTopup(
 ): Promise<Response> {
   const topup = topupId ? topupById(topupId) : null;
   // An order placed before counts-only pricing and paid after it is credited
-  // with exactly what was bought — tokens, not a conversion.
+  // as the analyses the old pack was sold as (same prices: ₹99 = 5, ₹249 = 15).
   const legacy = topupId ? LEGACY_TOKEN_TOPUPS.find((t) => t.id === topupId) : undefined;
   if ((!topup && !legacy) || !paymentId) return new Response("unattributable top-up", { status: 200 });
 
@@ -207,7 +207,7 @@ async function creditTopup(
     await fileAmountMismatch({
       clerkUserId,
       kind: "topup",
-      wanted: topup ? `${topup.analyses} extra analyses` : `${legacy!.tokens.toLocaleString("en-US")} tokens`,
+      wanted: `${topup ? topup.analyses : legacy!.analyses} extra analyses`,
       expectedPaise,
       capturedPaise: amountPaise,
       paymentId,
@@ -216,15 +216,9 @@ async function creditTopup(
   }
 
   try {
-    if (topup) {
-      await db.analysisGrant.create({
-        data: { clerkUserId, analyses: topup.analyses, source: "purchase", reference: paymentId },
-      });
-    } else {
-      await db.tokenGrant.create({
-        data: { clerkUserId, tokens: legacy!.tokens, source: "purchase", reference: paymentId },
-      });
-    }
+    await db.analysisGrant.create({
+      data: { clerkUserId, analyses: topup ? topup.analyses : legacy!.analyses, source: "purchase", reference: paymentId },
+    });
   } catch {
     // Unique violation (already credited) or a deleted account. Neither is
     // worth a retry, and neither is worth a trace that carries the subject (N7).

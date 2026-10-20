@@ -7,6 +7,7 @@ import { appError, err, ok, type ModelFailure, type Result } from "@/lib/domain/
 import type { CheckVerdict } from "./checkers/types";
 import { decideAfterCheck } from "./checkers/loop";
 import { correctionFor } from "./checkers/verdict";
+import { sumUsage, type Usage } from "./usage";
 
 /**
  * The single door every LLM call goes through (N6).
@@ -97,6 +98,9 @@ export async function runStructured<S extends z.ZodType>(
   let lastFailure = "";
   let lastKind: ModelFailure = "schema";
   let checkerRetriesLeft = opts.checkerRetries ?? 0;
+  // Every attempt that came back is a call the member's meter must see — the
+  // row records the sum, not the last attempt (owner: everything consumed counts).
+  const attempts: Usage[] = [];
 
   while (retryCount <= opts.retries) {
     try {
@@ -134,6 +138,11 @@ export async function runStructured<S extends z.ZodType>(
       });
 
       const object = result.object as z.infer<S>;
+      attempts.push({
+        inputTokens: result.usage.inputTokens ?? 0,
+        outputTokens: result.usage.outputTokens ?? 0,
+        cachedInputTokens: result.usage.inputTokenDetails?.cacheReadTokens ?? 0,
+      });
       const problem: string | null = (await opts.verify?.(object)) ?? null;
       if (problem) {
         lastFailure = problem;
@@ -157,8 +166,7 @@ export async function runStructured<S extends z.ZodType>(
         }
         if (decision === "fallback") {
           await recordRun(opts, {
-            inputTokens: result.usage.inputTokens ?? 0,
-            outputTokens: result.usage.outputTokens ?? 0,
+            ...sumUsage(attempts),
             latencyMs: Date.now() - startedAt,
             schemaValid: true,
             retryCount,
@@ -174,9 +182,7 @@ export async function runStructured<S extends z.ZodType>(
         }
       }
 
-      const inputTokens = result.usage.inputTokens ?? 0;
-      const outputTokens = result.usage.outputTokens ?? 0;
-      const cachedInputTokens = result.usage.inputTokenDetails?.cacheReadTokens ?? 0;
+      const { inputTokens, outputTokens, cachedInputTokens } = sumUsage(attempts);
 
       const aiRunId = await recordRun(opts, {
         inputTokens,
@@ -198,8 +204,7 @@ export async function runStructured<S extends z.ZodType>(
       // no retries — fail once, loudly, carrying the provider's own reason.
       if (APICallError.isInstance(e) && !e.isRetryable) {
         await recordRun(opts, {
-          inputTokens: 0,
-          outputTokens: 0,
+          ...sumUsage(attempts),
           latencyMs: Date.now() - startedAt,
           schemaValid: false,
           retryCount,
@@ -221,8 +226,7 @@ export async function runStructured<S extends z.ZodType>(
       // let the caller decide whether to try again later.
       if (isTransient(e)) {
         await recordRun(opts, {
-          inputTokens: 0,
-          outputTokens: 0,
+          ...sumUsage(attempts),
           latencyMs: Date.now() - startedAt,
           schemaValid: false,
           retryCount,
@@ -256,8 +260,7 @@ export async function runStructured<S extends z.ZodType>(
   }
 
   await recordRun(opts, {
-    inputTokens: 0,
-    outputTokens: 0,
+    ...sumUsage(attempts),
     latencyMs: Date.now() - startedAt,
     schemaValid: false,
     retryCount,
