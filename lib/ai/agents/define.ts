@@ -21,7 +21,8 @@ export interface AgentDef<I, S extends z.ZodType> {
   name: string;
   promptVersion: string;
   model: "writer" | "writer-fast";
-  schema: S;
+  /** A function when the schema depends on the input (drill: topic enum, exact counts). */
+  schema: S | ((input: I) => S);
   system: string;
   /** Rules and context shared by every call of this agent in a run — cached. */
   staticContext?: (input: I) => string;
@@ -66,7 +67,7 @@ export async function runAgent<I, S extends z.ZodType>(
     purpose: agent.name,
     promptVersion: agent.promptVersion,
     model: agent.model,
-    schema: agent.schema,
+    schema: typeof agent.schema === "function" ? (agent.schema as (input: I) => S)(input) : agent.schema,
     system: agent.system,
     prompt: `${head}${PROMPT_SEPARATOR}${guarded.text}`,
     reasoningEffort: agent.reasoningEffort,

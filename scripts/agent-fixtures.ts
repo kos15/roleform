@@ -15,6 +15,9 @@ import { summaryTailor } from "../lib/ai/agents/summary-tailor";
 import { questionWriter } from "../lib/ai/agents/question-writer";
 import { answerWriter } from "../lib/ai/agents/answer-writer";
 import { learningPlanner } from "../lib/ai/agents/learning-planner";
+import { quizWriter } from "../lib/ai/agents/quiz-writer";
+import { revisionWriter } from "../lib/ai/agents/revision-writer";
+import { AGENTS } from "../lib/ai/agents/roster";
 
 let passed = 0;
 const pending: Promise<void>[] = [];
@@ -152,6 +155,24 @@ check("AnswerWriter verify rejects a hook citing a bullet it was not shown", asy
 });
 check("LearningPlanner has no checker (N12: exactly one model call per run)", () => {
   assert.equal(learningPlanner.checker, undefined);
+});
+
+console.log("ported agents (3d)");
+check("QuizWriter verify rejects repeated options and 'all of the above'", async () => {
+  const q = (options: string[]) => ({ questions: [{ stem: "s", options }] }) as never;
+  assert.match((await quizWriter.verify!(q(["a", "a", "b", "c"]), {} as never)) ?? "", /repeats an option/);
+  assert.match((await quizWriter.verify!(q(["a", "b", "c", "All of the above"]), {} as never)) ?? "", /all\/none of the above/);
+});
+check("RevisionWriter builds its schema from the run's topics and count", () => {
+  const factory = revisionWriter.schema as (i: unknown) => { safeParse: (v: unknown) => { success: boolean } };
+  const schema = factory({ role: { title: "T", seniority: null }, topics: [{ label: "SQL", necessity: "required", status: "absent" }], count: 1, minutes: 10 });
+  assert.equal(schema.safeParse({ cards: [] }).success, false);
+});
+check("the roster holds all twelve agents, one per task", () => {
+  assert.deepEqual(Object.keys(AGENTS).sort(), [
+    "analyze_jd", "code_review", "coding_challenge", "extract_profile", "interview_questions", "question_answer",
+    "quiz_round", "revision_cards", "synthesise_learning_plan", "tailor_bullet", "tailor_summary", "transcribe_document",
+  ]);
 });
 
 void Promise.all(pending).then(() => console.log(`ok — ${passed} checks`));

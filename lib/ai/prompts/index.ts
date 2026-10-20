@@ -44,10 +44,10 @@ export const PROMPT_VERSIONS = {
   generateQuestions: "interview-questions@5",
   answerQuestion: "question-answer@4",
   synthesisePlan: "learning-plan@4",
-  revisionCards: "revision-cards@2",
-  quizRound: "quiz-round@2",
-  codingChallenge: "coding-challenge@2",
-  codeReview: "code-review@2",
+  revisionCards: "revision-cards@3",
+  quizRound: "quiz-round@3",
+  codingChallenge: "coding-challenge@3",
+  codeReview: "code-review@3",
 } as const;
 
 const LAW = `Nothing is invented: you never add a fact the user did not state.`;
