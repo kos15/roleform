@@ -46,8 +46,7 @@ export const PLANS: Plan[] = [
     price: "₹0",
     pricePaise: 0,
     unit: "forever",
-    tagline:
-      "Enough to tailor a résumé against a posting properly, and to see whether the gap list tells you anything you didn't know.",
+    tagline: "Tailor against a real posting and see your gaps.",
     caps: { tokens: 60_000, analyses: 3, resumes: 2, answers: 3, courses: 2, roadmaps: 1, jobSearches: 0 },
     cta: "Start free",
   },
@@ -57,8 +56,7 @@ export const PLANS: Plan[] = [
     price: "₹499",
     pricePaise: 49_900,
     unit: "per month",
-    tagline:
-      "For an actual search — several postings a week, all eleven templates, a worked answer for every question, a roadmap on every analysis, and job search.",
+    tagline: "For an active search: every template, answers, roadmaps and job search.",
     caps: { tokens: 800_000, analyses: 40, resumes: 11, answers: 40, courses: 4, roadmaps: 40, jobSearches: 60 },
     cta: "Go Pro",
     featured: true,
@@ -69,8 +67,7 @@ export const PLANS: Plan[] = [
     price: "₹1,299",
     pricePaise: 129_900,
     unit: "per month",
-    tagline:
-      "For coaches and career centres running many searches at once, where the meter is the thing that actually binds.",
+    tagline: "For coaches and career centres running many searches.",
     caps: { tokens: 3_000_000, analyses: 150, resumes: 11, answers: 200, courses: 6, roadmaps: 150, jobSearches: 200 },
     cta: "Go Ultra",
   },
@@ -232,6 +229,39 @@ export function compareRows(plans: Plan[] = PLANS): CompareRow[] {
 export const COMPARE_ROWS: CompareRow[] = compareRows();
 
 /**
+ * Billing questions (F17). Each answer is a fact the code enforces — the
+ * 30-day stack is the Razorpay webhook, the lapse is `settlePlan`, the floor
+ * on a promo is `MIN_CHARGE_PAISE`. Rendered as an accordion on /pricing, as
+ * FAQPage JSON-LD, and in the Markdown mirror, so all three say one thing.
+ */
+export const BILLING_FAQ: { q: string; a: string }[] = [
+  {
+    q: "Do I need a card to start?",
+    a: "No. Free needs an account and nothing else — no card on file, no trial clock. Pay only when you want a paid plan's caps.",
+  },
+  {
+    q: "Does a paid plan renew itself?",
+    a: "No. A plan lasts 30 days from payment and then drops back to Free on its own. There is no subscription to cancel and nothing is charged again unless you pay again.",
+  },
+  {
+    q: "What if I renew before the 30 days are up?",
+    a: "The new 30 days start where the current ones end, so renewing early never loses a day you already paid for.",
+  },
+  {
+    q: "What happens when a plan ends?",
+    a: "Your caps return to Free's. Everything already generated — analyses, résumés, answers, roadmaps, saved jobs — stays readable.",
+  },
+  {
+    q: "How do promo codes work?",
+    a: "Enter a code on a plan card, or follow a link that carries one. The discounted price is worked out on our server before you pay and is the amount charged — one code per order.",
+  },
+  {
+    q: "How do I pay, and in what currency?",
+    a: "Payments go through Razorpay, in Indian rupees (INR), inclusive of tax. If your card is in another currency, your bank converts the charge at its own rate.",
+  },
+];
+
+/**
  * What the page will not claim, stated on the page (F17).
  *
  * Every other surface in this product publishes its refusals — the four
@@ -240,11 +270,11 @@ export const COMPARE_ROWS: CompareRow[] = compareRows();
  * too.
  */
 export const PRICING_REFUSALS: string[] = [
-  "Nothing upgrades itself. Running out of tokens opens a dialog with three exits and takes none of them for you — we will not silently bill you for the next tier to keep a run going.",
-  "We do not throttle you quietly. A run that cannot be afforded is refused before its first stage, with the shortfall and the reset date on the screen.",
-  "Paying does not change the match score. It is requirement coverage — a fact about your own document — and money cannot move it.",
-  "Paying does not add experience to your profile. Nothing is invented on either plan.",
-  "No plan gets a better model, a better parser or a nicer rewrite. The pipeline is the same one.",
-  "Nothing renews itself. A plan lasts 30 days from payment; renew when you want another 30. You keep read access to everything already generated.",
-  "The roadmap and job search are gated by plan, not by quality. The analysis underneath is the same one.",
-];
+  "Nothing upgrades itself. Running out opens a dialog; the choice stays yours.",
+  "No quiet throttling. A run you can't afford is refused before it starts, with the shortfall shown.",
+  "Money can't move the match score — it's coverage of your own document.",
+  "Paying adds no experience. Nothing is invented on any plan.",
+  "Same models, same parser, same pipeline on every plan.",
+  "Nothing renews itself. A plan lasts 30 days; you keep everything already made.",
+  "Roadmap and job search are gated by plan, not by quality.",
+]

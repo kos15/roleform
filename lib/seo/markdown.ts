@@ -8,7 +8,7 @@
  */
 import { DOCS, type DocSlug } from "@/lib/content/docs";
 import { GUIDES, HOME_FAQS, guideBySlug, type Guide } from "@/lib/content/guides";
-import { compareRows, PLANS, PLAN_ROWS, PRICING_REFUSALS, TOPUPS, type Plan } from "@/lib/content/pricing";
+import { BILLING_FAQ, compareRows, PLANS, PLAN_ROWS, PRICING_REFUSALS, TOPUPS, type Plan } from "@/lib/content/pricing";
 import { SPEND_BASIS, SUPPORT_SPEND, SUPPORT_TIERS } from "@/lib/content/support";
 import { displayCap } from "@/lib/domain/quotas";
 import { RUN_ESTIMATE, TOKEN_STAGES, formatCount } from "@/lib/domain/tokens";
@@ -75,6 +75,9 @@ ${TOKEN_STAGES.map((s) => `- ${s.stage}: about ${formatCount(s.estimate)}`).join
 - A full analysis: about ${formatCount(RUN_ESTIMATE)}
 
 Coverage, gaps and question frameworks cost nothing.
+
+## Billing questions
+${BILLING_FAQ.map((f) => `### ${f.q}\n${f.a}`).join("\n\n")}
 
 ## What paying does not buy
 ${PRICING_REFUSALS.map((r) => `- ${r}`).join("\n")}

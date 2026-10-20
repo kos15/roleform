@@ -6,14 +6,16 @@ import { auth } from "@clerk/nextjs/server";
 import { PageIntro, Bullet } from "@/components/page-intro";
 import { Tag } from "@/components/ui";
 import { displayCap } from "@/lib/domain/quotas";
-import { compareRows, PLAN_ROWS, PRICING_REFUSALS, TOPUPS } from "@/lib/content/pricing";
+import { Check, ChevronRight, Minus } from "lucide-react";
+import { FaqList } from "@/components/faq-list";
+import { BILLING_FAQ, compareRows, PLAN_ROWS, PRICING_REFUSALS, TOPUPS } from "@/lib/content/pricing";
 import { loadPlans } from "@/lib/plans/catalog";
 import { RUN_ESTIMATE, TOKEN_STAGES, formatCount } from "@/lib/domain/tokens";
 import { PlanCheckout } from "@/components/plan-checkout";
 import { db } from "@/lib/db";
 import { settlePlan } from "@/lib/db/queries/plan";
 import { JsonLd } from "@/components/json-ld";
-import { breadcrumbSchema, graph, softwareSchema } from "@/lib/seo/schema";
+import { breadcrumbSchema, faqSchema, graph, softwareSchema } from "@/lib/seo/schema";
 
 /** Built from the live catalog (F31) — a title quoting last month's price is a lie in a search result. */
 export async function generateMetadata(): Promise<Metadata> {
@@ -38,12 +40,14 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PricingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ promo?: string }>;
+  searchParams: Promise<{ promo?: string; coupon?: string }>;
 }) {
   const plans = await loadPlans();
   const COMPARE_ROWS = compareRows(plans);
-  const { promo } = await searchParams;
-  const initialCode = typeof promo === "string" && promo.length <= 24 ? promo : undefined;
+  // `?coupon=` is the name most shared links use; `?promo=` is ours. Same field.
+  const { promo, coupon } = await searchParams;
+  const code = promo ?? coupon;
+  const initialCode = typeof code === "string" && code.length <= 24 ? code : undefined;
   // Public route (middleware.ts) — signed-out visitors read `null` here and
   // every card shows its ordinary CTA. Settled first (F23, PAY-2) so a
   // lapsed member sees "Go Pro" again rather than a stale "Renew" on a plan
@@ -59,6 +63,7 @@ export default async function PricingPage({
       <JsonLd
         data={graph(
           softwareSchema(plans),
+          faqSchema(BILLING_FAQ),
           breadcrumbSchema([
             { name: "Home", path: "/" },
             { name: "Pricing", path: "/pricing" },
@@ -66,49 +71,40 @@ export default async function PricingPage({
         )}
       />
       <PageIntro kicker="Pricing" title="Pay for the runs, not for the seat">
-        Every plan does the same four-stage analysis with the same fabrication boundary. What
-        changes is how much of it you can do — metered in tokens, measured from what the models
-        actually consumed, at about {formatCount(RUN_ESTIMATE)} for a full run.
+        Same analysis on every plan. Only how much of it you can run changes.
       </PageIntro>
 
-      <div className="mb-[clamp(3rem,6vw,4.5rem)] grid items-stretch gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr))]">
+      {/* Plan cards. Order inside a card is: who it's for, what it costs, the
+          button, then what you get — the decision is made at the price, so the
+          button sits there rather than below seven rows of caps. */}
+      <div className="grid items-stretch gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(290px,100%),1fr))]">
         {plans.map((plan) => (
           <div
             key={plan.id}
-            className={`flex flex-col gap-4 rounded-[var(--radius-xl)] px-[26px] py-7 ${
+            className={`flex flex-col gap-5 rounded-[var(--radius-xl)] px-[26px] py-7 ${
               plan.featured ? "bg-[var(--color-accent-500)]" : "bg-[var(--color-bg-raised)]"
             }`}
           >
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="display text-[28px] uppercase">{plan.name}</span>
-              {plan.featured ? (
-                <Tag tone="sage" className="min-h-[30px] font-extrabold">
-                  Most people want this
-                </Tag>
-              ) : null}
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="display text-[28px] uppercase">{plan.name}</span>
+                {plan.featured ? (
+                  <Tag tone="ink" className="ml-auto min-h-[30px] font-extrabold">
+                    Most popular
+                  </Tag>
+                ) : currentPlanId === plan.id ? (
+                  <Tag tone="outline" className="ml-auto min-h-[30px] font-extrabold">
+                    Your plan
+                  </Tag>
+                ) : null}
+              </div>
+              <p className="text-[15px] leading-relaxed opacity-80">{plan.tagline}</p>
             </div>
 
             <div className="flex items-baseline gap-2">
               <span className="display text-[64px] leading-[0.9]">{plan.price}</span>
               <span className="text-sm font-semibold">{plan.unit}</span>
             </div>
-
-            <p className="flex-1 text-[15px] leading-relaxed">{plan.tagline}</p>
-
-            {/* The numbers, in the plan's own card as well as in the table
-                below — someone comparing three columns should not have to hold
-                a row heading in their head to read one. */}
-            <dl className="flex flex-col gap-2 border-t border-[var(--color-line)] pt-3.5">
-              {PLAN_ROWS.map((row) => (
-                <div key={row.key} className="flex items-baseline justify-between gap-3 text-sm">
-                  <dt className="opacity-80">{row.label}</dt>
-                  <dd className="font-extrabold tabular-nums">
-                    {displayCap(row.key, plan.caps[row.key])}
-                    <span className="ml-1 text-xs font-medium opacity-75">{row.unit}</span>
-                  </dd>
-                </div>
-              ))}
-            </dl>
 
             {plan.pricePaise > 0 ? (
               <PlanCheckout
@@ -124,9 +120,40 @@ export default async function PricingPage({
                 {plan.cta}
               </Link>
             )}
+
+            {/* The numbers, in the plan's own card as well as in the table
+                below — someone comparing three columns should not have to hold
+                a row heading in their head to read one. A cap at zero reads as
+                a dash, not a tick: the row is shown so its absence is visible. */}
+            <ul className="flex list-none flex-col gap-2.5 border-t border-[var(--color-line)] p-0 pt-4">
+              {PLAN_ROWS.map((row) => {
+                const on = plan.caps[row.key] !== 0;
+                return (
+                  <li
+                    key={row.key}
+                    className={`flex items-center gap-2.5 text-sm ${on ? "" : "opacity-55"}`}
+                  >
+                    {on ? (
+                      <Check aria-hidden className="lucide h-4 w-4 flex-none" strokeWidth={2.25} />
+                    ) : (
+                      <Minus aria-hidden className="lucide h-4 w-4 flex-none" strokeWidth={2.25} />
+                    )}
+                    <span className="min-w-0 flex-1">{row.label}</span>
+                    <span className="font-extrabold tabular-nums">
+                      {displayCap(row.key, plan.caps[row.key])}
+                      <span className="ml-1 text-xs font-medium opacity-75">{row.unit}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         ))}
       </div>
+      <p className="mb-[clamp(3rem,6vw,4.5rem)] mt-4 text-[13px] text-[var(--color-text-muted)]">
+        Prices in INR, inclusive of tax. A paid plan lasts 30 days from payment and never renews
+        itself — there is nothing to cancel.
+      </p>
 
       <div className="mb-[clamp(2.5rem,5vw,4rem)] grid gap-[clamp(1.5rem,4vw,3.5rem)] [grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr))]">
         {/* What a token is. The same four estimates the wall itemises when it
@@ -135,8 +162,7 @@ export default async function PricingPage({
         <section>
           <h2 className="mb-2.5 text-[40px] leading-none">What a token is</h2>
           <p className="mb-[18px] max-w-[56ch] text-[15px] leading-relaxed text-[var(--color-text-muted)]">
-            The unit the pipeline actually consumes, measured from every model call rather than
-            estimated after the fact. We show it rather than hiding it behind a credit.
+            Measured from every model call, not a made-up credit.
           </p>
           <ul className="flex list-none flex-col p-0">
             {TOKEN_STAGES.map((stage) => (
@@ -159,8 +185,7 @@ export default async function PricingPage({
             </li>
           </ul>
           <p className="mt-3 text-[13px] leading-relaxed text-[var(--color-text-muted)]">
-            Coverage, gaps and question frameworks cost nothing. A run that cannot be afforded is
-            refused before its first stage, never half-run.
+            Coverage, gaps and question frameworks are free.
           </p>
         </section>
 
@@ -170,9 +195,7 @@ export default async function PricingPage({
         <section>
           <h2 className="mb-2.5 text-[40px] leading-none">If you run out mid-cycle</h2>
           <p className="mb-[18px] max-w-[56ch] text-[15px] leading-relaxed text-[var(--color-text-muted)]">
-            One-off packs, on any paid plan. They never renew and they never expire — a pack bought
-            in the last week of a cycle is not a partial purchase, because anything unspent carries
-            into the next one. The plan allowance itself does not carry; only these do.
+            One-off packs on any paid plan. They never renew and never expire.
           </p>
           <div className="flex flex-col gap-3">
             {TOPUPS.map((topup) => (
@@ -198,11 +221,7 @@ export default async function PricingPage({
           grid scrolls inside its own rounded box rather than widening the page;
           a comparison table is the one layout that cannot reflow. */}
       <section className="mb-[clamp(2.5rem,5vw,4rem)]">
-        <h2 className="mb-2.5 text-[40px] leading-none">Side by side</h2>
-        <p className="mb-5 max-w-[56ch] text-[15px] leading-relaxed text-[var(--color-text-muted)]">
-          Every row is a number enforced at its own seam. Nothing here is a feature list — if it is
-          on this table, there is a constraint behind it.
-        </p>
+        <h2 className="mb-5 text-[40px] leading-none">Side by side</h2>
         <div className="table-scroll rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)]">
           <div className="grid min-w-[36rem] [grid-template-columns:minmax(11rem,1.6fr)_repeat(3,minmax(6rem,1fr))]">
             <div className="eyebrow px-6 py-4">What you get</div>
@@ -230,34 +249,47 @@ export default async function PricingPage({
                       plans[i].featured ? "bg-[var(--color-accent-100)] font-extrabold" : ""
                     }`}
                   >
-                    {cell}
+                    {cell === "✓" ? (
+                      <Check aria-label="Included" className="lucide mx-auto h-4 w-4" strokeWidth={2.25} />
+                    ) : cell === "—" ? (
+                      <Minus
+                        aria-label="Not included"
+                        className="lucide mx-auto h-4 w-4 text-[var(--color-text-muted)]"
+                        strokeWidth={2.25}
+                      />
+                    ) : (
+                      cell
+                    )}
                   </div>
                 ))}
               </Fragment>
             ))}
           </div>
         </div>
+        {/* What each cap does when you reach it — one tap away rather than a
+            wall of seven paragraphs. A cap refuses the next new thing and never
+            takes away something you already have. */}
+        <details className="group mt-4">
+          <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-extrabold [&::-webkit-details-marker]:hidden">
+            <ChevronRight aria-hidden className="lucide h-4 w-4 transition-transform group-open:rotate-90" strokeWidth={2.25} />
+            What happens when you reach a cap
+          </summary>
+          <dl className="mt-3 grid gap-x-10 gap-y-3 [grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr))]">
+            {PLAN_ROWS.map((row) => (
+              <div key={row.key} className="border-t border-[var(--color-line)] pt-3">
+                <dt className="mb-1 text-sm font-extrabold">{row.label}</dt>
+                <dd className="text-sm leading-relaxed text-[var(--color-text-muted)]">{row.note}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
       </section>
 
-      <section className="mb-[clamp(2.5rem,5vw,4rem)]">
-        <h2 className="mb-2.5 text-[40px] leading-none">What happens when you reach one</h2>
-        <p className="mb-5 max-w-[56ch] text-[15px] leading-relaxed text-[var(--color-text-muted)]">
-          A cap refuses the next new thing and never takes away something you already have. Each of
-          these is enforced at its own seam, which is why running out of one does not read as
-          running out of everything.
-        </p>
-        <div className="grid gap-x-10 gap-y-4 [grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))]">
-          {PLAN_ROWS.map((row) => (
-            <div key={row.key} className="border-t border-[var(--color-line)] pt-3.5">
-              <div className="mb-1 flex flex-wrap items-baseline justify-between gap-3">
-                <span className="text-[15px] font-extrabold">{row.label}</span>
-                <span className="text-xs text-[var(--color-text-muted)]">{row.unit}</span>
-              </div>
-              <p className="text-sm leading-relaxed text-[var(--color-text-muted)]">{row.note}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+
+      {/* Billing questions — the same pairs as the FAQPage JSON-LD above. */}
+      <div className="mb-[clamp(2.5rem,5vw,4rem)]">
+        <FaqList faqs={BILLING_FAQ} title="Billing questions" />
+      </div>
 
       {/* The refusals. Same shape as the four stages on /how-it-works, and here
           for the same reason — a price is a promise, so it should say what it
@@ -277,9 +309,6 @@ export default async function PricingPage({
         <Link href="/support" className="btn btn-ghost min-h-12 no-underline">
           Support us instead
         </Link>
-        <span className="min-w-[min(220px,100%)] flex-1 text-[13px] text-[var(--color-text-muted)]">
-          Prices in INR, inclusive of tax. Cancel from your profile at any time.
-        </span>
       </div>
     </div>
   );
