@@ -667,7 +667,8 @@ over and resumes it; one that finds the claim released without a finish reports 
 claim for six minutes, so the pipeline is built to finish well inside it: stage ③ tailors five
 bullets at a time (results kept in ranked order, so ordinals are unchanged; the token ceiling is
 checked before each call starts, so at most four in-flight calls can finish past it), each tailoring
-attempt times out at 30s and falls back to the original bullet, and ④ + ⑤ start as soon as ② has
+attempt times out at 30s and falls back to the original bullet (with the Jev checker a bullet may
+take up to three writer attempts plus a 2s check each — measured at the agent plan's gate, Task 8), and ④ + ⑤ start as soon as ② has
 written coverage — they read nothing ③ produces — and are reported after ③. Learning still waits
 for the questions it binds to.
 
@@ -2253,23 +2254,46 @@ stuck until a manual reload. The marketing header's Sign in is the routed page, 
 
 ## 10. AI layer
 
-| Purpose | Function | Schema | Tier | Retry |
-|---|---|---|---|---|
-| Profile extraction | `extractProfile` | `DraftResumeSchema` | strong | 0 per call; up to 3 visible client attempts (F1) |
-| Scan / photo OCR | `transcribeDocument` | `TranscriptionSchema` | strong | 1 |
-| JD analysis | `analyzeJd` | `JdAnalysisSchema` | mid | 2 |
-| Tailoring | `tailorBullets` | `TailoredBulletsSchema` | strong | 1, then fail open to original |
-| Interview questions | `generateQuestions` | `InterviewQuestionsSchema` | strong | 1 |
-| Learning plan | `synthesisePlan` | `LearningPlanSchema` | strong | 1, then degrade to no narrative |
-| Revision cards (F26) | `generateRevisionDeck` | `revisionDeckSchema(topics, n)` | mid | 1 |
-| Quiz round (F26) | `generateQuizRound` | `quizRoundSchema(topics, n)` | mid | 1 |
-| Coding challenge (F26) | `generateChallenge` | `generatedChallengeSchema(topics)` | mid | 1, tests re-run in sandbox |
-| Code review (F26) | `reviewCode` | `CodeReviewSchema` | mid | 1, clamped by tests |
+**Agents (Oct 2026, `docs/superpowers/specs/2026-10-21-agent-architecture-design.md`).** Every call
+is a named agent in `lib/ai/agents/` run through `runAgent`. Writers are GPT-5 (`writer` = `gpt-5`,
+`writer-fast` = `gpt-5-mini`); they take a reasoning effort, not a temperature, and their output
+ceilings include reasoning tokens, which are metered like any other.
+
+| Agent (`ai_runs.purpose`) | Function | Schema | Model | Retry | Checker |
+|---|---|---|---|---|---|
+| `extract_profile` | `extractProfile` | `DraftResumeSchema` | writer | 0 per call; up to 3 visible client attempts (F1) | — |
+| `transcribe_document` | `transcribeDocument` | `TranscriptionSchema` | writer | 1 | — |
+| `analyze_jd` | `analyzeJd` | `JdAnalysisSchema` | writer-fast | 1 | — |
+| `tailor_bullet` | `tailorBullet` | `TailoredBulletSchema` | writer | 1, then fail open to original | Jev fabrication, 1 rewrite, then verbatim |
+| `tailor_summary` | `tailorSummary` | `TailorSummarySchema` | writer-fast | 1, then stock line | Jev fabrication, 1 rewrite, then stock line |
+| `interview_questions` | `generateQuestions` | `InterviewQuestionsSchema` | writer | 1 | — |
+| `question_answer` | `generateAnswer` | `QuestionAnswerSchema` | writer-fast | 1 | Jev answer claims, 1 rewrite, then "Try again" |
+| `synthesise_learning_plan` | `synthesisePlan` | `LearningPlanSchema` | writer | 1, then degrade to no narrative | — (N12: one call per run) |
+| `revision_cards` (F26) | `generateRevisionDeck` | `revisionDeckSchema(topics, n)` | writer-fast | 1 | — |
+| `quiz_round` (F26) | `generateQuizRound` | `quizRoundSchema(topics, n)` | writer-fast | 1 | — |
+| `coding_challenge` (F26) | `generateChallenge` | `generatedChallengeSchema(topics)` | writer-fast | 1, tests re-run in sandbox | — |
+| `code_review` (F26) | `reviewCode` | `CodeReviewSchema` | writer-fast | 1, clamped by tests | — |
+
+**Checkers** (`lib/ai/checkers/`) are Jev, called over `fetch` with a 2 s timeout, answers Zod-parsed.
+A checker sees exactly the evidence its writer saw (profile terms, other profile facts). Its rewrite
+budget is separate from the schema/guard retry. It **fails open**: no key, the `ai_checkers` switch
+off (F31), a timeout or a malformed answer means the deterministic guards' verdict stands. Every
+call writes an `ai_runs` row (`check_fabrication`, `check_answer_claims`, `check_injection`).
+
+**Guards are declared per agent** (`inputGuards` / `outputGuards`, catalogue in
+`lib/ai/agents/guards.ts` over `lib/domain/guardrails.ts`) and applied by `runAgent`, so none can be
+forgotten at a call site. PostingReader and ProfileReader also get a semantic injection check (Jev);
+a flag is counted and the run proceeds (IN-5). Prompts put static rules first and the run's data last
+behind a fixed separator, with a per-agent `promptCacheKey`, so large shared prefixes are cached;
+`ai_runs.cached_input_tokens` shows the hit rate. Tailoring calls stay one bullet plus one
+requirement — below the provider's ~1,024-token cache floor, and that scoping outranks caching.
+
+**Evals:** `pnpm eval <agent> [--set] [--arm gpt5|gpt5+jev] [--dry]` (`scripts/evals/`), run by hand at a
+gate. `pnpm check:agents` holds the layer's pure decisions.
 
 - Every call uses `generateObject` with a Zod schema. The schema is the contract; the prompt is documentation for the model. Schema changes bump `prompt_version`.
 - Provider-agnostic — swapping providers is one import change, which is why the SDK was chosen over calling a provider API directly.
 - Every call writes an `ai_runs` row. Cost and schema-failure rate observable from day one.
-- Low temperature for extraction, moderate for tailoring and question phrasing.
 - **Never send the JD and the full profile in one tailoring call.** Scoping to one bullet plus its target requirement measurably reduces cross-contamination between roles.
 - Course selection is **not** an LLM call (N8). Neither is gap ranking, skill resolution, level assignment or scheduling — all four are pure functions in `lib/domain/`.
 - The learning engine makes **exactly one** model call per run. Adding a second needs a written justification: it would be billed on every run, forever.

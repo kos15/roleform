@@ -184,7 +184,7 @@ Rules:
 | Framework | Next.js 15 App Router, TS strict | Server Actions remove most API boilerplate | High |
 | UI | Tailwind + shadcn/ui, restyled to `marigold` tokens | DS bundle is authoritative | Low |
 | ORM | Prisma over Supabase Postgres | Typed schema; migrations in-repo, not dashboard-clicked; swapping the underlying database later is a datasource/adapter change, not a query rewrite | Medium |
-| LLM | Vercel AI SDK, `generateObject` + Zod | Provider-agnostic; swap by changing one import | Low — the point |
+| LLM | One agent per task (`lib/ai/agents/`) on GPT-5 writers via the Vercel AI SDK (`generateObject` + Zod); Jev checkers (TypeSafe, plain `fetch` + Zod) on tailoring and answers | Provider-agnostic writers; checkers add a second, independent lock on fabrication | Low — the point |
 | PDF | `@react-pdf/renderer` | Chromium ~100 MB vs Vercel's 50 MB function limit; renders <500ms vs 2–5s | Medium |
 | DOCX | `docx` (npm) | Real named paragraph styles | Medium |
 | Extraction | `unpdf` (PDF), `mammoth` (DOCX), `word-extractor` (DOC), `fflate` (ODT), pure readers for RTF/HTML/MD/TXT, one vision call for scans and photos (specs F1) | Raw text only; the LLM does the structuring | Low |
@@ -239,7 +239,10 @@ lib/
   ai/
     schemas/                 Zod — the LLM contract lives HERE, not in prompts
     prompts/                 versioned templates
-    extract-profile.ts · transcribe.ts · analyze-jd.ts · tailor.ts · interview.ts
+    agents/                  one definition per task + runAgent, the only door to a writer
+                             (schema, prompt order, reasoning effort, budget, declared guards, checker)
+    checkers/                Jev over fetch: fabrication · answer claims · injection (fail open)
+    extract-profile.ts · transcribe.ts · analyze-jd.ts · tailor.ts · interview.ts   (thin wrappers)
   catalog/
     skills.ts · courses.ts · match.ts · taxonomy.ts · quality.ts
   learning/                  SERVER. the engine's I/O half:
