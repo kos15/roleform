@@ -283,3 +283,31 @@ export interface CapWall {
   /** Admin names who can raise the cap by hand. Empty when none are configured. */
   admins: string[];
 }
+
+/**
+ * The once-a-cycle low-count warning (counts-only pricing). Speaks in the
+ * counts members see — never tokens. Checks analyses, then answers, then
+ * practice; a count that is Off for the plan (`null`) never warns, because
+ * "you have none left" of something you never had is not news.
+ */
+const LOW_NOUNS = {
+  analyses: { one: "analysis", many: "analyses" },
+  answers: { one: "full answer draft", many: "full answer drafts" },
+  practice: { one: "practice session", many: "practice sessions" },
+} as const;
+
+export function lowCountNotice(left: {
+  analyses: number | null;
+  answers: number | null;
+  practice: number | null;
+}): { key: keyof typeof LOW_NOUNS; empty: boolean; text: string } | null {
+  for (const key of ["analyses", "answers", "practice"] as const) {
+    const n = left[key];
+    if (n === null || n > 1) continue;
+    const noun = LOW_NOUNS[key];
+    return n <= 0
+      ? { key, empty: true, text: `You've used this cycle's ${noun.many}.` }
+      : { key, empty: false, text: `1 ${noun.one} left this cycle.` };
+  }
+  return null;
+}

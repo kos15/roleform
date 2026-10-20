@@ -5,11 +5,10 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
 /**
- * The one-time low-balance warning (F19).
+ * The one-time low-count warning (F19, counts-only pricing).
  *
- * The header pill already carries the balance permanently, so this is not a
- * second display of the same fact — it is the single moment we interrupt to
- * say it, at under two runs left. **Once per cycle.** A banner that reappeared
+ * The single moment we interrupt to say a printed count is nearly used — one
+ * analysis, answer draft or practice session left, or none. **Once per cycle.** A banner that reappeared
  * on every page load would be the nagging the pill exists to avoid, and the
  * member would learn to dismiss it without reading, which is worse than not
  * having warned them.
@@ -20,16 +19,20 @@ import { X } from "lucide-react";
  * on a read path to record that somebody closed a box.
  */
 export function LowBalanceNotice({
-  runsLeft,
+  noticeKey,
+  text,
   resetDate,
   empty,
 }: {
-  runsLeft: number;
+  /** Which count — so a later warning about a different one still shows. */
+  noticeKey: string;
+  /** The sentence, already in counts (lib/domain/quotas.ts#lowCountNotice). */
+  text: string;
   resetDate: string;
-  /** Not even one run left. Changes the verb, not the design. */
+  /** None left. Changes the verb, not the design. */
   empty: boolean;
 }) {
-  const key = `roleform-lowbalance:${resetDate}:${empty ? "empty" : "low"}`;
+  const key = `roleform-lowcount:${resetDate}:${noticeKey}:${empty ? "empty" : "low"}`;
   // Starts hidden and is revealed by the effect. Rendering it on the server and
   // pulling it away once localStorage is read would be a flash of a warning
   // that had already been dismissed.
@@ -69,20 +72,12 @@ export function LowBalanceNotice({
           tall beside a button that refuses to shrink. 250px is the design's own
           basis for this banner. */}
       <p className="min-w-0 flex-[1_1_250px] text-sm leading-relaxed text-[var(--color-accent-800)]">
-        <strong className="font-semibold">
-          {empty
-            ? "You're out of tokens for this cycle."
-            : runsLeft === 1
-              ? "Enough left for one more analysis."
-              : "Your token allowance is running low."}
-        </strong>{" "}
-        {empty
-          ? `Your allowance refills on ${resetDate}. Until then a new run is refused before it starts — nothing will be half-generated.`
-          : `Your allowance refills on ${resetDate}. We'll say nothing more about it until then.`}
+        <strong className="font-semibold">{text}</strong>{" "}
+        {empty ? `It refills on ${resetDate}, or add extra analyses on a paid plan.` : `It refills on ${resetDate}.`}
       </p>
 
       <Link href="/profile" className="btn btn-secondary btn-sm no-underline">
-        See what you&rsquo;ve drawn
+        See your usage
       </Link>
       <button
         type="button"

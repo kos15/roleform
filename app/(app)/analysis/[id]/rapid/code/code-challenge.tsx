@@ -33,7 +33,6 @@ import {
   type CodeLanguage,
   type Difficulty,
 } from "@/lib/domain/drill";
-import { DRILL_ESTIMATES, formatCount } from "@/lib/domain/tokens";
 import { Choice, Prose, formatClock, useCountdown, usePaidAction } from "../shared";
 import type { AttemptView, ChallengeSummary, ChallengeView, SolutionView, TestRun } from "../types";
 
@@ -187,8 +186,8 @@ export function CodeChallenge({
         </Button>
         <span className="text-xs text-[var(--color-text-muted)]">
           {source === "bank"
-            ? `Free to start. A review costs about ${formatCount(DRILL_ESTIMATES.review)} tokens.`
-            : `About ${formatCount(DRILL_ESTIMATES.challenge)} tokens to generate, plus ${formatCount(DRILL_ESTIMATES.review)} per review.`}
+            ? "Free to start, and reviews are free."
+            : "Uses one practice session. Reviews inside it are free."}
         </span>
       </div>
 

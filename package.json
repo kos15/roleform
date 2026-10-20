@@ -36,7 +36,8 @@
     "check:agents": "pnpm script scripts/agent-fixtures.ts",
     "eval": "pnpm script scripts/evals/run.ts",
     "check:quotas": "pnpm script scripts/quota-fixtures.ts",
-    "topups:convert": "pnpm script scripts/convert-token-topups.ts"
+    "topups:convert": "pnpm script scripts/convert-token-topups.ts",
+    "check:tokencopy": "pnpm script scripts/token-copy-gate.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.20",

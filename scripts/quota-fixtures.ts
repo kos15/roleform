@@ -6,11 +6,12 @@
  */
 import assert from "node:assert/strict";
 import { QUOTAS, displayCap } from "../lib/domain/quotas";
-import { PLANS, TOPUPS, LEGACY_TOKEN_TOPUPS } from "../lib/content/pricing";
+import { PLANS, TOPUPS, LEGACY_TOKEN_TOPUPS, PLAN_ROWS, compareRows } from "../lib/content/pricing";
 import { practiceSessionWhere, analysesAvailable, convertedAnalyses } from "../lib/domain/entitlements";
 import { capColumns } from "../lib/plans/catalog";
 import { capsFromDefaults } from "../lib/admin/defaults";
 import { fairUseCeiling, WORST_CASE } from "../lib/domain/tokens";
+import { lowCountNotice } from "../lib/domain/quotas";
 
 let passed = 0;
 function check(name: string, fn: () => void) {
@@ -93,6 +94,27 @@ check("tokens are an internal quota; every other quota is printed", () => {
 check("every ceiling fits the column's CHECK bound", () => {
   const max = QUOTAS.find((q) => q.key === "tokens")!.max;
   for (const p of PLANS) assert.ok(p.caps.tokens <= max, p.id);
+});
+
+console.log("member surfaces (4)");
+check("no warning while every count has more than one left", () => {
+  assert.equal(lowCountNotice({ analyses: 5, answers: 3, practice: 2 }), null);
+});
+check("one analysis left is named, in counts", () => {
+  assert.deepEqual(lowCountNotice({ analyses: 1, answers: 9, practice: 9 }), { key: "analyses", empty: false, text: "1 analysis left this cycle." });
+});
+check("a used-up count says so, analyses first", () => {
+  assert.deepEqual(lowCountNotice({ analyses: 0, answers: 0, practice: 9 }), { key: "analyses", empty: true, text: "You've used this cycle's analyses." });
+  assert.deepEqual(lowCountNotice({ analyses: 9, answers: 0, practice: 9 }), { key: "answers", empty: true, text: "You've used this cycle's full answer drafts." });
+});
+check("a count that is Off for this plan never warns", () => {
+  assert.equal(lowCountNotice({ analyses: 9, answers: 9, practice: null }), null);
+});
+check("the plan table never prints the internal quota", () => {
+  const rows = compareRows(PLANS).map((r) => r.label);
+  assert.ok(!rows.includes("Fair-use limit"));
+  assert.ok(!rows.some((l) => /run costs/i.test(l)));
+  assert.ok(!PLAN_ROWS.some((r) => r.key === "tokens"));
 });
 
 console.log(`ok — ${passed} checks`);

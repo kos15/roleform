@@ -10,7 +10,6 @@ import { Check, ChevronRight, Minus } from "lucide-react";
 import { FaqList } from "@/components/faq-list";
 import { BILLING_FAQ, compareRows, PLAN_ROWS, PRICING_REFUSALS, TOPUPS } from "@/lib/content/pricing";
 import { loadPlans } from "@/lib/plans/catalog";
-import { RUN_ESTIMATE, TOKEN_STAGES, formatCount } from "@/lib/domain/tokens";
 import { PlanCheckout } from "@/components/plan-checkout";
 import { db } from "@/lib/db";
 import { settlePlan } from "@/lib/db/queries/plan";
@@ -152,69 +151,32 @@ export default async function PricingPage({
       </div>
       <p className="mb-[clamp(3rem,6vw,4.5rem)] mt-4 text-[13px] text-[var(--color-text-muted)]">
         Prices in INR, inclusive of tax. A paid plan lasts 30 days from payment and never renews
-        itself — there is nothing to cancel.
+        itself — there is nothing to cancel. Fair-use limit applies.
       </p>
 
-      <div className="mb-[clamp(2.5rem,5vw,4rem)] grid gap-[clamp(1.5rem,4vw,3.5rem)] [grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr))]">
-        {/* What a token is. The same four estimates the wall itemises when it
-            refuses a run — published before you pay rather than only at the
-            moment we say no. */}
-        <section>
-          <h2 className="mb-2.5 text-[40px] leading-none">What a token is</h2>
-          <p className="mb-[18px] max-w-[56ch] text-[15px] leading-relaxed text-[var(--color-text-muted)]">
-            Measured from every model call, not a made-up credit.
-          </p>
-          <ul className="flex list-none flex-col p-0">
-            {TOKEN_STAGES.map((stage) => (
-              <li key={stage.stage} className="flex items-center gap-3.5 py-1.5 text-[15px]">
-                <span className="min-w-0 flex-1">{stage.stage}</span>
-                <span className="h-1.5 w-24 flex-none overflow-hidden rounded-[var(--radius-pill)] bg-[rgb(74_13_13/0.1)]">
-                  <span
-                    className="block h-full rounded-[var(--radius-pill)] bg-[var(--color-accent-600)]"
-                    style={{ width: `${Math.round((stage.estimate / 8400) * 100)}%` }}
-                  />
-                </span>
-                <span className="w-[60px] flex-none text-right tabular-nums text-[var(--color-text-muted)]">
-                  {formatCount(stage.estimate)}
-                </span>
-              </li>
-            ))}
-            <li className="mt-1.5 flex items-center justify-between border-t border-[var(--color-line)] pt-2.5 text-[15px] font-extrabold">
-              <span>A full analysis</span>
-              <span className="tabular-nums">{formatCount(RUN_ESTIMATE)}</span>
-            </li>
-          </ul>
-          <p className="mt-3 text-[13px] leading-relaxed text-[var(--color-text-muted)]">
-            Coverage, gaps and question frameworks are free.
-          </p>
-        </section>
-
-        {/* Top-ups sit beside the token breakdown on purpose: they are the
-            answer to "what if I run out in week three", and that question is
-            asked while looking at what a run costs. */}
-        <section>
-          <h2 className="mb-2.5 text-[40px] leading-none">If you run out mid-cycle</h2>
-          <p className="mb-[18px] max-w-[56ch] text-[15px] leading-relaxed text-[var(--color-text-muted)]">
-            One-off packs on any paid plan. They never renew and never expire.
-          </p>
-          <div className="flex flex-col gap-3">
-            {TOPUPS.map((topup) => (
-              <div
-                key={topup.id}
-                className="flex items-center justify-between gap-3 rounded-[20px] bg-[var(--color-bg-raised)] px-5 py-4"
-              >
-                <div>
-                  <div className="text-base font-extrabold tabular-nums">
-                    +{topup.analyses} analyses
-                  </div>
-                  <div className="text-[13px] text-[var(--color-text-muted)]">{topup.note}</div>
-                </div>
-                <span className="display text-[32px]">{topup.price}</span>
+      {/* Packs answer "what if I run out in week three" — in analyses, the
+          unit the cards above print, never in tokens (counts-only pricing). */}
+      <section className="mb-[clamp(2.5rem,5vw,4rem)] max-w-[640px]">
+        <h2 className="mb-2.5 text-[40px] leading-none">Need more analyses?</h2>
+        <p className="mb-[18px] max-w-[56ch] text-[15px] leading-relaxed text-[var(--color-text-muted)]">
+          One-off packs on any paid plan, used after the month&rsquo;s analyses. They never renew and
+          never expire.
+        </p>
+        <div className="flex flex-col gap-3">
+          {TOPUPS.map((topup) => (
+            <div
+              key={topup.id}
+              className="flex items-center justify-between gap-3 rounded-[20px] bg-[var(--color-bg-raised)] px-5 py-4"
+            >
+              <div>
+                <div className="text-base font-extrabold tabular-nums">+{topup.analyses} analyses</div>
+                <div className="text-[13px] text-[var(--color-text-muted)]">{topup.note}</div>
               </div>
-            ))}
-          </div>
-        </section>
-      </div>
+              <span className="display text-[32px]">{topup.price}</span>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* Side by side. Every row is a cap the code enforces — see COMPARE_ROWS
           for the three the design carries that this deliberately omits. The

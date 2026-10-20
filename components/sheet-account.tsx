@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { accountTokens } from "@/lib/db/queries/tokens";
+import { cycleCounts } from "@/lib/db/queries/usage";
 import { currentRole, initialsOf } from "@/lib/admin/role";
-import { formatCount } from "@/lib/domain/tokens";
 import { greetingName } from "@/lib/account/name";
 
 /**
@@ -10,9 +9,8 @@ import { greetingName } from "@/lib/account/name";
  *
  * It exists because the header drops the name chip and the role at this width,
  * and "which account am I in, and how much is left" is the first thing a person
- * checks when they open a menu on a phone. Server component for the same reason
- * as TokenPill: the balance is two aggregates, and reporting it to the client
- * would mean shipping an endpoint that says what an account has spent.
+ * checks when they open a menu on a phone. Server component so the counts are
+ * read on the server and only a sentence reaches the client.
  *
  * Suspended by the caller — a layout that awaits this holds the first paint of
  * every page behind a Clerk read plus two queries.
@@ -24,7 +22,7 @@ export async function SheetAccount() {
   const [user, role, account] = await Promise.all([
     currentUser(),
     currentRole(userId),
-    accountTokens(userId),
+    cycleCounts(userId),
   ]);
 
   // F33: the profile's name fills a blank account name (greetingName), so a
@@ -36,9 +34,13 @@ export async function SheetAccount() {
     "Add your name";
 
   const roleLabel = role === "admin" ? "Admin" : "Member";
-  const line = account
-    ? `${roleLabel} · ${formatCount(account.balance.left)} tokens left`
-    : roleLabel;
+  // Counts-only pricing: the analyses left (plan + packs), never tokens.
+  const analysesLeft =
+    account && account.analyses.left !== null ? account.analyses.left + account.analyses.bonusLeft : null;
+  const line =
+    analysesLeft === null
+      ? roleLabel
+      : `${roleLabel} · ${analysesLeft} ${analysesLeft === 1 ? "analysis" : "analyses"} left`;
 
   return (
     <div className="mb-3.5 flex items-center gap-3 rounded-[var(--radius-lg)] bg-[var(--color-bg-tint)] px-3.5 py-3">

@@ -112,7 +112,7 @@ export const HELP: Record<HelpKey, HelpScreen> = {
     tips: [
       { text: "Filter by family — technical and system design each have their own tab.", target: "q-tabs" },
       { text: "Open a question to see why they ask it and which of your bullets to answer from." },
-      { text: "Frameworks are free. A full drafted answer draws on your token allowance." },
+      { text: "Frameworks are free. A full drafted answer counts toward your monthly answer drafts." },
     ],
   },
   learning: {
@@ -136,7 +136,7 @@ export const HELP: Record<HelpKey, HelpScreen> = {
       { text: "Three drills: cards to revise, a timed multiple-choice round, then one coding problem against the clock.", target: "rp-modes" },
       { text: "Topics come from this posting — the ones your résumé shows least of come first." },
       { text: "Pick the minutes you have and the deck resizes to fit." },
-      { text: "A classic coding problem is free to start. Only the review of your answer draws on your tokens." },
+      { text: "A classic coding problem is free to start, and reviewing your answer inside a challenge is free too." },
     ],
   },
   schedule: {
@@ -163,7 +163,7 @@ export const HELP: Record<HelpKey, HelpScreen> = {
     title: "Profile",
     intro: "Everything a tailored résumé says has to exist here first.",
     tips: [
-      { text: "Your token allowance, and what each run costs, live here.", target: "token-panel" },
+      { text: "What you have used this cycle, and what is left, live here.", target: "usage-panel" },
       { text: "Bullets used as evidence zero times are the ones worth rewriting." },
     ],
   },

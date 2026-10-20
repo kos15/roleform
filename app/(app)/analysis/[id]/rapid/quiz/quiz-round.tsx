@@ -6,7 +6,6 @@ import { openQuizRound, retakeQuizRound, startQuizRound, submitQuizRound } from 
 import { Button, Card, Skeleton, Tag } from "@/components/ui";
 import { WaitOverlay } from "@/components/wait-overlay";
 import { DIFFICULTIES, QUIZ_LENGTHS, SECONDS_PER_QUESTION, type Difficulty, type QuizLength } from "@/lib/domain/drill";
-import { DRILL_ESTIMATES, formatCount } from "@/lib/domain/tokens";
 import { Choice, Prose, usePaidAction } from "../shared";
 import type { RoundResultView, RoundSummary, RoundView } from "../types";
 
@@ -113,7 +112,7 @@ export function QuizRound({ analysisId, rounds }: { analysisId: string; rounds: 
               Start the round
             </Button>
             <span className="text-xs text-[var(--color-text-muted)]">
-              About {formatCount(DRILL_ESTIMATES.quiz)} tokens. Retaking a round is free.
+              Uses one practice session. Retaking a round is free.
             </span>
           </div>
         </div>

@@ -99,7 +99,7 @@ export function MobileTabBar({
         />
         <Tab
           href="/pricing"
-          label="Tokens"
+          label="Plans"
           on={pathname.startsWith("/pricing")}
           icon={<CircleDollarSign className="lucide h-5 w-5" />}
         />

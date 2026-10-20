@@ -12,7 +12,6 @@
  */
 
 import { QUOTAS, displayCap, type QuotaKey } from "@/lib/domain/quotas";
-import { RUN_ESTIMATE, formatCount } from "@/lib/domain/tokens";
 import type { PlanId } from "@/lib/domain/types";
 
 export type { PlanId };
@@ -167,7 +166,8 @@ export interface PlanRow {
 }
 
 const NOTES: Record<QuotaKey, string> = {
-  tokens: `Measured from what the models actually consumed — a full run is about ${formatCount(RUN_ESTIMATE)}. When it empties we stop before the first stage rather than half-run an analysis and bill you for it.`,
+  tokens:
+    "A fair-use ceiling, never printed: sized so every count above runs out first. Hitting it refuses the next run before it starts, never half-runs one.",
   analyses: "Analyses you have already run stay readable at any cap.",
   resumes: "Below eleven is fewer drafts, never worse ones — highest-ATS first.",
   answers: "Every question keeps its framework and its source bullets, at every cap including zero.",
@@ -177,7 +177,8 @@ const NOTES: Record<QuotaKey, string> = {
   practice: "Decks and rounds you have built stay usable at any cap; reviewing a challenge you started is free.",
 };
 
-export const PLAN_ROWS: PlanRow[] = QUOTAS.map((q) => ({
+/** The printed rows. The internal fair-use ceiling is never one of them (N22). */
+export const PLAN_ROWS: PlanRow[] = QUOTAS.filter((q) => !q.internal).map((q) => ({
   key: q.key,
   label: q.label,
   unit: q.unit,
@@ -207,18 +208,13 @@ export interface CompareRow {
 
 export function compareRows(plans: Plan[] = PLANS): CompareRow[] {
   return [
-    ...QUOTAS.map((q) => ({
+    ...QUOTAS.filter((q) => !q.internal).map((q) => ({
       label: q.label,
       unit: q.unit,
       cells: plans.map((p) => displayCap(q.key, p.caps[q.key])),
     })),
     {
-      label: "What a full run costs",
-      unit: "about, measured from ai_runs",
-      cells: plans.map(() => formatCount(RUN_ESTIMATE)),
-    },
-    {
-      label: "One-off top-ups",
+      label: "Extra-analysis packs",
       unit: "never renew, never expire",
       cells: plans.map((p) => (canBuyTopup(p.id) ? "✓" : "—")),
     },
@@ -271,7 +267,7 @@ export const BILLING_FAQ: { q: string; a: string }[] = [
  */
 export const PRICING_REFUSALS: string[] = [
   "Nothing upgrades itself. Running out opens a dialog; the choice stays yours.",
-  "No quiet throttling. A run you can't afford is refused before it starts, with the shortfall shown.",
+  "No quiet throttling. A run over your limit is refused before it starts, never half-run.",
   "Money can't move the match score — it's coverage of your own document.",
   "Paying adds no experience. Nothing is invented on any plan.",
   "Same models, same parser, same pipeline on every plan.",
