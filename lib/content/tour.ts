@@ -18,11 +18,7 @@ export interface TourStep {
 }
 
 export const TOUR_STEPS: readonly TourStep[] = [
-  {
-    key: "tokens",
-    title: "Your allowance, in the header",
-    body: "Every run draws tokens from this ring. It empties as you work and refills on the cycle date — never an opaque “analyses left” count.",
-  },
+
   {
     key: "jd",
     title: "Start with the posting",

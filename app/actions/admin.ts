@@ -1,5 +1,6 @@
 "use server";
 
+import { withFairUseFloor } from "@/lib/domain/tokens";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -48,6 +49,7 @@ const CapsShape = z.object({
   courses: z.number().int(),
   roadmaps: z.number().int(),
   jobSearches: z.number().int(),
+  practice: z.number().int(),
 });
 
 const CapsSchema = z.object({
@@ -68,8 +70,10 @@ export async function updateMemberCaps(input: CapsInput): Promise<Result<null>> 
   // Clamped here as well as CHECKed in the database. The constraint is the
   // guarantee; this is so a fat-fingered value snaps to the bound instead of
   // throwing a Postgres error at someone who was only holding down a button.
+  // Counts raised by hand lift the hidden fair-use ceiling with them (N22).
+  const floored = withFairUseFloor(parsed.data.caps);
   const caps = Object.fromEntries(
-    QUOTAS.map((q) => [q.column, clampCap(q.key, parsed.data.caps[q.key])]),
+    QUOTAS.map((q) => [q.column, clampCap(q.key, floored[q.key])]),
   ) as Record<(typeof QUOTAS)[number]["column"], number>;
 
   const target = await db.user.findUnique({
@@ -107,8 +111,9 @@ export async function updateWorkspaceDefaults(input: DefaultsInput): Promise<Res
   const parsed = DefaultsSchema.safeParse(input);
   if (!parsed.success) return err(appError("invalid_input", "Those defaults didn't make sense."));
 
+  const floored = withFairUseFloor(parsed.data);
   const caps = Object.fromEntries(
-    QUOTAS.map((q) => [q.column, clampCap(q.key, parsed.data[q.key])]),
+    QUOTAS.map((q) => [q.column, clampCap(q.key, floored[q.key])]),
   ) as Record<(typeof QUOTAS)[number]["column"], number>;
 
   await db.workspaceSettings.upsert({

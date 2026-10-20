@@ -47,8 +47,7 @@ export function Checklist({ items }: { items: RoadmapItemView[] }) {
           {doneIds.size} of {items.length} done
         </h2>
         <p className="max-w-[44ch] text-[15px] text-[var(--color-text-muted)]">
-          Assembled from what this analysis already made. Building it cost zero tokens; ticking is
-          your own record.
+          Assembled from what this analysis already made. Ticking is your own record.
         </p>
       </div>
       <div className="progress mb-8" aria-hidden>

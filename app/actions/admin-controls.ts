@@ -73,6 +73,7 @@ const PlanConfigSchema = z.object({
     courses: z.number().int(),
     roadmaps: z.number().int(),
     jobSearches: z.number().int(),
+    practice: z.number().int(),
   }),
 });
 

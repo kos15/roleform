@@ -144,6 +144,15 @@ export function formatCount(n: number): string {
 
 /* ------------------------------------------------------------------- wall */
 
+/** An extra-analysis pack, offered on a wall (counts-only pricing). */
+export interface TopupOffer {
+  id: string;
+  name: string;
+  price: string;
+  analyses: number;
+  note: string;
+}
+
 /** One exit out of the wall that costs money. Rendered as a card. */
 export interface TokenWallOffer {
   id: string;
@@ -186,7 +195,7 @@ export interface TokenWall {
   /** null on the top plan. */
   upgrade: TokenWallOffer | null;
   /** Empty on Free — see `TOPUPS` in lib/content/pricing.ts. */
-  topups: TokenWallOffer[];
+  topups: TopupOffer[];
 }
 
 /** "26 Aug". The date a refusal names, so nobody has to count 30 days. */
@@ -200,4 +209,55 @@ export function formatResetIn(date: Date, now: Date = new Date()): string {
   if (days <= 0) return "today";
   if (days === 1) return "tomorrow";
   return `in ${days} days`;
+}
+
+/**
+ * Worst-case tokens per operation under the GPT-5 agents (counts-only
+ * pricing). PROVISIONAL: today's estimates × 3 for reasoning tokens and
+ * worst-case runs, until the agent plan's gate measures them
+ * (`pnpm tokens:calibrate`, docs/superpowers/plans/2026-10-21-gpt5-agents-jev-checkers.md
+ * Task 8). Sized high on purpose — an ordinary member must hit a printed count
+ * long before this ceiling (N22).
+ */
+export const WORST_CASE: Record<SpendKind, number> = {
+  // Not estimate × 3: one run may spend the whole tailoring ceiling
+  // (ANALYSIS_TOKEN_CEILING, 60K) plus up to four in-flight bullet calls that
+  // finish past it (~10K), the reading, matching and questions stages at × 3
+  // (~35K) and the learning engine's own 15K ceiling — ≈ 120K.
+  analysis: 120_000,
+  answer: SPEND.answer.estimate * 3,
+  revision: SPEND.revision.estimate * 3,
+  quiz: SPEND.quiz.estimate * 3,
+  challenge: SPEND.challenge.estimate * 3,
+  review: SPEND.review.estimate * 3,
+};
+
+/**
+ * The hidden fair-use ceiling for a set of printed counts: each metered count
+ * at its worst-case cost, plus a quarter, rounded up to the next 10,000. A
+ * practice session's worst case is the dearest of a deck, a round, or a
+ * challenge with one review. Résumés and courses are inside an analysis;
+ * roadmaps and job searches make no model call (N13).
+ */
+export function fairUseCeiling(
+  caps: { analyses: number; answers: number; practice: number },
+  worst: Record<SpendKind, number>,
+  bonusAnalyses = 0,
+): number {
+  const practice = Math.max(worst.revision, worst.quiz, worst.challenge + worst.review);
+  const spend =
+    (caps.analyses * worst.analysis + caps.answers * worst.answer + caps.practice * practice) * 1.25 +
+    bonusAnalyses * worst.analysis;
+  return Math.ceil(spend / 10_000) * 10_000;
+}
+
+/**
+ * Caps with the hidden ceiling lifted to what the printed counts can spend
+ * (N22, fair use). Every writer of a cap set runs through this — plan
+ * configs, an admin editing one member, workspace defaults — so raising a
+ * count by hand can never leave the ceiling binding first. Never lowers a
+ * ceiling someone set higher.
+ */
+export function withFairUseFloor<C extends { tokens: number; analyses: number; answers: number; practice: number }>(caps: C): C {
+  return { ...caps, tokens: Math.max(caps.tokens, fairUseCeiling(caps, WORST_CASE)) };
 }

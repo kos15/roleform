@@ -3,6 +3,7 @@ import { cache } from "react";
 import { db } from "@/lib/db";
 import { PLANS, formatPrice, planAbove, type Plan, type PlanId } from "@/lib/content/pricing";
 import type { QuotaKey } from "@/lib/domain/quotas";
+import { withFairUseFloor } from "@/lib/domain/tokens";
 
 /**
  * The live plan catalog (F31).
@@ -38,13 +39,21 @@ export const loadPlans = cache(async (): Promise<Plan[]> => {
       cta: row.cta,
       featured: row.featured,
       caps: {
-        tokens: row.capTokens,
+        // An admin can move the counts; the hidden ceiling follows them so a
+        // printed count always binds first (N22, fair use).
+        tokens: withFairUseFloor({
+          tokens: row.capTokens,
+          analyses: row.capAnalyses,
+          answers: row.capAnswers,
+          practice: row.capPractice,
+        }).tokens,
         analyses: row.capAnalyses,
         resumes: row.capResumes,
         answers: row.capAnswers,
         courses: row.capCourses,
         roadmaps: row.capRoadmaps,
         jobSearches: row.capJobSearches,
+        practice: row.capPractice,
       },
     };
   });
@@ -69,5 +78,6 @@ export function capColumns(caps: Record<QuotaKey, number>) {
     capCourses: caps.courses,
     capRoadmaps: caps.roadmaps,
     capJobSearches: caps.jobSearches,
+    capPractice: caps.practice,
   };
 }

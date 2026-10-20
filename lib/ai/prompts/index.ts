@@ -36,18 +36,18 @@
  */
 
 export const PROMPT_VERSIONS = {
-  extractProfile: "extract-profile@3",
-  transcribeDocument: "transcribe-document@1",
-  analyzeJd: "analyze-jd@3",
-  tailorBullets: "tailor-bullets@3",
-  tailorSummary: "tailor-summary@3",
-  generateQuestions: "interview-questions@4",
-  answerQuestion: "question-answer@3",
-  synthesisePlan: "learning-plan@3",
-  revisionCards: "revision-cards@2",
-  quizRound: "quiz-round@2",
-  codingChallenge: "coding-challenge@2",
-  codeReview: "code-review@2",
+  extractProfile: "extract-profile@4",
+  transcribeDocument: "transcribe-document@2",
+  analyzeJd: "analyze-jd@4",
+  tailorBullets: "tailor-bullets@4",
+  tailorSummary: "tailor-summary@4",
+  generateQuestions: "interview-questions@5",
+  answerQuestion: "question-answer@4",
+  synthesisePlan: "learning-plan@4",
+  revisionCards: "revision-cards@3",
+  quizRound: "quiz-round@3",
+  codingChallenge: "coding-challenge@3",
+  codeReview: "code-review@3",
 } as const;
 
 const LAW = `Nothing is invented: you never add a fact the user did not state.`;

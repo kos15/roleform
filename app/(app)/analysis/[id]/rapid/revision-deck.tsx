@@ -7,7 +7,6 @@ import { Button, Skeleton, Tag } from "@/components/ui";
 import { InfoNote } from "@/components/info-note";
 import { WaitOverlay } from "@/components/wait-overlay";
 import { REVISION_BUDGETS, cardsForBudget, type RevisionBudget } from "@/lib/domain/drill";
-import { DRILL_ESTIMATES, formatCount } from "@/lib/domain/tokens";
 import { Choice, Prose, formatClock, useCountdown, usePaidAction } from "./shared";
 import type { CardView, DeckView } from "./types";
 
@@ -83,7 +82,7 @@ export function RevisionDeck({ analysisId, decks }: { analysisId: string; decks:
               Build my cards
             </Button>
             <span className="text-xs text-[var(--color-text-muted)]">
-              About {formatCount(DRILL_ESTIMATES.revision)} tokens, once. Opening it again is free.
+              Uses one practice session, once. Opening it again is free.
             </span>
           </div>
         </div>

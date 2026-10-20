@@ -1,0 +1,111 @@
+import "server-only";
+import type { z } from "zod";
+import { runStructured, type RunOptions, type RunOutcome } from "../run";
+import type { ReasoningEffort } from "../models";
+import type { CheckVerdict } from "../checkers/types";
+import type { Result } from "@/lib/domain/types";
+import { PROMPT_SEPARATOR } from "./prompt";
+import { applyInputGuards, injectionCheckText, outputGuardProblem, type GuardId } from "./guards";
+import { checkInjection } from "../checkers/injection";
+
+/**
+ * One agent per AI task (agent design §6.1).
+ *
+ * An agent is a fixed job with a typed contract: what it reads, the schema it
+ * must return, how hard it may think, how many tokens it may spend, which
+ * guards run on the way in and out, and — where its output makes claims about
+ * the member — a checker. Agents do not choose their own next step; the
+ * pipeline and the actions call them in a fixed order.
+ */
+export interface AgentDef<I, S extends z.ZodType> {
+  /** Recorded as `ai_runs.purpose`. Stable across prompt versions. */
+  name: string;
+  promptVersion: string;
+  model: "writer" | "writer-fast";
+  /** A function when the schema depends on the input (drill: topic enum, exact counts). */
+  schema: S | ((input: I) => S);
+  system: string;
+  /** Rules and context shared by every call of this agent in a run — cached. */
+  staticContext?: (input: I) => string;
+  /** This call's own data. Input guards apply to this part only. */
+  dynamicContext: (input: I) => string;
+  reasoningEffort: ReasoningEffort;
+  /** Includes reasoning tokens. A function when the ceiling depends on the input. */
+  maxOutputTokens: number | ((input: I) => number);
+  timeoutMs?: number;
+  /** Corrective retries for schema, output-guard and verify failures. */
+  retries: number;
+  inputGuards: GuardId[];
+  /** What the input is, for the Jev injection check (`injection_jev`). */
+  documentKind?: "posting" | "resume";
+  outputGuards: GuardId[];
+  /** A rule the schema cannot express. Return the correction, or null. */
+  verify?: (value: z.infer<S>, input: I) => string | null | Promise<string | null>;
+  /**
+   * The Jev checker for agents whose output makes claims about the member.
+   * An adapter, because each checker reads its own shape: `run` maps this
+   * agent's input and output onto it. One rewrite, then `rejectMessage`.
+   */
+  checker?: {
+    run: (input: I, output: z.infer<S>, ctx: AgentContext) => Promise<CheckVerdict>;
+    rejectMessage: string;
+  };
+  files?: (input: I) => RunOptions<S>["files"];
+}
+
+/** Identity — exists so TypeScript infers `I` and `S` from the literal. */
+export function defineAgent<I, S extends z.ZodType>(def: AgentDef<I, S>): AgentDef<I, S> {
+  return def;
+}
+
+export interface AgentContext {
+  clerkUserId: string;
+  analysisId?: string;
+}
+
+export async function runAgent<I, S extends z.ZodType>(
+  agent: AgentDef<I, S>,
+  input: I,
+  ctx: AgentContext,
+): Promise<Result<RunOutcome<z.infer<S>>>> {
+  const guarded = applyInputGuards(agent.dynamicContext(input), agent.inputGuards);
+  // Names and counts only — the flagged text is member or posting content (N7).
+  if (agent.inputGuards.includes("injection_jev") && agent.documentKind) {
+    // Flag and proceed (IN-5). The ai_runs row is the count; nothing else changes.
+    const verdict = await checkInjection(injectionCheckText(guarded.text), agent.documentKind, ctx);
+    if (verdict.flagged) guarded.flags.push("injection:jev");
+  }
+  if (guarded.flags.length > 0) console.warn(`[agent] ${agent.name} input flags: ${guarded.flags.join(",")}`);
+
+  const head = agent.staticContext ? agent.staticContext(input) : "";
+
+  return runStructured({
+    purpose: agent.name,
+    promptVersion: agent.promptVersion,
+    model: agent.model,
+    schema: typeof agent.schema === "function" ? (agent.schema as (input: I) => S)(input) : agent.schema,
+    system: agent.system,
+    prompt: `${head}${PROMPT_SEPARATOR}${guarded.text}`,
+    reasoningEffort: agent.reasoningEffort,
+    cacheKey: `${agent.name}@${agent.promptVersion}`,
+    clerkUserId: ctx.clerkUserId,
+    analysisId: ctx.analysisId,
+    maxOutputTokens:
+      typeof agent.maxOutputTokens === "function" ? agent.maxOutputTokens(input) : agent.maxOutputTokens,
+    timeoutMs: agent.timeoutMs,
+    retries: agent.retries,
+    files: agent.files?.(input),
+    verify: async (value) => {
+      const guardProblem = outputGuardProblem(value, agent.outputGuards);
+      if (guardProblem) return guardProblem;
+      return (await agent.verify?.(value, input)) ?? null;
+    },
+    ...(agent.checker
+      ? {
+          check: (value: z.infer<S>) => agent.checker!.run(input, value, ctx),
+          checkerRetries: 1,
+          checkerRejectMessage: agent.checker.rejectMessage,
+        }
+      : {}),
+  });
+}

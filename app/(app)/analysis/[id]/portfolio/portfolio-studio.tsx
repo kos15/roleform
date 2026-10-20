@@ -848,7 +848,7 @@ export function PortfolioStudio({
                     <p style={{ margin: 0, fontSize: 14.5, lineHeight: 1.55, color: MUTED }}>
                       {building
                         ? "Your portfolio is already being built in another tab. Reload in a minute to see it."
-                        : `We build the page for you in the ${look.name} look from your profile, embed your photos and give you the file. It uses no tokens, and you get one build, so check the answers above first.`}
+                        : `We build the page for you in the ${look.name} look from your profile, embed your photos and give you the file. You get one build, so check the answers above first.`}
                     </p>
                     <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, fontWeight: 600, lineHeight: 1.45 }}>
                       <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} style={{ flex: "none", width: 18, height: 18, margin: "1px 0 0", accentColor: INK }} />

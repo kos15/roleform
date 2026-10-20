@@ -12,7 +12,6 @@
  */
 
 import { QUOTAS, displayCap, type QuotaKey } from "@/lib/domain/quotas";
-import { RUN_ESTIMATE, formatCount } from "@/lib/domain/tokens";
 import type { PlanId } from "@/lib/domain/types";
 
 export type { PlanId };
@@ -47,7 +46,7 @@ export const PLANS: Plan[] = [
     pricePaise: 0,
     unit: "forever",
     tagline: "Tailor against a real posting and see your gaps.",
-    caps: { tokens: 60_000, analyses: 3, resumes: 2, answers: 3, courses: 2, roadmaps: 1, jobSearches: 0 },
+    caps: { tokens: 530_000, analyses: 3, resumes: 2, answers: 3, courses: 2, roadmaps: 1, jobSearches: 0, practice: 3 },
     cta: "Start free",
   },
   {
@@ -57,7 +56,7 @@ export const PLANS: Plan[] = [
     pricePaise: 49_900,
     unit: "per month",
     tagline: "For an active search: every template, answers, roadmaps and job search.",
-    caps: { tokens: 800_000, analyses: 40, resumes: 11, answers: 40, courses: 4, roadmaps: 40, jobSearches: 60 },
+    caps: { tokens: 6_960_000, analyses: 40, resumes: 11, answers: 40, courses: 4, roadmaps: 40, jobSearches: 60, practice: 40 },
     cta: "Go Pro",
     featured: true,
   },
@@ -68,7 +67,7 @@ export const PLANS: Plan[] = [
     pricePaise: 129_900,
     unit: "per month",
     tagline: "For coaches and career centres running many searches.",
-    caps: { tokens: 3_000_000, analyses: 150, resumes: 11, answers: 200, courses: 6, roadmaps: 150, jobSearches: 200 },
+    caps: { tokens: 26_400_000, analyses: 150, resumes: 11, answers: 200, courses: 6, roadmaps: 150, jobSearches: 200, practice: 150 },
     cta: "Go Ultra",
   },
 ];
@@ -104,14 +103,14 @@ export function planAbove(id: PlanId, plans: Plan[] = PLANS): Plan | null {
 }
 
 /**
- * One-off token packs (F19).
+ * Extra-analysis packs (F19, counts-only pricing Oct 2026).
  *
  * **They never renew and they never expire.** That is the only thing that
- * distinguishes a top-up from a cap: the plan allowance does not carry across a
- * cycle and an unspent top-up does (the carry rule lives in
- * lib/db/queries/tokens.ts), so buying one late in a month is not a partial
- * purchase. A pack that expired at the turnover would be a
- * worse cap sold at a higher price.
+ * distinguishes a pack from a cap: the month's analyses do not carry across a
+ * cycle and unspent extra analyses do (`analysesAvailable` in
+ * lib/domain/entitlements.ts), so buying one late in a month is not a partial
+ * purchase. A pack that expired at the turnover would be a worse cap sold at a
+ * higher price.
  *
  * Free accounts cannot buy them. A top-up is a release valve on a plan you are
  * already paying for, not a way to buy the product one run at a time — and
@@ -119,27 +118,28 @@ export function planAbove(id: PlanId, plans: Plan[] = PLANS): Plan | null {
  */
 export interface Topup {
   id: string;
-  tokens: number;
+  /** Extra analyses the pack adds. Spent only after the month's cap runs out. */
+  analyses: number;
   price: string;
   pricePaise: number;
   note: string;
 }
 
 export const TOPUPS: Topup[] = [
-  {
-    id: "topup-100k",
-    tokens: 100_000,
-    price: "₹99",
-    pricePaise: 9_900,
-    note: `About ${Math.floor(100_000 / RUN_ESTIMATE)} more full analyses`,
-  },
-  {
-    id: "topup-300k",
-    tokens: 300_000,
-    price: "₹249",
-    pricePaise: 24_900,
-    note: `About ${Math.floor(300_000 / RUN_ESTIMATE)} more full analyses`,
-  },
+  { id: "topup-5a", analyses: 5, price: "₹99", pricePaise: 9_900, note: "Never expires" },
+  { id: "topup-15a", analyses: 15, price: "₹249", pricePaise: 24_900, note: "Never expires" },
+];
+
+/**
+ * The token packs sold before counts-only pricing (Oct 2026). Not on sale —
+ * kept only so an order placed before the switch and paid after it is still
+ * credited by the webhook, as the analyses it was sold as.
+ */
+export const LEGACY_TOKEN_TOPUPS: Array<{ id: string; analyses: number; pricePaise: number }> = [
+  // Sold as "about 5 / 15 more full analyses" at the same prices as today's
+  // packs, so that is what they credit — tokens now buy nothing visible.
+  { id: "topup-100k", analyses: 5, pricePaise: 9_900 },
+  { id: "topup-300k", analyses: 15, pricePaise: 24_900 },
 ];
 
 export function topupById(id: string): Topup | null {
@@ -168,16 +168,19 @@ export interface PlanRow {
 }
 
 const NOTES: Record<QuotaKey, string> = {
-  tokens: `Measured from what the models actually consumed — a full run is about ${formatCount(RUN_ESTIMATE)}. When it empties we stop before the first stage rather than half-run an analysis and bill you for it.`,
+  tokens:
+    "A fair-use ceiling, never printed: sized so every count above runs out first. Hitting it refuses the next run before it starts, never half-runs one.",
   analyses: "Analyses you have already run stay readable at any cap.",
   resumes: "Below eleven is fewer drafts, never worse ones — highest-ATS first.",
   answers: "Every question keeps its framework and its source bullets, at every cap including zero.",
   courses: "The gap is always shown, with or without a course beside it.",
   roadmaps: "A roadmap you have built stays readable and tickable at any cap.",
   jobSearches: "Saved jobs and their statuses stay at any cap, including Off.",
+  practice: "Decks and rounds you have built stay usable at any cap; reviewing a challenge you started is free.",
 };
 
-export const PLAN_ROWS: PlanRow[] = QUOTAS.map((q) => ({
+/** The printed rows. The internal fair-use ceiling is never one of them (N22). */
+export const PLAN_ROWS: PlanRow[] = QUOTAS.filter((q) => !q.internal).map((q) => ({
   key: q.key,
   label: q.label,
   unit: q.unit,
@@ -207,18 +210,13 @@ export interface CompareRow {
 
 export function compareRows(plans: Plan[] = PLANS): CompareRow[] {
   return [
-    ...QUOTAS.map((q) => ({
+    ...QUOTAS.filter((q) => !q.internal).map((q) => ({
       label: q.label,
       unit: q.unit,
       cells: plans.map((p) => displayCap(q.key, p.caps[q.key])),
     })),
     {
-      label: "What a full run costs",
-      unit: "about, measured from ai_runs",
-      cells: plans.map(() => formatCount(RUN_ESTIMATE)),
-    },
-    {
-      label: "One-off top-ups",
+      label: "Extra-analysis packs",
       unit: "never renew, never expire",
       cells: plans.map((p) => (canBuyTopup(p.id) ? "✓" : "—")),
     },
@@ -271,7 +269,7 @@ export const BILLING_FAQ: { q: string; a: string }[] = [
  */
 export const PRICING_REFUSALS: string[] = [
   "Nothing upgrades itself. Running out opens a dialog; the choice stays yours.",
-  "No quiet throttling. A run you can't afford is refused before it starts, with the shortfall shown.",
+  "No quiet throttling. A run over your limit is refused before it starts, never half-run.",
   "Money can't move the match score — it's coverage of your own document.",
   "Paying adds no experience. Nothing is invented on any plan.",
   "Same models, same parser, same pipeline on every plan.",

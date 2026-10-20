@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { listAdmins } from "@/lib/admin/members";
 import { workspaceDefaults, capsFromDefaults } from "@/lib/admin/defaults";
 import { cycleEnd, cycleStart, QUOTA_BY_KEY, type CapWall, type QuotaKey } from "@/lib/domain/quotas";
-import { UNCAPPED, isUncapped, withinCap } from "@/lib/domain/entitlements";
+import { UNCAPPED, analysesAvailable, isUncapped, practiceSessionWhere, withinCap } from "@/lib/domain/entitlements";
 import { accountTokens } from "@/lib/db/queries/tokens";
 import { settlePlan } from "@/lib/db/queries/plan";
 import {
@@ -120,13 +120,14 @@ export async function checkTokenAllowance(
   if (short === 0) return ok(null);
 
   const wall = await buildWall(clerkUserId, kind, account, short);
-  const spend = SPEND[kind];
+  // Counts-only pricing: the refusal names the limit and the reset, never a
+  // token number (N22 — tokens are an internal fair-use ceiling).
   return err({
     code: "token_wall",
     message:
       account.balance.total === 0
-        ? `Your token allowance is set to zero${await askWhom()}.`
-        : `${spend.noun} needs about ${formatCount(spend.estimate)} tokens and you have ${formatCount(account.balance.left)}. Your cycle resets on ${wall.resetDate}.`,
+        ? `Generation is switched off on your account${await askWhom()}.`
+        : `You've reached this cycle's fair-use limit. It resets on ${wall.resetDate}.`,
     wall,
   });
 }
@@ -158,16 +159,16 @@ async function buildWall(
           name: up.name,
           price: up.price,
           tokens: up.caps.tokens,
-          note: `${formatCount(up.caps.tokens)} tokens a cycle instead of ${formatCount(account.balance.allowance)}, available the moment you switch.`,
+          note: `More analyses, answers and practice every month — ${up.caps.analyses} analyses instead of ${(await loadPlan(planId)).caps.analyses}, the moment you switch.`,
         }
       : null,
     topups: canBuyTopup(planId)
       ? TOPUPS.map((t) => ({
           id: t.id,
-          name: `${formatCount(t.tokens)} tokens`,
+          name: `${t.analyses} extra analyses`,
           price: t.price,
-          tokens: t.tokens,
-          note: `${t.note}. One-off — nothing renews, and anything unspent carries into the next cycle.`,
+          analyses: t.analyses,
+          note: "One-off — nothing renews, and anything unspent carries into the next cycle.",
         }))
       : [],
   };
@@ -202,7 +203,7 @@ export async function requireUser(): Promise<Result<string>> {
  */
 export async function checkAnalysisAllowance(
   clerkUserId: string,
-): Promise<Result<{ used: number; cap: number }>> {
+): Promise<Result<{ used: number; cap: number; fromBonus: boolean; bonusLeft: number }>> {
   // Settled first (PAY-2): a lapsed member is checked against Free's cap,
   // not a plan nobody is still paying for.
   await settlePlan(clerkUserId);
@@ -233,13 +234,21 @@ export async function checkAnalysisAllowance(
     );
   }
 
-  const used = await db.analysis.count({
-    where: { clerkUserId, createdAt: { gte: cycleStart(row.quotaResetsAt) } },
-  });
+  // Plan-paid runs this cycle; pack-paid runs are counted against the pack.
+  const [used, granted, bonusSpent] = await Promise.all([
+    db.analysis.count({ where: { clerkUserId, fromBonus: false, createdAt: { gte: cycleStart(row.quotaResetsAt) } } }),
+    db.analysisGrant.aggregate({ where: { clerkUserId }, _sum: { analyses: true } }),
+    db.analysis.count({ where: { clerkUserId, fromBonus: true } }),
+  ]);
+  const bonusGranted = granted._sum.analyses ?? 0;
 
   // Suspension is checked above and is NOT bypassed for an uncapped account:
   // it is a deliberate block, not a ceiling (lib/domain/entitlements.ts).
-  if (!withinCap(row.role, row.capAnalyses, used)) {
+  const withinPlan = withinCap(row.role, row.capAnalyses, used);
+  const available = withinPlan
+    ? { allowed: true, fromBonus: false }
+    : analysesAvailable({ cap: row.capAnalyses, usedThisCycle: used, bonusGranted, bonusSpent });
+  if (!available.allowed) {
     // PAY-4/PAY-5: every cap refusal carries the value it was raised from, so
     // the UI can open the same dialog the token wall does rather than a plain
     // sentence with nowhere to go.
@@ -255,7 +264,12 @@ export async function checkAnalysisAllowance(
     });
   }
 
-  return ok({ used, cap: isUncapped(row.role) ? UNCAPPED : row.capAnalyses });
+  return ok({
+    used,
+    cap: isUncapped(row.role) ? UNCAPPED : row.capAnalyses,
+    fromBonus: available.fromBonus,
+    bonusLeft: Math.max(0, bonusGranted - bonusSpent - (available.fromBonus ? 1 : 0)),
+  });
 }
 
 /**
@@ -307,6 +321,56 @@ export async function checkAnswerAllowance(
 }
 
 /**
+ * Practice-session allowance (counts-only pricing). A deck, a quiz round or a
+ * challenge the model writes counts one; retakes, bank problems and reviews
+ * are free (`practiceSessionWhere`). Checked before the token ceiling, so a
+ * member hits the printed count first (N22).
+ */
+export async function checkPracticeAllowance(
+  clerkUserId: string,
+): Promise<Result<{ used: number; cap: number }>> {
+  await settlePlan(clerkUserId);
+
+  const row = await db.user.findUnique({
+    where: { clerkUserId },
+    select: { capPractice: true, suspended: true, quotaResetsAt: true, role: true, plan: true },
+  });
+  if (!row) return err(appError("not_found", "We couldn't find your account."));
+
+  if (row.suspended) {
+    return err(
+      appError(
+        "quota_exhausted",
+        `Generation is suspended on your account${await askWhom()}. Decks and rounds you've built stay usable.`,
+      ),
+    );
+  }
+
+  const where = practiceSessionWhere(clerkUserId, cycleStart(row.quotaResetsAt));
+  const [decks, rounds, challenges] = await Promise.all([
+    db.revisionDeck.count({ where }),
+    db.quizRound.count({ where }),
+    db.codingChallenge.count({ where }),
+  ]);
+  const used = decks + rounds + challenges;
+
+  if (!withinCap(row.role, row.capPractice, used)) {
+    const capWall = await buildCapWall(clerkUserId, "practice", row.capPractice, used, row.quotaResetsAt, row.plan);
+    return err({
+      ...appError(
+        "quota_exhausted",
+        row.capPractice === 0
+          ? `Practice sessions are switched off on your account${await askWhom()}.`
+          : `You've used all ${row.capPractice} practice sessions in this cycle${await askWhom()}. Decks and rounds you've built stay usable, and retakes are free.`,
+      ),
+      capWall,
+    });
+  }
+
+  return ok({ used, cap: isUncapped(row.role) ? UNCAPPED : row.capPractice });
+}
+
+/**
  * Roadmap build allowance (F21, F15). Same shape as the two caps above:
  * counted from rows, so an attempt refused up front costs nothing. A roadmap
  * already built stays readable and tickable at any cap (RM-5) — this only
@@ -355,6 +419,7 @@ async function checkCap(
     select: {
       capRoadmaps: true,
       capJobSearches: true,
+      capPractice: true,
       suspended: true,
       quotaResetsAt: true,
       role: true,
@@ -403,7 +468,7 @@ async function checkCap(
  */
 async function buildCapWall(
   clerkUserId: string,
-  key: Extract<QuotaKey, "analyses" | "answers" | "roadmaps" | "jobSearches">,
+  key: Extract<QuotaKey, "analyses" | "answers" | "roadmaps" | "jobSearches" | "practice">,
   cap: number,
   used: number,
   quotaResetsAt: Date | null,

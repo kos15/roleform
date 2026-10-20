@@ -270,6 +270,16 @@ enum TokenGrantSource {
   @@map("token_grant_source")
 }
 
+/// Where extra analyses came from (counts-only pricing). `token_conversion` is
+/// the one-off move of unspent token top-ups into analyses.
+enum AnalysisGrantSource {
+  purchase
+  admin
+  token_conversion
+
+  @@map("analysis_grant_source")
+}
+
 /// Where one outbound mail got to (F16). Four states because "we never tried"
 /// and "we tried and it bounced" are different facts to an admin reading the
 /// inbox: `disabled` means this deployment has no mail keys, so the row is the
@@ -320,7 +330,7 @@ model User {
   /// from `ai_runs`, which already records the real input and output tokens of
   /// every call — so a run that dies half-way costs exactly what it burned,
   /// and no crash between two writes can drift a balance that isn't stored.
-  capTokens Int @default(60000) @map("cap_tokens") // per cycle
+  capTokens Int @default(530000) @map("cap_tokens") // per cycle — the hidden fair-use ceiling
 
   /// The roadmap tab's build cap (F21). Counted from `roadmaps` rows created
   /// in the cycle — a roadmap costs zero tokens, so this is the only limiter.
@@ -329,6 +339,7 @@ model User {
   /// a plan is its caps (N22), so gating by cap keeps this row the only place
   /// "who can search" is decided.
   capJobSearches Int @default(0) @map("cap_job_searches") // per cycle
+  capPractice    Int @default(3) @map("cap_practice") // per cycle: deck builds + quiz rounds + challenges
 
   /// When a paid plan lapses (F23). Null on Free — CHECKed by hand in the
   /// migration: (plan = 'free') = (plan_expires_at IS NULL). Extended, never
@@ -349,6 +360,7 @@ model User {
   notifyDetails Boolean @default(false) @map("notify_details")
 
   tokenGrants       TokenGrant[]
+  analysisGrants    AnalysisGrant[]
   savedJobs         SavedJob[]
   jobSearches       JobSearch[]
   pushSubscriptions PushSubscription[]
@@ -406,6 +418,26 @@ model TokenGrant {
   @@map("token_grants")
 }
 
+/// Extra analyses from a pack (counts-only pricing, Oct 2026). Never renew,
+/// never expire; spent only after the month's `cap_analyses` (an analysis
+/// spent from here is stamped `analyses.from_bonus`). Same idempotency shape as
+/// token_grants: one row per payment, `reference` unique.
+model AnalysisGrant {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  clerkUserId String              @map("clerk_user_id")
+  analyses    Int
+  source      AnalysisGrantSource
+  /// Payment id, `admin:<uuid>`, or `conv:<clerk id>` for the token conversion. Unique, always.
+  reference   String              @unique
+  grantedBy   String?             @map("granted_by")
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [clerkUserId], references: [clerkUserId], onDelete: Cascade)
+
+  @@index([clerkUserId], map: "analysis_grants_user_idx")
+  @@map("analysis_grants")
+}
+
 /// The caps a NEW account is created with (F15).
 ///
 /// One row, always. The column defaults on `users` are what Postgres applies
@@ -423,13 +455,14 @@ model WorkspaceSettings {
   /// `settings` row we have to remember not to duplicate.
   id String @id @default("workspace")
 
-  capTokens      Int @default(60000) @map("cap_tokens")
+  capTokens      Int @default(530000) @map("cap_tokens")
   capAnalyses    Int @default(40) @map("cap_analyses")
   capResumes     Int @default(11) @map("cap_resumes")
   capAnswers     Int @default(40) @map("cap_answers")
   capCourses     Int @default(4) @map("cap_courses")
   capRoadmaps    Int @default(1) @map("cap_roadmaps")
   capJobSearches Int @default(0) @map("cap_job_searches")
+  capPractice    Int @default(3) @map("cap_practice")
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -447,6 +480,9 @@ enum FeatureKey {
   roadmap
   study
   rounds
+  /// The Jev checkers on tailoring and answers (agent design §6.5). Off = the
+  /// deterministic guards alone, exactly as before the checkers existed.
+  ai_checkers
 
   @@map("feature_key")
 }
@@ -482,6 +518,7 @@ model PlanConfig {
   capCourses     Int @map("cap_courses")
   capRoadmaps    Int @map("cap_roadmaps")
   capJobSearches Int @map("cap_job_searches")
+  capPractice    Int @default(3) @map("cap_practice")
 
   updatedBy String?  @map("updated_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
@@ -683,6 +720,8 @@ model Analysis {
   profileId      String         @map("profile_id") @db.Uuid
   jdSource       JdSource       @map("jd_source")
   jdFilename     String?        @map("jd_filename")
+  /// Paid from an extra-analysis pack rather than the month's cap.
+  fromBonus      Boolean        @default(false) @map("from_bonus")
   rawText        String         @map("raw_text")
   contentHash    String         @map("content_hash")
   company        String?
@@ -1384,6 +1423,8 @@ model AiRun {
   promptVersion String   @map("prompt_version")
   inputTokens   Int      @default(0) @map("input_tokens")
   outputTokens  Int      @default(0) @map("output_tokens")
+  /// The part of input_tokens served from the provider's prompt cache (agent design §6.6).
+  cachedInputTokens Int  @default(0) @map("cached_input_tokens")
   latencyMs     Int      @default(0) @map("latency_ms")
   schemaValid   Boolean  @map("schema_valid")
   retryCount    Int      @default(0) @map("retry_count")

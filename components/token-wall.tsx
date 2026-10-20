@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Button, ErrorRegion, Tag } from "@/components/ui";
+import { Button, ErrorRegion } from "@/components/ui";
 import { CheckoutButton } from "@/components/checkout-button";
-import { formatCount, type TokenWall } from "@/lib/domain/tokens";
+import type { TokenWall } from "@/lib/domain/tokens";
 
 /**
  * The token wall (F19).
@@ -121,89 +121,28 @@ function Blocked({
   onPurchased: (message: string) => void;
   onClose: () => void;
 }) {
-  const { balance } = wall;
-  // The bar shows three quantities against one total: what has gone, what is
-  // left, and the piece that isn't there. The last one is hatched rather than
-  // coloured, because it is the only segment that is not a real balance.
-  const total = balance.total + wall.shortfall || 1;
-  const pct = (n: number) => `${((n / total) * 100).toFixed(1)}%`;
-
   return (
     <>
+      {/* Counts-only pricing: members never see tokens. This wall is the
+          hidden fair-use ceiling, sized so a printed count is hit first
+          (N22) — so it says so plainly, with a date and no numbers. */}
       <div className="mb-3.5 flex items-center gap-2.5">
         <span
           aria-hidden
           className="h-2.5 w-2.5 flex-none rounded-[var(--radius-pill)] bg-[var(--color-accent-500)]"
           style={{ animation: "breathe 1.6s ease-in-out infinite" }}
         />
-        <span className="eyebrow text-[var(--color-accent-700)]">Token wall</span>
-        <Tag tone="accent" className="ml-auto">
-          {formatCount(wall.shortfall)} short
-        </Tag>
+        <span className="eyebrow text-[var(--color-accent-700)]">Fair-use limit</span>
       </div>
 
       <Dialog.Title className="mb-2 text-[clamp(1.3rem,3.2vw,1.7rem)] leading-[1.18]">
-        {wall.kind === "answer" ? "A drafted answer needs " : "This run needs "}
-        about {formatCount(wall.estimate)} tokens. You have {formatCount(balance.left)}.
+        You&rsquo;ve reached this cycle&rsquo;s fair-use limit
       </Dialog.Title>
 
       <p className="mb-4 text-sm leading-relaxed text-[var(--color-text-muted)]">
-        {wall.planName} gives you {formatCount(balance.allowance)} tokens a cycle
-        {balance.topups > 0 ? `, plus ${formatCount(balance.topups)} unspent from a top-up` : ""},
-        and you have drawn {formatCount(balance.used)}. We stop before the first stage rather than
-        half-run an analysis and bill you for it.
+        It resets on {wall.resetDate}. We stop before starting rather than half-run{" "}
+        {wall.kind === "answer" ? "a draft" : "a run"} and charge you for it.
       </p>
-
-      <div
-        className="mb-2 flex h-[11px] overflow-hidden rounded-[var(--radius-pill)]"
-        style={{ background: "var(--color-bg-sunken)" }}
-      >
-        <span style={{ width: pct(balance.used), background: "var(--color-sage-500)" }} />
-        <span style={{ width: pct(balance.left), background: "var(--color-sage-200)" }} />
-        <span
-          style={{
-            width: pct(wall.shortfall),
-            background:
-              "repeating-linear-gradient(135deg, var(--color-accent-400) 0 5px, var(--color-accent-200) 5px 10px)",
-          }}
-        />
-      </div>
-      <div className="mb-4 flex flex-wrap justify-between gap-2.5 text-xs text-[var(--color-text-muted)]">
-        <span>
-          {formatCount(balance.used)} of {formatCount(balance.total)} used
-        </span>
-        <span>Resets {wall.resetDate}</span>
-      </div>
-
-      <div className="mb-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bg-raised)] px-4 py-3.5">
-        <div className="eyebrow mb-2.5">Where the {formatCount(wall.estimate)} would go</div>
-        {wall.kind === "answer" ? (
-          <p className="text-[0.8125rem] text-[var(--color-text-muted)]">
-            One mid-tier call against the bullets this question already cites. The framework and the
-            source bullets are free, and stay on the screen at any balance.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-1.5">
-            {wall.stages.map((s) => (
-              <div key={s.stage} className="flex items-center gap-3 text-[0.8125rem]">
-                <span className="min-w-0 flex-1">{s.stage}</span>
-                <span className="h-[5px] w-20 flex-none overflow-hidden rounded-[var(--radius-pill)] bg-[var(--color-bg-sunken)]">
-                  <span
-                    className="block h-full rounded-[var(--radius-pill)]"
-                    style={{
-                      width: `${Math.round((s.estimate / 8400) * 100)}%`,
-                      background: "var(--color-sage-600)",
-                    }}
-                  />
-                </span>
-                <span className="w-14 text-right tabular-nums text-[var(--color-text-muted)]">
-                  {formatCount(s.estimate)}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       {error ? <ErrorRegion title="That didn't work">{error}</ErrorRegion> : null}
 
@@ -229,7 +168,7 @@ function Blocked({
           <Exit
             key={t.id}
             tone="sage"
-            title={`Top up once — ${t.price}`}
+            title={`Extra analyses — ${t.price}`}
             body={t.note}
             action={
               <CheckoutButton
@@ -261,8 +200,7 @@ function Blocked({
       </div>
 
       <p className="mt-4 text-xs leading-relaxed text-[var(--color-text-muted)]">
-        Nothing upgrades itself, and we will not part-run an analysis to fit the balance. If none of
-        these is right, the reset costs nothing.
+        Nothing upgrades itself. If none of these is right, the reset costs nothing.
       </p>
 
       <div className="mt-3 flex flex-wrap gap-2">
@@ -349,7 +287,7 @@ function Ready({
             {message ?? "Payment went through"}
           </Dialog.Title>
           <p className="text-xs text-[var(--color-text-muted)]">
-            Your balance updates as soon as the provider confirms it
+            It&rsquo;s applied as soon as the provider confirms it
           </p>
         </div>
       </div>
@@ -358,9 +296,9 @@ function Ready({
           credits the account, and it usually lands within seconds, but this
           screen cannot see it happen and should not pretend it can. */}
       <p className="mb-4 text-sm leading-relaxed text-[var(--color-text-muted)]">
-        The credit is applied by the payment provider&rsquo;s confirmation, not by this window — so
-        if the balance in the header hasn&rsquo;t moved yet, give it a moment and reload. Your
-        allowance still resets on {wall.resetDate}; anything you bought outlives that.
+        The payment provider&rsquo;s confirmation applies it, not this window — so if it hasn&rsquo;t
+        shown up yet, give it a moment and reload. Your month still resets on {wall.resetDate};
+        anything you bought outlives that.
       </p>
 
       <div className="flex flex-wrap gap-2">

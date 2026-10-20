@@ -1,6 +1,7 @@
 import "server-only";
 import { clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
+import { practiceSessionWhere } from "@/lib/domain/entitlements";
 import { initialsOf, roleFromMetadata, type Role } from "@/lib/admin/role";
 import { cycleStart, type QuotaKey } from "@/lib/domain/quotas";
 import { formatTokens } from "@/lib/domain/tokens";
@@ -43,6 +44,7 @@ export interface MemberUsage {
   courses: number;
   roadmaps: number;
   jobSearches: number;
+  practice: number;
 }
 
 /**
@@ -139,6 +141,7 @@ export async function listMembers(): Promise<MemberList> {
       capCourses: true,
       capRoadmaps: true,
       capJobSearches: true,
+      capPractice: true,
     },
   });
 
@@ -169,6 +172,7 @@ export async function listMembers(): Promise<MemberList> {
         capCourses: free.courses,
         capRoadmaps: free.roadmaps,
         capJobSearches: free.jobSearches,
+        capPractice: free.practice,
       };
     }),
   );
@@ -231,6 +235,7 @@ export async function listMembers(): Promise<MemberList> {
         courses: row.capCourses,
         roadmaps: row.capRoadmaps,
         jobSearches: row.capJobSearches,
+        practice: row.capPractice,
       },
       used: usage[i],
       activity: activity[i],
@@ -377,7 +382,8 @@ async function usageFor(clerkUserId: string, since: Date): Promise<MemberUsage> 
     select: { id: true },
   });
 
-  const [tokens, analyses, answers, resumes, courses, roadmaps, jobSearches] = await Promise.all([
+  const practiceWhere = practiceSessionWhere(clerkUserId, since);
+  const [tokens, analyses, answers, resumes, courses, roadmaps, jobSearches, decks, rounds, challenges] = await Promise.all([
     db.aiRun.aggregate({
       where: { clerkUserId, createdAt: { gte: since } },
       _sum: { inputTokens: true, outputTokens: true },
@@ -395,6 +401,9 @@ async function usageFor(clerkUserId: string, since: Date): Promise<MemberUsage> 
       : Promise.resolve(0),
     db.roadmap.count({ where: { clerkUserId, createdAt: { gte: since } } }),
     db.jobSearch.count({ where: { clerkUserId, createdAt: { gte: since } } }),
+    db.revisionDeck.count({ where: practiceWhere }),
+    db.quizRound.count({ where: practiceWhere }),
+    db.codingChallenge.count({ where: practiceWhere }),
   ]);
 
   return {
@@ -405,6 +414,7 @@ async function usageFor(clerkUserId: string, since: Date): Promise<MemberUsage> 
     courses,
     roadmaps,
     jobSearches,
+    practice: decks + rounds + challenges,
   };
 }
 

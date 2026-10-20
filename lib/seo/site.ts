@@ -45,7 +45,7 @@ export function absoluteUrl(path = "/"): string {
 export const PUBLIC_PAGES: { path: string; title: string; summary: string; priority: number }[] = [
   { path: "/", title: "Roleform — tailor your résumé to a job description", summary: "What Roleform does and how it works, in one page.", priority: 1 },
   { path: "/templates", title: "ATS-friendly résumé templates", summary: "All eleven templates with the ATS rating each one earns and why.", priority: 0.9 },
-  { path: "/pricing", title: "Pricing", summary: "Free, Pro (₹499/month) and Ultra (₹1,299/month), metered in tokens.", priority: 0.9 },
+  { path: "/pricing", title: "Pricing", summary: "Free, Pro (₹499/month) and Ultra (₹1,299/month) — what each plan lets you do in a month.", priority: 0.9 },
   { path: "/guides", title: "Résumé guides", summary: "Practical guides on tailoring, ATS parsing, keywords, skill gaps and interview prep.", priority: 0.8 },
   { path: "/how-it-works", title: "How it works", summary: "The four-stage pipeline and what each stage refuses to do.", priority: 0.8 },
   { path: "/privacy", title: "Privacy", summary: "What is stored, what is never done with it, and how deletion works.", priority: 0.5 },

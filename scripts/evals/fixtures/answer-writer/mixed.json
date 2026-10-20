@@ -1,0 +1,201 @@
+[
+ {
+  "id": "ans-01",
+  "jobTitle": "Senior Frontend Engineer",
+  "question": {
+   "type": "behavioural",
+   "text": "Tell me about a time you improved a slow process.",
+   "whyTheyAsk": "Checks whether you measure before and after.",
+   "frame": [
+    "Situation",
+    "What you changed",
+    "Result in numbers"
+   ]
+  },
+  "evidence": [
+   "Reduced the CI pipeline from 22 minutes to 14 minutes by parallelising test jobs."
+  ],
+  "other": [
+   "Wrote a script that automated our weekly release notes."
+  ],
+  "requirementText": "Improving engineering workflows"
+ },
+ {
+  "id": "ans-02",
+  "jobTitle": "Senior Frontend Engineer",
+  "question": {
+   "type": "behavioural",
+   "text": "Describe a production incident you handled.",
+   "whyTheyAsk": "Probes calm under pressure and follow-through.",
+   "frame": [
+    "What broke",
+    "How you found it",
+    "What changed after"
+   ]
+  },
+  "evidence": [
+   "Investigated and documented three production incidents."
+  ],
+  "other": [
+   "Debugged a race condition in the websocket reconnect logic."
+  ],
+  "requirementText": "Incident response"
+ },
+ {
+  "id": "ans-03",
+  "jobTitle": "Senior Frontend Engineer",
+  "question": {
+   "type": "technical",
+   "text": "How do you make a data table accessible?",
+   "whyTheyAsk": "Tests hands-on accessibility knowledge.",
+   "frame": [
+    "Semantics",
+    "Keyboard",
+    "Testing"
+   ]
+  },
+  "evidence": [
+   "Added keyboard navigation to the data table component."
+  ],
+  "other": [
+   "Fixed 30 accessibility issues raised in an external audit."
+  ],
+  "requirementText": "Accessibility"
+ },
+ {
+  "id": "ans-04",
+  "jobTitle": "Senior Frontend Engineer",
+  "question": {
+   "type": "technical",
+   "text": "How would you raise test coverage on a legacy module?",
+   "whyTheyAsk": "Checks pragmatic testing strategy.",
+   "frame": [
+    "Where to start",
+    "What to test first",
+    "How to keep it"
+   ]
+  },
+  "evidence": [
+   "Added unit tests to the billing module, taking coverage from 20% to 55%."
+  ],
+  "other": [],
+  "requirementText": "Unit testing"
+ },
+ {
+  "id": "ans-05",
+  "jobTitle": "Senior Frontend Engineer",
+  "question": {
+   "type": "behavioural",
+   "text": "Tell me about mentoring someone.",
+   "whyTheyAsk": "Looks for patience and structure.",
+   "frame": [
+    "Who",
+    "How you worked together",
+    "What they could do after"
+   ]
+  },
+  "evidence": [
+   "Paired with a junior engineer twice a week for a quarter."
+  ],
+  "other": [
+   "Presented a lunch-and-learn on RxJS operators."
+  ],
+  "requirementText": "Mentoring"
+ },
+ {
+  "id": "ans-06",
+  "jobTitle": "Senior Frontend Engineer",
+  "question": {
+   "type": "gap",
+   "text": "How have you run Kubernetes in production?",
+   "whyTheyAsk": "The posting requires production Kubernetes.",
+   "frame": [
+    "What you have done nearby",
+    "What you are doing to close it"
+   ]
+  },
+  "evidence": [],
+  "other": [
+   "Set up feature flags for the new dashboard rollout.",
+   "Reduced the CI pipeline from 22 minutes to 14 minutes by parallelising test jobs."
+  ],
+  "requirementText": "Deep Kubernetes experience running production clusters at scale"
+ },
+ {
+  "id": "ans-07",
+  "jobTitle": "Senior Frontend Engineer",
+  "question": {
+   "type": "gap",
+   "text": "Tell me about leading a team of ten engineers.",
+   "whyTheyAsk": "The posting asks for people management at scale.",
+   "frame": [
+    "What leadership you have shown",
+    "How you are growing into it"
+   ]
+  },
+  "evidence": [],
+  "other": [
+   "Ran the weekly bug triage meeting for six months.",
+   "Paired with a junior engineer twice a week for a quarter."
+  ],
+  "requirementText": "Led a team of 10+ engineers across multiple squads"
+ },
+ {
+  "id": "ans-08",
+  "jobTitle": "Senior Frontend Engineer",
+  "question": {
+   "type": "gap",
+   "text": "How have you shipped machine learning models?",
+   "whyTheyAsk": "The posting expects ML in production.",
+   "frame": [
+    "Adjacent work",
+    "Plan to learn"
+   ]
+  },
+  "evidence": [],
+  "other": [
+   "Built a CSV export feature used by around 40 customers a month."
+  ],
+  "requirementText": "Built and shipped machine learning models to production"
+ },
+ {
+  "id": "ans-09",
+  "jobTitle": "Senior Frontend Engineer",
+  "question": {
+   "type": "gap",
+   "text": "Describe a Kafka-based architecture you designed.",
+   "whyTheyAsk": "Event-driven design is a stated requirement.",
+   "frame": [
+    "Nearest experience",
+    "How you would approach it"
+   ]
+  },
+  "evidence": [],
+  "other": [
+   "Debugged a race condition in the websocket reconnect logic.",
+   "Refactored the notification service to remove duplicated logic."
+  ],
+  "requirementText": "Architected an event-driven system using Kafka"
+ },
+ {
+  "id": "ans-10",
+  "jobTitle": "Senior Frontend Engineer",
+  "question": {
+   "type": "behavioural",
+   "text": "Tell me about working with a non-engineering team.",
+   "whyTheyAsk": "Checks stakeholder communication.",
+   "frame": [
+    "The team",
+    "What they needed",
+    "What you built"
+   ]
+  },
+  "evidence": [
+   "Built an internal tool for the finance team to reconcile invoices."
+  ],
+  "other": [
+   "Helped scope the requirements for the reporting rebuild."
+  ],
+  "requirementText": "Working with stakeholders"
+ }
+]

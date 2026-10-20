@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { verifyWebhookSignature } from "@/lib/payments/razorpay";
-import { PLAN_IDS, topupById, type PlanId } from "@/lib/content/pricing";
+import { LEGACY_TOKEN_TOPUPS, PLAN_IDS, topupById, type PlanId } from "@/lib/content/pricing";
 import { capColumns, loadPlan } from "@/lib/plans/catalog";
 import { deliver } from "@/lib/mail/deliver";
 import { SUPPORT_EMAIL } from "@/lib/mail/addresses";
@@ -197,14 +197,18 @@ async function creditTopup(
   amountPaise: number | undefined,
 ): Promise<Response> {
   const topup = topupId ? topupById(topupId) : null;
-  if (!topup || !paymentId) return new Response("unattributable top-up", { status: 200 });
+  // An order placed before counts-only pricing and paid after it is credited
+  // as the analyses the old pack was sold as (same prices: ₹99 = 5, ₹249 = 15).
+  const legacy = topupId ? LEGACY_TOKEN_TOPUPS.find((t) => t.id === topupId) : undefined;
+  if ((!topup && !legacy) || !paymentId) return new Response("unattributable top-up", { status: 200 });
 
-  if (amountPaise !== undefined && amountPaise !== topup.pricePaise) {
+  const expectedPaise = topup ? topup.pricePaise : legacy!.pricePaise;
+  if (amountPaise !== undefined && amountPaise !== expectedPaise) {
     await fileAmountMismatch({
       clerkUserId,
       kind: "topup",
-      wanted: `${topup.tokens.toLocaleString("en-US")} tokens`,
-      expectedPaise: topup.pricePaise,
+      wanted: `${topup ? topup.analyses : legacy!.analyses} extra analyses`,
+      expectedPaise,
       capturedPaise: amountPaise,
       paymentId,
     });
@@ -212,13 +216,8 @@ async function creditTopup(
   }
 
   try {
-    await db.tokenGrant.create({
-      data: {
-        clerkUserId,
-        tokens: topup.tokens,
-        source: "purchase",
-        reference: paymentId,
-      },
+    await db.analysisGrant.create({
+      data: { clerkUserId, analyses: topup ? topup.analyses : legacy!.analyses, source: "purchase", reference: paymentId },
     });
   } catch {
     // Unique violation (already credited) or a deleted account. Neither is

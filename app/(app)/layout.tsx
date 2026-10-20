@@ -4,7 +4,6 @@ import { Suspense, cache } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import { Brand } from "@/components/brand";
-import { TokenPill } from "@/components/token-pill";
 import { LowBalanceBanner } from "@/components/low-balance-banner";
 import { RenewalBanner } from "@/components/renewal-banner";
 import { SiteFooter } from "@/components/site-footer";
@@ -86,12 +85,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </Suspense>
 
         <div className="ml-auto flex flex-none items-center gap-3.5">
-          {/* Two aggregate queries. Suspended so the layout doesn't hold the
-              first paint of every signed-in page behind the token meter. */}
-          <Suspense fallback={null}>
-            <TokenPill />
-          </Suspense>
-
           {/* The walkthrough spotlights header controls that have moved to the
               bottom bar below 860px, so the launcher drops there too. */}
           <span className="wide-only contents">

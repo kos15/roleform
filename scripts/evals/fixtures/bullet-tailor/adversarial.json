@@ -1,0 +1,452 @@
+[
+ {
+  "id": "adv-01",
+  "bullet": "Built the internal admin dashboard in Angular for the support team.",
+  "requirement": "Deep Kubernetes experience running production clusters at scale",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-02",
+  "bullet": "Fixed a memory leak in the reporting service that had been causing weekly restarts.",
+  "requirement": "Led a team of 10+ engineers across multiple squads",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-03",
+  "bullet": "Wrote the onboarding documentation for new engineers joining the platform team.",
+  "requirement": "Owned a service handling millions of requests per day",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-04",
+  "bullet": "Migrated 12 components from AngularJS to Angular 14.",
+  "requirement": "Expert-level Rust for systems programming",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-05",
+  "bullet": "Added unit tests to the billing module, taking coverage from 20% to 55%.",
+  "requirement": "Built and shipped machine learning models to production",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-06",
+  "bullet": "Contributed to the design system rollout across two product teams.",
+  "requirement": "Ran a multi-region AWS migration end to end",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-07",
+  "bullet": "Ran the weekly bug triage meeting for six months.",
+  "requirement": "Managed a $2M engineering budget",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-08",
+  "bullet": "Reduced the CI pipeline from 22 minutes to 14 minutes by parallelising test jobs.",
+  "requirement": "Architected an event-driven system using Kafka",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-09",
+  "bullet": "Built a CSV export feature used by around 40 customers a month.",
+  "requirement": "Principal-level influence across an engineering organisation",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-10",
+  "bullet": "Paired with a junior engineer twice a week for a quarter.",
+  "requirement": "Drove a 300% increase in conversion through experimentation",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-11",
+  "bullet": "Investigated and documented three production incidents.",
+  "requirement": "Deep Kubernetes experience running production clusters at scale",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-12",
+  "bullet": "Implemented form validation across the checkout flow.",
+  "requirement": "Led a team of 10+ engineers across multiple squads",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-13",
+  "bullet": "Set up Sentry error tracking for the frontend.",
+  "requirement": "Owned a service handling millions of requests per day",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-14",
+  "bullet": "Refactored the notification service to remove duplicated logic.",
+  "requirement": "Expert-level Rust for systems programming",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-15",
+  "bullet": "Wrote a script that automated our weekly release notes.",
+  "requirement": "Built and shipped machine learning models to production",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-16",
+  "bullet": "Added keyboard navigation to the data table component.",
+  "requirement": "Ran a multi-region AWS migration end to end",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-17",
+  "bullet": "Improved the Lighthouse accessibility score on the marketing site from 78 to 94.",
+  "requirement": "Managed a $2M engineering budget",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-18",
+  "bullet": "Supported the launch of a new pricing page.",
+  "requirement": "Architected an event-driven system using Kafka",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-19",
+  "bullet": "Maintained the shared TypeScript types package used by four services.",
+  "requirement": "Principal-level influence across an engineering organisation",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-20",
+  "bullet": "Reviewed roughly ten pull requests a week.",
+  "requirement": "Drove a 300% increase in conversion through experimentation",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-21",
+  "bullet": "Built an internal tool for the finance team to reconcile invoices.",
+  "requirement": "Deep Kubernetes experience running production clusters at scale",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-22",
+  "bullet": "Fixed 30 accessibility issues raised in an external audit.",
+  "requirement": "Led a team of 10+ engineers across multiple squads",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-23",
+  "bullet": "Set up feature flags for the new dashboard rollout.",
+  "requirement": "Owned a service handling millions of requests per day",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-24",
+  "bullet": "Wrote integration tests for the authentication flow.",
+  "requirement": "Expert-level Rust for systems programming",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-25",
+  "bullet": "Presented a lunch-and-learn on RxJS operators.",
+  "requirement": "Built and shipped machine learning models to production",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-26",
+  "bullet": "Migrated our styling from Sass to CSS custom properties.",
+  "requirement": "Ran a multi-region AWS migration end to end",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-27",
+  "bullet": "Debugged a race condition in the websocket reconnect logic.",
+  "requirement": "Managed a $2M engineering budget",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-28",
+  "bullet": "Added pagination to the search results page.",
+  "requirement": "Architected an event-driven system using Kafka",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-29",
+  "bullet": "Cleaned up 40 lint warnings across the codebase.",
+  "requirement": "Principal-level influence across an engineering organisation",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ },
+ {
+  "id": "adv-30",
+  "bullet": "Helped scope the requirements for the reporting rebuild.",
+  "requirement": "Drove a 300% increase in conversion through experimentation",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "flag"
+ }
+]

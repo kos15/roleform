@@ -11,7 +11,6 @@ import { GUIDES, HOME_FAQS, guideBySlug, type Guide } from "@/lib/content/guides
 import { BILLING_FAQ, compareRows, PLANS, PLAN_ROWS, PRICING_REFUSALS, TOPUPS, type Plan } from "@/lib/content/pricing";
 import { SPEND_BASIS, SUPPORT_SPEND, SUPPORT_TIERS } from "@/lib/content/support";
 import { displayCap } from "@/lib/domain/quotas";
-import { RUN_ESTIMATE, TOKEN_STAGES, formatCount } from "@/lib/domain/tokens";
 import { TEMPLATES, ratingFor } from "@/lib/render/templates";
 import { atsViolations } from "@/lib/render/ats-rules";
 import { CATALOG_EMAIL, PRIVACY_EMAIL, SUPPORT_EMAIL } from "@/lib/mail/addresses";
@@ -52,7 +51,7 @@ ${footer("/")}`;
 export function pricingMarkdown(plans: Plan[] = PLANS): string {
   return `# Pricing — ${SITE_NAME}
 
-Every plan runs the same four-stage analysis with the same rule: nothing is invented. Plans differ only in how much you can do, metered in tokens (a full analysis is about ${formatCount(RUN_ESTIMATE)} tokens). Prices in INR, inclusive of tax. A paid plan lasts 30 days from payment and does not auto-renew.
+Every plan runs the same four-stage analysis with the same rule: nothing is invented. Plans differ only in how much you can do each month — analyses, answer drafts, practice sessions, roadmaps and job searches. Prices in INR, inclusive of tax. A paid plan lasts 30 days from payment and does not auto-renew. Fair-use limit applies.
 
 ${plans.map(
   (p) => `## ${p.name}
@@ -67,14 +66,10 @@ ${PLAN_ROWS.map((r) => `- ${r.label}: ${displayCap(r.key, p.caps[r.key])} ${r.un
 |---|${plans.map(() => "---").join("|")}|
 ${compareRows(plans).map((r) => `| ${r.label} (${r.unit}) | ${r.cells.join(" | ")} |`).join("\n")}
 
-## Top-ups (any paid plan; never renew, never expire)
-${TOPUPS.map((t) => `- ${formatCount(t.tokens)} tokens — ${t.price} (${t.note})`).join("\n")}
+## Extra-analysis packs (any paid plan; never renew, never expire)
+${TOPUPS.map((t) => `- ${t.analyses} extra analyses — ${t.price} (${t.note})`).join("\n")}
 
-## What a token pays for
-${TOKEN_STAGES.map((s) => `- ${s.stage}: about ${formatCount(s.estimate)}`).join("\n")}
-- A full analysis: about ${formatCount(RUN_ESTIMATE)}
-
-Coverage, gaps and question frameworks cost nothing.
+Coverage, gaps and question frameworks are free on every plan.
 
 ## Billing questions
 ${BILLING_FAQ.map((f) => `### ${f.q}\n${f.a}`).join("\n\n")}

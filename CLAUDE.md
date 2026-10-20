@@ -50,7 +50,7 @@ analysis as much as to résumé bullets.
 | N19 | A job query carries titles, canonical skill names, a city and a remote flag. Never a name, contact detail, bullet, résumé or JD. `JobQuery` has no field for them. | N7 at the egress. Wrong states unrepresentable. |
 | N20 | Fit between a listing and the profile is shown as named facts — skills it names, skills it asks for that you lack, title, location, stated years. Listings may be grouped into tiers (Shortlist / Worth a look / Long shot / Ruled out) only by those facts, with the reasons on every card. No number, no ring, no "match". | N4: the match score is coverage over a full posting; a snippet cannot earn it. A tier is a sort, not a score. |
 | N21 | A paid plan has an expiry; Free has none (CHECK). Lapse is settled by one function on read. Nothing raises a plan except (a) the webhook on a captured payment of the right amount — the live `plan_configs` price, or the `promo_redemptions` row checkout wrote for that order — or (b) an admin's `assignMemberPlan`, which always sets an expiry and writes an audited `plan_purchases` row (`admin:` reference + `granted_by`, CHECKed). Nothing else lowers a plan. | A plan granted forever for one payment is the revenue bug; an unaudited writer to `users.plan` is the next one. |
-| N22 | A plan **is** its caps: every plan-gated capability is a `QuotaKey` with a column, a CHECK, a `PLANS` value, a `NOTES` line and an enforcement seam that counts rows. No boolean feature flags per plan. Site-wide switches (`feature_switches`, F31) are allowed: they open or close a surface for everyone and never vary by plan. | The pricing page prints `QUOTAS`; a gate outside it is a promise the page cannot show and the admin cannot move. |
+| N22 | A plan **is** its caps: every plan-gated capability is a `QuotaKey` with a column, a CHECK, a `PLANS` value, a `NOTES` line and an enforcement seam that counts rows. No boolean feature flags per plan. Site-wide switches (`feature_switches`, F31) are allowed: they open or close a surface for everyone and never vary by plan. A quota may be **internal** — unprinted — only if it is a fair-use ceiling sized so every printed count binds first; the page then says "Fair-use limit applies". Today only `tokens` is internal, and members never see a token number (Oct 2026). | The pricing page prints `QUOTAS`; a gate outside it is a promise the page cannot show and the admin cannot move. |
 | N23 | Interview rounds are user-authored facts; reminders are rows derived from them. The sender claims a row before it sends, pushes only label · company · time · an in-app path (never notes), and logs counts. The service worker never caches a signed-in page. `/api/cron/reminders` is the only scheduled path in the product. | A reminder is the one thing we do on our own clock — it has to arrive at most once, honest about when, and safe on a lock screen. |
 
 ## 3. The fabrication boundary
@@ -184,7 +184,7 @@ Rules:
 | Framework | Next.js 15 App Router, TS strict | Server Actions remove most API boilerplate | High |
 | UI | Tailwind + shadcn/ui, restyled to `marigold` tokens | DS bundle is authoritative | Low |
 | ORM | Prisma over Supabase Postgres | Typed schema; migrations in-repo, not dashboard-clicked; swapping the underlying database later is a datasource/adapter change, not a query rewrite | Medium |
-| LLM | Vercel AI SDK, `generateObject` + Zod | Provider-agnostic; swap by changing one import | Low — the point |
+| LLM | One agent per task (`lib/ai/agents/`) on GPT-5 writers via the Vercel AI SDK (`generateObject` + Zod); Jev checkers (TypeSafe, plain `fetch` + Zod) on tailoring and answers | Provider-agnostic writers; checkers add a second, independent lock on fabrication | Low — the point |
 | PDF | `@react-pdf/renderer` | Chromium ~100 MB vs Vercel's 50 MB function limit; renders <500ms vs 2–5s | Medium |
 | DOCX | `docx` (npm) | Real named paragraph styles | Medium |
 | Extraction | `unpdf` (PDF), `mammoth` (DOCX), `word-extractor` (DOC), `fflate` (ODT), pure readers for RTF/HTML/MD/TXT, one vision call for scans and photos (specs F1) | Raw text only; the LLM does the structuring | Low |
@@ -239,7 +239,10 @@ lib/
   ai/
     schemas/                 Zod — the LLM contract lives HERE, not in prompts
     prompts/                 versioned templates
-    extract-profile.ts · transcribe.ts · analyze-jd.ts · tailor.ts · interview.ts
+    agents/                  one definition per task + runAgent, the only door to a writer
+                             (schema, prompt order, reasoning effort, budget, declared guards, checker)
+    checkers/                Jev over fetch: fabrication · answer claims · injection (fail open)
+    extract-profile.ts · transcribe.ts · analyze-jd.ts · tailor.ts · interview.ts   (thin wrappers)
   catalog/
     skills.ts · courses.ts · match.ts · taxonomy.ts · quality.ts
   learning/                  SERVER. the engine's I/O half:

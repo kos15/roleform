@@ -10,7 +10,7 @@ import {
 import { Button, EmptyState } from "@/components/ui";
 import { PageIntro } from "@/components/page-intro";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
-import { TokenPanel } from "./token-panel";
+import { UsagePanel } from "./usage-panel";
 import { ProfileEditor } from "./profile-editor";
 import { DeleteAccount } from "./delete-account";
 import { AccountName } from "./account-name";
@@ -85,7 +85,7 @@ export default async function ProfilePage() {
         bulletCount={bullets.length}
         sourceFilename={loaded.document?.filename ?? null}
         updatedAt={loaded.profile.updatedAt.toISOString()}
-        tokenPanel={<TokenPanel clerkUserId={userId} />}
+        tokenPanel={<UsagePanel clerkUserId={userId} />}
       />
 
       {/* F29: which devices hear about interview rounds. */}

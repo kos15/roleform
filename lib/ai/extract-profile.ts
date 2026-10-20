@@ -1,8 +1,7 @@
 import "server-only";
-import { runStructured } from "./run";
-import { DraftResumeSchema, type ExtractProfileResult } from "./schemas/resume-json";
-import { PROMPT_VERSIONS, SYSTEM } from "./prompts";
-import { TEMPERATURE } from "./models";
+import { runAgent } from "./agents/define";
+import { profileReader } from "./agents/profile-reader";
+import type { ExtractProfileResult } from "./schemas/resume-json";
 import { clampForModel, cleanExtractedText } from "@/lib/extract/normalise";
 import { normaliseDraft } from "@/lib/domain/profile-draft";
 import { err, appError, type ModelFailure, type Result } from "@/lib/domain/types";
@@ -38,15 +37,6 @@ const CORRECTION: Partial<Record<ModelFailure, string>> = {
   verify: "Your previous attempt returned roles with no bullets. Transcribe every bullet under each employer.",
 };
 
-/**
- * Output is the résumé re-emitted as JSON: roughly the input's tokens plus the
- * JSON's keys. ~4 characters per token for the text, and a fixed allowance for
- * the structure.
- */
-function ceilingFor(chars: number, previous: ModelFailure | null): number {
-  const base = Math.min(12_000, Math.max(4_000, Math.ceil(chars / 3) + 1_500));
-  return previous === "truncated" ? Math.min(16_000, Math.ceil(base * 1.6)) : base;
-}
 
 export async function extractProfile(args: {
   clerkUserId: string;
@@ -62,36 +52,11 @@ export async function extractProfile(args: {
 
   const correction = args.previousFailure ? CORRECTION[args.previousFailure] : undefined;
 
-  const outcome = await runStructured({
-    purpose: "extract_profile",
-    promptVersion: PROMPT_VERSIONS.extractProfile,
-    tier: "strong",
-    schema: DraftResumeSchema,
-    system: SYSTEM.extractProfile,
-    prompt: [
-      `Transcribe this résumé.`,
-      ``,
-      `<resume_text>`,
-      text,
-      `</resume_text>`,
-      ...(correction ? [``, `## Correction required`, correction] : []),
-    ].join("\n"),
-    temperature: TEMPERATURE.extraction,
-    clerkUserId: args.clerkUserId,
-    maxOutputTokens: ceilingFor(text.length, args.previousFailure),
-    // Long résumés at the strong tier take a while; well inside the route's
-    // maxDuration, well past any healthy response.
-    timeoutMs: 150_000,
-    retries: 0,
-    verify: (value) => {
-      const roles = value.work.filter((w) => w.name.trim() || w.position.trim());
-      const total = value.work.reduce((n, w) => n + w.highlights.filter((h) => h.trim()).length, 0);
-      if (roles.length > 0 && total === 0) {
-        return "Every role came back with zero highlights. Transcribe the bullets under each employer.";
-      }
-      return null;
-    },
-  });
+  const outcome = await runAgent(
+    profileReader,
+    { text, previousFailure: args.previousFailure, correction },
+    { clerkUserId: args.clerkUserId },
+  );
 
   if (!outcome.ok) return outcome;
 

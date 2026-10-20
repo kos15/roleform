@@ -25,14 +25,19 @@
     "check:jobs": "pnpm script scripts/job-triage-fixtures.ts",
     "check:push": "pnpm script scripts/push-fixtures.ts",
     "check:jdstrip": "pnpm script scripts/jd-strip-fixtures.ts",
-    "check:fabrication": "pnpm script scripts/fabrication-eval.ts",
+    "check:fabrication": "pnpm eval bullet-tailor --set adversarial",
     "check:roundtrip": "pnpm script scripts/docx-roundtrip.ts",
     "check:drill": "pnpm script scripts/drill-bank.ts",
     "render:samples": "pnpm script scripts/render-samples.ts",
     "check:links": "pnpm script scripts/link-check.ts",
     "check:corpus": "pnpm script scripts/corpus-health.ts",
     "tokens:calibrate": "pnpm script scripts/tokens-calibrate.ts",
-    "seo:indexnow": "pnpm script scripts/indexnow.ts"
+    "seo:indexnow": "pnpm script scripts/indexnow.ts",
+    "check:agents": "pnpm script scripts/agent-fixtures.ts",
+    "eval": "pnpm script scripts/evals/run.ts",
+    "check:quotas": "pnpm script scripts/quota-fixtures.ts",
+    "topups:convert": "pnpm script scripts/convert-token-topups.ts",
+    "check:tokencopy": "pnpm script scripts/token-copy-gate.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.20",

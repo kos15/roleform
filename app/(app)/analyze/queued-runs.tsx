@@ -73,7 +73,7 @@ export function QueuedRuns({ runs }: { runs: QueuedRunView[] }) {
       </div>
 
       <p className="mb-4 max-w-[62ch] text-sm leading-relaxed text-[var(--color-text)]">
-        Parked when your allowance ran out. Nothing has been read, matched or rewritten, and nothing
+        Parked when you reached this cycle&rsquo;s limit. Nothing has been read, matched or rewritten, and nothing
         has been charged — these start when you say so, not on a timer.
       </p>
 

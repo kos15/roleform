@@ -48,3 +48,10 @@ next-env.d.ts
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Eval reports (scripts/evals) — local output, never committed
+scripts/evals/reports/
+
+# Editor swap files (one was committed by accident, Oct 2026)
+*.swp
+.*.sw?

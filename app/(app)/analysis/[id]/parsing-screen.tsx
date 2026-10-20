@@ -221,7 +221,7 @@ export function ParsingScreen({
         )}
         <div className="max-w-[760px] space-y-5">
           <h1 className="text-[clamp(2.75rem,5.5vw,5rem)] leading-[0.92]">
-            This run is waiting on your allowance
+            This run is waiting for your limit to reset
           </h1>
           <p className="text-[15px] leading-relaxed text-[var(--color-text-muted)] sm:text-[17px]">
             The posting is saved. Nothing has run and nothing has been charged.

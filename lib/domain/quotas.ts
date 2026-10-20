@@ -26,7 +26,8 @@ export type QuotaKey =
   | "answers"
   | "courses"
   | "roadmaps"
-  | "jobSearches";
+  | "jobSearches"
+  | "practice";
 
 export type QuotaPeriod = "cycle" | "analysis" | "gap";
 
@@ -40,7 +41,8 @@ export interface QuotaDefinition {
     | "capAnswers"
     | "capCourses"
     | "capRoadmaps"
-    | "capJobSearches";
+    | "capJobSearches"
+    | "capPractice";
   label: string;
   unit: string;
   period: QuotaPeriod;
@@ -49,6 +51,11 @@ export interface QuotaDefinition {
   max: number;
   /** Six figures read as noise at full length. "800K" everywhere but the wall. */
   abbreviate?: boolean;
+  /**
+   * Not printed to members (CLAUDE.md N22, amended Oct 2026): a fair-use
+   * ceiling sized so every printed count binds first. Only `tokens`.
+   */
+  internal?: true;
   description: string;
 }
 
@@ -56,13 +63,14 @@ export const QUOTAS: QuotaDefinition[] = [
   {
     key: "tokens",
     column: "capTokens",
-    label: "Token allowance",
+    label: "Fair-use limit",
     unit: "per month",
     period: "cycle",
     step: 50_000,
     min: 0,
-    max: 4_000_000,
+    max: 30_000_000,
     abbreviate: true,
+    internal: true,
     description:
       "The real meter. Every stage of every run draws from it, measured from what the models actually consumed. When it empties the member is offered a wait, a top-up or a plan — never a silent failure.",
   },
@@ -137,6 +145,18 @@ export const QUOTAS: QuotaDefinition[] = [
     max: 500,
     description:
       "Listings fetched from job-board APIs against your profile's titles and skills. Off on Free. Saved jobs and their statuses stay at any cap, including Off.",
+  },
+  {
+    key: "practice",
+    column: "capPractice",
+    label: "Practice sessions",
+    unit: "per month",
+    period: "cycle",
+    step: 5,
+    min: 0,
+    max: 200,
+    description:
+      "Rapid prep: building a revision deck, starting a quiz round or a coding challenge each count one. Reviews inside a challenge are free. Decks and rounds you have stay usable at any cap.",
   },
 ];
 
@@ -262,4 +282,32 @@ export interface CapWall {
   upgrade: CapWallOffer | null;
   /** Admin names who can raise the cap by hand. Empty when none are configured. */
   admins: string[];
+}
+
+/**
+ * The once-a-cycle low-count warning (counts-only pricing). Speaks in the
+ * counts members see — never tokens. Checks analyses, then answers, then
+ * practice; a count that is Off for the plan (`null`) never warns, because
+ * "you have none left" of something you never had is not news.
+ */
+const LOW_NOUNS = {
+  analyses: { one: "analysis", many: "analyses" },
+  answers: { one: "full answer draft", many: "full answer drafts" },
+  practice: { one: "practice session", many: "practice sessions" },
+} as const;
+
+export function lowCountNotice(left: {
+  analyses: number | null;
+  answers: number | null;
+  practice: number | null;
+}): { key: keyof typeof LOW_NOUNS; empty: boolean; text: string } | null {
+  for (const key of ["analyses", "answers", "practice"] as const) {
+    const n = left[key];
+    if (n === null || n > 1) continue;
+    const noun = LOW_NOUNS[key];
+    return n <= 0
+      ? { key, empty: true, text: `You've used this cycle's ${noun.many}.` }
+      : { key, empty: false, text: `1 ${noun.one} left this cycle.` };
+  }
+  return null;
 }
