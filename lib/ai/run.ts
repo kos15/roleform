@@ -4,6 +4,9 @@ import type { z } from "zod";
 import { db } from "@/lib/db";
 import { modelFor, MODELS, openaiOptions, type ReasoningEffort, type WriterRole } from "./models";
 import { appError, err, ok, type ModelFailure, type Result } from "@/lib/domain/types";
+import type { CheckVerdict } from "./checkers/types";
+import { decideAfterCheck } from "./checkers/loop";
+import { correctionFor } from "./checkers/verdict";
 
 /**
  * The single door every LLM call goes through (N6).
@@ -55,6 +58,14 @@ export interface RunOptions<S extends z.ZodType> {
    * corrective retry carrying that string back to the model.
    */
   verify?: (value: z.infer<S>) => string | null | Promise<string | null>;
+  /**
+   * The Jev checker, after `verify` passes (agent design §6.3). A flagged
+   * output gets `checkerRetries` rewrites — a budget separate from `retries`
+   * — then fails with `failure: "checker"` and `checkerRejectMessage`.
+   */
+  check?: (value: z.infer<S>) => Promise<CheckVerdict>;
+  checkerRetries?: number;
+  checkerRejectMessage?: string;
 }
 
 export interface RunOutcome<T> {
@@ -85,6 +96,7 @@ export async function runStructured<S extends z.ZodType>(
   let correction: string | null = null;
   let lastFailure = "";
   let lastKind: ModelFailure = "schema";
+  let checkerRetriesLeft = opts.checkerRetries ?? 0;
 
   while (retryCount <= opts.retries) {
     try {
@@ -129,6 +141,37 @@ export async function runStructured<S extends z.ZodType>(
         correction = problem;
         retryCount++;
         continue;
+      }
+
+      if (opts.check) {
+        const verdict = await opts.check(object);
+        const decision = decideAfterCheck({ verdict, checkerRetriesLeft });
+        if (decision === "revise") {
+          // Its own budget: `retryCount` is untouched, so a run that spent its
+          // guard retry still gets this one rewrite.
+          checkerRetriesLeft--;
+          correction = correctionFor(verdict);
+          lastKind = "checker";
+          lastFailure = `checker flagged ${verdict.kind}`;
+          continue;
+        }
+        if (decision === "fallback") {
+          await recordRun(opts, {
+            inputTokens: result.usage.inputTokens ?? 0,
+            outputTokens: result.usage.outputTokens ?? 0,
+            latencyMs: Date.now() - startedAt,
+            schemaValid: true,
+            retryCount,
+          });
+          return err({
+            ...appError(
+              "model_failed",
+              opts.checkerRejectMessage ?? "We couldn't write this without overstating your experience. Try again.",
+              `checker flagged ${verdict.kind}`,
+            ),
+            failure: "checker",
+          });
+        }
       }
 
       const inputTokens = result.usage.inputTokens ?? 0;

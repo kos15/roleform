@@ -4,6 +4,7 @@ import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
 import { checkFabrication } from "@/lib/domain/fabrication";
 import type { DomainBullet, DomainRequirement } from "@/lib/domain/types";
 import { defineAgent } from "./define";
+import { checkFabrication as checkWithJev } from "../checkers/fabrication";
 
 export interface BulletTailorInput {
   jobTitle: string;
@@ -63,5 +64,16 @@ export const bulletTailor = defineAgent({
       return findings.map((f) => `Remove "${f.token}" — ${f.reason}. Only what the source bullet states.`).join(" ");
     }
     return null;
+  },
+  // The writer saw one requirement and every tool the profile states; the
+  // checker sees the same. Still flagged after one rewrite → verbatim (tailor.ts).
+  checker: {
+    run: (i, out, ctx) =>
+      checkWithJev(
+        { source: i.bullet.text, profileTerms: i.profileTerms, postingTerms: [i.requirement.text] },
+        { text: out.rewrittenText },
+        ctx,
+      ),
+    rejectMessage: "The rewrite overstated the source bullet; the member's own words are used instead.",
   },
 });

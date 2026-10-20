@@ -3,6 +3,7 @@ import { TailorSummarySchema } from "../schemas/tailored-bullets";
 import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
 import { checkFabrication } from "@/lib/domain/fabrication";
 import { defineAgent } from "./define";
+import { checkFabrication as checkWithJev } from "../checkers/fabrication";
 
 export interface SummaryTailorInput {
   jobTitle: string;
@@ -34,5 +35,14 @@ export const summaryTailor = defineAgent({
       profileTerms: i.profileTerms,
     });
     return findings.length > 0 ? findings.map((f) => `Remove "${f.token}" — ${f.reason}.`).join(" ") : null;
+  },
+  checker: {
+    run: (i, out, ctx) =>
+      checkWithJev(
+        { source: i.bullets.join("\n"), profileTerms: i.profileTerms, postingTerms: [i.jobTitle] },
+        { text: `${out.summary}\n${out.professionalSummary}` },
+        ctx,
+      ),
+    rejectMessage: "The summary overstated the bullets; the stock line is used instead.",
   },
 });

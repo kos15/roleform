@@ -3,6 +3,7 @@ import { QuestionAnswerSchema } from "../schemas/question-answer";
 import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
 import type { DomainBullet } from "@/lib/domain/types";
 import { defineAgent } from "./define";
+import { checkAnswerClaims } from "../checkers/answer-claims";
 
 export interface AnswerWriterInput {
   jobTitle: string;
@@ -80,5 +81,19 @@ export const answerWriter = defineAgent({
       );
     }
     return null;
+  },
+  checker: {
+    run: (i, out, ctx) =>
+      checkAnswerClaims(
+        {
+          question: i.question.text,
+          evidence: i.evidenceBullets.map((b) => b.text),
+          profileFacts: i.otherBullets.map((b) => b.text),
+          isGap: i.question.type === "gap",
+        },
+        { text: [out.headline, ...out.sections.map((s) => s.body), ...out.resumeHooks.map((h) => h.useIt)].join("\n") },
+        ctx,
+      ),
+    rejectMessage: "We couldn't draft this answer without overstating your experience. Try again.",
   },
 });

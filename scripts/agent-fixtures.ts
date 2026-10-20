@@ -20,6 +20,8 @@ import { revisionWriter } from "../lib/ai/agents/revision-writer";
 import { AGENTS } from "../lib/ai/agents/roster";
 import { verdictFrom, correctionFor, CHECK_KINDS } from "../lib/ai/checkers/verdict";
 import { fabricationRequest, answerClaimRequest, JevResponseSchema } from "../lib/ai/checkers/requests";
+import { decideAfterCheck, budgetsAfterGuardRetry } from "../lib/ai/checkers/loop";
+import { SKIPPED } from "../lib/ai/checkers/verdict";
 
 let passed = 0;
 const pending: Promise<void>[] = [];
@@ -221,6 +223,28 @@ check("a Jev response parses; a malformed one does not", () => {
   });
   assert.equal(ok.success, true);
   assert.equal(JevResponseSchema.safeParse({ model: "x", answers: { invents: { type: "noul", noul: 2 } } }).success, false);
+});
+
+console.log("check-and-revise loop (5)");
+check("a skipped checker accepts — fails open", () => {
+  assert.equal(decideAfterCheck({ verdict: SKIPPED, checkerRetriesLeft: 1 }), "accept");
+});
+check("an unflagged output is accepted", () => {
+  assert.equal(decideAfterCheck({ verdict: verdictFrom(0.1, "none", 0.5), checkerRetriesLeft: 1 }), "accept");
+});
+check("a flagged output with a rewrite left is revised once", () => {
+  assert.equal(decideAfterCheck({ verdict: verdictFrom(0.9, "tool", 0.5), checkerRetriesLeft: 1 }), "revise");
+});
+check("a flagged output with no rewrite left falls back", () => {
+  assert.equal(decideAfterCheck({ verdict: verdictFrom(0.9, "tool", 0.5), checkerRetriesLeft: 0 }), "fallback");
+});
+check("spending the guard retry leaves the checker's rewrite untouched (separate budgets)", () => {
+  assert.deepEqual(budgetsAfterGuardRetry({ retries: 1, checkerRetries: 1 }), { retries: 0, checkerRetries: 1 });
+});
+
+check("exactly the three claim-bearing agents carry a checker", () => {
+  const withChecker = Object.values(AGENTS).filter((a) => "checker" in a && a.checker).map((a) => a.name).sort();
+  assert.deepEqual(withChecker, ["question_answer", "tailor_bullet", "tailor_summary"]);
 });
 
 void Promise.all(pending).then(() => console.log(`ok — ${passed} checks`));

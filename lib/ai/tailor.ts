@@ -84,7 +84,7 @@ export async function tailorBullet(args: {
         transform: "verbatim",
         targetsRequirementId: requirement.id,
         aiRunId: null,
-        blockedBy: [outcome.error.code],
+        blockedBy: [outcome.error.failure === "checker" ? "checker" : outcome.error.code],
         tokensUsed: 0,
       },
     };

@@ -156,7 +156,9 @@ export type ModelFailure =
   /** Rate limit, timeout, 5xx or network: the request itself never completed. */
   | "transient"
   /** The provider refused the request (bad key, schema the provider rejects). */
-  | "rejected";
+  | "rejected"
+  /** The Jev checker still flagged the output after its one rewrite. */
+  | "checker";
 
 export type Result<T, E = AppError> = { ok: true; value: T } | { ok: false; error: E };
 

@@ -207,7 +207,7 @@ export async function transcribeResume(documentId: string): Promise<Result<{ cha
 const ExtractRequestSchema = z.object({
   documentId: z.string().uuid(),
   attempt: z.number().int().min(1).max(EXTRACT_ATTEMPTS),
-  previousFailure: z.enum(["truncated", "schema", "verify", "transient", "rejected"]).nullable(),
+  previousFailure: z.enum(["truncated", "schema", "verify", "transient", "rejected", "checker"]).nullable(),
   readFromImage: z.boolean(),
 });
 

@@ -2,7 +2,7 @@ import "server-only";
 import type { z } from "zod";
 import { runStructured, type RunOptions, type RunOutcome } from "../run";
 import type { ReasoningEffort } from "../models";
-import type { Checker } from "../checkers/types";
+import type { CheckVerdict } from "../checkers/types";
 import type { Result } from "@/lib/domain/types";
 import { PROMPT_SEPARATOR } from "./prompt";
 import { applyInputGuards, outputGuardProblem, type GuardId } from "./guards";
@@ -38,7 +38,15 @@ export interface AgentDef<I, S extends z.ZodType> {
   outputGuards: GuardId[];
   /** A rule the schema cannot express. Return the correction, or null. */
   verify?: (value: z.infer<S>, input: I) => string | null | Promise<string | null>;
-  checker?: Checker<I, z.infer<S>>;
+  /**
+   * The Jev checker for agents whose output makes claims about the member.
+   * An adapter, because each checker reads its own shape: `run` maps this
+   * agent's input and output onto it. One rewrite, then `rejectMessage`.
+   */
+  checker?: {
+    run: (input: I, output: z.infer<S>, ctx: AgentContext) => Promise<CheckVerdict>;
+    rejectMessage: string;
+  };
   files?: (input: I) => RunOptions<S>["files"];
 }
 
@@ -84,5 +92,12 @@ export async function runAgent<I, S extends z.ZodType>(
       if (guardProblem) return guardProblem;
       return (await agent.verify?.(value, input)) ?? null;
     },
+    ...(agent.checker
+      ? {
+          check: (value: z.infer<S>) => agent.checker!.run(input, value, ctx),
+          checkerRetries: 1,
+          checkerRejectMessage: agent.checker.rejectMessage,
+        }
+      : {}),
   });
 }
