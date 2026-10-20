@@ -2,7 +2,6 @@ import "server-only";
 import { runStructured } from "./run";
 import { QuestionAnswerSchema, type QuestionAnswerOut } from "./schemas/question-answer";
 import { PROMPT_VERSIONS, SYSTEM } from "./prompts";
-import { TEMPERATURE } from "./models";
 import { noUrls, scanTone } from "@/lib/domain/guardrails";
 import type { DomainBullet, Result } from "@/lib/domain/types";
 
@@ -84,7 +83,7 @@ export async function generateAnswer(args: {
   const outcome = await runStructured({
     purpose: "question_answer",
     promptVersion: PROMPT_VERSIONS.answerQuestion,
-    tier: "mid",
+    model: "writer-fast",
     schema: QuestionAnswerSchema,
     system: SYSTEM.answerQuestion,
     prompt: [
@@ -120,7 +119,7 @@ export async function generateAnswer(args: {
     ]
       .filter(Boolean)
       .join("\n"),
-    temperature: TEMPERATURE.answering,
+    reasoningEffort: "low",
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
     maxOutputTokens: 2_500,

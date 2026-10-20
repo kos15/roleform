@@ -10,7 +10,6 @@ import {
   type StoredChallenge,
 } from "./schemas/drill";
 import { PROMPT_VERSIONS, SYSTEM } from "./prompts";
-import { TEMPERATURE } from "./models";
 import { noUrls } from "@/lib/domain/guardrails";
 import {
   LANGUAGE_LABEL,
@@ -95,7 +94,7 @@ export async function generateRevisionDeck(args: {
   const outcome = await runStructured({
     purpose: "revision_cards",
     promptVersion: PROMPT_VERSIONS.revisionCards,
-    tier: "mid",
+    model: "writer-fast",
     schema: revisionDeckSchema(enumOf(args.topics), args.count),
     system: SYSTEM.revisionCards,
     prompt: [
@@ -103,7 +102,7 @@ export async function generateRevisionDeck(args: {
       `Time to revise: ${args.minutes} minutes. Write exactly ${args.count} cards.`,
       topicBlock(args.topics),
     ].join("\n"),
-    temperature: TEMPERATURE.revision,
+    reasoningEffort: "low",
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
     maxOutputTokens: 300 + args.count * 230,
@@ -156,7 +155,7 @@ export async function generateQuizRound(args: {
   const outcome = await runStructured({
     purpose: "quiz_round",
     promptVersion: PROMPT_VERSIONS.quizRound,
-    tier: "mid",
+    model: "writer-fast",
     schema: quizRoundSchema(enumOf(args.topics), args.count),
     system: SYSTEM.quizRound,
     prompt: [
@@ -164,7 +163,7 @@ export async function generateQuizRound(args: {
       `Write exactly ${args.count} questions, mostly ${args.difficulty}. Time limit: ${SECONDS_PER_QUESTION[args.difficulty]} seconds each.`,
       topicBlock(args.topics),
     ].join("\n"),
-    temperature: TEMPERATURE.quiz,
+    reasoningEffort: "low",
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
     maxOutputTokens: 300 + args.count * 190,
@@ -244,7 +243,7 @@ export async function generateChallenge(args: {
   const outcome = await runStructured({
     purpose: "coding_challenge",
     promptVersion: PROMPT_VERSIONS.codingChallenge,
-    tier: "mid",
+    model: "writer-fast",
     schema: generatedChallengeSchema(enumOf(args.topics)),
     system: SYSTEM.codingChallenge,
     prompt: [
@@ -252,7 +251,7 @@ export async function generateChallenge(args: {
       `Difficulty: ${args.difficulty}. Language for \`solution\`: ${LANGUAGE_LABEL[args.language]}.`,
       topicBlock(args.topics),
     ].join("\n"),
-    temperature: TEMPERATURE.challenge,
+    reasoningEffort: "low",
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
     maxOutputTokens: 3_200,
@@ -317,7 +316,7 @@ export async function reviewCode(args: {
   const outcome = await runStructured({
     purpose: "code_review",
     promptVersion: PROMPT_VERSIONS.codeReview,
-    tier: "mid",
+    model: "writer-fast",
     schema: CodeReviewSchema,
     system: SYSTEM.codeReview,
     prompt: [
@@ -331,7 +330,7 @@ export async function reviewCode(args: {
       args.code,
       `</candidate_code>`,
     ].join("\n"),
-    temperature: TEMPERATURE.review,
+    reasoningEffort: "minimal",
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
     maxOutputTokens: 1_100,

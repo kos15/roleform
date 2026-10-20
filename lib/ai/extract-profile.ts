@@ -2,7 +2,6 @@ import "server-only";
 import { runStructured } from "./run";
 import { DraftResumeSchema, type ExtractProfileResult } from "./schemas/resume-json";
 import { PROMPT_VERSIONS, SYSTEM } from "./prompts";
-import { TEMPERATURE } from "./models";
 import { clampForModel, cleanExtractedText } from "@/lib/extract/normalise";
 import { normaliseDraft } from "@/lib/domain/profile-draft";
 import { err, appError, type ModelFailure, type Result } from "@/lib/domain/types";
@@ -65,7 +64,7 @@ export async function extractProfile(args: {
   const outcome = await runStructured({
     purpose: "extract_profile",
     promptVersion: PROMPT_VERSIONS.extractProfile,
-    tier: "strong",
+    model: "writer",
     schema: DraftResumeSchema,
     system: SYSTEM.extractProfile,
     prompt: [
@@ -76,7 +75,7 @@ export async function extractProfile(args: {
       `</resume_text>`,
       ...(correction ? [``, `## Correction required`, correction] : []),
     ].join("\n"),
-    temperature: TEMPERATURE.extraction,
+    reasoningEffort: "medium",
     clerkUserId: args.clerkUserId,
     maxOutputTokens: ceilingFor(text.length, args.previousFailure),
     // Long résumés at the strong tier take a while; well inside the route's

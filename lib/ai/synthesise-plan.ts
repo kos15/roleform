@@ -2,7 +2,6 @@ import "server-only";
 import { runStructured } from "./run";
 import { LearningPlanSchema, type LearningPlanOut } from "./schemas/learning-plan";
 import { PROMPT_VERSIONS, SYSTEM } from "./prompts";
-import { TEMPERATURE } from "./models";
 import {
   checkStagedBullet,
   isGroundedQuote,
@@ -80,11 +79,11 @@ export async function synthesisePlan(args: {
       // The one stage whose output the user reads as prose. Every other stage
       // in this engine is a pure function or a small-model extraction, and
       // promoting any of them would multiply the bill on every run (agent.md §5).
-      tier: "strong",
+      model: "writer",
       schema: LearningPlanSchema,
       system: SYSTEM.synthesisePlan,
       prompt: buildPrompt(args),
-      temperature: TEMPERATURE.analysis,
+      reasoningEffort: "low",
       clerkUserId: args.clerkUserId,
       analysisId: args.analysisId,
       maxOutputTokens: 2_500,

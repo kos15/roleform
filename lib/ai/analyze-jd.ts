@@ -2,7 +2,6 @@ import "server-only";
 import { runStructured } from "./run";
 import { JdAnalysisSchema, type JdAnalysis } from "./schemas/jd-analysis";
 import { PROMPT_VERSIONS, SYSTEM } from "./prompts";
-import { TEMPERATURE } from "./models";
 import { JD_MAX_CHARS } from "@/lib/domain/guardrails";
 import { stripBoilerplate } from "@/lib/domain/jd-segment";
 import type { Result } from "@/lib/domain/types";
@@ -22,11 +21,11 @@ export async function analyzeJd(args: {
   const outcome = await runStructured({
     purpose: "analyze_jd",
     promptVersion: PROMPT_VERSIONS.analyzeJd,
-    tier: "mid",
+    model: "writer-fast",
     schema: JdAnalysisSchema,
     system: SYSTEM.analyzeJd,
     prompt: `Extract the requirements from this posting.\n\n<posting>\n${text}\n</posting>`,
-    temperature: TEMPERATURE.analysis,
+    reasoningEffort: "low",
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
     maxOutputTokens: 3_000,

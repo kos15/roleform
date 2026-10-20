@@ -2,7 +2,6 @@ import "server-only";
 import { runStructured } from "./run";
 import { TailoredBulletSchema, TailorSummarySchema } from "./schemas/tailored-bullets";
 import { PROMPT_VERSIONS, SYSTEM } from "./prompts";
-import { TEMPERATURE } from "./models";
 import { checkFabrication } from "@/lib/domain/fabrication";
 import { noUrls } from "@/lib/domain/guardrails";
 import type { DomainBullet, DomainRequirement, Result, Transform } from "@/lib/domain/types";
@@ -71,7 +70,7 @@ export async function tailorBullet(args: {
   const outcome = await runStructured({
     purpose: "tailor_bullet",
     promptVersion: PROMPT_VERSIONS.tailorBullets,
-    tier: "strong",
+    model: "writer",
     schema: TailoredBulletSchema,
     system: SYSTEM.tailorBullets,
     prompt: [
@@ -85,7 +84,7 @@ export async function tailorBullet(args: {
       bullet.text,
       `</bullet>`,
     ].join("\n"),
-    temperature: TEMPERATURE.tailoring,
+    reasoningEffort: "low",
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
     maxOutputTokens: 200,
@@ -189,11 +188,11 @@ export async function tailorSummary(args: {
   const outcome = await runStructured({
     purpose: "tailor_summary",
     promptVersion: PROMPT_VERSIONS.tailorSummary,
-    tier: "mid",
+    model: "writer-fast",
     schema: TailorSummarySchema,
     system: SYSTEM.tailorSummary,
     prompt: `Role: ${args.jobTitle}\n\nBullets already on the résumé:\n${bulletText}`,
-    temperature: TEMPERATURE.tailoring,
+    reasoningEffort: "low",
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
     maxOutputTokens: 400,

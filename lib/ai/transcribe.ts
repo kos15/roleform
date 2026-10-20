@@ -2,7 +2,6 @@ import "server-only";
 import { runStructured } from "./run";
 import { TranscriptionSchema } from "./schemas/resume-json";
 import { PROMPT_VERSIONS, SYSTEM } from "./prompts";
-import { TEMPERATURE } from "./models";
 import { cleanExtractedText } from "@/lib/extract/normalise";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
@@ -26,12 +25,12 @@ export async function transcribeDocument(args: {
   const outcome = await runStructured({
     purpose: "transcribe_document",
     promptVersion: PROMPT_VERSIONS.transcribeDocument,
-    tier: "strong",
+    model: "writer",
     schema: TranscriptionSchema,
     system: SYSTEM.transcribeDocument,
     prompt: "Transcribe the attached document.",
     files: [{ data: args.data, mediaType: args.mediaType, filename: args.filename }],
-    temperature: TEMPERATURE.extraction,
+    reasoningEffort: "medium",
     clerkUserId: args.clerkUserId,
     // A dense two-page CV is ~2,500 words.
     maxOutputTokens: 6_000,

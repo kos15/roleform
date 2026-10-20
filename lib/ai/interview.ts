@@ -2,7 +2,6 @@ import "server-only";
 import { runStructured } from "./run";
 import { InterviewQuestionsSchema, type InterviewQuestionOut } from "./schemas/interview-questions";
 import { PROMPT_VERSIONS, SYSTEM } from "./prompts";
-import { TEMPERATURE } from "./models";
 import { noUrls, scanTone } from "@/lib/domain/guardrails";
 import type { DomainBullet, DomainRequirement, Result } from "@/lib/domain/types";
 
@@ -28,7 +27,7 @@ export async function generateQuestions(args: {
   const outcome = await runStructured({
     purpose: "interview_questions",
     promptVersion: PROMPT_VERSIONS.generateQuestions,
-    tier: "strong",
+    model: "writer",
     schema: InterviewQuestionsSchema,
     system: SYSTEM.generateQuestions,
     prompt: [
@@ -51,7 +50,7 @@ export async function generateQuestions(args: {
       `Questions about anything in <not_evidenced> must use type "gap".`,
       `Every other question must cite at least one id from <candidate_bullets>.`,
     ].join("\n"),
-    temperature: TEMPERATURE.questions,
+    reasoningEffort: "low",
     clerkUserId: args.clerkUserId,
     analysisId: args.analysisId,
     maxOutputTokens: 3_500,

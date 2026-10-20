@@ -2,7 +2,7 @@ import "server-only";
 import { APICallError, generateObject, NoObjectGeneratedError, RetryError } from "ai";
 import type { z } from "zod";
 import { db } from "@/lib/db";
-import { modelFor, MODELS, type Tier } from "./models";
+import { modelFor, MODELS, openaiOptions, type ReasoningEffort, type WriterRole } from "./models";
 import { appError, err, ok, type ModelFailure, type Result } from "@/lib/domain/types";
 
 /**
@@ -18,11 +18,14 @@ import { appError, err, ok, type ModelFailure, type Result } from "@/lib/domain/
 export interface RunOptions<S extends z.ZodType> {
   purpose: string;
   promptVersion: string;
-  tier: Tier;
+  model: WriterRole;
   schema: S;
   system: string;
   prompt: string;
-  temperature: number;
+  /** GPT-5 takes no temperature; it takes how hard to reason. */
+  reasoningEffort: ReasoningEffort;
+  /** Routes same-agent requests to the same prompt cache. Defaults to `purpose@promptVersion`. */
+  cacheKey?: string;
   clerkUserId: string;
   analysisId?: string;
   /**
@@ -51,7 +54,7 @@ export interface RunOptions<S extends z.ZodType> {
    * (an invented bullet id, a fabricated metric). Returning a string triggers a
    * corrective retry carrying that string back to the model.
    */
-  verify?: (value: z.infer<S>) => string | null;
+  verify?: (value: z.infer<S>) => string | null | Promise<string | null>;
 }
 
 export interface RunOutcome<T> {
@@ -61,6 +64,8 @@ export interface RunOutcome<T> {
   /** What this call actually burned, on the attempt that succeeded (GR-5). */
   inputTokens: number;
   outputTokens: number;
+  /** The part of `inputTokens` served from the provider's prompt cache. */
+  cachedInputTokens: number;
 }
 
 /**
@@ -106,18 +111,18 @@ export async function runStructured<S extends z.ZodType>(
       // SCHEMA = S here while `verify` also references z.infer<S> makes the
       // inference circular. The cast below restores the precise type.
       const result = await generateObject({
-        model: modelFor(opts.tier),
+        model: modelFor(opts.model),
         schema: opts.schema as z.ZodType,
         instructions: opts.system,
         ...content,
-        temperature: opts.temperature,
+        providerOptions: openaiOptions(opts.reasoningEffort, opts.cacheKey ?? `${opts.purpose}@${opts.promptVersion}`),
         maxOutputTokens: opts.maxOutputTokens,
         maxRetries: TRANSIENT_SDK_RETRIES,
         abortSignal: AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS),
       });
 
       const object = result.object as z.infer<S>;
-      const problem: string | null = opts.verify?.(object) ?? null;
+      const problem: string | null = (await opts.verify?.(object)) ?? null;
       if (problem) {
         lastFailure = problem;
         lastKind = "verify";
@@ -128,16 +133,18 @@ export async function runStructured<S extends z.ZodType>(
 
       const inputTokens = result.usage.inputTokens ?? 0;
       const outputTokens = result.usage.outputTokens ?? 0;
+      const cachedInputTokens = result.usage.inputTokenDetails?.cacheReadTokens ?? 0;
 
       const aiRunId = await recordRun(opts, {
         inputTokens,
         outputTokens,
+        cachedInputTokens,
         latencyMs: Date.now() - startedAt,
         schemaValid: true,
         retryCount,
       });
 
-      return ok({ value: object, aiRunId, retryCount, inputTokens, outputTokens });
+      return ok({ value: object, aiRunId, retryCount, inputTokens, outputTokens, cachedInputTokens });
     } catch (thrown) {
       // After a retry the SDK wraps the error; unwrap a non-retryable one so it
       // is classified as what it is.
@@ -239,6 +246,7 @@ async function recordRun<S extends z.ZodType>(
   metrics: {
     inputTokens: number;
     outputTokens: number;
+    cachedInputTokens?: number;
     latencyMs: number;
     schemaValid: boolean;
     retryCount: number;
@@ -249,7 +257,7 @@ async function recordRun<S extends z.ZodType>(
       clerkUserId: opts.clerkUserId,
       analysisId: opts.analysisId ?? null,
       purpose: opts.purpose,
-      model: MODELS[opts.tier],
+      model: MODELS[opts.model],
       promptVersion: opts.promptVersion,
       ...metrics,
     },
