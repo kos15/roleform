@@ -1314,6 +1314,23 @@ The résumé templates remain exempt from the brand and render black on white (�
 
 ### F19 — The token meter
 
+> **Oct 2026 — counts-only pricing** (`docs/superpowers/specs/2026-10-21-pricing-without-tokens-design.md`).
+> The meter below still runs, but members never see it. `tokens` is an **internal** quota (N22): a
+> fair-use ceiling per plan = Σ(each printed count × its measured worst-case cost) × 1.25, rounded
+> up to 10K (`fairUseCeiling`, `WORST_CASE` — provisional ×3 estimates until the agent plan's gate
+> measures them). `loadPlans` never lets an admin-edited plan's ceiling fall below its counts' need.
+> The wall and every refusal read "You've reached this cycle's fair-use limit. It resets on <date>." —
+> no numbers. The header pill, the token panel and every "about N tokens" line are gone; the profile
+> shows a usage panel of counts; the low-count banner warns at one analysis, answer draft or practice
+> session left (`lowCountNotice`). **Top-ups are extra-analysis packs** (+5 ₹99, +15 ₹249) stored in
+> `analysis_grants`, spent after the month's `cap_analyses` (an analysis paid from a pack is stamped
+> `analyses.from_bonus`); unspent token top-ups were converted at the pre-change run estimate,
+> rounded up (`pnpm topups:convert`), and legacy token-pack orders still credit tokens. Rapid prep
+> has its own count, **practice sessions** (`cap_practice`, 3/40/150): a deck, round or challenge the
+> model wrote counts one; retakes, bank problems and reviews are free. `pnpm check:tokencopy` fails
+> if member-facing copy mentions tokens. The text below is the meter's history and still describes
+> the internal mechanics.
+
 The fifth cap, and the only one that measures what a run *costs* rather than how many of them there
 were. An analysis of a 400-word posting and one of a six-page posting are both "1" to `capAnalyses`,
 and they are not the same work.
