@@ -9,12 +9,12 @@ import { UNCAPPED, analysesAvailable, isUncapped, practiceSessionWhere, withinCa
 import { accountTokens } from "@/lib/db/queries/tokens";
 import { settlePlan } from "@/lib/db/queries/plan";
 import {
-  SPEND,
-  TOKEN_STAGES,
-  formatCount,
+  fairUseWall,
   formatResetDate,
   formatResetIn,
+  headroomFor,
   shortfall,
+  tokenBalance,
   type SpendKind,
   type TokenWall,
 } from "@/lib/domain/tokens";
@@ -111,7 +111,13 @@ export async function checkTokenAllowance(
   const account = await accountTokens(clerkUserId);
   if (!account) return err(appError("not_found", "We couldn't find your account."));
 
-  const short = shortfall(account.balance, kind);
+  // Extra analyses lift the ceiling for analyses only (headroomFor).
+  const balance = tokenBalance({
+    allowance: account.balance.allowance,
+    topups: account.balance.topups + headroomFor(kind, account.bonusHeadroom),
+    used: account.balance.used,
+  });
+  const short = shortfall(balance, kind);
 
   // The wall is built only on the refusal path. It costs a plan read and the
   // whole offer list, and this function sits in front of every analysis and
@@ -119,7 +125,7 @@ export async function checkTokenAllowance(
   // would be a query per run to describe something that didn't happen.
   if (short === 0) return ok(null);
 
-  const wall = await buildWall(clerkUserId, kind, account, short);
+  const wall = await buildWall(clerkUserId, kind, account);
   // Counts-only pricing: the refusal names the limit and the reset, never a
   // token number (N22 — tokens are an internal fair-use ceiling).
   return err({
@@ -136,30 +142,22 @@ async function buildWall(
   clerkUserId: string,
   kind: SpendKind,
   account: NonNullable<Awaited<ReturnType<typeof accountTokens>>>,
-  short: number,
 ): Promise<TokenWall> {
   const row = await db.user.findUnique({ where: { clerkUserId }, select: { plan: true } });
   const planId = (row?.plan ?? "free") as PlanId;
-  const up = await loadPlanAbove(planId);
+  const [plan, up] = await Promise.all([loadPlan(planId), loadPlanAbove(planId)]);
 
-  return {
+  return fairUseWall({
     kind,
-    estimate: SPEND[kind].estimate,
-    shortfall: short,
-    balance: account.balance,
-    planName: (await loadPlan(planId)).name,
-    stages: TOKEN_STAGES,
+    planName: plan.name,
     resetDate: formatResetDate(account.resetsAt),
     resetIn: formatResetIn(account.resetsAt),
-    // Only an analysis carries a stored posting to come back to.
-    canQueue: kind === "analysis",
     upgrade: up
       ? {
           id: up.id,
           name: up.name,
           price: up.price,
-          tokens: up.caps.tokens,
-          note: `More analyses, answers and practice every month — ${up.caps.analyses} analyses instead of ${(await loadPlan(planId)).caps.analyses}, the moment you switch.`,
+          note: `More analyses, answers and practice every month — ${up.caps.analyses} analyses instead of ${plan.caps.analyses}, the moment you switch.`,
         }
       : null,
     topups: canBuyTopup(planId)
@@ -171,7 +169,7 @@ async function buildWall(
           note: "One-off — nothing renews, and anything unspent carries into the next cycle.",
         }))
       : [],
-  };
+  });
 }
 
 /**

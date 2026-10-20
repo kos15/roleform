@@ -25,7 +25,7 @@ export async function checkAnswerClaims(
   if (!response) return SKIPPED;
   const p = noulOf(response, "scripts_claim");
   if (p === null) return SKIPPED;
-  return verdictFrom(p, "none", THRESHOLDS.answerClaims);
+  return verdictFrom(p, "answer_claim", THRESHOLDS.answerClaims);
 }
 
 export const answerClaimChecker: Checker<AnswerClaimInput, { text: string }> = {

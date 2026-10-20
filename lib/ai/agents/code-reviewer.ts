@@ -51,6 +51,8 @@ export const codeReviewer = defineAgent({
   reasoningEffort: "minimal",
   maxOutputTokens: 3_300,
   retries: 1,
-  inputGuards: [],
+  // The member's own code: scanned for injected instructions, never redacted —
+  // pii patterns would rewrite numeric literals and change the code reviewed.
+  inputGuards: ["injection_regex"],
   outputGuards: ["no_urls", "tone_prep"],
 });

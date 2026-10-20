@@ -6,8 +6,15 @@
  * lib/domain/fabrication.ts; it runs after it.
  */
 
-/** Mirrors lib/domain/fabrication.ts `FabricationKind`, plus the two it cannot detect by pattern. */
-export type CheckKind = "metric" | "tool" | "seniority" | "scale" | "merged_role" | "date" | "none";
+/**
+ * Mirrors lib/domain/fabrication.ts `FabricationKind`, plus the two it cannot
+ * detect by pattern. `answer_claim` is the answer checker's own kind — never
+ * offered to the fabrication Choice (see CHECK_KINDS).
+ */
+export type CheckKind = "metric" | "tool" | "seniority" | "scale" | "merged_role" | "date" | "none" | "answer_claim";
+
+/** The kinds a rewrite can be flagged with. */
+export type FabricationCheckKind = Exclude<CheckKind, "answer_claim">;
 
 export interface CheckVerdict {
   /** p ≥ the checker's threshold. */

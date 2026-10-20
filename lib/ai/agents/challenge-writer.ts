@@ -47,7 +47,7 @@ export const challengeWriter = defineAgent({
   reasoningEffort: "low",
   maxOutputTokens: 9_600,
   retries: 1,
-  inputGuards: [],
+  inputGuards: ["pii"],
   outputGuards: ["no_urls", "tone_prep"],
   verify: async (value) => {
     const names = value.params.map((p) => p.name);

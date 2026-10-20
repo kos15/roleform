@@ -6,9 +6,10 @@
  * never text a model produced, so nothing a checker reads can be smuggled
  * into the writer's next prompt.
  */
-import type { CheckKind, CheckVerdict } from "./types";
+import type { CheckKind, CheckVerdict, FabricationCheckKind } from "./types";
 
-export const CHECK_KINDS: readonly CheckKind[] = ["metric", "tool", "seniority", "scale", "merged_role", "date", "none"];
+/** The kinds the fabrication Choice may answer with. Excludes `answer_claim`. */
+export const CHECK_KINDS: readonly FabricationCheckKind[] = ["metric", "tool", "seniority", "scale", "merged_role", "date", "none"];
 
 /**
  * Starting thresholds (agent design §6.3). Set from the eval's honest and
@@ -35,6 +36,9 @@ const CORRECTIONS: Record<CheckKind, string> = {
   merged_role: "The rewrite combines work from different roles or projects. Keep to what this one source states.",
   date: "The rewrite changes or extends a date or duration. Keep dates exactly as the source states them.",
   none: "The rewrite claims more than its source supports. Say only what the source states, in the posting's words.",
+  // CLAUDE.md §3 on the Prep tab: coach honest positioning, never a credential.
+  answer_claim:
+    "The answer has the candidate claim experience, a credential or a result their bullets don't support. Lean on what they did nearby, say plainly what they haven't done, and what they're doing about it.",
 };
 
 export function correctionFor(v: CheckVerdict): string {

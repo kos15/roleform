@@ -298,4 +298,23 @@ check("I6: the Jev injection check never sees a résumé's contact details", () 
   assert.ok(t.includes("Built dashboards."));
 });
 
+console.log("deferred minors");
+check("M2: a flagged answer gets an answer-shaped correction, not the bullet one", () => {
+  const text = correctionFor({ flagged: true, p: 0.9, kind: "answer_claim", skipped: false });
+  assert.match(text, /lean on/i);
+  assert.doesNotMatch(text, /posting's words/);
+});
+check("M2: the answer kind is never offered to the fabrication Choice", () => {
+  assert.ok(!(CHECK_KINDS as readonly string[]).includes("answer_claim"));
+});
+check("M5: member-written code gets the injection scan but never pii redaction (it would rewrite numbers in code)", () => {
+  const reviewer = AGENTS["code_review"];
+  assert.ok(reviewer.inputGuards.includes("injection_regex"));
+  assert.ok(!reviewer.inputGuards.includes("pii"));
+});
+check("M5: only the documented exceptions skip pii redaction", () => {
+  const without = Object.values(AGENTS).filter((a) => !a.inputGuards.includes("pii")).map((a) => a.name).sort();
+  assert.deepEqual(without, ["analyze_jd", "code_review", "extract_profile", "synthesise_learning_plan", "transcribe_document"]);
+});
+
 void Promise.all(pending).then(() => console.log(`ok — ${passed} checks`));

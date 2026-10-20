@@ -24,6 +24,8 @@ export interface AccountTokens {
   resetsAt: Date;
   /** Generation is off entirely; the wall is not the right refusal. */
   suspended: boolean;
+  /** Worst-case cost of unspent extra analyses. Counts toward analyses only (`headroomFor`). */
+  bonusHeadroom: number;
 }
 
 /**
@@ -54,11 +56,12 @@ export const accountTokens = cache(async function accountTokens(
   return {
     balance: tokenBalance({
       allowance: user.capTokens,
-      topups: unspentTopups(granted, byCycle, user.capTokens) + bonusHeadroom,
+      topups: unspentTopups(granted, byCycle, user.capTokens),
       used: byCycle.current,
     }),
     resetsAt: cycleEnd(user.quotaResetsAt),
     suspended: user.suspended,
+    bonusHeadroom,
   };
 });
 
