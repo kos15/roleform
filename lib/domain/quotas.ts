@@ -51,6 +51,11 @@ export interface QuotaDefinition {
   max: number;
   /** Six figures read as noise at full length. "800K" everywhere but the wall. */
   abbreviate?: boolean;
+  /**
+   * Not printed to members (CLAUDE.md N22, amended Oct 2026): a fair-use
+   * ceiling sized so every printed count binds first. Only `tokens`.
+   */
+  internal?: true;
   description: string;
 }
 
@@ -58,13 +63,14 @@ export const QUOTAS: QuotaDefinition[] = [
   {
     key: "tokens",
     column: "capTokens",
-    label: "Token allowance",
+    label: "Fair-use limit",
     unit: "per month",
     period: "cycle",
     step: 50_000,
     min: 0,
-    max: 4_000_000,
+    max: 20_000_000,
     abbreviate: true,
+    internal: true,
     description:
       "The real meter. Every stage of every run draws from it, measured from what the models actually consumed. When it empties the member is offered a wait, a top-up or a plan — never a silent failure.",
   },

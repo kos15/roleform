@@ -210,3 +210,39 @@ export function formatResetIn(date: Date, now: Date = new Date()): string {
   if (days === 1) return "tomorrow";
   return `in ${days} days`;
 }
+
+/**
+ * Worst-case tokens per operation under the GPT-5 agents (counts-only
+ * pricing). PROVISIONAL: today's estimates × 3 for reasoning tokens and
+ * worst-case runs, until the agent plan's gate measures them
+ * (`pnpm tokens:calibrate`, docs/superpowers/plans/2026-10-21-gpt5-agents-jev-checkers.md
+ * Task 8). Sized high on purpose — an ordinary member must hit a printed count
+ * long before this ceiling (N22).
+ */
+export const WORST_CASE: Record<SpendKind, number> = {
+  analysis: SPEND.analysis.estimate * 3,
+  answer: SPEND.answer.estimate * 3,
+  revision: SPEND.revision.estimate * 3,
+  quiz: SPEND.quiz.estimate * 3,
+  challenge: SPEND.challenge.estimate * 3,
+  review: SPEND.review.estimate * 3,
+};
+
+/**
+ * The hidden fair-use ceiling for a set of printed counts: each metered count
+ * at its worst-case cost, plus a quarter, rounded up to the next 10,000. A
+ * practice session's worst case is the dearest of a deck, a round, or a
+ * challenge with one review. Résumés and courses are inside an analysis;
+ * roadmaps and job searches make no model call (N13).
+ */
+export function fairUseCeiling(
+  caps: { analyses: number; answers: number; practice: number },
+  worst: Record<SpendKind, number>,
+  bonusAnalyses = 0,
+): number {
+  const practice = Math.max(worst.revision, worst.quiz, worst.challenge + worst.review);
+  const spend =
+    (caps.analyses * worst.analysis + caps.answers * worst.answer + caps.practice * practice) * 1.25 +
+    bonusAnalyses * worst.analysis;
+  return Math.ceil(spend / 10_000) * 10_000;
+}

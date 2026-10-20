@@ -120,13 +120,14 @@ export async function checkTokenAllowance(
   if (short === 0) return ok(null);
 
   const wall = await buildWall(clerkUserId, kind, account, short);
-  const spend = SPEND[kind];
+  // Counts-only pricing: the refusal names the limit and the reset, never a
+  // token number (N22 — tokens are an internal fair-use ceiling).
   return err({
     code: "token_wall",
     message:
       account.balance.total === 0
-        ? `Your token allowance is set to zero${await askWhom()}.`
-        : `${spend.noun} needs about ${formatCount(spend.estimate)} tokens and you have ${formatCount(account.balance.left)}. Your cycle resets on ${wall.resetDate}.`,
+        ? `Generation is switched off on your account${await askWhom()}.`
+        : `You've reached this cycle's fair-use limit. It resets on ${wall.resetDate}.`,
     wall,
   });
 }
@@ -158,7 +159,7 @@ async function buildWall(
           name: up.name,
           price: up.price,
           tokens: up.caps.tokens,
-          note: `${formatCount(up.caps.tokens)} tokens a cycle instead of ${formatCount(account.balance.allowance)}, available the moment you switch.`,
+          note: `More analyses, answers and practice every month — ${up.caps.analyses} analyses instead of ${(await loadPlan(planId)).caps.analyses}, the moment you switch.`,
         }
       : null,
     topups: canBuyTopup(planId)

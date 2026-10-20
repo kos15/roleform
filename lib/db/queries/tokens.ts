@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { db } from "@/lib/db";
 import { CYCLE_DAYS, cycleEnd, cycleStart } from "@/lib/domain/quotas";
-import { tokenBalance, type TokenBalance } from "@/lib/domain/tokens";
+import { WORST_CASE, tokenBalance, type TokenBalance } from "@/lib/domain/tokens";
 
 /**
  * What the member has left (F19).
@@ -41,15 +41,20 @@ export const accountTokens = cache(async function accountTokens(
   if (!user) return null;
 
   const anchor = cycleStart(user.quotaResetsAt);
-  const [byCycle, granted] = await Promise.all([
+  const [byCycle, granted, bonusGranted, bonusSpent] = await Promise.all([
     usageByCycle(clerkUserId, anchor),
     grantedTokens(clerkUserId),
+    db.analysisGrant.aggregate({ where: { clerkUserId }, _sum: { analyses: true } }),
+    db.analysis.count({ where: { clerkUserId, fromBonus: true } }),
   ]);
+  // Unspent extra analyses carry their worst-case cost as headroom, so a
+  // member with a pack is never stopped by the hidden ceiling first.
+  const bonusHeadroom = Math.max(0, (bonusGranted._sum.analyses ?? 0) - bonusSpent) * WORST_CASE.analysis;
 
   return {
     balance: tokenBalance({
       allowance: user.capTokens,
-      topups: unspentTopups(granted, byCycle, user.capTokens),
+      topups: unspentTopups(granted, byCycle, user.capTokens) + bonusHeadroom,
       used: byCycle.current,
     }),
     resetsAt: cycleEnd(user.quotaResetsAt),
