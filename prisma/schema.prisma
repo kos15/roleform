@@ -329,6 +329,7 @@ model User {
   /// a plan is its caps (N22), so gating by cap keeps this row the only place
   /// "who can search" is decided.
   capJobSearches Int @default(0) @map("cap_job_searches") // per cycle
+  capPractice    Int @default(3) @map("cap_practice") // per cycle: deck builds + quiz rounds + challenges
 
   /// When a paid plan lapses (F23). Null on Free — CHECKed by hand in the
   /// migration: (plan = 'free') = (plan_expires_at IS NULL). Extended, never
@@ -430,6 +431,7 @@ model WorkspaceSettings {
   capCourses     Int @default(4) @map("cap_courses")
   capRoadmaps    Int @default(1) @map("cap_roadmaps")
   capJobSearches Int @default(0) @map("cap_job_searches")
+  capPractice    Int @default(3) @map("cap_practice")
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -485,6 +487,7 @@ model PlanConfig {
   capCourses     Int @map("cap_courses")
   capRoadmaps    Int @map("cap_roadmaps")
   capJobSearches Int @map("cap_job_searches")
+  capPractice    Int @default(3) @map("cap_practice")
 
   updatedBy String?  @map("updated_by")
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz

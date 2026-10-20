@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { checkTokenAllowance, requireUser } from "@/lib/auth";
+import { checkPracticeAllowance, checkTokenAllowance, requireUser } from "@/lib/auth";
 import { LIMITS, rateLimit } from "@/lib/rate-limit";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import {
@@ -97,6 +97,9 @@ export async function buildRevisionDeck(analysisId: string, minutes: number): Pr
 
   const limited = burst(`drill:${user.value}`, LIMITS.drill);
   if (!limited.ok) return limited;
+  // The printed count first, then the fair-use ceiling (N22).
+  const practice = await checkPracticeAllowance(user.value);
+  if (!practice.ok) return practice;
   const tokens = await checkTokenAllowance(user.value, "revision");
   if (!tokens.ok) return tokens;
 
@@ -141,6 +144,9 @@ export async function startQuizRound(
 
   const limited = burst(`drill:${user.value}`, LIMITS.drill);
   if (!limited.ok) return limited;
+  // The printed count first, then the fair-use ceiling (N22).
+  const practice = await checkPracticeAllowance(user.value);
+  if (!practice.ok) return practice;
   const tokens = await checkTokenAllowance(user.value, "quiz");
   if (!tokens.ok) return tokens;
 
@@ -278,6 +284,9 @@ export async function startChallenge(input: z.infer<typeof StartSchema>): Promis
 
   const limited = burst(`drill:${user.value}`, LIMITS.drill);
   if (!limited.ok) return limited;
+  // The printed count first, then the fair-use ceiling (N22).
+  const practice = await checkPracticeAllowance(user.value);
+  if (!practice.ok) return practice;
   const tokens = await checkTokenAllowance(user.value, "challenge");
   if (!tokens.ok) return tokens;
 

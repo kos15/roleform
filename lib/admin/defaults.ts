@@ -39,6 +39,7 @@ export async function workspaceDefaults(): Promise<WorkspaceDefaults> {
       capCourses: free.courses,
       capRoadmaps: free.roadmaps,
       capJobSearches: free.jobSearches,
+      capPractice: free.practice,
     },
     update: {},
     select: {
@@ -49,6 +50,7 @@ export async function workspaceDefaults(): Promise<WorkspaceDefaults> {
       capCourses: true,
       capRoadmaps: true,
       capJobSearches: true,
+      capPractice: true,
     },
   });
 
@@ -60,6 +62,7 @@ export async function workspaceDefaults(): Promise<WorkspaceDefaults> {
     courses: row.capCourses,
     roadmaps: row.capRoadmaps,
     jobSearches: row.capJobSearches,
+    practice: row.capPractice,
   };
 }
 
@@ -85,5 +88,6 @@ export function capsFromDefaults(defaults: WorkspaceDefaults) {
     capCourses: defaults.courses,
     capRoadmaps: defaults.roadmaps,
     capJobSearches: defaults.jobSearches,
+    capPractice: defaults.practice,
   };
 }

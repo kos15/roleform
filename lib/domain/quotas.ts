@@ -26,7 +26,8 @@ export type QuotaKey =
   | "answers"
   | "courses"
   | "roadmaps"
-  | "jobSearches";
+  | "jobSearches"
+  | "practice";
 
 export type QuotaPeriod = "cycle" | "analysis" | "gap";
 
@@ -40,7 +41,8 @@ export interface QuotaDefinition {
     | "capAnswers"
     | "capCourses"
     | "capRoadmaps"
-    | "capJobSearches";
+    | "capJobSearches"
+    | "capPractice";
   label: string;
   unit: string;
   period: QuotaPeriod;
@@ -137,6 +139,18 @@ export const QUOTAS: QuotaDefinition[] = [
     max: 500,
     description:
       "Listings fetched from job-board APIs against your profile's titles and skills. Off on Free. Saved jobs and their statuses stay at any cap, including Off.",
+  },
+  {
+    key: "practice",
+    column: "capPractice",
+    label: "Practice sessions",
+    unit: "per month",
+    period: "cycle",
+    step: 5,
+    min: 0,
+    max: 200,
+    description:
+      "Rapid prep: building a revision deck, starting a quiz round or a coding challenge each count one. Reviews inside a challenge are free. Decks and rounds you have stay usable at any cap.",
   },
 ];
 

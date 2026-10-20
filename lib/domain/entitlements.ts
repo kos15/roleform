@@ -109,3 +109,14 @@ export function planLapsed(
 ): boolean {
   return row.plan !== "free" && effectivePlan(row, now) === "free";
 }
+
+/**
+ * What counts as one practice session (counts-only pricing, 2026-10-21): a
+ * revision deck, quiz round or coding challenge the MODEL wrote — the row
+ * carries an `ai_run_id`. Retaking a round copies its questions, a bank
+ * problem is a curated file and a review sits inside a challenge already
+ * counted; the UI promises all three are free, so none of them match here.
+ */
+export function practiceSessionWhere(clerkUserId: string, since: Date) {
+  return { clerkUserId, createdAt: { gte: since }, aiRunId: { not: null } };
+}

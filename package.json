@@ -34,7 +34,8 @@
     "tokens:calibrate": "pnpm script scripts/tokens-calibrate.ts",
     "seo:indexnow": "pnpm script scripts/indexnow.ts",
     "check:agents": "pnpm script scripts/agent-fixtures.ts",
-    "eval": "pnpm script scripts/evals/run.ts"
+    "eval": "pnpm script scripts/evals/run.ts",
+    "check:quotas": "pnpm script scripts/quota-fixtures.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.20",

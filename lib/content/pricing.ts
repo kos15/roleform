@@ -47,7 +47,7 @@ export const PLANS: Plan[] = [
     pricePaise: 0,
     unit: "forever",
     tagline: "Tailor against a real posting and see your gaps.",
-    caps: { tokens: 60_000, analyses: 3, resumes: 2, answers: 3, courses: 2, roadmaps: 1, jobSearches: 0 },
+    caps: { tokens: 60_000, analyses: 3, resumes: 2, answers: 3, courses: 2, roadmaps: 1, jobSearches: 0, practice: 3 },
     cta: "Start free",
   },
   {
@@ -57,7 +57,7 @@ export const PLANS: Plan[] = [
     pricePaise: 49_900,
     unit: "per month",
     tagline: "For an active search: every template, answers, roadmaps and job search.",
-    caps: { tokens: 800_000, analyses: 40, resumes: 11, answers: 40, courses: 4, roadmaps: 40, jobSearches: 60 },
+    caps: { tokens: 800_000, analyses: 40, resumes: 11, answers: 40, courses: 4, roadmaps: 40, jobSearches: 60, practice: 40 },
     cta: "Go Pro",
     featured: true,
   },
@@ -68,7 +68,7 @@ export const PLANS: Plan[] = [
     pricePaise: 129_900,
     unit: "per month",
     tagline: "For coaches and career centres running many searches.",
-    caps: { tokens: 3_000_000, analyses: 150, resumes: 11, answers: 200, courses: 6, roadmaps: 150, jobSearches: 200 },
+    caps: { tokens: 3_000_000, analyses: 150, resumes: 11, answers: 200, courses: 6, roadmaps: 150, jobSearches: 200, practice: 150 },
     cta: "Go Ultra",
   },
 ];
@@ -175,6 +175,7 @@ const NOTES: Record<QuotaKey, string> = {
   courses: "The gap is always shown, with or without a course beside it.",
   roadmaps: "A roadmap you have built stays readable and tickable at any cap.",
   jobSearches: "Saved jobs and their statuses stay at any cap, including Off.",
+  practice: "Decks and rounds you have built stay usable at any cap; reviewing a challenge you started is free.",
 };
 
 export const PLAN_ROWS: PlanRow[] = QUOTAS.map((q) => ({

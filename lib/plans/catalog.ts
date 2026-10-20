@@ -45,6 +45,7 @@ export const loadPlans = cache(async (): Promise<Plan[]> => {
         courses: row.capCourses,
         roadmaps: row.capRoadmaps,
         jobSearches: row.capJobSearches,
+        practice: row.capPractice,
       },
     };
   });
@@ -69,5 +70,6 @@ export function capColumns(caps: Record<QuotaKey, number>) {
     capCourses: caps.courses,
     capRoadmaps: caps.roadmaps,
     capJobSearches: caps.jobSearches,
+    capPractice: caps.practice,
   };
 }

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { listAdmins } from "@/lib/admin/members";
 import { workspaceDefaults, capsFromDefaults } from "@/lib/admin/defaults";
 import { cycleEnd, cycleStart, QUOTA_BY_KEY, type CapWall, type QuotaKey } from "@/lib/domain/quotas";
-import { UNCAPPED, isUncapped, withinCap } from "@/lib/domain/entitlements";
+import { UNCAPPED, isUncapped, practiceSessionWhere, withinCap } from "@/lib/domain/entitlements";
 import { accountTokens } from "@/lib/db/queries/tokens";
 import { settlePlan } from "@/lib/db/queries/plan";
 import {
@@ -307,6 +307,56 @@ export async function checkAnswerAllowance(
 }
 
 /**
+ * Practice-session allowance (counts-only pricing). A deck, a quiz round or a
+ * challenge the model writes counts one; retakes, bank problems and reviews
+ * are free (`practiceSessionWhere`). Checked before the token ceiling, so a
+ * member hits the printed count first (N22).
+ */
+export async function checkPracticeAllowance(
+  clerkUserId: string,
+): Promise<Result<{ used: number; cap: number }>> {
+  await settlePlan(clerkUserId);
+
+  const row = await db.user.findUnique({
+    where: { clerkUserId },
+    select: { capPractice: true, suspended: true, quotaResetsAt: true, role: true, plan: true },
+  });
+  if (!row) return err(appError("not_found", "We couldn't find your account."));
+
+  if (row.suspended) {
+    return err(
+      appError(
+        "quota_exhausted",
+        `Generation is suspended on your account${await askWhom()}. Decks and rounds you've built stay usable.`,
+      ),
+    );
+  }
+
+  const where = practiceSessionWhere(clerkUserId, cycleStart(row.quotaResetsAt));
+  const [decks, rounds, challenges] = await Promise.all([
+    db.revisionDeck.count({ where }),
+    db.quizRound.count({ where }),
+    db.codingChallenge.count({ where }),
+  ]);
+  const used = decks + rounds + challenges;
+
+  if (!withinCap(row.role, row.capPractice, used)) {
+    const capWall = await buildCapWall(clerkUserId, "practice", row.capPractice, used, row.quotaResetsAt, row.plan);
+    return err({
+      ...appError(
+        "quota_exhausted",
+        row.capPractice === 0
+          ? `Practice sessions are switched off on your account${await askWhom()}.`
+          : `You've used all ${row.capPractice} practice sessions in this cycle${await askWhom()}. Decks and rounds you've built stay usable, and retakes are free.`,
+      ),
+      capWall,
+    });
+  }
+
+  return ok({ used, cap: isUncapped(row.role) ? UNCAPPED : row.capPractice });
+}
+
+/**
  * Roadmap build allowance (F21, F15). Same shape as the two caps above:
  * counted from rows, so an attempt refused up front costs nothing. A roadmap
  * already built stays readable and tickable at any cap (RM-5) — this only
@@ -355,6 +405,7 @@ async function checkCap(
     select: {
       capRoadmaps: true,
       capJobSearches: true,
+      capPractice: true,
       suspended: true,
       quotaResetsAt: true,
       role: true,
@@ -403,7 +454,7 @@ async function checkCap(
  */
 async function buildCapWall(
   clerkUserId: string,
-  key: Extract<QuotaKey, "analyses" | "answers" | "roadmaps" | "jobSearches">,
+  key: Extract<QuotaKey, "analyses" | "answers" | "roadmaps" | "jobSearches" | "practice">,
   cap: number,
   used: number,
   quotaResetsAt: Date | null,
