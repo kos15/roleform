@@ -1,0 +1,452 @@
+[
+ {
+  "id": "hon-01",
+  "bullet": "Built the internal admin dashboard in Angular for the support team.",
+  "requirement": "Experience building internal tools in Angular",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-02",
+  "bullet": "Fixed a memory leak in the reporting service that had been causing weekly restarts.",
+  "requirement": "Debugging performance problems in production services",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-03",
+  "bullet": "Wrote the onboarding documentation for new engineers joining the platform team.",
+  "requirement": "Clear technical writing and documentation",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-04",
+  "bullet": "Migrated 12 components from AngularJS to Angular 14.",
+  "requirement": "Experience migrating legacy frontends",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-05",
+  "bullet": "Added unit tests to the billing module, taking coverage from 20% to 55%.",
+  "requirement": "Strong unit testing practice",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-06",
+  "bullet": "Ran the weekly bug triage meeting for six months.",
+  "requirement": "Comfortable running team rituals and triage",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-07",
+  "bullet": "Reduced the CI pipeline from 22 minutes to 14 minutes by parallelising test jobs.",
+  "requirement": "Improving CI build times",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-08",
+  "bullet": "Built a CSV export feature used by around 40 customers a month.",
+  "requirement": "Shipping customer-facing features end to end",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-09",
+  "bullet": "Paired with a junior engineer twice a week for a quarter.",
+  "requirement": "Mentoring junior engineers",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-10",
+  "bullet": "Investigated and documented three production incidents.",
+  "requirement": "Incident investigation and write-ups",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-11",
+  "bullet": "Implemented form validation across the checkout flow.",
+  "requirement": "Building robust forms in a checkout flow",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-12",
+  "bullet": "Set up Sentry error tracking for the frontend.",
+  "requirement": "Frontend error monitoring with Sentry",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-13",
+  "bullet": "Refactored the notification service to remove duplicated logic.",
+  "requirement": "Refactoring for maintainability",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-14",
+  "bullet": "Wrote a script that automated our weekly release notes.",
+  "requirement": "Automating repetitive engineering tasks",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-15",
+  "bullet": "Added keyboard navigation to the data table component.",
+  "requirement": "Accessibility for interactive components",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-16",
+  "bullet": "Improved the Lighthouse accessibility score on the marketing site from 78 to 94.",
+  "requirement": "Web accessibility improvements",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-17",
+  "bullet": "Maintained the shared TypeScript types package used by four services.",
+  "requirement": "TypeScript across multiple services",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-18",
+  "bullet": "Reviewed roughly ten pull requests a week.",
+  "requirement": "Regular code review",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-19",
+  "bullet": "Fixed 30 accessibility issues raised in an external audit.",
+  "requirement": "Remediating accessibility audit findings",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-20",
+  "bullet": "Set up feature flags for the new dashboard rollout.",
+  "requirement": "Safe rollouts with feature flags",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-21",
+  "bullet": "Wrote integration tests for the authentication flow.",
+  "requirement": "Integration testing of auth flows",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-22",
+  "bullet": "Presented a lunch-and-learn on RxJS operators.",
+  "requirement": "Sharing knowledge with the team",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-23",
+  "bullet": "Migrated our styling from Sass to CSS custom properties.",
+  "requirement": "Modern CSS and styling architecture",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-24",
+  "bullet": "Debugged a race condition in the websocket reconnect logic.",
+  "requirement": "Debugging concurrency issues in realtime code",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-25",
+  "bullet": "Added pagination to the search results page.",
+  "requirement": "Building search experiences",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-26",
+  "bullet": "Cleaned up 40 lint warnings across the codebase.",
+  "requirement": "Attention to code quality",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-27",
+  "bullet": "Helped scope the requirements for the reporting rebuild.",
+  "requirement": "Working with stakeholders on requirements",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-28",
+  "bullet": "Contributed to the design system rollout across two product teams.",
+  "requirement": "Contributing to a shared design system",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-29",
+  "bullet": "Supported the launch of a new pricing page.",
+  "requirement": "Supporting product launches",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ },
+ {
+  "id": "hon-30",
+  "bullet": "Built an internal tool for the finance team to reconcile invoices.",
+  "requirement": "Building tools for non-engineering teams",
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ],
+  "expect": "pass"
+ }
+]

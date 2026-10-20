@@ -1,0 +1,182 @@
+[
+ {
+  "id": "sum-01",
+  "jobTitle": "Frontend Engineer",
+  "bullets": [
+   "Built the internal admin dashboard in Angular for the support team.",
+   "Fixed a memory leak in the reporting service that had been causing weekly restarts.",
+   "Wrote the onboarding documentation for new engineers joining the platform team."
+  ],
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ]
+ },
+ {
+  "id": "sum-02",
+  "jobTitle": "Senior Frontend Engineer",
+  "bullets": [
+   "Migrated 12 components from AngularJS to Angular 14.",
+   "Added unit tests to the billing module, taking coverage from 20% to 55%.",
+   "Ran the weekly bug triage meeting for six months."
+  ],
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ]
+ },
+ {
+  "id": "sum-03",
+  "jobTitle": "Platform Engineer",
+  "bullets": [
+   "Reduced the CI pipeline from 22 minutes to 14 minutes by parallelising test jobs.",
+   "Built a CSV export feature used by around 40 customers a month.",
+   "Paired with a junior engineer twice a week for a quarter."
+  ],
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ]
+ },
+ {
+  "id": "sum-04",
+  "jobTitle": "Full-stack Developer",
+  "bullets": [
+   "Investigated and documented three production incidents.",
+   "Implemented form validation across the checkout flow.",
+   "Set up Sentry error tracking for the frontend."
+  ],
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ]
+ },
+ {
+  "id": "sum-05",
+  "jobTitle": "Accessibility Engineer",
+  "bullets": [
+   "Refactored the notification service to remove duplicated logic.",
+   "Wrote a script that automated our weekly release notes.",
+   "Added keyboard navigation to the data table component."
+  ],
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ]
+ },
+ {
+  "id": "sum-06",
+  "jobTitle": "QA Automation Engineer",
+  "bullets": [
+   "Improved the Lighthouse accessibility score on the marketing site from 78 to 94.",
+   "Maintained the shared TypeScript types package used by four services.",
+   "Reviewed roughly ten pull requests a week."
+  ],
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ]
+ },
+ {
+  "id": "sum-07",
+  "jobTitle": "Engineering Lead",
+  "bullets": [
+   "Fixed 30 accessibility issues raised in an external audit.",
+   "Set up feature flags for the new dashboard rollout.",
+   "Wrote integration tests for the authentication flow."
+  ],
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ]
+ },
+ {
+  "id": "sum-08",
+  "jobTitle": "Developer Experience Engineer",
+  "bullets": [
+   "Presented a lunch-and-learn on RxJS operators.",
+   "Migrated our styling from Sass to CSS custom properties.",
+   "Debugged a race condition in the websocket reconnect logic."
+  ],
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ]
+ },
+ {
+  "id": "sum-09",
+  "jobTitle": "Product Engineer",
+  "bullets": [
+   "Added pagination to the search results page.",
+   "Cleaned up 40 lint warnings across the codebase.",
+   "Helped scope the requirements for the reporting rebuild."
+  ],
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ]
+ },
+ {
+  "id": "sum-10",
+  "jobTitle": "Web Performance Engineer",
+  "bullets": [
+   "Contributed to the design system rollout across two product teams.",
+   "Supported the launch of a new pricing page.",
+   "Built an internal tool for the finance team to reconcile invoices."
+  ],
+  "profileTerms": [
+   "Angular",
+   "TypeScript",
+   "RxJS",
+   "Sass",
+   "CSS",
+   "Sentry",
+   "CI"
+  ]
+ }
+]

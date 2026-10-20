@@ -1,0 +1,14 @@
+[
+ {
+  "id": "cv-01",
+  "text": "Alex Example\nalex@example.com · +91 90000 00000\n\nEXPERIENCE\nFrontend Engineer, Example Software Pvt Ltd — Jan 2021 to present\n- Built the internal admin dashboard in Angular for the support team.\n- Migrated 12 components from AngularJS to Angular 14.\n- Added unit tests to the billing module, taking coverage from 20% to 55%.\nJunior Developer, Sample Labs — Jun 2019 to Dec 2020\n- Implemented form validation across the checkout flow.\n- Added pagination to the search results page.\n\nEDUCATION\nB.Tech, Computer Science, Example Institute, 2019\n\nSKILLS\nAngular, TypeScript, RxJS, Sass, Sentry"
+ },
+ {
+  "id": "cv-02",
+  "text": "Sam Placeholder — Platform Engineer\nsam@example.org\n\nWork\nPlatform Engineer at Demo Corp (2020–now)\n• Reduced the CI pipeline from 22 minutes to 14 minutes by parallelising test jobs.\n• Investigated and documented three production incidents.\n• Set up feature flags for the new dashboard rollout.\nSupport Engineer at Mock Systems (2018–2020)\n• Wrote a script that automated our weekly release notes.\n\nEducation: BSc Information Technology, 2018\nSkills: Docker, GitHub Actions, Bash, TypeScript"
+ },
+ {
+  "id": "cv-03",
+  "text": "Jordan Sample\nPune · jordan@example.net\n\nPROFESSIONAL EXPERIENCE\nAccessibility Engineer | Example Web Studio | 2022 – Present\n  Improved the Lighthouse accessibility score on the marketing site from 78 to 94.\n  Fixed 30 accessibility issues raised in an external audit.\n  Added keyboard navigation to the data table component.\nFrontend Developer | Placeholder Media | 2019 – 2022\n  Migrated our styling from Sass to CSS custom properties.\n  Presented a lunch-and-learn on RxJS operators.\n\nCERTIFICATIONS\nIAAP CPACC (2023)\n\nSKILLS\nHTML, CSS, ARIA, Angular, axe, Lighthouse"
+ }
+]
