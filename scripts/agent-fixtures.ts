@@ -18,6 +18,8 @@ import { learningPlanner } from "../lib/ai/agents/learning-planner";
 import { quizWriter } from "../lib/ai/agents/quiz-writer";
 import { revisionWriter } from "../lib/ai/agents/revision-writer";
 import { AGENTS } from "../lib/ai/agents/roster";
+import { verdictFrom, correctionFor, CHECK_KINDS } from "../lib/ai/checkers/verdict";
+import { fabricationRequest, answerClaimRequest, JevResponseSchema } from "../lib/ai/checkers/requests";
 
 let passed = 0;
 const pending: Promise<void>[] = [];
@@ -173,6 +175,52 @@ check("the roster holds all twelve agents, one per task", () => {
     "analyze_jd", "code_review", "coding_challenge", "extract_profile", "interview_questions", "question_answer",
     "quiz_round", "revision_cards", "synthesise_learning_plan", "tailor_bullet", "tailor_summary", "transcribe_document",
   ]);
+});
+
+console.log("checkers (4)");
+check("verdictFrom flags at or above the threshold only", () => {
+  assert.deepEqual(verdictFrom(0.62, "tool", 0.5), { flagged: true, p: 0.62, kind: "tool", skipped: false });
+  assert.equal(verdictFrom(0.49, "none", 0.5).flagged, false);
+  assert.equal(verdictFrom(0.5, "metric", 0.5).flagged, true);
+});
+check("every kind but none has a fixed, template-free correction sentence", () => {
+  for (const kind of CHECK_KINDS) {
+    const text = correctionFor({ flagged: true, p: 0.9, kind, skipped: false });
+    if (kind === "none") continue;
+    assert.ok(text.length > 20, kind);
+    assert.ok(!/[{}]/.test(text), kind);
+  }
+});
+check("the fabrication request carries the member's profile terms, so a tool stated elsewhere is in evidence", () => {
+  const req = fabricationRequest(
+    { source: "Built reports in Excel", profileTerms: ["Excel", "Tableau"], postingTerms: ["Tableau"] },
+    { text: "Built Tableau reports" },
+    "jev-latest",
+  );
+  const state = req.state as Record<string, unknown>;
+  assert.deepEqual(state.profile_terms, ["Excel", "Tableau"]);
+  assert.equal(state.rewrite, "Built Tableau reports");
+  assert.deepEqual(Object.keys(req.questions).sort(), ["invents", "kind"]);
+  assert.equal((req.questions.kind as { type: string }).type, "choice");
+  assert.deepEqual(Object.keys((req.questions.kind as { criteria: object }).criteria).sort(), [...CHECK_KINDS].sort());
+});
+check("the answer-claim request tells the model whether the question probes a gap", () => {
+  const req = answerClaimRequest(
+    { question: "Tell me about Kubernetes", evidence: [], profileFacts: ["Ran Docker in CI"], isGap: true },
+    { text: "I would lean on my Docker work and say what I am learning." },
+    "jev-latest",
+  );
+  assert.equal((req.state as Record<string, unknown>).question_probes_a_gap, true);
+  assert.deepEqual(Object.keys(req.questions), ["scripts_claim"]);
+});
+check("a Jev response parses; a malformed one does not", () => {
+  const ok = JevResponseSchema.safeParse({
+    model: "jev-1.13",
+    answers: { invents: { type: "noul", noul: 0.8 }, kind: { type: "choice", choice: "tool", confidence: 0.7, probabilities: { tool: 0.7, none: 0.3 } } },
+    usage: { input_tokens: 300, output_tokens: 2 },
+  });
+  assert.equal(ok.success, true);
+  assert.equal(JevResponseSchema.safeParse({ model: "x", answers: { invents: { type: "noul", noul: 2 } } }).success, false);
 });
 
 void Promise.all(pending).then(() => console.log(`ok — ${passed} checks`));

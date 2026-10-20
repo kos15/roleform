@@ -447,6 +447,9 @@ enum FeatureKey {
   roadmap
   study
   rounds
+  /// The Jev checkers on tailoring and answers (agent design §6.5). Off = the
+  /// deterministic guards alone, exactly as before the checkers existed.
+  ai_checkers
 
   @@map("feature_key")
 }

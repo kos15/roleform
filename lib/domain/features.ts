@@ -3,7 +3,7 @@
  * `lib/features.ts` reads against. Mirrors the `feature_key` enum; adding a
  * surface is a migration, a row here, and a `requireFeature` at its seams.
  */
-export type FeatureKey = "jobs" | "portfolio" | "rapid" | "roadmap" | "study" | "rounds";
+export type FeatureKey = "jobs" | "portfolio" | "rapid" | "roadmap" | "study" | "rounds" | "ai_checkers";
 
 export interface FeatureDef {
   key: FeatureKey;
@@ -13,6 +13,12 @@ export interface FeatureDef {
 }
 
 export const FEATURES: FeatureDef[] = [
+  {
+    key: "ai_checkers",
+    label: "AI fact-checkers",
+    description:
+      "Jev checks every tailored bullet, summary and full answer for claims the member's profile can't back. Off leaves the built-in rules on their own.",
+  },
   {
     key: "jobs",
     label: "Job search",
