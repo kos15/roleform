@@ -106,6 +106,104 @@ pnpm check:fabrication PASS   0/30 mechanical fabrications, live against OpenAI 
 
 ## Architecture in one screen
 
+### System overview
+
+What a member touches and where each request lands
+(generated with [gitdiagram](https://gitdiagram.com/kos15/roleform)):
+
+![Roleform system overview: member experience, analysis and AI, plans and operations, accounts and platform, career tools](docs/images/architecture-overview.png)
+
+### Layers and trust boundaries
+
+The same system drawn by layer. Solid arrows are request-time calls; dotted arrows are
+scheduled or webhook-driven. Nothing in `lib/domain/` talks to I/O, and the model only ever
+reaches the database through a Zod schema and the pipeline that validates it.
+
+```mermaid
+flowchart TB
+    member(["Member<br/>browser · PWA"])
+
+    subgraph edge["Edge"]
+        vercel["Vercel edge<br/>roleform.koustubh.org"]
+        cf["CloudFront<br/>files.koustubh.org"]
+    end
+
+    subgraph app["Next.js 15 App Router"]
+        pages["app/(app)/*<br/>onboarding · analyze · analysis/[id] tabs<br/>history · profile · jobs · admin"]
+        actions["app/actions/*<br/>Server Actions"]
+        stream["app/api/analyze/[id]<br/>streaming route"]
+        hooks["app/api/webhooks<br/>clerk · razorpay"]
+        cron["app/api/cron/reminders<br/>Bearer CRON_SECRET"]
+    end
+
+    subgraph core["lib/ — server"]
+        pipeline["lib/pipeline<br/>run-analysis · stages"]
+        agents["lib/ai/agents<br/>runAgent + Zod schemas (N6)"]
+        checkers["lib/ai/checkers<br/>fabrication · answer claims · injection"]
+        learning["lib/learning<br/>bundles · build-plan · validate<br/>ONE model call (N12)"]
+        catalog["lib/catalog<br/>skills · courses · matcher (N8)"]
+        jobs["lib/jobs<br/>search + API adapters (N17–N19)"]
+        render["lib/render<br/>ats-rules · pdf · docx · zip"]
+        plans["lib/plans · lib/promo · lib/payments<br/>plan catalog · promos · razorpay"]
+        push["lib/push · lib/mail<br/>dispatch · outbox · web-push · Resend"]
+    end
+
+    domain["lib/domain — PURE<br/>coverage · fabrication · ordering · diff<br/>binding · guardrails · entitlements"]
+
+    subgraph data["Supabase"]
+        pg[("Postgres via Prisma<br/>RLS on every user table (N10)<br/>NOT NULL evidence FKs (N1/N2)")]
+        storage[("Storage<br/>resumes · exports (private)")]
+        pgcron["pg_cron<br/>every 5 min"]
+    end
+
+    subgraph ext["External services"]
+        clerk["Clerk<br/>auth · native Supabase integration"]
+        llm["GPT-5 writers<br/>Vercel AI SDK generateObject"]
+        jev["Jev checkers"]
+        rzp["Razorpay"]
+        boards["Job board APIs<br/>Greenhouse · Lever · Ashby · …"]
+        pushsvc["Web Push services"]
+    end
+
+    member --> vercel --> pages
+    member -->|signed export URLs| cf --> storage
+    pages --> actions
+    pages --> stream
+    member -.->|sign-in| clerk
+
+    stream --> pipeline
+    actions --> learning
+    actions --> jobs
+    actions --> render
+    actions --> plans
+
+    pipeline --> agents
+    pipeline --> domain
+    agents --> llm
+    agents --> checkers --> jev
+    learning --> catalog
+    learning --> agents
+    learning --> domain
+    jobs --> boards
+    jobs --> domain
+    render --> domain
+    plans --> rzp
+
+    pipeline --> pg
+    actions --> pg
+    actions --> storage
+    render --> storage
+
+    clerk -.->|user events| hooks
+    rzp -.->|captured payment| hooks
+    hooks --> pg
+    pgcron -.-> cron --> push
+    push --> pg
+    push --> pushsvc -.-> member
+```
+
+### Code map
+
 ```
 lib/domain/      PURE. coverage · scoring · ordering · diff · fabrication guard
                  Imports nothing from db, ai, supabase or next.
