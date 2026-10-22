@@ -492,7 +492,7 @@ ONBOARDING (once)
 
 PER ANALYSIS (Step 1 of 3)
   JD paste or upload
-    ↓  parsing screen: 4 named steps + progressPct, streamed
+    ↓  parsing screen: galaxy card, streamed; leaves for results when ③ ends (④ ⑤ finish behind)
   ① analyze-jd      → JdMeta + jd_requirements (with mention_count)
   ② coverage        → coverage_items + score          [PURE, no LLM]
   ③ tailor          → capResumes × resume_drafts + tailored_bullets
@@ -630,18 +630,32 @@ Segmented control: **Upload file** / **Paste text**.
 
 ### F3 — Parsing screen
 
-`Step 2 of 3 · N% complete`, the running stage's own heading and description, `progressPct` bar, and
-four named steps resolving in sequence with a per-row status: *Reading the posting → Matching against
-your profile → Rewriting your resume → Preparing questions and courses.* Streamed, never a fake timer.
-A stage failure stops there and says what failed — a spinner that lies is worse than an error.
+One animation for one wait: the galaxy card (below) is the whole screen, its eyebrow carrying
+`Analysing the posting · N%` and one pip per stage up to the résumés — *Reading the posting →
+Matching against your profile → Rewriting your resume.* Streamed, never a fake timer. A stage that
+comes back partial says so in the card's sub-line; a stage failure stops there and says what failed —
+a spinner that lies is worse than an error. The route's own `loading.tsx` renders nothing, because
+this screen is the loader. (Until Oct 2026 the card sat over a heading, a progress bar, a row of four
+stage cards and a looping stage figure — the same news four times. All of it went.)
+
+**The screen leaves when the résumés exist (Oct 2026).** The pipeline marks the analysis `ready` the
+moment stage ③ ends — before announcing it — and keeps running ④ + ⑤ in the same `after()`
+invocation, its claim (`runningAt`) held until they finish. The screen stops reading the stream on
+③'s `done`/`degraded` and `router.replace`s to the Résumés tab with no finish delay. While
+`backgroundRunning(analysis)` (`lib/pipeline/background.ts`: `ready` + a live claim) is true, the
+layout mounts one 3s `router.refresh()` poller, the Prep and Learning tab counts read
+`Preparing…` instead of a zero, and Prep, Learning, Study plan and Roadmap show a `SectionPending`
+card in place of their empty state. A claim gone stale is not "still generating": the tab shows its
+ordinary empty state, and Prep offers **Generate the questions**, which POSTs `?resume=1` —
+`resumeState` skips every stage whose rows exist, so only the missing one is billed.
 
 **The wait card (Oct 2026, design "Roleform waits" v2).** While a run streams, the galaxy card from
 `<rf-wait>` (`components/rf-wait/rf-wait.js`, typed as `components/wait-overlay.tsx`) floats over the
 page: eyebrow, elapsed clock, one pip per stage, the running stage's label scrambling into place, and
 the red panda reacting as stages land. Its `stage` is the same running stage the page shows — never a
-timer — and the design's ETA file counter was dropped for that reason. On the run's last word the
-card plays its finish (≈1.4s) before the redirect; a failure or a token wall closes it and the page
-says what happened. No cancel button: the run continues server-side either way (`after()`), which
+timer — and the design's ETA file counter was dropped for that reason. On the résumés landing the
+page navigates straight away (the ≈1.4s finish that used to hold it is gone); a failure or a token
+wall closes the card and the page says what happened. No cancel button: the run continues server-side either way (`after()`), which
 the card's 20-second line says. The same element serves every wait over ~5s — **papers** for résumé
 import (its three real steps) and Download all, **blobs** for the revision deck, quiz round and code
 challenge (one line, no pips: those calls have no stages to report) — and its `dots` kind is what
@@ -656,8 +670,8 @@ analysis. It never fires on its own — a page reload must not bill anybody.
 **The run does not depend on the screen watching it.** The route hands the pipeline to `after()`
 and its `emit` goes quiet once the client disconnects, so a locked phone, a closed tab or a dropped
 connection no longer tears down whichever stage was running (it used to: the next `enqueue` threw).
-The screen only redirects to results when the stream carried the run's last word — stage ④ at 100%
-— never merely because the stream ended. A stream that stops early is reconnected quietly, up to
+The screen only redirects to results when the stream said the résumés are done — stage ③ ending, or
+stage ④ at 100% from a followed or already-finished run — never merely because the stream ended. A stream that stops early is reconnected quietly, up to
 three times, with `?reconnect=1`: that follows a run still in progress, reports one that ended
 (including a failure, which is still only picked up again on request), and bills nothing. A
 follower that finds the run's claim gone stale — its invocation killed by the platform — takes it
@@ -684,12 +698,9 @@ in `scoreNote`, the column the score's own calibration lives in. A resume that s
 leave the results header explaining the crash instead of the number, so the score, verdict and note
 are re-derived and written on both paths. They are pure functions of rows already in hand.
 
-**Stage figures.** Each stage carries a small looping diagram of the work it is doing: a page under a
-scan line, requirements wired to the bullets that evidence them (and one wired to nothing), a bullet
-being typed while two others swap places, questions and course cards forming. They answer what a
-progress bar can't — *what* is taking the time. They are the only looping animations in the app, only
-one is mounted at a time, they are `aria-hidden`, and the whole set freezes under
-`prefers-reduced-motion`. The accessible account of progress is the stage list and the progressbar.
+**Accessibility.** The card is decorative; the accessible account of progress is a polite live
+region carrying the running stage's label and the percentage. (The per-stage looping figures were
+retired with the stage list, Oct 2026.)
 
 ### F4 — Coverage + score header
 
@@ -717,6 +728,19 @@ The thumbnail is an abstract miniature of the layout — grey bars on white pape
 accent, no readable text. Its job is to make the ATS badge legible: you can *see* Ledger's two-column
 body and Atlas's icon-only contact row, which is what costs each of them its rating. Paper colours, not
 brand tokens; the §9 export exemption covers the picture of the document as well as the document.
+
+**Skills the profile never listed (Oct 2026).** Tailoring can only use what the profile states, so a
+skill the member has but never wrote down is missing from every draft. `lib/domain/skill-consent.ts`
+(pure) lists the requirements with a canonical `skillName` that the profile's Skills section doesn't
+name and no bullet evidences, required first. The tab offers them as checkboxes, **none ticked**;
+the copy says a tick goes on the profile, may be named in the summary, and should be backed up in an
+interview. `rebuildWithConfirmedSkills` accepts only names this analysis offered (never free text),
+writes them to the profile's Skills section — the member's own edit (N3), reversible in the profile
+editor — then deletes this analysis's coverage and drafts and sends it back through the pipeline,
+which re-runs matching and rewriting only. Coverage scores such a skill `partial` (listed, not
+demonstrated). No bullet, job, project or number is ever created for it. The offer is hidden while
+Prep and Learning are still writing, and the action takes the run's claim atomically, so a rebuild
+can't race them.
 
 **Compare two** appears in the design as a decorative control with no behaviour. It is deferred rather
 than shipped dead — a button that does nothing is worse than one that isn't there.
@@ -2398,6 +2422,9 @@ startQueuedAnalysis(analysisId)       → { id }               // F19, re-checks
 discardQueuedAnalysis(analysisId)     → null                 // F19
 getAnalysis(analysisId)               → full result tree
 regenerateTab(analysisId, tab)        → partial re-run, one surface
+rebuildWithConfirmedSkills(analysisId, skills)
+                                      → { id }   // F5: offered skills only → profile Skills;
+                                                 //   re-runs matching + rewriting
 updateTailoredBullet(bulletId, text)  → TailoredBullet
 exportDraft(draftId, format)          → { signedUrl }
 exportAll(analysisId)                 → { zipSignedUrl }

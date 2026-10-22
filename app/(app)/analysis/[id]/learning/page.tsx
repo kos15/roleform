@@ -8,6 +8,8 @@ import { formatMinutes } from "@/lib/domain/plan";
 import { levelPosition } from "@/lib/domain/levels";
 import { Card, EmptyState, Tag } from "@/components/ui";
 import { BudgetPicker } from "./budget-picker";
+import { SectionPending } from "@/components/background-pending";
+import { backgroundRunning } from "@/lib/pipeline/background";
 
 /**
  * Tab 3 — Learning. The Roleform Learning Engine's only user-facing surface.
@@ -54,6 +56,15 @@ export default async function LearningTab({
   ]);
   if (!analysis) redirect("/history");
   if (analysis.status !== "ready") redirect(`/analysis/${id}`);
+
+  if (!plan && backgroundRunning(analysis)) {
+    return (
+      <SectionPending title="Matching your gaps to courses">
+        Your résumés are ready now. What this posting asks for that your profile doesn&rsquo;t
+        evidence is still being matched against the vetted catalog — this tab fills in on its own.
+      </SectionPending>
+    );
+  }
 
   if (!plan) {
     return (

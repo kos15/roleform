@@ -16,7 +16,10 @@ import { buildRenderModel, type RenderModel } from "@/lib/render/model";
 import { renderFitted } from "@/lib/render/pdf";
 import { getBullets, toDomainBullets } from "@/lib/db/queries/profile";
 import { getCoverage, getProfileById, getRequirements } from "@/lib/db/queries/analysis";
-import { progressFor, progressWithin, readStageState, type StageEmitter } from "./stages";
+import { progressFor, progressWithin, readStageState, type StageEmitter, type StageUpdate } from "./stages";
+import { RUN_LOCK_STALE_MS } from "./background";
+
+export { RUN_LOCK_STALE_MS };
 import type { AtsRating, DomainBullet, DomainCoverageItem, DomainRequirement } from "@/lib/domain/types";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 
@@ -54,14 +57,6 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
  * complete only at the full count — and a partial set is deleted before the
  * redo, because the unique constraint leaves no other way through.
  */
-/**
- * Past this age an unreleased claim is treated as abandoned rather than live
- * — longer than `maxDuration` (300s) on the route this runs behind, so a
- * claim only goes stale after an invocation that could not possibly still be
- * running has had time to be killed and its `finally` skipped.
- */
-export const RUN_LOCK_STALE_MS = 6 * 60_000;
-
 /**
  * Tailoring calls in flight at once. Small on purpose: enough to take the
  * stage from minutes to well under one, few enough that a single run never
@@ -487,9 +482,17 @@ async function executeAnalysis(args: {
 
   // The expensive stage: one model call per bullet plus one for the summary.
   // Skipping it is most of what "resume rather than restart" is worth.
-  if (done.rewriting) {
-    emit({ stage: "rewriting", state: "done", progressPct: progressFor("rewriting", "done") });
-  } else {
+  // How stage ③ ended. Reported only after the analysis is marked `ready`
+  // (below), because the parsing screen leaves for the Résumés tab the moment
+  // it hears it — and that tab redirects back to this screen for any run that
+  // is not `ready` yet.
+  let rewritingUpdate: StageUpdate = {
+    stage: "rewriting",
+    state: "done",
+    progressPct: progressFor("rewriting", "done"),
+  };
+
+  if (!done.rewriting) {
     try {
       const ranked = rankBullets(bullets, requirements, coverage);
       const requirementById = new Map(requirements.map((r) => [r.id, r]));
@@ -612,37 +615,42 @@ async function executeAnalysis(args: {
       // GR-5: past the ceiling the stage still finished — every bullet has a
       // draft — it just could not rewrite all of them. Degraded, not failed:
       // the other tabs, and every bullet that was rewritten, are unaffected.
-      emit(
-        ceilingHit
-          ? {
-              stage: "rewriting",
-              state: "degraded",
-              progressPct: progressFor("rewriting", "done"),
-              message:
-                "This posting was long enough that we stopped rewriting partway through — the rest of your bullets kept their original wording.",
-            }
-          : { stage: "rewriting", state: "done", progressPct: progressFor("rewriting", "done") },
-      );
+      if (ceilingHit) {
+        rewritingUpdate = {
+          stage: "rewriting",
+          state: "degraded",
+          progressPct: progressFor("rewriting", "done"),
+          message:
+            "This posting was long enough that we stopped rewriting partway through — the rest of your bullets kept their original wording.",
+        };
+      }
     } catch (e) {
       // The résumés degrade; Prep and Learning still run below.
-      emit({
+      rewritingUpdate = {
         stage: "rewriting",
         state: "degraded",
         progressPct: progressFor("rewriting", "done"),
         message: "We couldn't finish the drafts. Your analysis and the other tabs are unaffected.",
-      });
+      };
       logStageFailure("rewriting", e);
     }
   }
+
+  // The résumés are the first thing a member opens, and they no longer wait
+  // for Prep and Learning. `ready` here means "there is something to show";
+  // ④ and ⑤ keep running in this same invocation (the route hands it to
+  // `after()`), and their tabs show a loader while `runningAt` is held and
+  // their rows are missing — `backgroundRunning` below.
+  await db.analysis.update({ where: { id: analysisId }, data: { status: "ready" } });
+  emit(rewritingUpdate);
 
   /* ------------------------------------------------- ④ + ⑤ prep and learning */
 
   emit({ stage: "preparing", state: "running", progressPct: progressFor("preparing", "running") });
 
-  // Started before ③ (above); usually finished or nearly so by now.
+  // Started before ③ (above); usually finished or nearly so by now. The
+  // member is usually already reading the résumés while this settles.
   const { prepDegraded, learningDegraded } = await prepAndLearning;
-
-  await db.analysis.update({ where: { id: analysisId }, data: { status: "ready" } });
 
   emit({
     stage: "preparing",

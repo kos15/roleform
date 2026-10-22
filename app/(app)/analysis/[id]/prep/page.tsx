@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { getAnalysis, getAnswers, getBulletTexts, getQuestions } from "@/lib/db/queries/analysis";
 import { EmptyState } from "@/components/ui";
+import { ResumeStageButton, SectionPending } from "@/components/background-pending";
+import { backgroundRunning } from "@/lib/pipeline/background";
 import { NextRoundStrip } from "@/components/next-round-strip";
 import { QuestionList } from "./question-list";
 import type { QuestionType } from "./types";
@@ -44,11 +46,23 @@ export default async function PrepTab({
   if (analysis.status !== "ready") redirect(`/analysis/${id}`);
 
   if (questions.length === 0) {
+    // The résumés open first; the questions land behind them.
+    if (backgroundRunning(analysis)) {
+      return (
+        <SectionPending title="Drawing your interview questions">
+          Your résumés are ready now. The questions this posting invites are still being written —
+          this tab fills in on its own.
+        </SectionPending>
+      );
+    }
     return (
-      <EmptyState title="Prep didn't generate for this posting">
-        Your résumés and match are unaffected. Running the posting again is a fresh analysis,
-        charged like one.
-      </EmptyState>
+      <div>
+        <EmptyState title="Prep didn't generate for this posting">
+          Your résumés and match are unaffected. Picking it up again runs only this stage — nothing
+          that already finished is charged twice.
+        </EmptyState>
+        <ResumeStageButton analysisId={id} label="Generate the questions" />
+      </div>
     );
   }
 

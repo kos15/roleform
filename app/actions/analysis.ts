@@ -7,7 +7,11 @@ import { checkAnalysisAllowance, checkTokenAllowance, requireUser } from "@/lib/
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { extractText, MAX_UPLOAD_BYTES, requireText } from "@/lib/extract/text";
 import { getProfile } from "@/lib/db/queries/profile";
-import { findByContentHash } from "@/lib/db/queries/analysis";
+import { findByContentHash, getCoverage, getProfileById, getRequirements } from "@/lib/db/queries/analysis";
+import { saveProfileEdit } from "@/lib/db/queries/profile";
+import { unlistedSkills } from "@/lib/domain/skill-consent";
+import { RUN_LOCK_STALE_MS } from "@/lib/pipeline/background";
+import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 import { JD_MIN_CHARS, scanForInjection } from "@/lib/domain/guardrails";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 import { analysesAvailable } from "@/lib/domain/entitlements";
@@ -237,6 +241,113 @@ export async function discardQueuedAnalysis(analysisId: string): Promise<Result<
   revalidatePath("/analyze");
   revalidatePath("/history");
   return ok(null);
+}
+
+/**
+ * The member confirms skills the posting names and their profile never listed,
+ * and the drafts are rebuilt with them.
+ *
+ * This is the only path by which a skill the profile lacked reaches a draft,
+ * and it runs on the member's own tick, never a model's suggestion (CLAUDE.md
+ * §3, N3). The skill is written to the profile's Skills section — it is a fact
+ * about the member, so it belongs where every later analysis will see it too,
+ * and the profile editor is where they take it back. No bullet, job, project
+ * or number is invented for it: the drafts can list it and the summary can
+ * name it, and coverage scores it `partial` (listed, not demonstrated), which
+ * is exactly what it is.
+ *
+ * Only skills this analysis actually offered are accepted (`unlistedSkills`);
+ * free text from the client never reaches the profile through here.
+ *
+ * Rebuilding re-runs matching and the rewrite — billed like that stage of any
+ * run, checked at the pipeline's door. Prep and Learning are kept as they are.
+ */
+export async function rebuildWithConfirmedSkills(
+  analysisId: string,
+  skills: string[],
+): Promise<Result<{ id: string }>> {
+  const user = await requireUser();
+  if (!user.ok) return user;
+
+  if (!Array.isArray(skills) || skills.length === 0 || skills.length > 25) {
+    return err(appError("invalid_input", "Tick at least one skill you can back up."));
+  }
+
+  const limited = rateLimit(`analysis:${user.value}`, LIMITS.analysis.limit, LIMITS.analysis.windowSeconds);
+  if (!limited.allowed) {
+    return err(
+      appError("invalid_input", `Too many analyses at once. Try again in ${limited.retryAfterSeconds}s.`),
+    );
+  }
+
+  const analysis = await db.analysis.findFirst({ where: { id: analysisId, clerkUserId: user.value } });
+  if (!analysis) return err(appError("not_found", "That analysis isn't available."));
+  if (analysis.status !== "ready") {
+    return err(appError("invalid_input", "This analysis is still running. Try again when it finishes."));
+  }
+
+  const tokens = await checkTokenAllowance(user.value, "analysis");
+  if (!tokens.ok) return tokens;
+
+  const [profile, requirements, coverage] = await Promise.all([
+    getProfileById(user.value, analysis.profileId),
+    getRequirements(user.value, analysisId),
+    getCoverage(user.value, analysisId),
+  ]);
+  if (!profile) return err(appError("not_found", "Your profile isn't available."));
+
+  const resume = profile.resumeJson as unknown as StoredResume;
+  const listedTerms = [...resume.skills.map((s) => s.name), ...resume.skills.flatMap((s) => s.keywords)];
+  const offered = new Map(
+    unlistedSkills(requirements, coverage, listedTerms).map((u) => [normalise(u.skillName), u.skillName]),
+  );
+  const confirmed = [...new Set(skills.map((s) => (typeof s === "string" ? normalise(s) : "")))]
+    .map((key) => offered.get(key))
+    .filter((name): name is string => Boolean(name));
+  if (confirmed.length === 0) {
+    return err(appError("invalid_input", "Those skills are already on your profile."));
+  }
+
+  // Taken before anything is written, atomically: a run still holding its
+  // claim (Prep and Learning finishing behind the résumés) would race the
+  // rebuild for the same rows.
+  const staleCutoff = new Date(Date.now() - RUN_LOCK_STALE_MS);
+  const { count } = await db.analysis.updateMany({
+    where: {
+      id: analysisId,
+      clerkUserId: user.value,
+      status: "ready",
+      OR: [{ runningAt: null }, { runningAt: { lt: staleCutoff } }],
+    },
+    data: { status: "parsing", runningAt: null },
+  });
+  if (count === 0) {
+    return err(
+      appError("invalid_input", "Prep and Learning are still being written. Try again in a moment."),
+    );
+  }
+
+  // N3: a user-authored write, made on the member's own confirmation.
+  await saveProfileEdit({
+    clerkUserId: user.value,
+    profileId: profile.id,
+    resume: {
+      ...resume,
+      skills: [...resume.skills, ...confirmed.map((name) => ({ name, level: "", keywords: [] }))],
+    },
+  });
+
+  // The coverage and the drafts were computed from the profile as it was.
+  // `resumeState` re-runs exactly the stages whose rows are gone; the
+  // requirements, questions and learning plan stay.
+  await db.$transaction([
+    db.coverageItem.deleteMany({ where: { clerkUserId: user.value, analysisId } }),
+    db.resumeDraft.deleteMany({ where: { clerkUserId: user.value, analysisId } }),
+  ]);
+
+  revalidatePath("/profile");
+  revalidatePath(`/analysis/${analysisId}`);
+  return ok({ id: analysisId });
 }
 
 function normalise(s: string): string {

@@ -940,63 +940,10 @@
   }
   .pop-in { animation: pop-in 450ms var(--ease-out-quint) both; }
 
-  /* ---------------------------------------------------------------------------
-     The parsing figures
-
-     Each stage of the analysis gets a small diagram of the work it is actually
-     doing — a page being read, requirements being matched, bullets being lifted,
-     questions forming. They're decorative and they loop, which is exactly what a
-     progress bar can't say: WHAT is taking the time.
-
-     They are the only looping animations in the app. Every one of them stops
-     under prefers-reduced-motion, including the inline delays, via the
-     `.stage-figure` reset at the bottom of this file.
-  --------------------------------------------------------------------------- */
-
-  @keyframes fig-scan {
-    0%        { transform: translateY(0); opacity: 0; }
-    8%, 92%   { opacity: 1; }
-    100%      { transform: translateY(148px); opacity: 0; }
-  }
-  @keyframes fig-read {
-    0%, 40%   { opacity: 0.35; }
-    55%, 100% { opacity: 1; }
-  }
-  @keyframes fig-draw {
-    0%        { stroke-dashoffset: 120; }
-    45%, 100% { stroke-dashoffset: 0; }
-  }
-  @keyframes fig-lock {
-    0%, 30%   { opacity: 0.3; transform: scale(0.94); }
-    45%, 100% { opacity: 1; transform: none; }
-  }
-  @keyframes fig-lift-down {
-    0%, 20%   { transform: translateY(0); }
-    45%, 100% { transform: translateY(26px); }
-  }
-  @keyframes fig-lift-up {
-    0%, 20%   { transform: translateY(0); }
-    45%, 100% { transform: translateY(-26px); }
-  }
-  @keyframes fig-type {
-    0%        { width: 8%; }
-    70%, 100% { width: 88%; }
-  }
-  @keyframes fig-caret {
-    50% { opacity: 0; }
-  }
+  /* A drop target lifting while a file is dragged over it (analyze/jd-input). */
   @keyframes fig-float {
     50% { transform: translateY(-4px); }
   }
-
-  .fig-scan      { animation: fig-scan 2s linear infinite; }
-  .fig-read      { animation: fig-read 2s var(--ease-out-quint) infinite; }
-  .fig-draw      { animation: fig-draw 2.2s var(--ease-out-quint) infinite; }
-  .fig-lock      { animation: fig-lock 2.2s var(--ease-out-quint) infinite; }
-  .fig-lift-down { animation: fig-lift-down 2.4s var(--ease-out-quint) infinite; }
-  .fig-lift-up   { animation: fig-lift-up 2.4s var(--ease-out-quint) infinite; }
-  .fig-type      { animation: fig-type 2.4s var(--ease-out-quint) infinite; }
-  .fig-caret     { animation: fig-caret 700ms steps(1) infinite; }
   .fig-float     { animation: fig-float 3s ease-in-out infinite; }
 
   /* A button whose work is server-side and slow enough to doubt. */
@@ -1182,13 +1129,7 @@
     .tour-dot { transition: none; }
     .tour-tip { animation: none; opacity: 1; transform: none; }
 
-    /* The figures animate per-element with delays set in JSX, so the reset has to
-       reach inside them rather than name each class. */
-    .stage-figure,
-    .stage-figure * {
-      animation: none !important;
-      transition: none !important;
-    }
+    .fig-float { animation: none; }
   }
 
   /* ---------------------------------------------------------------------------

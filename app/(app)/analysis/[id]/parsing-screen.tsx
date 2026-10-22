@@ -2,9 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CircleDashed, Loader2, TriangleAlert } from "lucide-react";
 import { Button, ErrorRegion } from "@/components/ui";
-import { StageFigure } from "@/components/stage-figure";
 import { WaitOverlay } from "@/components/wait-overlay";
 import { TokenWallDialog } from "@/components/token-wall";
 import { STAGES, type StageKey, type StageState, type StageUpdate } from "@/lib/pipeline/stages";
@@ -14,12 +12,13 @@ import type { TokenWall } from "@/lib/domain/tokens";
 /**
  * F3 — the parsing screen.
  *
- * Four named steps resolving in sequence against REAL state streamed from the
+ * Named steps resolving in sequence against REAL state streamed from the
  * pipeline. Never a fake timer: a spinner that lies is worse than an error, so
  * a stage failure stops there and says what failed.
  *
- * The heading, the description and the figure all follow the stage the pipeline
- * says is running. Nothing on this screen advances on its own.
+ * One animation — the galaxy card — follows the stage the pipeline says is
+ * running, and the screen leaves for the results the moment the résumés exist.
+ * Prep and Learning finish behind them (lib/pipeline/run-analysis.ts).
  */
 /** Quiet reconnects after a dropped stream, before the screen says anything. */
 const RECONNECTS = 3;
@@ -134,14 +133,23 @@ export function ParsingScreen({
           stageFailed = true;
           setFailed(update.message ?? "A stage failed.");
         }
-        // The pipeline's last word on success is always stage ④ at 100%.
-        if (update.stage === "preparing" && update.progressPct >= 100 && update.state !== "running") {
+        // The résumés are ready the moment stage ③ ends — the pipeline marks
+        // the run `ready` before saying so, and Prep and Learning carry on
+        // behind it, each tab showing its own loader until its rows land.
+        // A followed or already-finished run reports stage ④ at 100% instead.
+        if (
+          (update.stage === "rewriting" && (update.state === "done" || update.state === "degraded")) ||
+          (update.stage === "preparing" && update.progressPct >= 100 && update.state !== "running")
+        ) {
           finished = true;
         }
       };
 
       try {
-        while (true) {
+        // Stops reading once the résumés are ready. Cancelling only closes
+        // our view of the stream: the run itself is held open by `after()` on
+        // the server and finishes Prep and Learning without an audience.
+        while (!finished && !stageFailed) {
           const { done, value } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
@@ -150,7 +158,8 @@ export function ParsingScreen({
           buffer = lines.pop() ?? "";
           lines.forEach(apply);
         }
-        apply(buffer);
+        if (finished || stageFailed) void reader.cancel().catch(() => {});
+        else apply(buffer);
       } catch {
         // Read failed mid-stream: same as the stream stopping early.
       }
@@ -187,12 +196,10 @@ export function ParsingScreen({
         return;
       }
 
+      // Straight to the results. The card's finish used to hold the page for
+      // a further 1.4s after the work was already done.
       setFinishing(true);
-      setTimeout(() => {
-        if (controller.signal.aborted) return;
-        router.refresh();
-        router.push(`/analysis/${analysisId}/resumes`);
-      }, 1400);
+      router.replace(`/analysis/${analysisId}/resumes`);
     })().catch(() => {
       started.current = false;
       setFailed("The connection dropped partway through.");
@@ -272,108 +279,40 @@ export function ParsingScreen({
   }
 
   // The running stage, or the last one that finished — never "none", so the
-  // heading and figure don't blank out between two stream updates.
+  // card's pips don't blank out between two stream updates.
   const current =
     STAGES.find((s) => states[s.key] === "running") ??
     [...STAGES].reverse().find((s) => states[s.key] !== "pending") ??
     STAGES[0];
+  // The screen leaves once the résumés exist, so the card counts down to
+  // them: Prep and Learning finish behind the results, under their own tabs.
+  const shown = STAGES.filter((s) => s.key !== "preparing");
+  const stageIndex = Math.min(STAGES.indexOf(current), shown.length - 1);
+
+  // One animation for one task. The galaxy card is the whole screen while the
+  // run works; the stage list, figure and progress bar that used to sit under
+  // it repeated the same news three more times. A stage that comes back
+  // partial says so in the card's sub-line.
+  const stageNote = Object.values(messages).at(-1);
 
   return (
-    <div>
-      <div className="rise-in max-w-[980px]">
-        <p className="eyebrow mb-3.5">Step 2 of 3 · {progressPct}% complete</p>
-        <h1 className="mb-[18px] text-[clamp(2.25rem,6vw,5.75rem)] leading-[0.92]">{current.label}</h1>
-        <p className="more-copy mb-7 max-w-[60ch] text-[17px] leading-relaxed text-[var(--color-text-muted)]">
-          {current.description}
-        </p>
-
-        <div
-          className="progress mb-8"
-          role="progressbar"
-          aria-valuenow={progressPct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label="Analysis progress"
-        >
-          <span style={{ width: `${progressPct}%` }} />
-        </div>
-      </div>
-
-      {/* Not a Card: the figure needs to clip its own animation, and a card's
-          shadow around a looping diagram reads as a second progress widget. */}
-      <div className="mb-10 overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] p-5 sm:p-7">
-        <StageFigure stage={current.key} />
-      </div>
-
-      {/* The four stages as a row of cards: the running one in pink, the
-          finished ones on paper, the ones still to come on marigold tint. */}
-      <ol className="grid gap-[18px] [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))]">
-        {STAGES.map((stage) => {
-          const state = states[stage.key];
-          const tone =
-            state === "running"
-              ? { card: "bg-[var(--color-sage-500)]", dot: "bg-[var(--color-sage-300)]" }
-              : state === "pending"
-                ? { card: "bg-[var(--color-accent-100)]", dot: "bg-[var(--color-bg-raised)]" }
-                : { card: "bg-[var(--color-bg-raised)]", dot: "bg-[var(--color-bg-tint)]" };
-          return (
-            <li
-              key={stage.key}
-              className={`flex min-h-[150px] flex-col justify-between gap-4 rounded-[22px] px-5 pb-[22px] pt-[18px] ${tone.card}`}
-            >
-              <span className={`grid h-9 w-9 place-items-center rounded-[var(--radius-pill)] ${tone.dot}`}>
-                <StageIcon state={state} />
-              </span>
-              <span>
-                <span className="block text-[17px] font-extrabold leading-snug">{stage.label}</span>
-                <span className="mt-1 block text-[15px] text-[var(--color-text-muted)]">
-                  {STATUS_LABEL[state]}
-                </span>
-                {messages[stage.key] ? (
-                  <span className="mt-1 block text-sm">{messages[stage.key]}</span>
-                ) : null}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-
-      {/* The galaxy card (design 2a) over the page. Its stage is the one the
-          pipeline says is running — the same `current` the page shows. */}
+    <div aria-live="polite">
+      <p className="sr-only">
+        {current.label}. {progressPct}% complete.
+      </p>
       <WaitOverlay
         open
         kind="galaxy"
-        eyebrow="Analysing the posting"
-        lines={STAGES.map((s) => s.label)}
-        stage={STAGES.indexOf(current)}
+        eyebrow={`Analysing the posting · ${progressPct}%`}
+        lines={shown.map((s) => s.label)}
+        stage={stageIndex}
         state={finishing ? "done" : "working"}
-        sub="Every line we write stays keyed to something you actually did."
-        still="Still going. This part reads every requirement against your own words."
+        sub={stageNote ?? current.description}
+        still={stageNote ?? "Still going. This part reads every requirement against your own words."}
         long="Taking longer than usual. You can leave — it keeps running and waits in History."
         done="Your drafts are ready"
         run={attempt}
       />
     </div>
   );
-}
-
-const STATUS_LABEL: Record<StageState, string> = {
-  pending: "pending",
-  running: "running",
-  done: "done",
-  degraded: "partial",
-  failed: "failed",
-};
-
-function StageIcon({ state }: { state: StageState }) {
-  if (state === "running") {
-    return <Loader2 className="lucide h-4 w-4 animate-spin" />;
-  }
-  if (state === "done") {
-    return <Check className="lucide h-4 w-4" strokeWidth={3.2} />;
-  }
-  if (state === "degraded" || state === "failed") {
-    return <TriangleAlert className="lucide h-4 w-4" />;
-  }
-  return <CircleDashed className="lucide h-4 w-4" />;
 }

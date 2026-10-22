@@ -3,6 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import { getRoadmap } from "@/lib/db/queries/roadmap";
 import { EmptyState } from "@/components/ui";
+import { SectionPending } from "@/components/background-pending";
+import { backgroundRunning } from "@/lib/pipeline/background";
 import { Checklist } from "./checklist";
 import { BuildButton } from "./build-button";
 import { requireFeaturePage } from "@/lib/features";
@@ -26,6 +28,16 @@ export default async function RoadmapTab({ params }: { params: Promise<{ id: str
   if (analysis.status !== "ready") redirect(`/analysis/${id}`);
 
   const roadmap = await getRoadmap(userId, id);
+
+  // Built from the questions and the learning steps, so not before they exist.
+  if (!roadmap && backgroundRunning(analysis)) {
+    return (
+      <SectionPending title="Waiting on your questions and courses">
+        The roadmap is assembled from Prep and Learning, which are still being written. This tab
+        fills in on its own.
+      </SectionPending>
+    );
+  }
 
   if (!roadmap) {
     return (

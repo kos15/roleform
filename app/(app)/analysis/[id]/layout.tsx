@@ -9,6 +9,8 @@ import {
 } from "@/lib/db/queries/analysis";
 import { getStudyTabCount } from "@/lib/db/queries/study";
 import { readStageState } from "@/lib/pipeline/stages";
+import { backgroundRunning } from "@/lib/pipeline/background";
+import { BackgroundRefresh } from "@/components/background-pending";
 import { ResultsHeader } from "./results-header";
 import { AnalysisTabs } from "./analysis-tabs";
 import { featureStates } from "@/lib/features";
@@ -61,6 +63,9 @@ export default async function AnalysisLayout({
   // truncated for length, or a requirement excluded under IN-6 — surfaced
   // once, plainly, rather than left in a column nothing renders.
   const stageState = readStageState(analysis.stageState);
+  // Prep and Learning still landing behind the résumés: one poller for the
+  // whole analysis, and the tabs that wait on them say so.
+  const generating = backgroundRunning(analysis);
 
   return (
     <div>
@@ -87,7 +92,8 @@ export default async function AnalysisLayout({
         bulletTexts={Object.fromEntries(bulletTexts)}
       />
       <div className="mb-[clamp(1.75rem,3vw,2.5rem)] mt-[clamp(2.75rem,5vw,4rem)] h-px bg-[var(--color-line)]" />
-      <AnalysisTabs analysisId={id} counts={counts} hidden={hidden} />
+      {generating ? <BackgroundRefresh /> : null}
+      <AnalysisTabs analysisId={id} counts={counts} hidden={hidden} generating={generating} />
       <div className="mt-[clamp(2.25rem,4vw,3.5rem)]">{children}</div>
     </div>
   );
