@@ -113,14 +113,14 @@ export const QUOTAS: QuotaDefinition[] = [
   {
     key: "courses",
     column: "capCourses",
-    label: "Course matches",
-    unit: "per gap",
+    label: "Videos and docs",
+    unit: "per lane, per gap",
     period: "gap",
     step: 1,
     min: 0,
-    max: 6,
+    max: 3,
     description:
-      "Vetted catalog matches returned per unevidenced requirement. Gaps are always shown, with or without courses.",
+      "Vetted videos and docs offered per lane for each unevidenced requirement. Gaps are always shown, with or without material.",
   },
   {
     key: "roadmaps",

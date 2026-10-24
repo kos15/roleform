@@ -35,6 +35,7 @@
     "seo:indexnow": "pnpm script scripts/indexnow.ts",
     "check:agents": "pnpm script scripts/agent-fixtures.ts",
     "eval": "pnpm script scripts/evals/run.ts",
+    "check:lanes": "pnpm script scripts/lanes-fixtures.ts",
     "check:quotas": "pnpm script scripts/quota-fixtures.ts",
     "topups:convert": "pnpm script scripts/convert-token-topups.ts",
     "check:tokencopy": "pnpm script scripts/token-copy-gate.ts"
