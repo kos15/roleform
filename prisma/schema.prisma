@@ -1277,7 +1277,11 @@ model LearningStep {
   gapId       String @map("gap_id") @db.Uuid
   courseId    String @map("course_id") @db.Uuid
 
-  /// Position in the solved sequence, 0-based. Prerequisites come first.
+  /// Two meanings, by `isPrimary`. On the primary: its position in the solved
+  /// plan sequence, 0-based (0 when deferred). On an alternative: its 0-based
+  /// selection rank within its own lane. Plan-order readers (knapsack, roadmap,
+  /// study plan) read primaries only; views order by (isPrimary desc,
+  /// lane watch→read, ordinal asc) — lib/domain/lanes.ts `compareGapSteps`.
   ordinal     Int
   /// Minutes elapsed in the plan before this step starts. Solved, not narrated.
   startsAtMin Int @map("starts_at_min")

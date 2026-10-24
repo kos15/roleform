@@ -209,13 +209,8 @@ export default async function LearningTab({
               <FallbackNote fallback={gap.fallback} />
             ) : (
               <ol className="space-y-3">
-                {[...gap.steps]
-                  .sort(
-                    (a, b) =>
-                      Number(b.isPrimary) - Number(a.isPrimary) ||
-                      Number(a.lane === "read") - Number(b.lane === "read"),
-                  )
-                  .map((step) => (
+                {/* Already in display order: primary, then Watch → Read by rank. */}
+                {gap.steps.map((step) => (
                     <li key={step.id}>
                       <a
                         href={step.entryUrl ?? step.url}

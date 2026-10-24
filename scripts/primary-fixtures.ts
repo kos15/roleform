@@ -12,6 +12,7 @@ import {
 } from "../lib/domain/selection";
 import { solvePlan } from "../lib/domain/plan";
 import { compileRoadmap } from "../lib/domain/roadmap";
+import { compareGapSteps, type Lane } from "../lib/domain/lanes";
 
 let passed = 0;
 function check(name: string, fn: () => void) {
@@ -91,6 +92,19 @@ check("the entry label suffix is kept when present", () => {
     savedJob: null,
   });
   assert.equal(items.find((i) => i.kind === "learning_step")!.label, "Learn Kubernetes · 14:20–26:05");
+});
+
+check("a gap's steps show primary first, then Watch → Read in selection rank", () => {
+  const row = (id: string, isPrimary: boolean, lane: Lane, ordinal: number) => ({ id, isPrimary, lane, ordinal });
+  // The primary's ordinal is a plan position (7 here); alternatives' are lane ranks.
+  const stored = [
+    row("r1", false, "read", 1),
+    row("w1", false, "watch", 1),
+    row("r0", false, "read", 0),
+    row("p", true, "watch", 7),
+    row("w0", false, "watch", 0),
+  ];
+  assert.deepEqual([...stored].sort(compareGapSteps).map((s) => s.id), ["p", "w0", "w1", "r0", "r1"]);
 });
 
 console.log(`\n${passed} primary checks passed`);

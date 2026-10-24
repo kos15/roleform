@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { roadmapUrl } from "@/lib/catalog/taxonomy";
 import { solvePlan, type PlannableStep } from "@/lib/domain/plan";
+import { compareGapSteps } from "@/lib/domain/lanes";
 import type { DocKind, EvidenceBucket, Lane, SkillLevel } from "@/lib/generated/prisma/enums";
 import type { RequiredLevel, UserLevel } from "@/lib/domain/types";
 
@@ -169,10 +170,12 @@ export async function getLearningPlan(
           ? roadmapFallback(gap.skill.name)
           : null,
     cappedLanes: gap.cappedLanes ?? [],
-    steps: gap.steps.map((step) => {
-      // An alternative sits at its primary's position, as build-plan stored it.
+    // Primary first, then Watch → Read, each alternative in its selection rank.
+    steps: [...gap.steps].sort(compareGapSteps).map((step) => {
+      // An alternative sits at its primary's place in the plan; its own
+      // `ordinal` is its rank within its lane, not a plan position.
       const primary = gap.steps.find((s) => s.isPrimary);
-      const placed = scheduled.get(step.isPrimary ? step.id : (primary?.id ?? step.id));
+      const placed = primary ? scheduled.get(primary.id) : undefined;
       return {
         id: step.id,
         courseId: step.course.id,
@@ -187,7 +190,7 @@ export async function getLearningPlan(
         isFree: step.course.isFree,
         durationMin: step.durationMin,
         note: step.note,
-        order: placed?.order ?? step.ordinal,
+        order: placed?.order ?? primary?.ordinal ?? 0,
         startsAtMin: placed?.startsAtMin ?? step.startsAtMin,
         deferred: step.isPrimary ? !placed : false,
         lane: step.lane,

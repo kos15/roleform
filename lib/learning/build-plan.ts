@@ -418,26 +418,36 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
 
     const noteById = new Map((written?.resources ?? []).map((r) => [r.id, r.note]));
     // A deferred primary is still THE primary — stored with is_primary and
-    // greyed by the view, which re-solves the budget on read. Alternatives sit
-    // at the primary's planned position (0/0 when it was deferred) so a gap's
-    // rows sort together; they carry no note because S6 never saw them.
+    // greyed by the view, which re-solves the budget on read.
+    //
+    // ★ `ordinal` means two things, by `isPrimary`:
+    //   primary      → its position in the solved plan (0 when deferred)
+    //   alternative  → its 0-based selection rank within its own lane
+    // Every plan-order reader (the knapsack in getLearningPlan, the roadmap,
+    // the study plan) reads primaries only, so the column is free to carry the
+    // alternatives' rank — without it, ties on one ordinal lose the order
+    // selection chose. Alternatives take the primary's `startsAtMin` (0 when
+    // deferred) and no note, because S6 never saw them.
     const placed = scheduled.get(stepKey(gap.skillId, gap.primary.id));
-    const ordinalAt = placed?.order ?? 0;
     const startsAt = placed?.startsAtMin ?? 0;
+    const rankInLane = { watch: 0, read: 0 };
 
     // One `is_primary` row per gap, which the partial unique index
     // `learning_steps_one_primary` enforces.
     for (const resource of [gap.primary, ...gap.alternatives]) {
       const isPrimary = resource === gap.primary;
+      const lane = laneOf(resource.type);
+      // `alternatives` is in selection order, Watch then Read.
+      const ordinal = isPrimary ? (placed?.order ?? 0) : rankInLane[lane]++;
       await db.learningStep.create({
         data: {
           clerkUserId: args.clerkUserId,
           planId: plan.id,
           gapId: gapRow.id,
           courseId: resource.id,
-          lane: laneOf(resource.type),
+          lane,
           isPrimary,
-          ordinal: ordinalAt,
+          ordinal,
           startsAtMin: startsAt,
           durationMin: Math.max(1, resource.durationMin),
           entryLabel: resource.entryLabel,
