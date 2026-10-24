@@ -94,6 +94,8 @@ export async function lookupBundles(
         entryUrl: entry?.entryUrl ?? null,
         tags: course.tags,
         qualityScore: Number(course.qualityScore),
+        docKind: course.docKind,
+        isOverview: course.isOverview,
       });
     }
 

@@ -9,12 +9,11 @@ import { resolveTerms, resolutionRate } from "@/lib/domain/resolve";
 import {
   fallbackFor,
   selectResources,
-  MAX_RESOURCES_PER_GAP,
   type BundledResource,
 } from "@/lib/domain/selection";
 import { MAX_GAPS, rankGaps, type ScoredGap } from "@/lib/domain/severity";
 import { isUncapped } from "@/lib/domain/entitlements";
-import { laneOf } from "@/lib/domain/lanes";
+import { laneOf, MAX_PER_LANE } from "@/lib/domain/lanes";
 import { synthesisePlan, type SynthesisGap } from "@/lib/ai/synthesise-plan";
 import type {
   DomainBullet,
@@ -177,8 +176,8 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
   });
   const perGap =
     !account || isUncapped(account.role)
-      ? MAX_RESOURCES_PER_GAP
-      : Math.min(MAX_RESOURCES_PER_GAP, account.capCourses);
+      ? MAX_PER_LANE
+      : Math.min(MAX_PER_LANE, account.capCourses);
 
   const questions = await db.interviewQuestion.findMany({
     where: { clerkUserId: args.clerkUserId, analysisId: args.analysisId },

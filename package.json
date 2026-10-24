@@ -37,6 +37,7 @@
     "eval": "pnpm script scripts/evals/run.ts",
     "check:liveness": "pnpm script scripts/liveness-fixtures.ts",
     "check:catalog": "pnpm script scripts/catalog-check.ts",
+    "check:selection": "pnpm script scripts/selection-fixtures.ts",
     "check:lanes": "pnpm script scripts/lanes-fixtures.ts",
     "check:quotas": "pnpm script scripts/quota-fixtures.ts",
     "topups:convert": "pnpm script scripts/convert-token-topups.ts",
