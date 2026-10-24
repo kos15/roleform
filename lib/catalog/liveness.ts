@@ -26,6 +26,8 @@
  * to keep serving it and say out loud that we could not confirm it.
  */
 
+import type { ResourceType } from "./quality";
+
 export type Liveness = "live" | "dead" | "blocked";
 
 /** Hosts answer these when they mean "not you", not "not here". */
@@ -83,4 +85,68 @@ export async function checkLiveness(url: string): Promise<Liveness> {
   }
 
   return sawGoneOnGet ? "dead" : "blocked";
+}
+
+/* ── YouTube ─────────────────────────────────────────────────────────────────
+ * The watch page is a consent wall and a bot-wall for non-browsers, so HEAD/GET
+ * on it proves nothing. oEmbed is YouTube's documented, keyless endpoint for
+ * exactly this question (N17): it answers about the video, and it names the
+ * channel, which is how the dry check catches a mis-attributed `author`.
+ *
+ *   200       live, author_name reported
+ *   401/403   live — the video exists, its owner disabled embedding
+ *   400/404   dead — unknown or removed (private videos answer 401/403 too;
+ *             that is "exists", and a human will notice on first play)
+ *   anything else (429, 5xx, network) → blocked: YouTube refused us, not the world
+ */
+
+export type LinkCheck = { liveness: Liveness; authorName: string | null };
+
+export async function checkVideo(
+  url: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<LinkCheck> {
+  try {
+    const response = await fetchImpl(
+      `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`,
+      { signal: AbortSignal.timeout(20_000), headers: { "X-Roleform-Check": "catalog-liveness" } },
+    );
+    if (response.status === 200) {
+      let authorName: string | null = null;
+      try {
+        const body = (await response.json()) as { author_name?: unknown };
+        if (typeof body.author_name === "string") authorName = body.author_name;
+      } catch {
+        // A 200 with an unreadable body is still a live video.
+      }
+      return { liveness: "live", authorName };
+    }
+    if (response.status === 401 || response.status === 403) {
+      return { liveness: "live", authorName: null };
+    }
+    if (response.status === 400 || response.status === 404) {
+      return { liveness: "dead", authorName: null };
+    }
+    return { liveness: "blocked", authorName: null };
+  } catch {
+    return { liveness: "blocked", authorName: null };
+  }
+}
+
+function isYouTube(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.replace(/^www\.|^m\./, "");
+    return host === "youtube.com" || host === "youtu.be";
+  } catch {
+    return false;
+  }
+}
+
+/** Videos and playlists on YouTube go through oEmbed; everything else through `checkLiveness`. */
+export async function checkCourseLink(
+  def: { url: string; type: ResourceType },
+  fetchImpl: typeof fetch = fetch,
+): Promise<LinkCheck> {
+  if (isYouTube(def.url)) return checkVideo(def.url, fetchImpl);
+  return { liveness: await checkLiveness(def.url), authorName: null };
 }

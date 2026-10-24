@@ -56,6 +56,8 @@ const AUTHORITATIVE = [
 ];
 
 export function typeOf(course: CourseDef): ResourceType {
+  // An explicit type wins; the URL heuristic below only covers entries without one.
+  if (course.type) return course.type;
   const url = course.url.toLowerCase();
   if (course.provider === "roadmap.sh") return "roadmap";
   if (url.includes("youtube.com") || url.includes("youtu.be")) return "video";
