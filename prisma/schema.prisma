@@ -1278,7 +1278,7 @@ model LearningStep {
   courseId    String @map("course_id") @db.Uuid
 
   /// Two meanings, by `isPrimary`. On the primary: its position in the solved
-  /// plan sequence, 0-based (0 when deferred). On an alternative: its 0-based
+  /// plan sequence, 0-based (a deferred primary sits after every scheduled one). On an alternative: its 0-based
   /// selection rank within its own lane. Plan-order readers (knapsack, roadmap,
   /// study plan) read primaries only; views order by (isPrimary desc,
   /// lane watch→read, ordinal asc) — lib/domain/lanes.ts `compareGapSteps`.

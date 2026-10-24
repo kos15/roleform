@@ -129,7 +129,8 @@ export async function tickStudySession(analysisId: string, input: StudyTickInput
   const { stepId, from, to, done, timeZone } = parsed.data;
 
   const step = await db.learningStep.findFirst({
-    where: { id: stepId, clerkUserId: user.value, plan: { analysisId } },
+    // Only plan steps (a gap's primary) can be ticked — alternatives are not on the study plan.
+    where: { id: stepId, clerkUserId: user.value, isPrimary: true, plan: { analysisId } },
     select: { durationMin: true },
   });
   if (!step || to > step.durationMin) return err(appError("not_found", "That session isn't on your plan."));

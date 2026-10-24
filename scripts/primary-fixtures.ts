@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import {
   cappedLanesOf,
+  isCorpusHole,
   primaryOf,
   type BundledResource,
   type SelectionContext,
@@ -105,6 +106,17 @@ check("a gap's steps show primary first, then Watch → Read in selection rank",
     row("w0", false, "watch", 0),
   ];
   assert.deepEqual([...stored].sort(compareGapSteps).map((s) => s.id), ["p", "w0", "w1", "r0", "r1"]);
+});
+
+check("a gap emptied by the quota is not a corpus hole; an empty bundle is", () => {
+  const bundle = [res("v1", "video"), res("d1", "doc")];
+  // capCourses = 0 → perLane 0: nothing selected, but the bundle had material.
+  const lanes0 = { watch: [] as BundledResource[], read: [] as BundledResource[] };
+  assert.equal(isCorpusHole(primaryOf(lanes0), cappedLanesOf(bundle, ctx, 0)), false);
+  // Nothing survives at all → a real hole.
+  assert.equal(isCorpusHole(null, cappedLanesOf([], ctx, 1)), true);
+  // Material selected → never a hole.
+  assert.equal(isCorpusHole(bundle[0], []), false);
 });
 
 console.log(`\n${passed} primary checks passed`);

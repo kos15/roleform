@@ -162,11 +162,13 @@ export async function getLearningPlan(
       : null,
     // A stored fallback wins; otherwise a gap with no primary step (both lanes
     // empty) still deserves somewhere to go, so the roadmap stands in. A
-    // deferred primary is NOT a fallback — it is shown, greyed.
+    // deferred primary is NOT a fallback — it is shown, greyed. Nor is a gap
+    // the member's quota emptied: its `cappedLanes` say why, and "still being
+    // added" would be false about material that exists.
     fallback:
       gap.fallbackUrl && gap.fallbackLabel
         ? { url: gap.fallbackUrl, label: gap.fallbackLabel }
-        : !gap.steps.some((s) => s.isPrimary)
+        : !gap.steps.some((s) => s.isPrimary) && (gap.cappedLanes ?? []).length === 0
           ? roadmapFallback(gap.skill.name)
           : null,
     cappedLanes: gap.cappedLanes ?? [],

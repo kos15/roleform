@@ -136,6 +136,20 @@ export function cappedLanesOf(
   );
 }
 
+/**
+ * A corpus hole: the filtered bundle itself had nothing, in either lane. Only
+ * then is a gap recorded in `corpus_gaps` and given the roadmap fallback.
+ *
+ * A gap emptied purely by the member's per-lane quota (capCourses = 0) is NOT
+ * a hole — the material exists, `cappedLanes` names the lanes the cap cut, and
+ * telling that member "still being added" would be false. With no primary,
+ * "no survivors" is exactly "no capped lane": any survivor either gets
+ * selected (a primary) or is cut by the cap (a capped lane).
+ */
+export function isCorpusHole(primary: BundledResource | null, cappedLanes: readonly Lane[]): boolean {
+  return primary === null && cappedLanes.length === 0;
+}
+
 /** Spec §7's two hard filters. Shared by selection and the capped-lane count. */
 function survivorsOf(bundle: BundledResource[], context: SelectionContext): BundledResource[] {
   return bundle.filter((r) => {

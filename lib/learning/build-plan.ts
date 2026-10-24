@@ -9,6 +9,7 @@ import { resolveTerms, resolutionRate } from "@/lib/domain/resolve";
 import {
   cappedLanesOf,
   fallbackFor,
+  isCorpusHole,
   primaryOf,
   selectLanes,
   type BundledResource,
@@ -244,8 +245,12 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
 
     // A fallback now means exactly one thing: the corpus had nothing in
     // EITHER lane. That is what makes `corpus_gaps` readable as an ingestion
-    // backlog — every row in it is a hole indexing can actually fill.
-    if (!primary) await recordCorpusGap(skillId, level);
+    // backlog — every row in it is a hole indexing can actually fill. A gap
+    // emptied only by the member's quota is not one: it stores no fallback,
+    // and its `cappedLanes` say why it is empty.
+    const cappedLanes = cappedLanesOf(bundle, context, perLane);
+    const hole = isCorpusHole(primary, cappedLanes);
+    if (hole) await recordCorpusGap(skillId, level);
 
     prepared.push({
       scored: gap,
@@ -253,11 +258,11 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
       level,
       primary,
       alternatives,
-      cappedLanes: cappedLanesOf(bundle, context, perLane),
+      cappedLanes,
       bulletId: bullet?.id ?? null,
       bulletText: bullet?.text ?? null,
       questionId: question?.id ?? null,
-      fallback: primary ? null : fallbackFor(roadmapUrl(gap.skillName)),
+      fallback: hole ? fallbackFor(roadmapUrl(gap.skillName)) : null,
     });
   }
 
@@ -346,7 +351,7 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
     } else {
       gap.alternatives = gap.alternatives.filter((r) => live.has(r.id));
     }
-    if (!gap.primary && !gap.fallback) {
+    if (isCorpusHole(gap.primary, gap.cappedLanes) && !gap.fallback) {
       gap.fallback = fallbackFor(roadmapUrl(gap.scored.skillName));
     }
   }
@@ -369,6 +374,10 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
   });
 
   let stepCount = 0;
+  // Deferred primaries sit after every scheduled one, in gap severity order
+  // (`prepared` is rankGaps order), so no deferred primary ties a scheduled
+  // one in the roadmap's ordinal sort.
+  let deferredAt = solved.steps.length;
 
   for (const [ordinal, gap] of prepared.entries()) {
     const written = bySkill.get(gap.scored.skillName);
@@ -421,7 +430,8 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
     // greyed by the view, which re-solves the budget on read.
     //
     // ★ `ordinal` means two things, by `isPrimary`:
-    //   primary      → its position in the solved plan (0 when deferred)
+    //   primary      → its position in the solved plan; when deferred,
+    //                  after every scheduled primary, in severity order
     //   alternative  → its 0-based selection rank within its own lane
     // Every plan-order reader (the knapsack in getLearningPlan, the roadmap,
     // the study plan) reads primaries only, so the column is free to carry the
@@ -430,6 +440,7 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
     // deferred) and no note, because S6 never saw them.
     const placed = scheduled.get(stepKey(gap.skillId, gap.primary.id));
     const startsAt = placed?.startsAtMin ?? 0;
+    const primaryOrdinal = placed ? placed.order : deferredAt++;
     const rankInLane = { watch: 0, read: 0 };
 
     // One `is_primary` row per gap, which the partial unique index
@@ -438,7 +449,7 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
       const isPrimary = resource === gap.primary;
       const lane = laneOf(resource.type);
       // `alternatives` is in selection order, Watch then Read.
-      const ordinal = isPrimary ? (placed?.order ?? 0) : rankInLane[lane]++;
+      const ordinal = isPrimary ? primaryOrdinal : rankInLane[lane]++;
       await db.learningStep.create({
         data: {
           clerkUserId: args.clerkUserId,
