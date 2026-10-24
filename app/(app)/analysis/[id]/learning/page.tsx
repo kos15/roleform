@@ -94,7 +94,8 @@ export default async function LearningTab({
   const matched = wanted ? plan.gaps.filter((g) => wanted.has(g.skillName.toLowerCase())) : null;
   const filtered = matched !== null && matched.length > 0;
   const shown = filtered ? matched! : plan.gaps;
-  const scheduled = shown.flatMap((g) => g.steps.filter((s) => !s.deferred));
+  // Only a gap's primary spends budget; alternatives are offered beside it.
+  const scheduled = shown.flatMap((g) => g.steps.filter((s) => s.isPrimary && !s.deferred));
 
   return (
     <section>
@@ -209,7 +210,11 @@ export default async function LearningTab({
             ) : (
               <ol className="space-y-3">
                 {[...gap.steps]
-                  .sort((a, b) => Number(a.deferred) - Number(b.deferred) || a.order - b.order)
+                  .sort(
+                    (a, b) =>
+                      Number(b.isPrimary) - Number(a.isPrimary) ||
+                      Number(a.lane === "read") - Number(b.lane === "read"),
+                  )
                   .map((step) => (
                     <li key={step.id}>
                       <a
@@ -227,7 +232,9 @@ export default async function LearningTab({
                           <span className="text-sm font-extrabold">
                             {step.author ?? step.provider}
                           </span>
-                          {step.deferred ? (
+                          {!step.isPrimary ? (
+                            <Tag tone="muted">Alternative</Tag>
+                          ) : step.deferred ? (
                             <Tag tone="muted">Outside your budget</Tag>
                           ) : (
                             <Tag tone="muted">

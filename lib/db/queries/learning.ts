@@ -2,7 +2,7 @@ import "server-only";
 import { db } from "@/lib/db";
 import { roadmapUrl } from "@/lib/catalog/taxonomy";
 import { solvePlan, type PlannableStep } from "@/lib/domain/plan";
-import type { EvidenceBucket, SkillLevel } from "@/lib/generated/prisma/enums";
+import type { DocKind, EvidenceBucket, Lane, SkillLevel } from "@/lib/generated/prisma/enums";
 import type { RequiredLevel, UserLevel } from "@/lib/domain/types";
 
 /**
@@ -39,8 +39,16 @@ export interface LearningStepView {
   /** Position after the current budget was solved for. */
   order: number;
   startsAtMin: number;
-  /** True when this step did not fit the budget the user asked for. */
+  /** True when this step did not fit the budget the user asked for. Primaries only. */
   deferred: boolean;
+  lane: Lane;
+  /** Read lane only: official documentation or a tutorial. */
+  docKind: DocKind | null;
+  /**
+   * The gap's one step that spends budget, enters the study plan and the
+   * roadmap. Every other step is an alternative: no budget cost, never deferred.
+   */
+  isPrimary: boolean;
 }
 
 export interface LearningGapView {
@@ -62,6 +70,8 @@ export interface LearningGapView {
   unlocksBullet: { id: string; text: string; draft: string } | null;
   answersQuestion: { id: string; text: string } | null;
   fallback: { url: string; label: string } | null;
+  /** Lanes the member's per-lane course cap cut short for this gap. */
+  cappedLanes: Lane[];
   steps: LearningStepView[];
 }
 
@@ -100,6 +110,7 @@ export async function getLearningPlan(
               url: true,
               priceLabel: true,
               isFree: true,
+              docKind: true,
             },
           },
         },
@@ -112,15 +123,18 @@ export async function getLearningPlan(
   const plan = await db.learningPlan.findUnique({ where: { analysisId } });
 
   // Re-solve for whatever budget is in force now. When the caller passes null,
-  // this is a pure re-ordering and nothing is deferred.
+  // this is a pure re-ordering and nothing is deferred. Only primaries spend
+  // budget — the lanes are alternatives, and an alternative is never deferred.
   const plannable: PlannableStep[] = gaps.flatMap((gap) =>
-    gap.steps.map((step, rank) => ({
-      key: step.id,
-      skillName: gap.skill.name,
-      severity: Number(gap.severity),
-      rankInGap: rank,
-      durationMin: step.durationMin,
-    })),
+    gap.steps
+      .filter((step) => step.isPrimary)
+      .map((step) => ({
+        key: step.id,
+        skillName: gap.skill.name,
+        severity: Number(gap.severity),
+        rankInGap: 0,
+        durationMin: step.durationMin,
+      })),
   );
   const solved = solvePlan(plannable, budgetMin);
   const scheduled = new Map(solved.steps.map((s) => [s.key, s]));
@@ -145,16 +159,20 @@ export async function getLearningPlan(
     answersQuestion: gap.answersQuestion
       ? { id: gap.answersQuestion.id, text: gap.answersQuestion.text }
       : null,
-    // A stored fallback wins; otherwise a gap whose every step was deferred out
-    // of the budget still deserves somewhere to go, so the roadmap stands in.
+    // A stored fallback wins; otherwise a gap with no primary step (both lanes
+    // empty) still deserves somewhere to go, so the roadmap stands in. A
+    // deferred primary is NOT a fallback — it is shown, greyed.
     fallback:
       gap.fallbackUrl && gap.fallbackLabel
         ? { url: gap.fallbackUrl, label: gap.fallbackLabel }
-        : gap.steps.length === 0
+        : !gap.steps.some((s) => s.isPrimary)
           ? roadmapFallback(gap.skill.name)
           : null,
+    cappedLanes: gap.cappedLanes ?? [],
     steps: gap.steps.map((step) => {
-      const placed = scheduled.get(step.id);
+      // An alternative sits at its primary's position, as build-plan stored it.
+      const primary = gap.steps.find((s) => s.isPrimary);
+      const placed = scheduled.get(step.isPrimary ? step.id : (primary?.id ?? step.id));
       return {
         id: step.id,
         courseId: step.course.id,
@@ -171,7 +189,10 @@ export async function getLearningPlan(
         note: step.note,
         order: placed?.order ?? step.ordinal,
         startsAtMin: placed?.startsAtMin ?? step.startsAtMin,
-        deferred: !placed,
+        deferred: step.isPrimary ? !placed : false,
+        lane: step.lane,
+        docKind: step.course.docKind,
+        isPrimary: step.isPrimary,
       };
     }),
   }));

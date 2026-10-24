@@ -7,13 +7,15 @@ import { PROTECTED_NOTICE, scanProtected } from "@/lib/domain/guardrails";
 import { solvePlan, type PlannableStep } from "@/lib/domain/plan";
 import { resolveTerms, resolutionRate } from "@/lib/domain/resolve";
 import {
+  cappedLanesOf,
   fallbackFor,
-  selectResources,
+  primaryOf,
+  selectLanes,
   type BundledResource,
 } from "@/lib/domain/selection";
 import { MAX_GAPS, rankGaps, type ScoredGap } from "@/lib/domain/severity";
 import { isUncapped } from "@/lib/domain/entitlements";
-import { laneOf, MAX_PER_LANE } from "@/lib/domain/lanes";
+import { laneOf, perLaneCap, type Lane } from "@/lib/domain/lanes";
 import { synthesisePlan, type SynthesisGap } from "@/lib/ai/synthesise-plan";
 import type {
   DomainBullet,
@@ -167,17 +169,13 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
   // gap is shown whether or not it has material beside it, at any cap including
   // zero — that is the promise the admin panel makes.
   //
-  // This read was lost when the tab was rebuilt as the learning engine, so the
-  // cap was being written at provisioning and never consulted. Admins are
-  // uncapped, which here means the engine's own ceiling of three per gap.
+  // It counts per lane: Watch and Read each get up to `perLane`. Admins are
+  // uncapped, which here means the engine's own ceiling of three per lane.
   const account = await db.user.findUnique({
     where: { clerkUserId: args.clerkUserId },
     select: { capCourses: true, role: true },
   });
-  const perGap =
-    !account || isUncapped(account.role)
-      ? MAX_PER_LANE
-      : Math.min(MAX_PER_LANE, account.capCourses);
+  const perLane = account ? perLaneCap(isUncapped(account.role), account.capCourses) : perLaneCap(true, 0);
 
   const questions = await db.interviewQuestion.findMany({
     where: { clerkUserId: args.clerkUserId, analysisId: args.analysisId },
@@ -189,7 +187,14 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
     scored: ScoredGap;
     skillId: string;
     level: SkillLevel;
-    resources: BundledResource[];
+    /**
+     * The one step that spends budget, enters the study plan and the roadmap:
+     * top Watch, else top Read. Null only when both lanes are empty.
+     */
+    primary: BundledResource | null;
+    /** Every other selected item, both lanes. No budget cost, no roadmap item. */
+    alternatives: BundledResource[];
+    cappedLanes: Lane[];
     bulletId: string | null;
     bulletText: string | null;
     questionId: string | null;
@@ -209,16 +214,15 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
     const node = nodeFor(gap.skillName);
 
     const bundle = bundles.get(key(skillId, level)) ?? [];
-    const selected = selectResources(
-      bundle,
-      {
-        severity: gap.severity,
-        volatility: node?.volatility ?? "medium",
-        profileSkillNames: args.profileSkillNames,
-        minutesAvailable: args.budgetMin,
-      },
-      perGap,
-    );
+    const context = {
+      severity: gap.severity,
+      volatility: node?.volatility ?? "medium",
+      profileSkillNames: args.profileSkillNames,
+      minutesAvailable: args.budgetMin,
+    } as const;
+    const lanes = selectLanes(bundle, context, perLane);
+    const primary = primaryOf(lanes);
+    const alternatives = [...lanes.watch, ...lanes.read].filter((r) => r !== primary);
 
     // ★ The proof-of-learning loop (spec §1) — offered, not gated on.
     //
@@ -238,49 +242,53 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
     const question = bindQuestion(gap.skillName, gap.requirement, questions, claimedQuestions);
     if (question) claimedQuestions.add(question.id);
 
-    const usable = selected;
-
-    // A fallback now means exactly one thing: the corpus had nothing. That is
-    // what makes `corpus_gaps` readable as an ingestion backlog — every row in
-    // it is a hole indexing can actually fill.
-    if (selected.length === 0) await recordCorpusGap(skillId, level);
+    // A fallback now means exactly one thing: the corpus had nothing in
+    // EITHER lane. That is what makes `corpus_gaps` readable as an ingestion
+    // backlog — every row in it is a hole indexing can actually fill.
+    if (!primary) await recordCorpusGap(skillId, level);
 
     prepared.push({
       scored: gap,
       skillId,
       level,
-      resources: usable,
+      primary,
+      alternatives,
+      cappedLanes: cappedLanesOf(bundle, context, perLane),
       bulletId: bullet?.id ?? null,
       bulletText: bullet?.text ?? null,
       questionId: question?.id ?? null,
-      fallback: usable.length === 0 ? fallbackFor(roadmapUrl(gap.skillName)) : null,
+      fallback: primary ? null : fallbackFor(roadmapUrl(gap.skillName)),
     });
   }
 
   /* --------------------------------------------------- S5.5 · solve the budget */
 
+  // Only primaries are plannable. The lanes are alternatives (design §5): a
+  // member closes a gap with ONE of them, so charging the budget for all six
+  // would plan three times the study the gap needs.
   const plannable: PlannableStep[] = prepared.flatMap((gap) =>
-    gap.resources.map((resource, rank) => ({
-      key: `${gap.skillId}:${resource.id}`,
-      skillName: gap.scored.skillName,
-      severity: gap.scored.severity,
-      rankInGap: rank,
-      durationMin: resource.durationMin,
-    })),
+    gap.primary
+      ? [
+          {
+            key: stepKey(gap.skillId, gap.primary.id),
+            skillName: gap.scored.skillName,
+            severity: gap.scored.severity,
+            rankInGap: 0,
+            durationMin: gap.primary.durationMin,
+          },
+        ]
+      : [],
   );
 
   const solved = solvePlan(plannable, args.budgetMin);
   const scheduled = new Map(solved.steps.map((s) => [s.key, s]));
 
-  // Only what actually made the plan reaches S6. Deferred steps are stored and
-  // rendered, but narrating material the user has no time for would spend
-  // tokens on advice the plan itself already declined to give.
-  for (const gap of prepared) {
-    gap.resources = gap.resources.filter((r) => scheduled.has(`${gap.skillId}:${r.id}`));
-    if (gap.resources.length === 0 && !gap.fallback) {
-      gap.fallback = fallbackFor(roadmapUrl(gap.scored.skillName));
-    }
-  }
+  // Only a scheduled primary reaches S6. A deferred primary and every
+  // alternative are stored and rendered, but narrating them would spend tokens
+  // on material the plan itself declined to schedule — and would grow the one
+  // call's input with the lane count (N12).
+  const isScheduled = (gap: PreparedGap) =>
+    gap.primary !== null && scheduled.has(stepKey(gap.skillId, gap.primary.id));
 
   /* ------------------------------------------------------------- S6 · one call */
 
@@ -291,7 +299,7 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
     evidenceQuote: gap.scored.requirement.evidenceQuote,
     currentEvidence: gap.scored.evidence.bucket === "none" ? null : gap.scored.evidence.rationale,
     existingBullet: gap.bulletId && gap.bulletText ? { id: gap.bulletId, text: gap.bulletText } : null,
-    resources: gap.resources.map((r) => ({
+    resources: (isScheduled(gap) ? [gap.primary!] : []).map((r) => ({
       id: r.id,
       title: r.title,
       author: r.author,
@@ -319,10 +327,26 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
   // so this can only fail if a verifier sweep killed a resource mid-run — but
   // "can only fail rarely" is exactly the shape of check that is worth keeping,
   // because the failure it prevents is a 404 in front of a job-hunter.
-  const live = await assertResourcesLive(prepared.flatMap((g) => g.resources.map((r) => r.id)));
+  //
+  // Every row about to be written is checked, alternatives included: an
+  // alternative is a link on the page like any other.
+  const live = await assertResourcesLive(
+    prepared.flatMap((g) => [...(g.primary ? [g.primary] : []), ...g.alternatives].map((r) => r.id)),
+  );
   for (const gap of prepared) {
-    gap.resources = gap.resources.filter((r) => live.has(r.id));
-    if (gap.resources.length === 0 && !gap.fallback) {
+    if (gap.primary && !live.has(gap.primary.id)) {
+      // The primary died mid-run. The next live item in lane order takes its
+      // place, unscheduled — the view re-solves the budget on read anyway.
+      const rest = gap.alternatives.filter((r) => live.has(r.id));
+      gap.primary = primaryOf({
+        watch: rest.filter((r) => laneOf(r.type) === "watch"),
+        read: rest.filter((r) => laneOf(r.type) === "read"),
+      });
+      gap.alternatives = rest.filter((r) => r !== gap.primary);
+    } else {
+      gap.alternatives = gap.alternatives.filter((r) => live.has(r.id));
+    }
+    if (!gap.primary && !gap.fallback) {
       gap.fallback = fallbackFor(roadmapUrl(gap.scored.skillName));
     }
   }
@@ -385,22 +409,26 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
         answersQuestionId: gap.questionId,
         fallbackUrl: gap.fallback?.url ?? null,
         fallbackLabel: gap.fallback?.label ?? null,
+        cappedLanes: gap.cappedLanes,
       },
       select: { id: true },
     });
 
+    if (!gap.primary) continue;
+
     const noteById = new Map((written?.resources ?? []).map((r) => [r.id, r.note]));
-    // The gap leads with its earliest scheduled step — one per gap, which the
-    // partial unique index `learning_steps_one_primary` enforces.
-    const firstOrder = Math.min(
-      ...gap.resources.map((r) => scheduled.get(`${gap.skillId}:${r.id}`)?.order ?? Infinity),
-    );
-    let primaryWritten = false;
+    // A deferred primary is still THE primary — stored with is_primary and
+    // greyed by the view, which re-solves the budget on read. Alternatives sit
+    // at the primary's planned position (0/0 when it was deferred) so a gap's
+    // rows sort together; they carry no note because S6 never saw them.
+    const placed = scheduled.get(stepKey(gap.skillId, gap.primary.id));
+    const ordinalAt = placed?.order ?? 0;
+    const startsAt = placed?.startsAtMin ?? 0;
 
-    for (const resource of gap.resources) {
-      const step = scheduled.get(`${gap.skillId}:${resource.id}`);
-      if (!step) continue;
-
+    // One `is_primary` row per gap, which the partial unique index
+    // `learning_steps_one_primary` enforces.
+    for (const resource of [gap.primary, ...gap.alternatives]) {
+      const isPrimary = resource === gap.primary;
       await db.learningStep.create({
         data: {
           clerkUserId: args.clerkUserId,
@@ -408,18 +436,17 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
           gapId: gapRow.id,
           courseId: resource.id,
           lane: laneOf(resource.type),
-          isPrimary: !primaryWritten && step.order === firstOrder,
-          ordinal: step.order,
-          startsAtMin: step.startsAtMin,
+          isPrimary,
+          ordinal: ordinalAt,
+          startsAtMin: startsAt,
           durationMin: Math.max(1, resource.durationMin),
           entryLabel: resource.entryLabel,
           entryUrl: resource.entryUrl,
-          note: noteById.get(resource.id) ?? "",
+          note: isPrimary ? (noteById.get(resource.id) ?? "") : "",
           unlocksBulletId: gap.bulletId,
           answersQuestionId: gap.questionId,
         },
       });
-      if (step.order === firstOrder) primaryWritten = true;
       stepCount++;
     }
   }
@@ -434,6 +461,11 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
 }
 
 /* ------------------------------------------------------------------ helpers */
+
+/** The knapsack key for a (gap, resource) pair. */
+function stepKey(skillId: string, courseId: string): string {
+  return `${skillId}:${courseId}`;
+}
 
 /**
  * The depth this posting asks the skill to, in bundle terms.

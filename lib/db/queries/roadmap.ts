@@ -9,7 +9,7 @@ import type { RoadmapItemKind, RoadmapSection } from "@/lib/generated/prisma/enu
  * Deliberately does NOT reuse `getLearningPlan`'s budget-solved step view:
  * that re-solves a knapsack against whatever budget the Learning tab is
  * showing right now, and a roadmap item is a permanent row a user may have
- * already ticked. Every learning step the plan produced gets its own item
+ * already ticked. Every gap's primary step gets its own item
  * regardless of today's budget — the roadmap is a record of the plan, not a
  * live view of it.
  */
@@ -27,7 +27,10 @@ export async function buildCompileInput(
       select: {
         id: true,
         skill: { select: { name: true } },
+        // Only the gap's primary becomes a roadmap item: the lanes are
+        // alternatives, and ticking "Learn Kubernetes" once is the whole step.
         steps: {
+          where: { isPrimary: true },
           select: { id: true, ordinal: true, entryLabel: true, course: { select: { title: true } } },
         },
       },
@@ -43,11 +46,13 @@ export async function buildCompileInput(
       id: step.id,
       gapId: gap.id,
       ordinal: step.ordinal,
+      skillName: gap.skill.name,
       courseTitle: step.course.title,
       entryLabel: step.entryLabel,
     })),
   );
 
+  // `steps` is primaries only, so this is "no primary step" — both lanes empty.
   const fallbackGaps = gaps
     .filter((gap) => gap.steps.length === 0)
     .map((gap) => ({ id: gap.id, skillName: gap.skill.name }));

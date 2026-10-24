@@ -18,7 +18,7 @@
  */
 
 import type { Volatility } from "@/lib/catalog/taxonomy";
-import { laneOf, MAX_PER_LANE } from "./lanes";
+import { laneOf, MAX_PER_LANE, type Lane } from "./lanes";
 
 export interface BundledResource {
   id: string;
@@ -82,20 +82,7 @@ export function selectResources(
 ): BundledResource[] {
   const stack = new Set(context.profileSkillNames.map((s) => s.toLowerCase()));
 
-  const survivors = bundle.filter((r) => {
-    // Recency floor — hard, and it outranks quality on purpose. A brilliant
-    // 2019 Kubernetes talk teaches a Kubernetes that no longer exists.
-    if (context.volatility === "high" && r.ageMonths !== null && r.ageMonths > RECENCY_FLOOR_MONTHS) {
-      return false;
-    }
-    // Duration fit — never offer a step that cannot fit the time the user has.
-    if (context.minutesAvailable !== null && r.durationMin > context.minutesAvailable) {
-      return false;
-    }
-    return true;
-  });
-
-  return survivors
+  return survivorsOf(bundle, context)
     .map((resource) => ({ resource, rank: rankOf(resource, context, stack) }))
     .sort((a, b) => b.rank - a.rank || a.resource.durationMin - b.resource.durationMin)
     .slice(0, limit)
@@ -116,6 +103,53 @@ export function selectLanes(
     watch: selectResources(bundle.filter((r) => laneOf(r.type) === "watch"), context, perLane),
     read: selectResources(bundle.filter((r) => laneOf(r.type) === "read"), context, perLane),
   };
+}
+
+/**
+ * The gap's one primary step: the top Watch item, else the top Read item.
+ *
+ * The lanes are alternatives, not a syllabus (design §5). Only the primary
+ * spends study budget, enters the study plan and becomes a roadmap item; every
+ * other selected item is stored beside it as an alternative at no cost.
+ */
+export function primaryOf(lanes: {
+  watch: BundledResource[];
+  read: BundledResource[];
+}): BundledResource | null {
+  return lanes.watch[0] ?? lanes.read[0] ?? null;
+}
+
+/**
+ * The lanes whose list `perLane` cut short: the bundle held more of that lane,
+ * after the same recency and duration filters selection applies, than the cap
+ * lets through. Counted over survivors so a lane is never called capped for
+ * material the member could not have been shown anyway.
+ */
+export function cappedLanesOf(
+  bundle: BundledResource[],
+  context: SelectionContext,
+  perLane: number,
+): Lane[] {
+  const survivors = survivorsOf(bundle, context);
+  return (["watch", "read"] as const).filter(
+    (lane) => survivors.filter((r) => laneOf(r.type) === lane).length > perLane,
+  );
+}
+
+/** Spec §7's two hard filters. Shared by selection and the capped-lane count. */
+function survivorsOf(bundle: BundledResource[], context: SelectionContext): BundledResource[] {
+  return bundle.filter((r) => {
+    // Recency floor — hard, and it outranks quality on purpose. A brilliant
+    // 2019 Kubernetes talk teaches a Kubernetes that no longer exists.
+    if (context.volatility === "high" && r.ageMonths !== null && r.ageMonths > RECENCY_FLOOR_MONTHS) {
+      return false;
+    }
+    // Duration fit — never offer a step that cannot fit the time the user has.
+    if (context.minutesAvailable !== null && r.durationMin > context.minutesAvailable) {
+      return false;
+    }
+    return true;
+  });
 }
 
 /**
