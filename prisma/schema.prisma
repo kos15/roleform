@@ -199,6 +199,25 @@ enum ResourceType {
   @@map("resource_type")
 }
 
+/// The Learning tab's two lanes (lib/domain/lanes.ts `laneOf`): `watch` is
+/// video and course, `read` is doc, roadmap and repo. Stored on each step so
+/// the per-lane course cap counts rows, not a derivation.
+enum Lane {
+  watch
+  read
+
+  @@map("lane")
+}
+
+/// What kind of doc a `doc` course is. Required when `type = 'doc'` —
+/// CHECK `courses_doc_needs_kind`, added by hand in the learning_lanes migration.
+enum DocKind {
+  official
+  tutorial
+
+  @@map("doc_kind")
+}
+
 /// Corpus health, per resource (guardrails.md OUT-7 and "Corpus guardrails").
 ///
 /// `quarantined` exists so a failed ingest is recorded rather than silently
@@ -320,7 +339,7 @@ model User {
   capAnalyses Int @default(40) @map("cap_analyses") // per cycle
   capResumes  Int @default(11) @map("cap_resumes") // per analysis, of eleven templates
   capAnswers  Int @default(40) @map("cap_answers") // per cycle
-  capCourses  Int @default(4) @map("cap_courses") // per gap
+  capCourses  Int @default(2) @map("cap_courses") // per lane, per gap (0–3, CHECK users_cap_courses_range)
 
   /// The token allowance for one cycle (F19). The meter the other four caps
   /// cannot be: an analysis of a 400-word posting and one of a six-page
@@ -459,7 +478,8 @@ model WorkspaceSettings {
   capAnalyses    Int @default(40) @map("cap_analyses")
   capResumes     Int @default(11) @map("cap_resumes")
   capAnswers     Int @default(40) @map("cap_answers")
-  capCourses     Int @default(4) @map("cap_courses")
+  /// Per lane, per gap. 0–3 — CHECK workspace_settings_cap_courses_range.
+  capCourses     Int @default(2) @map("cap_courses")
   capRoadmaps    Int @default(1) @map("cap_roadmaps")
   capJobSearches Int @default(0) @map("cap_job_searches")
   capPractice    Int @default(3) @map("cap_practice")
@@ -515,6 +535,7 @@ model PlanConfig {
   capAnalyses    Int @map("cap_analyses")
   capResumes     Int @map("cap_resumes")
   capAnswers     Int @map("cap_answers")
+  /// Per lane, per gap. 0–3 — CHECK plan_configs_cap_courses.
   capCourses     Int @map("cap_courses")
   capRoadmaps    Int @map("cap_roadmaps")
   capJobSearches Int @map("cap_job_searches")
@@ -1163,6 +1184,10 @@ model SkillGap {
   fallbackUrl   String? @map("fallback_url")
   fallbackLabel String? @map("fallback_label")
 
+  /// Lanes where the member's plan cap withheld vetted material for this gap,
+  /// so the tab can say "your plan shows N" rather than imply the corpus is thin.
+  cappedLanes Lane[] @default([]) @map("capped_lanes")
+
   analysis        Analysis           @relation(fields: [analysisId], references: [id], onDelete: Cascade)
   skill           Skill              @relation(fields: [skillId], references: [id], onDelete: Restrict)
   requirement     JdRequirement?     @relation(fields: [requirementId], references: [id], onDelete: SetNull)
@@ -1258,6 +1283,13 @@ model LearningStep {
   startsAtMin Int @map("starts_at_min")
   durationMin Int @map("duration_min")
 
+  /// The step's lane, from its course's type (lib/domain/lanes.ts `laneOf`).
+  lane      Lane
+  /// The one step a gap leads with. At most one per gap — partial unique index
+  /// `learning_steps_one_primary` (gap_id) WHERE is_primary, added by hand in
+  /// the learning_lanes migration (Prisma cannot express a partial index).
+  isPrimary Boolean @default(false) @map("is_primary")
+
   /// The precise entry point, copied from CourseSkill at plan time so the plan
   /// still reads correctly after a bundle rebuild moves it (§8).
   entryLabel String? @map("entry_label")
@@ -1310,6 +1342,9 @@ model Course {
   isFree        Boolean     @map("is_free")
   lengthMinutes Int         @map("length_minutes")
   verifiedAt    DateTime    @map("verified_at") @db.Date
+  /// When the URL was last confirmed live — the TTL stamp a re-check reads.
+  /// Distinct from `verifiedAt` (the date the content was vetted).
+  checkedAt     DateTime    @default(now()) @map("checked_at") @db.Timestamptz
 
   /**
    * --------------------------------------------------- RLE spec §3, §7
@@ -1330,6 +1365,11 @@ model Course {
   /// Bumped by the ingest run that last touched this row. Lets a bundle say
   /// which corpus it was built from.
   corpusVersion Int            @default(1) @map("corpus_version")
+  /// Set only for `type = doc`; required there — CHECK `courses_doc_needs_kind`
+  /// (type <> 'doc' OR doc_kind IS NOT NULL), added by hand in learning_lanes.
+  docKind       DocKind?       @map("doc_kind")
+  /// A broad overview of a skill rather than a targeted entry point.
+  isOverview    Boolean        @default(false) @map("is_overview")
 
   courseSkills CourseSkill[]
   steps        LearningStep[]

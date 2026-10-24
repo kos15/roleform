@@ -14,6 +14,7 @@ import {
 } from "@/lib/domain/selection";
 import { MAX_GAPS, rankGaps, type ScoredGap } from "@/lib/domain/severity";
 import { isUncapped } from "@/lib/domain/entitlements";
+import { laneOf } from "@/lib/domain/lanes";
 import { synthesisePlan, type SynthesisGap } from "@/lib/ai/synthesise-plan";
 import type {
   DomainBullet,
@@ -390,6 +391,12 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
     });
 
     const noteById = new Map((written?.resources ?? []).map((r) => [r.id, r.note]));
+    // The gap leads with its earliest scheduled step — one per gap, which the
+    // partial unique index `learning_steps_one_primary` enforces.
+    const firstOrder = Math.min(
+      ...gap.resources.map((r) => scheduled.get(`${gap.skillId}:${r.id}`)?.order ?? Infinity),
+    );
+    let primaryWritten = false;
 
     for (const resource of gap.resources) {
       const step = scheduled.get(`${gap.skillId}:${resource.id}`);
@@ -401,6 +408,8 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
           planId: plan.id,
           gapId: gapRow.id,
           courseId: resource.id,
+          lane: laneOf(resource.type),
+          isPrimary: !primaryWritten && step.order === firstOrder,
           ordinal: step.order,
           startsAtMin: step.startsAtMin,
           durationMin: Math.max(1, resource.durationMin),
@@ -411,6 +420,7 @@ export async function buildLearningPlan(args: BuildPlanArgs): Promise<BuildPlanR
           answersQuestionId: gap.questionId,
         },
       });
+      if (step.order === firstOrder) primaryWritten = true;
       stepCount++;
     }
   }
