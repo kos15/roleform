@@ -13,6 +13,35 @@ import { typeOf } from "./quality";
 
 const LANES: Lane[] = ["watch", "read"];
 
+/** One key per resource: the same YouTube video or playlist is one URL however it is spelled. */
+export function urlKey(url: string): string {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return url;
+  }
+  const host = u.hostname.toLowerCase().replace(/^www\.|^m\./, "");
+  if (host === "youtu.be") return `yt:${u.pathname.split("/")[1] ?? ""}`;
+  if (host === "youtube.com") {
+    if (u.pathname.startsWith("/playlist")) return `ytlist:${u.searchParams.get("list") ?? ""}`;
+    const id = u.searchParams.get("v");
+    if (id) return `yt:${id}`;
+  }
+  return `${u.hostname.toLowerCase()}${u.pathname.replace(/\/$/, "")}${u.search}`;
+}
+
+const CHANNEL_PATH = /^\/(@|channel\/|c\/|user\/)/;
+
+function isChannelUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return /^(www\.|m\.)?youtube\.com$/i.test(u.hostname) && CHANNEL_PATH.test(u.pathname);
+  } catch {
+    return false;
+  }
+}
+
 export const laneOfDef = (def: CourseDef): Lane => laneOf(def.type ?? typeOf(def));
 
 export function catalogProblems(courses: CourseDef[], skills: string[]): string[] {
@@ -20,8 +49,13 @@ export function catalogProblems(courses: CourseDef[], skills: string[]): string[
 
   const seen = new Set<string>();
   for (const def of courses) {
-    if (seen.has(def.url)) problems.push(`Duplicate URL: ${def.url}`);
-    seen.add(def.url);
+    const key = urlKey(def.url);
+    if (seen.has(key)) problems.push(`Duplicate URL: ${def.url}`);
+    seen.add(key);
+
+    if (isChannelUrl(def.url)) {
+      problems.push(`YouTube channel is not a single video or playlist: ${def.url}`);
+    }
 
     if (def.url.includes("/shorts/")) problems.push(`YouTube Short is not a lesson: ${def.url}`);
 

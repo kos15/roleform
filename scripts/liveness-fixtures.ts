@@ -122,6 +122,53 @@ async function main() {
     assert.deepEqual(out, []);
   });
 
+  await check("the same YouTube video spelled four ways is one duplicate each", () => {
+    const spellings = [
+      "https://www.youtube.com/watch?v=abc123",
+      "https://youtu.be/abc123",
+      "https://m.youtube.com/watch?v=abc123&t=30s",
+      "https://youtube.com/watch?feature=share&v=abc123",
+    ];
+    const out = catalogProblems(
+      spellings.map((url) => def({ title: "v", url, type: "video" })).concat(full[1]),
+      ["React"],
+    );
+    assert.equal(out.filter((p) => p.startsWith("Duplicate")).length, 3);
+  });
+  await check("playlist ids dedupe; non-YouTube compares host case and trailing slash", () => {
+    const pl = catalogProblems(
+      [
+        def({ title: "a", url: "https://www.youtube.com/playlist?list=PL1", type: "video" }),
+        def({ title: "b", url: "https://youtube.com/playlist?list=PL1&x=1", type: "video" }),
+        full[1],
+      ],
+      ["React"],
+    );
+    assert.equal(pl.filter((p) => p.startsWith("Duplicate")).length, 1);
+    const web = catalogProblems(
+      [full[0], full[1], def({ title: "r2", url: "https://REACT.dev/learn/", type: "doc", docKind: "official" })],
+      ["React"],
+    );
+    assert.equal(web.filter((p) => p.startsWith("Duplicate")).length, 1);
+  });
+  await check("YouTube channel URLs are problems naming the URL", () => {
+    for (const path of ["/@fireship", "/channel/UC1", "/c/Fireship", "/user/fireship"]) {
+      const url = `https://www.youtube.com${path}`;
+      const out = catalogProblems([...full, def({ title: "c", url, type: "video" })], ["React"]);
+      assert.equal(out.length, 1, path);
+      assert.ok(out[0].includes(url));
+    }
+  });
+  await check("a non-YouTube host is not routed to checkVideo", async () => {
+    let called = false;
+    const spy = (async () => {
+      called = true;
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+    await checkCourseLink({ url: "https://notyoutube.invalid/watch?v=1", type: "video" }, spy).catch(() => {});
+    assert.equal(called, false);
+  });
+
   console.log(`\n${passed} checks passed`);
 }
 main();

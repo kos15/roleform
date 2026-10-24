@@ -43,6 +43,7 @@ async function main() {
   const blocked: string[] = [];
   const mismatches: string[] = [];
   const warnings: string[] = [];
+  const unverified: string[] = [];
 
   const rows = COURSES.map((def, i) => {
     const type = def.type ?? typeOf(def);
@@ -51,6 +52,11 @@ async function main() {
     if (liveness === "blocked") blocked.push(def.url);
     if (authorName !== null && norm(authorName) !== norm(def.author ?? "")) {
       mismatches.push(`${def.url} — oEmbed says "${authorName}", entry says "${def.author ?? ""}"`);
+    }
+    if (liveness === "live" && authorName === null && /youtube\.com|youtu\.be/i.test(def.url)) {
+      unverified.push(
+        `author unverified (oEmbed gave no author_name): ${def.author ?? "-"} — ${def.title} → ${def.url}`,
+      );
     }
     if (type === "video" && def.author) {
       const root = NODES.get(def.skills[0])?.path[0] ?? def.skills[0];
@@ -74,9 +80,10 @@ async function main() {
   section("AUTHOR MISMATCH", mismatches);
   section("BLOCKED (could not confirm)", blocked);
   section("WARN", warnings);
+  section("WARN unverified authors", unverified);
 
   console.log(
-    `\n${COURSES.length} entries · problems ${problems.length} · dead ${dead.length} · mismatches ${mismatches.length} · blocked ${blocked.length} · warnings ${warnings.length}`,
+    `\n${COURSES.length} entries · problems ${problems.length} · dead ${dead.length} · mismatches ${mismatches.length} · blocked ${blocked.length} · warnings ${warnings.length} · unverified authors ${unverified.length}`,
   );
   process.exit(problems.length + dead.length + mismatches.length > 0 ? 1 : 0);
 }
