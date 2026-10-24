@@ -55,3 +55,4 @@ scripts/evals/reports/
 # Editor swap files (one was committed by accident, Oct 2026)
 *.swp
 .*.sw?
+.superpowers/
