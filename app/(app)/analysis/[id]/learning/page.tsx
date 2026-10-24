@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { ArrowRight, ExternalLink, MessageCircleQuestion, PenLine, Play } from "lucide-react";
+import { ArrowRight, ExternalLink, MessageCircleQuestion, PenLine } from "lucide-react";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import { getLearningPlan } from "@/lib/db/queries/learning";
 import { formatMinutes } from "@/lib/domain/plan";
 import { levelPosition } from "@/lib/domain/levels";
 import { Card, EmptyState, Tag } from "@/components/ui";
 import { BudgetPicker } from "./budget-picker";
+import { Lanes } from "./lanes";
 import { SectionPending } from "@/components/background-pending";
 import { backgroundRunning } from "@/lib/pipeline/background";
 
@@ -205,71 +206,10 @@ export default async function LearningTab({
             </div>
 
             {/* -------------------------------------------------- resources */}
-            {gap.steps.length === 0 ? (
+            {gap.steps.length === 0 && gap.cappedLanes.length === 0 ? (
               <FallbackNote fallback={gap.fallback} />
             ) : (
-              <ol className="space-y-3">
-                {/* Already in display order: primary, then Watch → Read by rank. */}
-                {gap.steps.map((step) => (
-                    <li key={step.id}>
-                      <a
-                        href={step.entryUrl ?? step.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`block rounded-[var(--radius-md)] bg-[var(--color-bg-tint)] px-3.5 py-3.5 no-underline sm:px-[18px] sm:py-4 transition-transform hover:-translate-y-0.5 ${
-                          step.deferred ? "opacity-50" : ""
-                        }`}
-                      >
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-[var(--radius-pill)] bg-[var(--color-accent-500)] text-xs font-extrabold">
-                            {step.mark}
-                          </span>
-                          <span className="text-sm font-extrabold">
-                            {step.author ?? step.provider}
-                          </span>
-                          {!step.isPrimary ? (
-                            <Tag tone="muted">Alternative</Tag>
-                          ) : step.deferred ? (
-                            <Tag tone="muted">Outside your budget</Tag>
-                          ) : (
-                            <Tag tone="muted">
-                              from {formatMinutes(step.startsAtMin)} in
-                            </Tag>
-                          )}
-                        </div>
-
-                        <p className="mb-1.5 text-base font-extrabold">{step.title}</p>
-
-                        {/* Spec §8 — the differentiator is WHERE you land.
-                            "Watch minutes 14:20–26:05" beats "watch this
-                            eight-hour course", and the timestamp was computed
-                            once at bundle-build time, never here. */}
-                        {step.entryLabel ? (
-                          <p className="mb-1.5 flex items-center gap-1.5 text-sm font-extrabold">
-                            <Play className="lucide h-3.5 w-3.5 fill-current" />
-                            Start at {step.entryLabel}
-                          </p>
-                        ) : null}
-
-                        {step.note ? (
-                          <p className="more-copy mb-2.5 text-sm leading-normal text-[var(--color-text-muted)]">{step.note}</p>
-                        ) : null}
-
-                        <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <Tag
-                            className={`font-extrabold ${step.isFree ? "bg-[var(--color-bg-raised)]" : ""}`}
-                          >
-                            {step.priceLabel}
-                          </Tag>
-                          <Tag tone="muted">{formatMinutes(step.durationMin)}</Tag>
-                          <span className="ml-1 inline-flex items-center gap-1 text-[13px] font-extrabold">
-                            Open <ExternalLink className="lucide h-3.5 w-3.5" />
-                          </span>
-                        </div>
-                      </a>
-                    </li>
-                  ))}
-              </ol>
+              <Lanes steps={gap.steps} cappedLanes={gap.cappedLanes} />
             )}
 
             {/* ------------------------------------ the proof-of-learning loop */}
