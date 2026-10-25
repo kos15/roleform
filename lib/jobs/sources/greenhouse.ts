@@ -30,7 +30,7 @@ function str(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
-const spec: AtsAdapterSpec = {
+export const spec: AtsAdapterSpec = {
   ats: "greenhouse",
   boardUrl: (board) => `${BASE}/${encodeURIComponent(board.token)}/jobs`,
 

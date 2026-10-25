@@ -16,6 +16,8 @@
     "db:policies": "pnpm script scripts/apply-policies.ts",
     "db:schedule": "pnpm script scripts/schedule-reminders.ts",
     "seed:catalog": "pnpm script scripts/seed-catalog.ts",
+    "catalog:discover": "pnpm script scripts/discover-courses.ts",
+    "jobs:discover-boards": "pnpm script scripts/discover-boards.ts",
     "bundles:rebuild": "pnpm script scripts/rebuild-bundles.ts",
     "grant:admin": "pnpm script scripts/grant-admin.ts",
     "push:keys": "pnpm script scripts/push-keys.ts",

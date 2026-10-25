@@ -245,6 +245,8 @@ lib/
     extract-profile.ts · transcribe.ts · analyze-jd.ts · tailor.ts · interview.ts   (thin wrappers)
   catalog/
     skills.ts · courses.ts · match.ts · taxonomy.ts · quality.ts
+  search/deepseek.ts         DeepSeek Search client — ADMIN SCRIPTS ONLY (board + course discovery);
+                             never on a request path, never a listing, course or question source
   learning/                  SERVER. the engine's I/O half:
     bundles.ts               precomputed retrieval — a PK lookup, never a search
     build-plan.ts            the S3→S7 request path. ONE model call.

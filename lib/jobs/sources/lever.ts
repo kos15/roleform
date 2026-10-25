@@ -27,7 +27,7 @@ function period(interval: unknown): string | null {
   return m ? m[1] : null;
 }
 
-const spec: AtsAdapterSpec = {
+export const spec: AtsAdapterSpec = {
   ats: "lever",
   boardUrl: (board) => `https://api.lever.co/v0/postings/${encodeURIComponent(board.token)}?mode=json`,
 
