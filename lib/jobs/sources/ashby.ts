@@ -38,7 +38,7 @@ function salaryOf(comp: unknown): { min: number | null; max: number | null; curr
   };
 }
 
-const spec: AtsAdapterSpec = {
+export const spec: AtsAdapterSpec = {
   ats: "ashby",
   boardUrl: (board) =>
     `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(board.token)}?includeCompensation=true`,

@@ -876,6 +876,10 @@ deterministic evidence value as the prose beside them, so the meter and the sent
 type, author, quality score and status; `course_skills` carries the per-skill entry point and
 summary. Never model-generated. `pnpm check:links` sweeps course URLs *and* roadmap fallback targets
 — a dead fallback is a 404 in front of a job-hunter exactly as a dead course is.
+`pnpm catalog:discover` helps a person fill `corpus_gaps`, most-demanded first. It runs one DeepSeek
+Search per gap (`lib/search/deepseek.ts`) and prints high-quality, live candidates that are not in
+the catalog yet. It writes nothing. A course reaches a member only after a person writes its
+`CourseDef` and `pnpm seed:catalog` re-checks the link. The request path does not change (N12/N13).
 
 **Guardrails** (`lib/domain/guardrails.ts`), each code and not prompt:
 
@@ -1649,6 +1653,12 @@ page. Every listing's `url` is the vendor's own field (`absolute_url` / `hostedU
   and listed India-based or remote roles that day. `JOBS_ATS_BOARDS=ats:token,…` adds more per
   deployment. OpenAI's Ashby board (~13 MB) is left out because it can't be read inside one
   source's 8 s budget.
+- **Growing the list** — `pnpm jobs:discover-boards [titles…] [--place "City, CC"]`. It runs
+  DeepSeek Search `site:`-restricted to the three vendors' hosted job pages, takes the board token
+  from each result URL without fetching the page, then checks every new token against the vendor's
+  own API with the live adapter's `spec` and `boardPostingFits`. It prints a table and a
+  `JOBS_ATS_BOARDS=` line and writes nothing. Search results never become listings: a member's
+  search still calls only the four documented APIs (N17; R6 stays refused).
 - **Filtering is ours and PURE** (`lib/domain/board-filter.ts`): the title must cover the keyword
   variant by `titleCovers`, the same rule the triage uses to say a title lines up. The place must
   be the member's city (with aliases), their country (by name, or the board's own ISO code on
