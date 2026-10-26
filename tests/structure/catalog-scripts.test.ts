@@ -4,7 +4,9 @@
  * and writes the doc columns the DB CHECK `courses_doc_needs_kind` requires.
  */
 import { describe, expect, it } from "vitest";
-import { filesUnder, importsOf, sourceOf } from "./files";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { ROOT, filesUnder, importsOf, sourceOf } from "./files";
 
 const SEED = "scripts/catalog/seed-catalog.ts";
 const LINK_CHECK = "scripts/catalog/link-check.ts";
@@ -61,6 +63,40 @@ describe("catalog scripts", () => {
 
   it("nothing under scripts/deploy loads .env.local", () => {
     const offenders = filesUnder("scripts/deploy").filter((f) => importsOf(f).some((s) => /(^|\/)env(\.ts)?$|^dotenv(\/|$)/.test(s)));
+    expect(offenders).toEqual([]);
+  });
+
+  const deploy = () => filesUnder("scripts/deploy").map(sourceOf).join("\n");
+  it("deploy:catalog link-checks with checkCourseLink and rebuilds bundles", () => {
+    expect(deploy()).toContain("checkCourseLink(");
+    expect(deploy()).toContain("rebuildBundles(");
+    expect(deploy()).not.toContain("checkLiveness");
+  });
+  it("the deploy path never skips the link check", () => expect(deploy()).not.toMatch(/skip-?link-?check|skipLinkCheck/i));
+  it("deploy entries check the gate before importing their worker", () => {
+    const src = sourceOf("scripts/deploy/catalog.ts");
+    expect([...src.matchAll(/\bfrom\s*["']([^"']+)["']/g)].map((m) => m[1])).toEqual(["./gate"]);
+    expect(src.indexOf("isProductionBuild(")).toBeGreaterThan(-1);
+    expect(src.indexOf("isProductionBuild(")).toBeLessThan(src.indexOf("await import("));
+  });
+  // Ruling 9: the worker modules must not reach a `scripts/…` module that loads .env.local.
+  it("catalog-store and catalog-sync reach no module that imports ../env", () => {
+    const seen = new Set<string>();
+    const walk = (file: string) => {
+      if (seen.has(file)) return;
+      seen.add(file);
+      for (const spec of importsOf(file)) {
+        if (!spec.startsWith(".") && !spec.startsWith("@/")) continue;
+        const target = (spec.startsWith("@/") ? spec.slice(2) : join(dirname(file), spec)).replace(/\\/g, "/");
+        if (!target.startsWith("scripts/")) continue;
+        const resolved = [`${target}.ts`, `${target}/index.ts`].find((f) => existsSync(join(ROOT, f)));
+        if (resolved) walk(resolved);
+      }
+    };
+    walk("scripts/deploy/catalog-store.ts");
+    walk("scripts/deploy/catalog-sync.ts");
+    expect(seen.size).toBeGreaterThan(2);
+    const offenders = [...seen].filter((f) => importsOf(f).some((s) => /(^|\/)env(\.ts)?$|^dotenv(\/|$)/.test(s)));
     expect(offenders).toEqual([]);
   });
 });

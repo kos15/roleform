@@ -17,6 +17,7 @@
     "script": "tsx --tsconfig tsconfig.scripts.json",
     "db:policies": "pnpm script scripts/db/apply-policies.ts",
     "db:schedule": "pnpm script scripts/db/schedule.ts",
+    "deploy:catalog": "pnpm script scripts/deploy/catalog.ts",
     "seed:catalog": "pnpm script scripts/catalog/seed-catalog.ts",
     "bundles:rebuild": "pnpm script scripts/catalog/rebuild-bundles.ts",
     "grant:admin": "pnpm script scripts/db/grant-admin.ts",
