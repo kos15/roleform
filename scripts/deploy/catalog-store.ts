@@ -34,6 +34,9 @@ export function advisoryLock(directUrl: string | undefined): () => Promise<() =>
     return async () => {
       try {
         await sql`select pg_advisory_unlock(hashtext(${SYNC_LOCK_KEY}))`;
+      } catch (e) {
+        // The lock dies with the session, so a failed unlock must not fail the deploy or mask its error.
+        console.error(`[deploy:catalog] lock release failed: ${e instanceof Error ? e.message : String(e)}`);
       } finally {
         await sql.end();
       }

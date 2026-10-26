@@ -21,7 +21,7 @@ cp .env.example .env.local     # fill in Clerk, Supabase, OpenAI
 
 Two connection strings, both required (`.env.example` documents both): `DATABASE_URL` is the
 pooled pgbouncer connection (port 6543) the app runs on; `DIRECT_URL` is a real session
-connection (port 5432) that migrations and the two admin scripts need — a transaction-mode
+connection (port 5432) that migrations, the two admin scripts, and the deploy-time catalog lock and schedule install need — a transaction-mode
 pooler can't provide one.
 
 ```bash
@@ -32,7 +32,7 @@ pnpm db:policies                # apply lib/db/policies.sql — RLS lives in the
 pnpm seed:catalog               # templates + skills + link-checked course catalog
 ```
 
-**On Vercel, the last two run automatically on every deploy:** `build` is
+**On Vercel, the build runs these automatically on every deploy** (not `seed:catalog` — `deploy:catalog` syncs the catalog instead, link-checking only new URLs, and `deploy:schedule` installs the pg_cron schedule): `build` is
 `prisma migrate deploy && pnpm db:policies && pnpm deploy:catalog && next build --turbopack && pnpm deploy:schedule`,
 in that order, against whatever `DATABASE_URL`/`DIRECT_URL` that Vercel environment (production vs.
 preview) has configured. Every step is idempotent, so this is safe to run on every build. A failure

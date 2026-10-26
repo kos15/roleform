@@ -64,6 +64,9 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 6: docs — N24 wording, new N25, §8 Jobs, §13 (policies run by every build, `CatalogSync`), README build order, `docs/notifications.md` §3/§5, specs F8 freshness, `.env.example` APP_URL~~ — 2026-10-26
 - [ ] After the first production build: confirm the log shows `[deploy:catalog] synced …` (or `unchanged`) and `[deploy:schedule] scheduled …` for both jobs, then strike the two "After this branch deploys" lines (re-seed; db:schedule). Rows seeded before the lanes migration stay bunched on one `checked_at` until a manual full `pnpm seed:catalog` (plan Ruling 5)
 - [ ] `catalog_syncs` CHECKs are unexercised (no local DB) — add bad inserts to `pnpm check:constraints`
+- [ ] If egress is blocked or YouTube rate-limits, every new URL comes back `blocked` and is seeded unchecked (build passes; daily cron re-checks within 7 days) — consider failing the deploy when blocked > 50% of new URLs
+- [ ] First production sync: `writeCourseSkills` only upserts — a course whose skill list shrank keeps its old course_skills link (pairs with the 'mark rows absent from COURSES quarantined' item; ~3 prod rows absent from COURSES stay active until the cron finds them)
+- [ ] N24 sentence reads awkwardly to keep the test phrase 'which every production build runs' — reword together with its test
 
 ## Carried over
 

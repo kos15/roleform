@@ -55,6 +55,8 @@ describe("deploy-time sync rules", () => {
     const n25 = row("N25");
     expect(n25).toContain("VERCEL_ENV");
     expect(n25).toContain("catalog_syncs");
+    expect(n25).toContain("catalog content");
+    expect(n25).toContain("N24");
     // The verbatim N25 text does not name the commands; N24 (same section) does.
     expect(/pnpm deploy:schedule|deploy:catalog/.test(row("N24") + n25)).toBe(true);
   });
