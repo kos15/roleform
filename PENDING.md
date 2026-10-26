@@ -55,7 +55,7 @@ own files; what is still open is here.
 
 ### Learning Watch | Read lanes — `docs/superpowers/plans/2026-10-25-learning-watch-read.md` (branch `feat/learning-watch-read`)
 
-- [ ] Task 7: curate the remaining skill batches (done: JavaScript…Redux, RxJS…Elasticsearch, Data Modeling…Serverless + UX Research dead-link replacement; batch B open); finish when `pnpm check:catalog` exits 0 — now reports 375 entries · problems 24 (all batch B: React Native onward) · dead 0
+- [x] ~~Task 7: curate the remaining skill batches (done: JavaScript…Redux, RxJS…Elasticsearch, Data Modeling…Serverless + UX Research dead-link replacement; batch B open); finish when `pnpm check:catalog` exits 0 — now reports 375 entries · problems 24 (all batch B: React Native onward) · dead 0~~ — 2026-10-26 (`pnpm check:catalog` now exits 0: 447 entries · problems 0 · dead 0 · mismatches 0)
 - [ ] Task 8: seed stagger + daily catalog refresh cron (`lib/catalog/refresh.ts`, `/api/cron/catalog`, 7-day TTL) — test-first in `tests/catalog/refresh.test.ts`
 - [ ] Task 9: docs — specs F8 lanes and refresh, CLAUDE.md N23 names `/api/cron/catalog`, `courses.ts` header
 
@@ -78,7 +78,16 @@ own files; what is still open is here.
 - [ ] dbt, Snowflake, Google Cloud, Azure have 1 YouTube video each (a `course` fills the second Watch slot)
 - [ ] Data Modeling, ETL, UX Research have no official doc (none exists — revisit if one appears)
 
+### Catalog batch B review minors (2026-10-26)
+
+- [ ] 21 entries still `type: "course"` but are text (Vitest Guide, Pro Git, OWASP Top Ten, 12factor, Refactoring Guru, Google eng-practices, scikit-learn Getting Started, Kaggle Learn, …) — retype to doc + docKind like batch B's seven
+- [ ] Hugging Face LLM Course entry still carries the old NLP-course length (~15 hrs) — re-estimate
+- [ ] Stakeholder Management Read: Kanda Software blog is vendor marketing — replace with a stronger non-vendor read when one is verified
+- [ ] Optional: 'Why Engineers Need Product Thinking' (Product Driven, 9m) reads as an overview
+- [ ] Vector Databases and Encryption, TDD, Technical Leadership, Stakeholder Management, Product Thinking have no official doc (no standards owner) — revisit if one appears
+
 ### Branch housekeeping
 
+- [ ] DO NOT run `pnpm seed:catalog` until catalog-refresh Task 6 lands — the current seed writes no `docKind`, so every catalog doc would violate CHECK `courses_doc_needs_kind`
 - [x] ~~Merge `feat/learning-watch-read` and `chore/layout-tdd` to `main` (this layout branch is cut from the watch-read branch)~~ — 2026-10-26
 - [ ] Local Node is v20.17.0; `package.json` engines asks for >=20.19.0 — upgrade
