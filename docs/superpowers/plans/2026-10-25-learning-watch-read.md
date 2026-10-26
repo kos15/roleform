@@ -182,7 +182,7 @@
 
 **Files:** Modify: `lib/catalog/courses.ts`, `lib/catalog/creators.ts`
 
-Split into four commits by `SKILLS` order (≈25 skills each). Per skill: 2–3 videos (exactly one non-overview full/crash course by a known creator; optional `isOverview: true` short), 2–3 docs (≥1 `docKind: "official"` where an official source exists, plus MDN / roadmap.sh / official getting-started as `"tutorial"`). `skills[0]` is the taught skill. Deep links, not homepages. `level`, `lengthMinutes`, `priceLabel`, `mark`, `author` set honestly; `lengthMinutes` for a video from the video's real duration.
+Split into four commits by `SKILLS` order (≈25 skills each). Per skill: 2–3 videos (at least one non-overview full/crash course by a known creator; optional `isOverview: true` short), 2–3 docs (≥1 `docKind: "official"` where an official source exists, plus MDN / roadmap.sh / official getting-started as `"tutorial"`). `skills[0]` is the taught skill. Deep links, not homepages. `level`, `lengthMinutes`, `priceLabel`, `mark`, `author` set honestly; `lengthMinutes` for a video from the video's real duration.
 
 - [ ] **Step 1 (per batch):** Add entries. Do not keep any URL you have not just checked.
 - [ ] **Step 2 (per batch):** `pnpm check:catalog`. Expected: zero dead, zero author mismatches for this batch's skills (coverage errors only for later batches). Remove or replace anything that fails — never retry a guessed URL variant.

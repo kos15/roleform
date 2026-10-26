@@ -25,6 +25,16 @@ the struck list is the record. New work gets its line *before* its first failing
 
 - [x] ~~Six Naruto-named project agents (ino · hokage · shikamaru · kakashi · neji · jiraiya), pinned by `tests/structure/agents.test.ts`, documented in CLAUDE.md §16~~ — 2026-10-26
 
+## Catalog refresh — `docs/superpowers/plans/2026-10-26-catalog-refresh.md` (branch `feat/learning-catalog-refresh`)
+
+- [ ] Task 1: pure `lib/domain/catalog-refresh.ts` (TTL, `isDue`, `nextStatus`)
+- [ ] Task 2: `lib/services/cron.ts` (`cronAuthorised` moved, `CRON_JOBS`) + `tests/structure/cron.test.ts`
+- [ ] Task 3: `refreshDueLinks` in `lib/services/learning/refresh-catalog.ts`
+- [ ] Task 4: `/api/cron/catalog` route + middleware + `CRON_JOBS` entry
+- [ ] Task 5: `scripts/db/schedule.ts` schedules every `CRON_JOBS` job
+- [ ] Task 6: seed stagger + checkCourseLink + catalogProblems gate; link-check alignment
+- [ ] Task 7: docs — N24, §8, §10, specs F8/F29, README, notifications, courses.ts header, schema `///`, corpus-health overdue30
+
 ## Carried over
 
 Audited 2026-10-26 against `git log` and disk. Earlier plans' finished tasks are ticked in their
@@ -36,7 +46,7 @@ own files; what is still open is here.
 
 ### Learning Watch | Read lanes — `docs/superpowers/plans/2026-10-25-learning-watch-read.md` (branch `feat/learning-watch-read`)
 
-- [ ] Task 7: curate the remaining skill batches (done: JavaScript…Redux, RxJS…Elasticsearch); finish when `pnpm check:catalog` exits 0 — today it reports 46 problems, 1 dead link, 4 blocked
+- [ ] Task 7: curate the remaining skill batches (done: JavaScript…Redux, RxJS…Elasticsearch, Data Modeling…Serverless + UX Research dead-link replacement; batch B open); finish when `pnpm check:catalog` exits 0 — now reports 375 entries · problems 24 (all batch B: React Native onward) · dead 0
 - [ ] Task 8: seed stagger + daily catalog refresh cron (`lib/catalog/refresh.ts`, `/api/cron/catalog`, 7-day TTL) — test-first in `tests/catalog/refresh.test.ts`
 - [ ] Task 9: docs — specs F8 lanes and refresh, CLAUDE.md N23 names `/api/cron/catalog`, `courses.ts` header
 
@@ -52,6 +62,12 @@ own files; what is still open is here.
 - [ ] CLAUDE.md §11: DOCX round-trip needs no DB/network/model — reword the rationale
 - [ ] `tests/domain/push.test.ts`, `tests/domain/quotas.test.ts` read cwd-relative paths — use `ROOT`
 - [ ] `lib/domain/guardrails.ts:5` says "the prompt in lib/ai/prompts" — means `lib/ai/system-prompts`
+
+### Catalog batch A review minors (2026-10-26)
+
+- [ ] Docker, Kubernetes, Terraform have 1 doc each — plan asks 2–3
+- [ ] dbt, Snowflake, Google Cloud, Azure have 1 YouTube video each (a `course` fills the second Watch slot)
+- [ ] Data Modeling, ETL, UX Research have no official doc (none exists — revisit if one appears)
 
 ### Branch housekeeping
 
