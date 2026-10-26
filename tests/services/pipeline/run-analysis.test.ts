@@ -21,7 +21,7 @@ vi.mock("@/lib/render/pdf", () => ({ renderFitted: h.renderFitted }));
 vi.mock("@/lib/render/model", () => ({ buildRenderModel: h.buildRenderModel }));
 vi.mock("@/lib/db/queries/profile", () => ({ getBullets: h.getBullets, toDomainBullets: h.toDomainBullets }));
 vi.mock("@/lib/db/queries/analysis", () => ({ getCoverage: h.getCoverage, getProfileById: h.getProfileById, getRequirements: h.getRequirements }));
-import { runAnalysis, TAILOR_CONCURRENCY, TAILOR_START_DEADLINE_MS } from "@/lib/services/pipeline/run-analysis";
+import { runAnalysis, RUN_LOCK_STALE_MS, TAILOR_CONCURRENCY, TAILOR_START_DEADLINE_MS } from "@/lib/services/pipeline/run-analysis";
 import { STOPPED_PARTWAY } from "@/lib/domain/diff";
 import { ANALYSIS_TOKEN_CEILING } from "@/lib/domain/tokens";
 
@@ -176,5 +176,69 @@ describe("tailoring", () => {
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatch(/^\[pipeline\] tailor bullets=6 rewritten=3 verbatim=3 transient=1 checker=1 guard=1 ceiling=0 deadline=0 ms=\d+$/);
     expect(lines[0]).not.toContain("Shipped");
+  });
+});
+
+describe("takeover and failure", () => {
+  it("a takeover inherits the original function's start, so the tailor deadline still holds", async () => {
+    const T0 = new Date("2026-10-26T12:00:00Z").getTime();
+    vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(T0);
+    setup({ n: 4 });
+    const base = h.db.analysis.findFirst.getMockImplementation()!;
+    // The first claim loses; by the time the follower takes over, the original
+    // function's deadline has long passed and its claim is stale.
+    h.db.analysis.updateMany.mockReset();
+    h.db.analysis.updateMany.mockImplementationOnce(async () => {
+      vi.setSystemTime(T0 + RUN_LOCK_STALE_MS + TAILOR_START_DEADLINE_MS + 1);
+      return { count: 0 };
+    });
+    h.db.analysis.updateMany.mockResolvedValue({ count: 1 });
+    h.db.analysis.findFirst.mockImplementation(async (a: { select?: { status?: boolean } }) => a?.select?.status
+      ? { status: "parsing", scoreNote: null, runningAt: new Date(T0) }
+      : base(a));
+    await run();
+    expect(h.tailorBullet).not.toHaveBeenCalled();
+    const rows = h.db.tailoredBullet.createMany.mock.calls[0][0].data as { transform: string }[];
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((r) => r.transform === "verbatim")).toBe(true);
+    expect(logged()).toMatch(/deadline=4 /);
+  });
+
+  it("a throwing tailorBullet degrades rewriting, writes no drafts, and leaves ready and the other tabs alone", async () => {
+    setup({ n: 4 });
+    h.tailorBullet.mockRejectedValue(new Error("boom"));
+    const emit = await run();
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ stage: "rewriting", state: "degraded" }));
+    expect(h.db.$transaction).not.toHaveBeenCalled();
+    expect(h.db.analysis.update.mock.calls.filter((c) => c[0].data.status === "ready")).toHaveLength(1);
+    expect(h.generateQuestions).not.toHaveBeenCalled(); // resumed path: questions already exist
+    expect(h.buildLearningPlan).not.toHaveBeenCalled(); // resumed path: plan already exists
+  });
+
+  it("prep and learning still run when tailoring throws (fresh path)", async () => {
+    setup({ fresh: true, n: 4 });
+    h.db.analysis.findFirst.mockImplementation(async (a: { select?: { _count?: unknown } }) => a?.select?._count
+      ? { _count: { jdRequirements: 0, coverageItems: 0, resumeDrafts: 0, interviewQuestions: 0 }, learningPlan: null }
+      : { id: "a1", clerkUserId: "u1", profileId: "p1", rawText: "posting", title: "Engineer", company: "Acme", stageState: {}, status: "parsing" });
+    h.tailorBullet.mockRejectedValue(new Error("boom"));
+    await run();
+    expect(h.generateQuestions).toHaveBeenCalledTimes(1);
+    expect(h.buildLearningPlan).toHaveBeenCalledTimes(1);
+    expect(h.db.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("emits no rewriting progress after the degraded update", async () => {
+    setup({ n: 4 });
+    h.tailorBullet.mockImplementation(async ({ bullet }: { bullet: { id: string; text: string } }) => {
+      if (bullet.id === "b0") throw new Error("boom");
+      await new Promise((r) => setTimeout(r, 15));
+      return rewritten(bullet);
+    });
+    const emit = await run();
+    await new Promise((r) => setTimeout(r, 40)); // let the in-flight calls finish
+    const stages = emit.mock.calls.map(([u]) => `${u.stage}:${u.state}`);
+    const degradedAt = stages.indexOf("rewriting:degraded");
+    expect(degradedAt).toBeGreaterThan(-1);
+    expect(stages.slice(degradedAt + 1)).not.toContain("rewriting:running");
   });
 });

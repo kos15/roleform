@@ -115,6 +115,7 @@ async function followExistingRun(
   clerkUserId: string,
   analysisId: string,
   emit: StageEmitter,
+  startedAt: number,
 ): Promise<void> {
   const deadline = Date.now() + 280_000;
   while (Date.now() < deadline) {
@@ -159,7 +160,7 @@ async function followExistingRun(
     const abandoned = row.runningAt.getTime() < Date.now() - RUN_LOCK_STALE_MS;
     if (abandoned && (await claimRun(clerkUserId, analysisId))) {
       try {
-        await executeAnalysis({ clerkUserId, analysisId, emit });
+        await executeAnalysis({ clerkUserId, analysisId, emit, startedAt });
       } finally {
         await releaseRun(clerkUserId, analysisId);
       }
@@ -175,14 +176,17 @@ export async function runAnalysis(args: {
   emit: StageEmitter;
 }): Promise<void> {
   const { clerkUserId, analysisId, emit } = args;
+  // Taken before the claim so a takeover inherits this function's clock: the
+  // tailor deadline measures the platform's `maxDuration`, which started here.
+  const startedAt = Date.now();
 
   const claimed = await claimRun(clerkUserId, analysisId);
   if (!claimed) {
-    await followExistingRun(clerkUserId, analysisId, emit);
+    await followExistingRun(clerkUserId, analysisId, emit, startedAt);
     return;
   }
   try {
-    await executeAnalysis(args);
+    await executeAnalysis({ ...args, startedAt });
   } finally {
     await releaseRun(clerkUserId, analysisId);
   }
@@ -192,9 +196,10 @@ async function executeAnalysis(args: {
   clerkUserId: string;
   analysisId: string;
   emit: StageEmitter;
+  /** When the invoking function began; the tailor deadline counts from here. */
+  startedAt: number;
 }): Promise<void> {
-  const startedAt = Date.now();
-  const { clerkUserId, analysisId, emit } = args;
+  const { clerkUserId, analysisId, emit, startedAt } = args;
 
   const analysis = await db.analysis.findFirst({ where: { clerkUserId, id: analysisId } });
   if (!analysis) throw new Error("analysis not found");
@@ -527,6 +532,10 @@ async function executeAnalysis(args: {
       // ceiling. A throw rejects `mapLimit`, which stops new starts and lands in
       // the catch below, degrading the stage.
       let finished = 0;
+      // Set when mapLimit rejects. Calls already in flight still settle after
+      // the stage has been marked degraded; they must not report progress on it.
+      let stopped = false;
+      const tailorT0 = Date.now();
       const results = await mapLimit(ranked, TAILOR_CONCURRENCY, async (entry) => {
         let out: TailoredResult | null;
         const verbatim = (reason: string): TailoredResult => ({
@@ -571,18 +580,23 @@ async function executeAnalysis(args: {
         // member reloading mid-run (see `claimRun` above). Interpolated
         // across the stage's own 45–80% band by bullets finished so far.
         finished++;
-        emit({
-          stage: "rewriting",
-          state: "running",
-          progressPct: progressWithin("rewriting", finished, ranked.length),
-        });
+        if (!stopped) {
+          emit({
+            stage: "rewriting",
+            state: "running",
+            progressPct: progressWithin("rewriting", finished, ranked.length),
+          });
+        }
         return out;
+      }).catch((e) => {
+        stopped = true;
+        throw e;
       });
       tailored.push(...results.filter((r): r is TailoredResult => Boolean(r)));
 
       const t = tailorTally(tailored);
       console.log(
-        `[pipeline] tailor bullets=${t.bullets} rewritten=${t.rewritten} verbatim=${t.verbatim} transient=${t.transient} checker=${t.checker} guard=${t.guard} ceiling=${t.ceiling} deadline=${t.deadline} ms=${Date.now() - startedAt}`,
+        `[pipeline] tailor bullets=${t.bullets} rewritten=${t.rewritten} verbatim=${t.verbatim} transient=${t.transient} checker=${t.checker} guard=${t.guard} ceiling=${t.ceiling} deadline=${t.deadline} ms=${Date.now() - tailorT0}`,
       );
 
       const summary = await tailorSummary({
@@ -866,8 +880,7 @@ async function writeDrafts(args: {
     })),
   );
 
-  // Batch form: pgbouncer rules out an interactive transaction. All drafts and
-  // all their bullets land together or not at all.
+  // Batch form: one round trip, all or nothing — a reader sees no drafts or all of them.
   await db.$transaction([
     db.resumeDraft.createMany({ data: draftRows }),
     ...(bulletRows.length ? [db.tailoredBullet.createMany({ data: bulletRows })] : []),
