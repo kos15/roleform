@@ -37,7 +37,10 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 4: `/api/cron/catalog` route + middleware + `CRON_JOBS` entry~~ — 2026-10-26
 - [ ] Minor: tests/structure/cron.test.ts first-statement guard checks a function named `handle` but not that GET/POST export it — neji, Task 4 review
 - [ ] Minor: tests/app/cron-catalog.test.ts throw-test title says 'count-free log' — it asserts an error-free log — neji, Task 4 review
-- [ ] Task 5: `scripts/db/schedule.ts` schedules every `CRON_JOBS` job
+- [x] ~~Task 5: `scripts/db/schedule.ts` schedules every `CRON_JOBS` job~~ — 2026-10-26
+- [ ] scripts/db/schedule.ts: `vault.update_secret(id, secret)` keeps production's old description — pass name + 'Bearer token for /api/cron/* (N24)' (verify against a non-production DB) — neji, Task 5 review
+- [ ] scripts/db/schedule.ts: wrap unschedule+schedule in `sql.begin` so a dropped connection can't leave reminders unscheduled (pre-existing gap; verify against a non-production DB) — neji, Task 5 review
+- [ ] Minor: tests/services/cron.test.ts picks jobs by index — find by name — neji, Task 5 review
 - [ ] Task 6: seed stagger + checkCourseLink + catalogProblems gate; link-check alignment
 - [ ] Task 7: docs — N24, §8, §10, specs F8/F29, README, notifications, courses.ts header, schema `///`, corpus-health overdue30
 
