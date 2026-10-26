@@ -1433,6 +1433,22 @@ model SkillBundle {
   @@map("skill_bundles")
 }
 
+/// One row per successful production catalog sync (N25). Append-only; written last by `pnpm deploy:catalog`.
+/// CHECKs catalog_syncs_hash_hex and *_nonneg are hand-added in 20261026000000_catalog_syncs.
+model CatalogSync {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hash      String
+  courses   Int
+  skills    Int
+  templates Int
+  bundles   Int
+  gitSha    String?  @map("git_sha")
+  syncedAt  DateTime @default(now()) @map("synced_at") @db.Timestamptz
+
+  @@index([syncedAt])
+  @@map("catalog_syncs")
+}
+
 /**
  * ----------------------------------------------------------------- exports
  */

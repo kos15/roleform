@@ -56,7 +56,7 @@ the struck list is the record. New work gets its line *before* its first failing
 
 - [x] ~~Task 1: `scripts/deploy/gate.ts` (`isProductionBuild`, `skipLine`) + tests~~ — 2026-10-26
 - [x] ~~Task 2: pure `lib/catalog/seed-rows.ts` (`catalogSeedRows`, `catalogHash`, `SEED_FORMAT`), `scripts/catalog/catalog-writes.ts`, manual seed writes from rows; `verifiedAt` stamped on update only on a live verdict~~ — 2026-10-26
-- [ ] Task 3: `CatalogSync` model, migration `20261026000000_catalog_syncs` (hand-added CHECKs), `catalog_syncs` RLS on/no policy
+- [x] ~~Task 3: `CatalogSync` model, migration `20261026000000_catalog_syncs` (hand-added CHECKs), `catalog_syncs` RLS on/no policy~~ — 2026-10-26
 - [ ] Task 4: `pnpm deploy:catalog` — `syncCatalog` (hash gate, advisory lock, new-URL link check at concurrency 5, bundles, sync row last)
 - [ ] Task 5: `pnpm deploy:schedule` — `installSchedule` extracted to `scripts/db/install-schedule.ts`; `build` runs both deploy steps
 - [ ] Task 6: docs — N24 wording, new N25, §8 Jobs, §13 (policies run by every build, `CatalogSync`), README build order, `docs/notifications.md` §3/§5, specs F8 freshness, `.env.example` APP_URL
