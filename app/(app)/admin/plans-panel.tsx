@@ -12,7 +12,7 @@ import type { PlanRollup } from "@/lib/admin/plans";
  * The public plan catalog, editable (F31).
  *
  * What is saved here is what /pricing prints and what checkout charges from
- * the next order on — one row, read by both (lib/plans/catalog.ts). Saving
+ * the next order on — one row, read by both (lib/services/plans/catalog.ts). Saving
  * never moves an existing member: their caps are their own row, edited from
  * Members; a paid member picks up new caps when they next renew.
  *

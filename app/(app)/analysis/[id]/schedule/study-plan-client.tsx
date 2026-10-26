@@ -5,7 +5,7 @@ import { Bell, CalendarPlus, Check, ChevronDown, ChevronUp } from "lucide-react"
 import { saveStudyPlan, tickStudySession } from "@/app/actions/study";
 import { savePushSubscription } from "@/app/actions/push";
 import { useAuth } from "@clerk/nextjs";
-import { pushState, registration, rememberDevice, subscribe, type PushState } from "@/lib/push/client";
+import { pushState, registration, rememberDevice, subscribe, type PushState } from "@/lib/services/push/client";
 import {
   ALERT_LABEL,
   DAY_SET_LABEL,

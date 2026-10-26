@@ -14,7 +14,7 @@ import { SheetAccount } from "@/components/sheet-account";
 import { ProductTour, TourLauncher } from "@/components/product-tour";
 import { currentRole } from "@/lib/admin/role";
 import { HeaderGreeting } from "@/components/header-greeting";
-import { featureEnabled } from "@/lib/features";
+import { featureEnabled } from "@/lib/services/features";
 
 /** Signed-in and auth surfaces are a person's own data, not search results. */
 export const metadata: Metadata = { robots: { index: false, follow: false } };

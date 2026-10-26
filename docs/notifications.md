@@ -1,7 +1,7 @@
 # Notifications & the installable app — runbook (F29, F29.2)
 
 What it takes to run reminders in an environment, test them on real phones, and roll back.
-Behaviour is specified in `specs.md` §F29, §F29.1 and §F29.2; this is the runbook.
+Behaviour is specified in `docs/product/specs.md` §F29, §F29.1 and §F29.2; this is the runbook.
 
 ## 0. What to expect from Web Push (read first)
 
@@ -35,7 +35,7 @@ Set on Vercel (Production and Preview **separately** — never share keys across
 | Variable | Exposed to browser | Notes |
 |---|---|---|
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | yes | Baked in at build time — redeploy after setting it. |
-| `VAPID_PRIVATE_KEY` | **no** | Signs every push. Only `lib/push/send.ts` reads it. Rotating it invalidates every subscription (members turn notifications on again). |
+| `VAPID_PRIVATE_KEY` | **no** | Signs every push. Only `lib/services/push/send.ts` reads it. Rotating it invalidates every subscription (members turn notifications on again). |
 | `VAPID_SUBJECT` | no | `mailto:` or `https:` contact for push services. Defaults to support. |
 | `CRON_SECRET` | **no** | 32+ chars. Unset → the reminder route refuses every call. |
 
@@ -172,7 +172,7 @@ own account; **never test against real members' devices**.
 
 ## 7. Icons
 
-`pnpm icons` re-renders every app icon from the mark in `scripts/app-icons.ts`. Then bump
+`pnpm icons` re-renders every app icon from the mark in `scripts/ops/app-icons.ts`. Then bump
 `ICON_VERSION` (`lib/seo/icons.ts`) and the worker's `VERSION`: phones cache icons under their URL,
 and an already-installed iPhone app keeps its old icon until it is removed and re-added.
 

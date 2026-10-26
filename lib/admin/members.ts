@@ -9,9 +9,9 @@ import { effectivePlan } from "@/lib/domain/entitlements";
 import { grantedTokens } from "@/lib/db/queries/tokens";
 import { settlePlan } from "@/lib/db/queries/plan";
 import { type PlanId } from "@/lib/content/pricing";
-import { loadPlans } from "@/lib/plans/catalog";
+import { loadPlans } from "@/lib/services/plans/catalog";
 import { capsFromDefaults, workspaceDefaults } from "@/lib/admin/defaults";
-import { hashEmail } from "@/lib/email-hash";
+import { hashEmail } from "@/lib/shared/email-hash";
 
 /**
  * The member list behind the admin panel (F15).
@@ -151,7 +151,7 @@ export async function listMembers(): Promise<MemberList> {
 
   // PAY-2: the panel never quotes a plan that has already lapsed. A row whose
   // stored plan disagrees with `effectivePlan` is settled — written back to
-  // Free — before it is rendered, the same write `lib/auth.ts`'s allowance
+  // Free — before it is rendered, the same write `lib/services/auth.ts`'s allowance
   // checks perform the next time this member tries to do anything. Most rows
   // are unaffected and pass through unchanged.
   const plans = await loadPlans();

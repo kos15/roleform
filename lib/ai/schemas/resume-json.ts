@@ -243,7 +243,7 @@ export interface ExtractProfileResult {
   notices: ExtractionNotices;
 }
 
-/** The OCR pass's contract (lib/ai/transcribe.ts). */
+/** The OCR pass's contract (lib/ai/services/transcribe.ts). */
 export const TranscriptionSchema = z.object({
   text: z.string().describe("Every word on the page, in reading order. Headings on their own line; bullets start with \"- \"."),
 });

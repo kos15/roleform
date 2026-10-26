@@ -8,12 +8,12 @@ import {
   getTabCounts,
 } from "@/lib/db/queries/analysis";
 import { getStudyTabCount } from "@/lib/db/queries/study";
-import { readStageState } from "@/lib/pipeline/stages";
-import { backgroundRunning } from "@/lib/pipeline/background";
+import { readStageState } from "@/lib/services/pipeline/stages";
+import { backgroundRunning } from "@/lib/services/pipeline/background";
 import { BackgroundRefresh } from "@/components/background-pending";
 import { ResultsHeader } from "./results-header";
 import { AnalysisTabs } from "./analysis-tabs";
-import { featureStates } from "@/lib/features";
+import { featureStates } from "@/lib/services/features";
 import { PromoMarquee } from "@/components/promo-marquee";
 
 /**

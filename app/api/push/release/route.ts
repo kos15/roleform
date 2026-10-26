@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit } from "@/lib/services/rate-limit";
 
 /**
  * Forget this device after sign-out (F29.2).

@@ -1,12 +1,12 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUser } from "@/lib/services/auth";
 import { BUCKET_EXPORTS, BUCKET_RESUMES, removePrefix } from "@/lib/supabase/storage";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { setClerkName } from "@/lib/account/name";
+import { setClerkName } from "@/lib/services/account/name";
 
 /**
  * Account deletion (M7.4, specs §11).

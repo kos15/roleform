@@ -1,8 +1,9 @@
 import "server-only";
 import { DraftResumeSchema } from "../schemas/resume-json";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import type { ModelFailure } from "@/lib/domain/types";
 import { defineAgent } from "./define";
+import * as prompt from "../prompts/profile-reader";
 
 export interface ProfileReaderInput {
   /** Cleaned and clamped résumé text. */
@@ -34,11 +35,8 @@ export const profileReader = defineAgent({
   model: "writer",
   schema: DraftResumeSchema,
   system: SYSTEM.extractProfile,
-  staticContext: () => "Transcribe this résumé.",
-  dynamicContext: (i: ProfileReaderInput) =>
-    [`<resume_text>`, i.text, `</resume_text>`, ...(i.correction ? [``, `## Correction required`, i.correction] : [])].join(
-      "\n",
-    ),
+  staticContext: prompt.staticContext,
+  dynamicContext: prompt.dynamicContext,
   reasoningEffort: "medium",
   maxOutputTokens: (i) => ceilingFor(i.text.length, i.previousFailure),
   // Long résumés take a while; well inside the route's maxDuration.

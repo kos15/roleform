@@ -1,9 +1,10 @@
 import "server-only";
 import { revisionDeckSchema } from "../schemas/drill";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import type { DrillTopic } from "@/lib/domain/drill";
 import { defineAgent } from "./define";
-import { enumOf, roleLine, topicBlock, type DrillRole } from "./drill-prompt";
+import * as prompt from "../prompts/revision-writer";
+import { enumOf, type DrillRole } from "../prompts/drill";
 
 export interface RevisionWriterInput {
   role: DrillRole;
@@ -26,9 +27,8 @@ export const revisionWriter = defineAgent({
   model: "writer-fast",
   schema: (i: RevisionWriterInput) => revisionDeckSchema(enumOf(i.topics), i.count),
   system: SYSTEM.revisionCards,
-  staticContext: (i) => roleLine(i.role),
-  dynamicContext: (i) =>
-    [`Time to revise: ${i.minutes} minutes. Write exactly ${i.count} cards.`, topicBlock(i.topics)].join("\n"),
+  staticContext: prompt.staticContext,
+  dynamicContext: prompt.dynamicContext,
   reasoningEffort: "low",
   maxOutputTokens: (i) => (300 + i.count * 230) * 2,
   retries: 1,

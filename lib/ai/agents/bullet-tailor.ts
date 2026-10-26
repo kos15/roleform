@@ -1,10 +1,11 @@
 import "server-only";
 import { TailoredBulletSchema } from "../schemas/tailored-bullets";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import { checkFabrication } from "@/lib/domain/fabrication";
 import type { DomainBullet, DomainRequirement } from "@/lib/domain/types";
 import { defineAgent } from "./define";
-import { checkFabrication as checkWithJev } from "../checkers/fabrication";
+import * as prompt from "../prompts/bullet-tailor";
+import { checkFabrication as checkWithJev } from "../typesafe/fabrication";
 
 export interface BulletTailorInput {
   jobTitle: string;
@@ -29,17 +30,8 @@ export const bulletTailor = defineAgent({
   model: "writer",
   schema: TailoredBulletSchema,
   system: SYSTEM.tailorBullets,
-  staticContext: (i: BulletTailorInput) => `Role being applied for: ${i.jobTitle}`,
-  dynamicContext: (i) =>
-    [
-      `<requirement necessity="${i.requirement.necessity}">`,
-      i.requirement.text,
-      `</requirement>`,
-      ``,
-      `<bullet id="${i.bullet.id}">`,
-      i.bullet.text,
-      `</bullet>`,
-    ].join("\n"),
+  staticContext: prompt.staticContext,
+  dynamicContext: prompt.dynamicContext,
   reasoningEffort: "low",
   // 200 for the answer, the rest for reasoning; Task 8 measures.
   maxOutputTokens: 2_000,

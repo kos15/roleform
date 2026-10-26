@@ -6,7 +6,7 @@ import type { MailDelivery } from "@/lib/generated/prisma/enums";
  * The support inbox behind the admin panel (F16).
  *
  * The row is the durable record of a contact message and the mail is a
- * convenience on top of it (lib/mail/deliver.ts). This is the read path for the
+ * convenience on top of it (lib/services/mail/deliver.ts). This is the read path for the
  * row — which means it is the path that still works when the mail provider is
  * down, when a key expires, or when nobody set one up. That is the whole reason
  * it exists.

@@ -1,9 +1,9 @@
 import { db } from "@/lib/db";
-import { verifyWebhookSignature } from "@/lib/payments/razorpay";
+import { verifyWebhookSignature } from "@/lib/services/payments/razorpay";
 import { LEGACY_TOKEN_TOPUPS, PLAN_IDS, topupById, type PlanId } from "@/lib/content/pricing";
-import { capColumns, loadPlan } from "@/lib/plans/catalog";
-import { deliver } from "@/lib/mail/deliver";
-import { SUPPORT_EMAIL } from "@/lib/mail/addresses";
+import { capColumns, loadPlan } from "@/lib/services/plans/catalog";
+import { deliver } from "@/lib/services/mail/deliver";
+import { SUPPORT_EMAIL } from "@/lib/services/mail/addresses";
 
 /**
  * Razorpay payment lifecycle (F17, F19, F23). The second route handler that
@@ -24,7 +24,7 @@ import { SUPPORT_EMAIL } from "@/lib/mail/addresses";
  * Pro forever. Every purchase now EXTENDS `plan_expires_at` from
  * `greatest(now, current expiry)`, never sets it outright: buying again
  * before the current period ends adds 30 days on top, rather than resetting
- * the clock and quietly shortening what was already paid for. `lib/auth.ts`
+ * the clock and quietly shortening what was already paid for. `lib/services/auth.ts`
  * and `lib/admin/members.ts` settle the lapse back to Free on read — there is
  * no scheduler that does it on a timer (CLAUDE.md §8).
  *

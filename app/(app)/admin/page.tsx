@@ -4,12 +4,12 @@ import { listMembers, syncFromDirectory, workspaceStats } from "@/lib/admin/memb
 import { listHistory } from "@/lib/admin/history";
 import { workspaceDefaults } from "@/lib/admin/defaults";
 import { assertAdminOr404 } from "@/lib/admin/guard";
-import { adminKicker } from "@/lib/workspace";
+import { adminKicker } from "@/lib/services/workspace";
 import { inboxCounts, listContactMessages } from "@/lib/admin/inbox";
-import { isMailConfigured } from "@/lib/mail/config";
-import { featureStates } from "@/lib/features";
-import { loadPlans } from "@/lib/plans/catalog";
-import { listPromos } from "@/lib/promo/server";
+import { isMailConfigured } from "@/lib/services/mail/config";
+import { featureStates } from "@/lib/services/features";
+import { loadPlans } from "@/lib/services/plans/catalog";
+import { listPromos } from "@/lib/services/promo/server";
 import { AdminPanel } from "./admin-panel";
 import { InboxPanel } from "./inbox-panel";
 import { PlansPanel } from "./plans-panel";

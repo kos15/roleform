@@ -1,6 +1,6 @@
 /**
  * Bundle ranking — steps 3–5 of the bundle builder (roll-up, diversity, freeze).
- * PURE: the builder (`lib/learning/rebuild-bundles.ts`) gathers candidates from
+ * PURE: the builder (`lib/services/learning/rebuild-bundles.ts`) gathers candidates from
  * the database; everything that decides WHICH of them a bundle freezes lives
  * here, so it can be checked without one.
  *

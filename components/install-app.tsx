@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Download, EllipsisVertical, Share, SquarePlus } from "lucide-react";
 import { Button } from "@/components/ui";
 import { INSTALL_READY } from "@/components/pwa-register";
-import { IOS_PUSH_MIN, iosVersion, isIos, isStandalone } from "@/lib/push/client";
+import { IOS_PUSH_MIN, iosVersion, isIos, isStandalone } from "@/lib/services/push/client";
 
 /**
  * "Install Roleform" (F29). Four honest states:

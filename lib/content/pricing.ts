@@ -34,7 +34,7 @@ export interface Plan {
 
 /**
  * The DEFAULT catalog (F31). An admin can override any of these from the
- * panel; the live catalog is `loadPlans()` in lib/plans/catalog.ts, which
+ * panel; the live catalog is `loadPlans()` in lib/services/plans/catalog.ts, which
  * reads `plan_configs` and falls back to these rows for any plan nobody has
  * edited. Pure code that only needs ids or ordering may still read this.
  */

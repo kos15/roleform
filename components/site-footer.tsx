@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { BrandMark, Wordmark } from "@/components/brand";
-import { anyDegraded, pipelineHealth } from "@/lib/status/health";
+import { anyDegraded, pipelineHealth } from "@/lib/services/status/health";
 
 /**
  * The footer, on every surface (F13).

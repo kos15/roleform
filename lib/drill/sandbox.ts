@@ -13,7 +13,7 @@ import { sameValue, type CaseResult } from "@/lib/domain/drill";
  * Two callers, both server-side:
  *   - "Run tests" on a JavaScript submission (the user's code)
  *   - checking a generated challenge's own tests against its reference
- *     solution BEFORE a user ever sees them (lib/ai/drill.ts) — a test the
+ *     solution BEFORE a user ever sees them (lib/ai/services/drill.ts) — a test the
  *     model got wrong is dropped, not shown.
  *
  * No `server-only` import: the check script runs this from Node too.

@@ -2,8 +2,8 @@
 
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { checkPracticeAllowance, checkTokenAllowance, requireUser } from "@/lib/auth";
-import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { checkPracticeAllowance, checkTokenAllowance, requireUser } from "@/lib/services/auth";
+import { LIMITS, rateLimit } from "@/lib/services/rate-limit";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import {
   StoredAttemptSchema,
@@ -14,7 +14,7 @@ import {
   toRoundResult,
   toRoundView,
 } from "@/lib/db/queries/drill";
-import { generateChallenge, generateQuizRound, generateRevisionDeck, reviewCode } from "@/lib/ai/drill";
+import { generateChallenge, generateQuizRound, generateRevisionDeck, reviewCode } from "@/lib/ai/services/drill";
 import { StoredCardsSchema, StoredQuizSchema } from "@/lib/ai/schemas/drill";
 import { BANK, bankProblem } from "@/lib/drill/bank";
 import { runJsCases } from "@/lib/drill/sandbox";
@@ -46,7 +46,7 @@ import type {
   SolutionView,
   TestRun,
 } from "@/app/(app)/analysis/[id]/rapid/types";
-import { requireFeature } from "@/lib/features";
+import { requireFeature } from "@/lib/services/features";
 
 /**
  * F26 — rapid prep. Revise, a timed round, a timed coding challenge.

@@ -4,8 +4,9 @@ One résumé in, eleven tailored out — plus the questions this posting suggest
 exposes. **Nothing is invented**: bullets are reordered, reworded and re-weighted, and every
 generated bullet carries a foreign key to the user's own words.
 
-`CLAUDE.md` is the operating contract, `specs.md` the architecture, `plan.md` the milestone
-order. Read those before changing behaviour. This file is the runbook.
+`CLAUDE.md` is the operating contract, `docs/product/specs.md` the architecture,
+`docs/product/plan.md` the milestone order, and `PENDING.md` the open work. Read those before
+changing behaviour. This file is the runbook. Every change is test-first: `pnpm test`.
 
 ---
 
@@ -74,8 +75,7 @@ milestone, at the gate. These are the commands behind it.
 | `pnpm check:constraints` | ★ Constraint smoke test — one bad insert per guard (N1, N2, RLS) | M1 gate, once |
 | `pnpm check:fabrication` | ★ Fabrication eval — 30 bullets vs postings demanding absent skills | M4 gate |
 | `pnpm check:roundtrip` | ★ DOCX round-trip — render, re-import, compare (bar: 95%) | M6 gate |
-| `pnpm check:coverage` | Score fixtures, by hand, written down. Pure — no DB, no keys | anytime |
-| `pnpm check:jdstrip` | Boilerplate pre-strip fixtures (F24). Pure — no DB, no keys | anytime |
+| `pnpm test` | Every pure check (score, pre-strip, agents, quotas, lanes, push, jobs…) plus repo-shape rules. No DB, no keys | before every commit |
 | `pnpm check:drill` | Runs every DSA bank solution against its own tests — JavaScript in the QuickJS sandbox, Python via local `python3` (F26). No DB, no keys | whenever the bank changes |
 | `pnpm render:samples` | Renders all eleven templates to `.samples/`. Open them | anytime |
 | `pnpm check:links` | Catalog link check, refreshes `verified_at` | quarterly |
@@ -92,7 +92,7 @@ failure that would otherwise be expensive and silent.
 ### Current state of the checks
 
 ```
-pnpm check:coverage    PASS   all fixtures, including the hand-computed 61.11
+pnpm test (coverage)  PASS   all fixtures, including the hand-computed 61.11
 pnpm check:roundtrip   PASS   100% field recovery on all eleven templates
 pnpm render:samples    PASS   PDFs render in 34–123 ms, full text layer, ATS High/High/Medium/Medium/Low/Low
 pnpm build             PASS   clean; service-role client and DB adapter absent from every client chunk
@@ -212,7 +212,7 @@ lib/catalog/     skills canon + alias table · curated courses · deterministic 
 lib/render/      ats-rules (the badge) · pdf/ · docx/ · zip · shared render model
 lib/db/          index.ts (Prisma client) · policies.sql · queries/ (all scoped by subject)
 prisma/          schema.prisma is the truth · migrations/ (in-repo, generated)
-lib/pipeline/    the five stages, with per-tab degradation
+lib/services/pipeline/    the five stages, with per-tab degradation
 app/actions/     Server Actions · app/api/ streaming + webhooks only
 ```
 

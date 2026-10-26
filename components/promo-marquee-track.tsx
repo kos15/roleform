@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Sparkles, X } from "lucide-react";
-import type { PromoBanner } from "@/lib/promo/server";
+import type { PromoBanner } from "@/lib/services/promo/server";
 
 /**
  * The moving half of the promo strip (F32).

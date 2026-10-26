@@ -40,10 +40,10 @@
 
 **Interfaces:** `QuotaKey` gains `"practice"` (`label: "Practice sessions"`, `unit: "per month"`). `countPracticeThisCycle(clerkUserId: string, since: Date): Promise<number>` in `lib/db/queries/entitlement.ts` = rows created since cycle start in `revision_decks` + `quiz_rounds` + `coding_challenges`. `requirePracticeCap(clerkUserId): Promise<Result<null>>` in `lib/auth.ts`, using the existing `buildCapWall(…, "practice", …)` shape.
 
-- [ ] **Step 1:** Fixture: `QUOTAS.some(q => q.key === "practice")`; `PLANS.map(p => p.caps.practice)` deep-equals `[3, 40, 150]`; `displayCap("practice", 0) === "Off"`.
-- [ ] **Step 2:** `pnpm check:quotas` → FAIL; implement; → `ok`.
-- [ ] **Step 3:** Call `requirePracticeCap` before `buildRevisionDeck`, `startQuizRound` and challenge start in `app/actions/drill.ts` (not in code review). `pnpm typecheck` clean.
-- [ ] **Step 4:** Commit `feat(plans): practice sessions quota`.
+- [x] **Step 1:** Fixture: `QUOTAS.some(q => q.key === "practice")`; `PLANS.map(p => p.caps.practice)` deep-equals `[3, 40, 150]`; `displayCap("practice", 0) === "Off"`.
+- [x] **Step 2:** `pnpm check:quotas` → FAIL; implement; → `ok`.
+- [x] **Step 3:** Call `requirePracticeCap` before `buildRevisionDeck`, `startQuizRound` and challenge start in `app/actions/drill.ts` (not in code review). `pnpm typecheck` clean.
+- [x] **Step 4:** Commit `feat(plans): practice sessions quota`.
 
 ### Task 2: Analysis grants, new packs, webhook, conversion
 
@@ -51,12 +51,12 @@
 
 **Interfaces:** pure `analysesAvailable(args: { cap: number; usedThisCycle: number; bonusGranted: number; bonusSpent: number }): { allowed: boolean; fromBonus: boolean }`. Bonus is spent only after `usedThisCycle >= cap`; `bonusSpent` = analyses created this and earlier cycles beyond the cap, measured (same "by measurement" approach as `unspentTopups`). `convertedAnalyses(unspentTokens: number, runEstimate: number): number` = `Math.ceil(unspentTokens / runEstimate)`.
 
-- [ ] **Step 1:** Fixtures: cap 3 used 2 bonus 5 → allowed, not from bonus; cap 3 used 3 bonus 5 spent 0 → allowed, from bonus; cap 3 used 3 bonus 5 spent 5 → not allowed; `convertedAnalyses(30_001, 20_000) === 2`; `TOPUPS.map(t => [t.analyses, t.pricePaise])` deep-equals `[[5, 9900], [15, 24900]]`.
-- [ ] **Step 2:** `pnpm check:quotas` → FAIL; implement; → `ok`.
-- [ ] **Step 3:** Webhook: amount must equal the pack's `pricePaise`; duplicate `reference` → swallow as today.
-- [ ] **Step 4:** `topups:convert` script: dry-run by default printing counts only; `--apply` writes one `AnalysisGrant` per member with unspent tokens, `source: "token_conversion"`, `reference: "conv:<userId>"` (unique ⇒ idempotent). Pre-change `RUN_ESTIMATE` is copied into the script as a constant with a comment.
-- [ ] **Step 5:** Razorpay test mode on dev: buy `+5 analyses` → grant row; replay webhook → no second row. `pnpm typecheck` clean.
-- [ ] **Step 6:** Commit `feat(plans): extra-analysis packs replace token top-ups`.
+- [x] **Step 1:** Fixtures: cap 3 used 2 bonus 5 → allowed, not from bonus; cap 3 used 3 bonus 5 spent 0 → allowed, from bonus; cap 3 used 3 bonus 5 spent 5 → not allowed; `convertedAnalyses(30_001, 20_000) === 2`; `TOPUPS.map(t => [t.analyses, t.pricePaise])` deep-equals `[[5, 9900], [15, 24900]]`.
+- [x] **Step 2:** `pnpm check:quotas` → FAIL; implement; → `ok`.
+- [x] **Step 3:** Webhook: amount must equal the pack's `pricePaise`; duplicate `reference` → swallow as today.
+- [x] **Step 4:** `topups:convert` script: dry-run by default printing counts only; `--apply` writes one `AnalysisGrant` per member with unspent tokens, `source: "token_conversion"`, `reference: "conv:<userId>"` (unique ⇒ idempotent). Pre-change `RUN_ESTIMATE` is copied into the script as a constant with a comment.
+- [x] **Step 5:** Razorpay test mode on dev: buy `+5 analyses` → grant row; replay webhook → no second row. `pnpm typecheck` clean.
+- [x] **Step 6:** Commit `feat(plans): extra-analysis packs replace token top-ups`.
 
 ### Task 3: Tokens become the fair-use ceiling
 
@@ -64,10 +64,10 @@
 
 **Interfaces:** `fairUseCeiling(caps: Record<Exclude<QuotaKey,"tokens">, number>, worstCase: Record<SpendKind, number>, bonusAnalyses = 0): number` = Σ over metered ops (analyses → analysis worst case, answers, practice → max of revision/quiz/challenge, roadmaps 0, jobSearches 0, resumes/courses already inside an analysis) × 1.25 + bonusAnalyses × worstCase.analysis, rounded up to the next 10,000. Worst-case numbers come from agents-plan Task 8.
 
-- [ ] **Step 1:** Fixture: with worst cases `{ analysis: 40_000, answer: 3_000, revision: 6_000, quiz: 4_000, challenge: 8_000 }` and Pro caps (40 analyses, 40 answers, 40 practice) → `fairUseCeiling` equals `Math.ceil(((40*40000 + 40*3000 + 40*8000) * 1.25) / 10000) * 10000` (= 2,550,000); every `PLANS[p].caps.tokens >= fairUseCeiling(PLANS[p].caps, WORST_CASE)`.
-- [ ] **Step 2:** `pnpm check:quotas` → FAIL; implement; → `ok`.
-- [ ] **Step 3:** Token wall copy: title "You've reached this cycle's fair-use limit"; body "It resets on {date}." Exits unchanged except "Buy tokens" → "Buy extra analyses". No numbers.
-- [ ] **Step 4:** Commit `feat(plans): tokens become an internal fair-use ceiling`.
+- [x] **Step 1:** Fixture: with worst cases `{ analysis: 40_000, answer: 3_000, revision: 6_000, quiz: 4_000, challenge: 8_000 }` and Pro caps (40 analyses, 40 answers, 40 practice) → `fairUseCeiling` equals `Math.ceil(((40*40000 + 40*3000 + 40*8000) * 1.25) / 10000) * 10000` (= 2,550,000); every `PLANS[p].caps.tokens >= fairUseCeiling(PLANS[p].caps, WORST_CASE)`.
+- [x] **Step 2:** `pnpm check:quotas` → FAIL; implement; → `ok`.
+- [x] **Step 3:** Token wall copy: title "You've reached this cycle's fair-use limit"; body "It resets on {date}." Exits unchanged except "Buy tokens" → "Buy extra analyses". No numbers.
+- [x] **Step 4:** Commit `feat(plans): tokens become an internal fair-use ceiling`.
 
 ### Task 4: Remove tokens from every member surface
 
@@ -75,15 +75,15 @@
 
 **Interfaces:** gate script scans `app/**` (excluding `app/(app)/admin/**`, `app/actions/admin.ts`, `app/api/**`), `components/**`, `lib/content/**`, `lib/seo/**` for JSX text and string literals matching `/\btokens?\b/i`; allowlist comments, identifiers and import paths; exits 1 listing `file:line`.
 
-- [ ] **Step 1:** Write the gate; `pnpm check:tokencopy` → FAIL listing today's hits.
-- [ ] **Step 2:** Change surfaces until `pnpm check:tokencopy` → `ok`; `pnpm typecheck` clean.
-- [ ] **Step 3:** Look at /pricing, the nav, /profile, the analyse screen and a cap wall on the dev server (screenshots as earlier in this repo's history).
-- [ ] **Step 4:** Commit `feat(pricing): operation counts only — tokens removed from member surfaces`.
+- [x] **Step 1:** Write the gate; `pnpm check:tokencopy` → FAIL listing today's hits.
+- [x] **Step 2:** Change surfaces until `pnpm check:tokencopy` → `ok`; `pnpm typecheck` clean.
+- [x] **Step 3:** Look at /pricing, the nav, /profile, the analyse screen and a cap wall on the dev server (screenshots as earlier in this repo's history).
+- [x] **Step 4:** Commit `feat(pricing): operation counts only — tokens removed from member surfaces`.
 
 ### Task 5: Rules, specs, verification
 
 **Files:** `CLAUDE.md` N22 (append: "A quota may be internal — unprinted — only if it is a fair-use ceiling sized so every printed count binds first; the page then says 'Fair-use limit applies'."), `specs.md` F15/F17/F19 (practice quota, packs, fair use), `scripts/convert-token-topups.ts` run on preview with `--apply`.
 
-- [ ] **Step 1:** Update docs.
-- [ ] **Step 2:** Preview deploy: as a Free member hit the analyses cap, the practice cap, buy a pack in Razorpay test mode and run one more analysis; `pnpm check:quotas`, `pnpm check:tokencopy`, `pnpm typecheck` all `ok`.
-- [ ] **Step 3:** Commit `docs: N22 fair-use ceiling; specs for counts-only pricing`.
+- [x] **Step 1:** Update docs.
+- [x] **Step 2:** Preview deploy: as a Free member hit the analyses cap, the practice cap, buy a pack in Razorpay test mode and run one more analysis; `pnpm check:quotas`, `pnpm check:tokencopy`, `pnpm typecheck` all `ok`.
+- [x] **Step 3:** Commit `docs: N22 fair-use ceiling; specs for counts-only pricing`.

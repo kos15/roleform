@@ -7,7 +7,7 @@ import { JsonLd } from "@/components/json-ld";
 import { FaqList } from "@/components/faq-list";
 import { GUIDES, HOME_FAQS } from "@/lib/content/guides";
 import { faqSchema, graph, organizationSchema, softwareSchema, websiteSchema } from "@/lib/seo/schema";
-import { loadPlans } from "@/lib/plans/catalog";
+import { loadPlans } from "@/lib/services/plans/catalog";
 import { PromoMarquee } from "@/components/promo-marquee";
 import { pageMetadata } from "@/lib/seo/metadata";
 import { SITE_DESCRIPTION, SITE_TITLE } from "@/lib/seo/site";

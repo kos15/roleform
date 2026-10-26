@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/shared/utils";
 
 /**
  * The header's link group. The page you are on is set in the heavy weight,

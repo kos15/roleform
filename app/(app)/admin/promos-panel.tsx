@@ -6,7 +6,7 @@ import { createPromo, deletePromo, updatePromo } from "@/app/actions/admin-contr
 import { Button, ErrorRegion, Tag } from "@/components/ui";
 import { formatPrice, type Plan } from "@/lib/content/pricing";
 import { discountedPaise, generateCode } from "@/lib/domain/promo";
-import type { AdminPromo } from "@/lib/promo/server";
+import type { AdminPromo } from "@/lib/services/promo/server";
 
 /**
  * Promo codes (F32): generate, list, pause, take off the banner.

@@ -1,10 +1,11 @@
 import "server-only";
 import { generatedChallengeSchema, type StoredChallenge } from "../schemas/drill";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
-import { LANGUAGE_LABEL, parseTestCase, type CodeLanguage, type Difficulty, type DrillTopic, type Signature } from "@/lib/domain/drill";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
+import { parseTestCase, type CodeLanguage, type Difficulty, type DrillTopic, type Signature } from "@/lib/domain/drill";
 import { loadSandbox, runJsCasesSync } from "@/lib/drill/sandbox";
 import { defineAgent } from "./define";
-import { enumOf, roleLine, topicBlock, type DrillRole } from "./drill-prompt";
+import * as prompt from "../prompts/challenge-writer";
+import { enumOf, type DrillRole } from "../prompts/drill";
 
 export interface ChallengeWriterInput {
   role: DrillRole;
@@ -41,9 +42,8 @@ export const challengeWriter = defineAgent({
   model: "writer-fast",
   schema: (i: ChallengeWriterInput) => generatedChallengeSchema(enumOf(i.topics)),
   system: SYSTEM.codingChallenge,
-  staticContext: (i) => roleLine(i.role),
-  dynamicContext: (i) =>
-    [`Difficulty: ${i.difficulty}. Language for \`solution\`: ${LANGUAGE_LABEL[i.language]}.`, topicBlock(i.topics)].join("\n"),
+  staticContext: prompt.staticContext,
+  dynamicContext: prompt.dynamicContext,
   reasoningEffort: "low",
   maxOutputTokens: 9_600,
   retries: 1,

@@ -11,9 +11,9 @@ import { WORST_CASE, tokenBalance, type TokenBalance } from "@/lib/domain/tokens
  * else is measured — usage from `ai_runs`, top-ups from `token_grants`. There
  * is no counter to decrement, so no crash between two writes can drift the
  * balance, and a run that dies half-way costs exactly the tokens it burned.
- * Same rule that removed the analyses refund path (lib/auth.ts).
+ * Same rule that removed the analyses refund path (lib/services/auth.ts).
  *
- * `ai_runs` rows are written even when a call fails (lib/ai/run.ts records a
+ * `ai_runs` rows are written even when a call fails (lib/ai/openai/run.ts records a
  * schema-invalid run with zero tokens), so a failed stage contributes its real
  * cost and nothing more. That is the honest answer to "was I charged for the
  * run that broke": yes, for the tokens it actually spent.

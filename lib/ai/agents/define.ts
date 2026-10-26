@@ -1,12 +1,12 @@
 import "server-only";
 import type { z } from "zod";
-import { runStructured, type RunOptions, type RunOutcome } from "../run";
-import type { ReasoningEffort } from "../models";
-import type { CheckVerdict } from "../checkers/types";
+import { runStructured, type RunOptions, type RunOutcome } from "../openai/run";
+import type { ReasoningEffort } from "../openai/models";
+import type { CheckVerdict } from "../typesafe/types";
 import type { Result } from "@/lib/domain/types";
-import { PROMPT_SEPARATOR } from "./prompt";
+import { PROMPT_SEPARATOR } from "../prompts/assemble";
 import { applyInputGuards, injectionCheckText, outputGuardProblem, type GuardId } from "./guards";
-import { checkInjection } from "../checkers/injection";
+import { checkInjection } from "../typesafe/injection";
 
 /**
  * One agent per AI task (agent design §6.1).

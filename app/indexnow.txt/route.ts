@@ -1,7 +1,7 @@
 /**
  * IndexNow key file. Bing (which grounds Copilot and ChatGPT search), Yandex,
  * Seznam and Naver accept instant "this URL changed" pings from sites that can
- * prove ownership with this key; scripts/indexnow.ts sends them.
+ * prove ownership with this key; scripts/ops/indexnow.ts sends them.
  */
 export const dynamic = "force-dynamic";
 

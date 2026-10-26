@@ -5,7 +5,7 @@
 > `/scrape` → `/rank` → `/apply` → `/outcome` loop, built from portal CLIs, prompt files and
 > small Python state tools. This document lists everything it does to find jobs, decides
 > what Roleform takes from each item, and records how the rebuilt `/jobs` page does it.
-> The spec of record is `specs.md` §F22 and §F22.1.
+> The spec of record is `docs/product/specs.md` §F22 and §F22.1.
 
 ---
 
@@ -81,7 +81,7 @@ never a number, a ring or "match"), N7 (no PII in logs).
 |---|---|---|
 | R1, R2 | **Adopt** | `JobSource` already is this contract. It now returns a `SourceRun` (status, listings, dropped count, reason) instead of swallowing failures. `JOBS_DISABLED_SOURCES` is the toggle; a disabled source is reported as such. |
 | R3 | **Adapt** | LinkedIn guest pages and the Danish HTML portals are scraping: **refused** (N17). freehire.me is a documented public API whose terms (read 2026-10-14, last updated 2026-08-10) forbid only "scraping beyond our documented API": **adopted** as the third source, beside Adzuna and Jooble. LinkedIn, Naukri, Indeed and Glassdoor stay as deep links out, which fetch nothing. |
-| R4 | **Adopt** | `lib/jobs/sources/freehire.ts`. Its full description, `skills[]`, `work_mode`, `experience_years_min`, `closed_at` and repost/mass-posting signals are kept on `job_listings`. A listing with a full description hands the whole posting to `/analyze`, not a snippet. |
+| R4 | **Adopt** | `lib/services/jobs/sources/freehire.ts`. Its full description, `skills[]`, `work_mode`, `experience_years_min`, `closed_at` and repost/mass-posting signals are kept on `job_listings`. A listing with a full description hands the whole posting to `/analyze`, not a snippet. |
 | R5, R7 | **Adopt** | Parallel per source; per-source 8 s budget; one bounded retry on 429/5xx inside that budget; a failed source is named in the results. |
 | R6, R8 | **Refuse** | A web-search fallback is a search engine standing in for a scraper; a browser-UA retry is evasion. Neither is a documented API (N17). |
 | R9, R10 | **Adopt** | Up to three title variants per search (the member's stated titles; else their recent positions; else a skill-led query), each run against every source. |
@@ -146,7 +146,7 @@ a plain request. Naukri, Indeed, Glassdoor, foundit and Instahyre answer 403, an
 would be bot evasion. To widen coverage without scraping, three documented ATS posting APIs were
 added instead: **Greenhouse, Lever and Ashby**. They have no keyword search, so a curated list of
 employer boards is read (cached 30 min, shared in flight) and filtered on our side by the triage's
-own title rule plus the member's city, country or remote preference. See `specs.md` §F22.2.
+own title rule plus the member's city, country or remote preference. See `docs/product/specs.md` §F22.2.
 
 ```
 planKeywords ─► greenhouse ─┐   boardsFor(ats) ─► cachedJson(board) ×N (30 min, shared)

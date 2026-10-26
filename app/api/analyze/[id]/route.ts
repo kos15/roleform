@@ -1,10 +1,10 @@
 import { after } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { RUN_LOCK_STALE_MS, runAnalysis } from "@/lib/pipeline/run-analysis";
+import { RUN_LOCK_STALE_MS, runAnalysis } from "@/lib/services/pipeline/run-analysis";
 import { getAnalysis } from "@/lib/db/queries/analysis";
-import { checkTokenAllowance } from "@/lib/auth";
+import { checkTokenAllowance } from "@/lib/services/auth";
 import { db } from "@/lib/db";
-import type { StageUpdate } from "@/lib/pipeline/stages";
+import type { StageUpdate } from "@/lib/services/pipeline/stages";
 
 /**
  * The streamed pipeline (F3).

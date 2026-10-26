@@ -8,7 +8,7 @@ import { Button, Card, ErrorRegion, Input, Tag } from "@/components/ui";
 import { CapWallDialog } from "@/components/cap-wall";
 import { searchJobs, saveJob } from "@/app/actions/jobs";
 import { POSTED_WITHIN_OPTIONS, type JobQuery } from "@/lib/domain/job-query";
-import type { ListingCardView, ResultsView } from "@/lib/jobs/results";
+import type { ListingCardView, ResultsView } from "@/lib/services/jobs/results";
 import type { Tier } from "@/lib/domain/job-triage";
 import type { CapWall } from "@/lib/domain/quotas";
 import { JOB_PORTALS } from "@/lib/domain/job-portals";

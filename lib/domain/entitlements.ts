@@ -85,7 +85,7 @@ export function formatCap(cap: number, zeroLabel = "Off"): string {
  * past — no scheduler settles this (CLAUDE.md §8), so every reader of "what
  * plan is this member on" has to ask the question fresh, on read, against the
  * clock. This is the ONE function that is allowed to answer it: a member's
- * plan and caps are read through this everywhere except `lib/auth.ts#settlePlan`
+ * plan and caps are read through this everywhere except `lib/services/auth.ts#settlePlan`
  * (which writes the mirror back) and `lib/admin/members.ts` (which settles the
  * same way for the panel). A direct reader of `users.plan` anywhere else is a
  * bug (rules.md PAY-2).
@@ -149,7 +149,7 @@ export function convertedAnalyses(unspentTokens: number, runEstimate: number): n
  * the migration that made tokens a fair-use ceiling raised `cap_tokens`, and
  * measuring old overruns against the raised figure would forgive every one of
  * them — a spent top-up would convert as if it were new. Used only by
- * `scripts/convert-token-topups.ts`. Plan defaults; a hand-set pre-change cap
+ * `scripts/db/convert-token-topups.ts`. Plan defaults; a hand-set pre-change cap
  * is not recorded anywhere, so the plan's figure is the honest approximation.
  */
 export const PRE_CHANGE_ALLOWANCE = { free: 60_000, pro: 800_000, ultra: 3_000_000 } as const;

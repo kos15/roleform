@@ -2,13 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
-import { rateLimit, LIMITS } from "@/lib/rate-limit";
+import { requireUser } from "@/lib/services/auth";
+import { rateLimit, LIMITS } from "@/lib/services/rate-limit";
 import { z } from "zod";
-import { extractText, MAX_UPLOAD_BYTES } from "@/lib/extract/text";
-import { MAX_RESUME_CHARS } from "@/lib/extract/normalise";
-import { EXTRACT_ATTEMPTS, extractProfile as extractProfileAi } from "@/lib/ai/extract-profile";
-import { transcribeDocument } from "@/lib/ai/transcribe";
+import { extractText, MAX_UPLOAD_BYTES } from "@/lib/services/extract/text";
+import { MAX_RESUME_CHARS } from "@/lib/services/extract/normalise";
+import { EXTRACT_ATTEMPTS, extractProfile as extractProfileAi } from "@/lib/ai/services/extract-profile";
+import { transcribeDocument } from "@/lib/ai/services/transcribe";
 import { BUCKET_RESUMES, downloadObject, resumePath, uploadObject } from "@/lib/supabase/storage";
 import { commitProfile as commitProfileDb, saveProfileEdit } from "@/lib/db/queries/profile";
 import {
@@ -18,7 +18,7 @@ import {
 } from "@/lib/ai/schemas/resume-json";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 import type { ExtractProfileResult } from "@/lib/ai/schemas/resume-json";
-import { fillClerkNameIfBlank } from "@/lib/account/name";
+import { fillClerkNameIfBlank } from "@/lib/services/account/name";
 
 /**
  * Onboarding (F1, specs §14).
@@ -214,7 +214,7 @@ const ExtractRequestSchema = z.object({
 /**
  * One extraction attempt. The client calls this up to EXTRACT_ATTEMPTS times
  * and shows each one, passing back why the last one failed so the next is
- * adjusted rather than repeated (lib/ai/extract-profile.ts).
+ * adjusted rather than repeated (lib/ai/services/extract-profile.ts).
  */
 export async function extractProfile(
   request: z.input<typeof ExtractRequestSchema>,

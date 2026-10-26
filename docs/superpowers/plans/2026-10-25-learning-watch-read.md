@@ -38,9 +38,9 @@
 
 **Files:** Modify: `pnpm-workspace.yaml`
 
-- [ ] **Step 1:** Replace each `set this to true or false` value with `true` (`@prisma/engines`, `esbuild`, `prisma`, `sharp`).
-- [ ] **Step 2:** Run `pnpm typecheck`. Expected: exits 0, no "packages field missing" error.
-- [ ] **Step 3:** Commit `chore: settle pnpm allowBuilds so scripts run`.
+- [x] **Step 1:** Replace each `set this to true or false` value with `true` (`@prisma/engines`, `esbuild`, `prisma`, `sharp`).
+- [x] **Step 2:** Run `pnpm typecheck`. Expected: exits 0, no "packages field missing" error.
+- [x] **Step 3:** Commit `chore: settle pnpm allowBuilds so scripts run`.
 
 ### Task 1: Schema — lanes, doc kind, overview flag, TTL stamp, per-lane quota
 
@@ -55,18 +55,18 @@
 - `SkillGap.cappedLanes Lane[] @default([]) @map("capped_lanes")`
 - `capCourses` defaults `4` → `2`
 
-- [ ] **Step 1:** Edit the schema, then `pnpm db:migrate:dev --create-only --name learning_lanes`.
-- [ ] **Step 2:** Append hand SQL to the generated migration, in this order:
+- [x] **Step 1:** Edit the schema, then `pnpm db:migrate:dev --create-only --name learning_lanes`.
+- [x] **Step 2:** Append hand SQL to the generated migration, in this order:
   - backfill `courses.doc_kind = 'official'` where `type = 'doc'`; backfill `checked_at = verified_at::timestamptz`;
   - `ALTER TABLE courses ADD CONSTRAINT courses_doc_needs_kind CHECK (type <> 'doc' OR doc_kind IS NOT NULL)`;
   - backfill `learning_steps.lane` from the joined course type (`video`/`course` → `watch`, else `read`) — add the column nullable, backfill, then `SET NOT NULL`;
   - backfill `is_primary = true` for the lowest-`ordinal` step of each `gap_id` (`DISTINCT ON (gap_id) … ORDER BY gap_id, ordinal`);
   - `CREATE UNIQUE INDEX learning_steps_one_primary ON learning_steps (gap_id) WHERE is_primary`;
   - for `users`, `workspace_settings`, `plan_configs`: `UPDATE … SET cap_courses = LEAST(3, CEIL(cap_courses / 2.0))`, drop the old range CHECKs (`users_cap_courses_range`, `workspace_settings_cap_courses_range`, `plan_configs_cap_courses`) and re-add each as `BETWEEN 0 AND 3`.
-- [ ] **Step 3:** `pnpm db:migrate:dev` against local. Expected: applies cleanly.
-- [ ] **Step 4 (Review Focus 1):** In `psql`, confirm `select gap_id, count(*) from learning_steps where is_primary group by 1 having count(*) > 1;` returns 0 rows, and `insert` of a `doc` course with null `doc_kind` fails with `courses_doc_needs_kind`.
-- [ ] **Step 5:** `pnpm db:policies` (no new table, but confirm it still applies). `pnpm typecheck` passes.
-- [ ] **Step 6:** Commit `feat(db): lanes, doc kind, overview flag, checked_at, per-lane course cap`.
+- [x] **Step 3:** `pnpm db:migrate:dev` against local. Expected: applies cleanly.
+- [x] **Step 4 (Review Focus 1):** In `psql`, confirm `select gap_id, count(*) from learning_steps where is_primary group by 1 having count(*) > 1;` returns 0 rows, and `insert` of a `doc` course with null `doc_kind` fails with `courses_doc_needs_kind`.
+- [x] **Step 5:** `pnpm db:policies` (no new table, but confirm it still applies). `pnpm typecheck` passes.
+- [x] **Step 6:** Commit `feat(db): lanes, doc kind, overview flag, checked_at, per-lane course cap`.
 
 ### Task 2: Pure lane rules + per-lane quota values
 
@@ -81,7 +81,7 @@
 - `export const MAX_PER_LANE = 3`
 - `export function perLaneCap(uncapped: boolean, capCourses: number): number` — `uncapped ? 3 : clamp(capCourses, 0, 3)`.
 
-- [ ] **Step 1: Failing fixture** `scripts/lanes-fixtures.ts`:
+- [x] **Step 1: Failing fixture** `scripts/lanes-fixtures.ts`:
   ```ts
   assert.equal(laneOf("video"), "watch"); assert.equal(laneOf("course"), "watch");
   assert.equal(laneOf("doc"), "read"); assert.equal(laneOf("roadmap"), "read"); assert.equal(laneOf("repo"), "read");
@@ -91,10 +91,10 @@
   assert.equal(q.max, 3); assert.equal(q.label, "Videos and docs"); assert.equal(q.unit, "per lane, per gap");
   assert.deepEqual(PLANS.map((p) => p.caps.courses), [1, 2, 3]);
   ```
-- [ ] **Step 2:** Run it. Expected: FAIL (module not found).
-- [ ] **Step 3:** Implement `lib/domain/lanes.ts`; set the `courses` quota `max: 3`, label/unit as above, description "Vetted videos and docs offered per lane for each unevidenced requirement. Gaps are always shown, with or without material."; `PLANS` caps courses `1 / 2 / 3`; `NOTES.courses` → "The gap is always shown, with or without a video or doc beside it."
-- [ ] **Step 4:** Run fixture → PASS. Run `pnpm check:quotas` → PASS (update its expectations if it pins 6).
-- [ ] **Step 5:** Commit `feat(domain): lanes and per-lane course cap`.
+- [x] **Step 2:** Run it. Expected: FAIL (module not found).
+- [x] **Step 3:** Implement `lib/domain/lanes.ts`; set the `courses` quota `max: 3`, label/unit as above, description "Vetted videos and docs offered per lane for each unevidenced requirement. Gaps are always shown, with or without material."; `PLANS` caps courses `1 / 2 / 3`; `NOTES.courses` → "The gap is always shown, with or without a video or doc beside it."
+- [x] **Step 4:** Run fixture → PASS. Run `pnpm check:quotas` → PASS (update its expectations if it pins 6).
+- [x] **Step 5:** Commit `feat(domain): lanes and per-lane course cap`.
 
 ### Task 3: Catalog shape, YouTube oEmbed liveness, dry check
 
@@ -110,12 +110,12 @@
 - `export const KNOWN_CREATORS: Record<string, string[]>` keyed by taxonomy root (e.g. `"Frontend"`, `"DevOps"`) — curator guidance.
 - `export function catalogProblems(courses: CourseDef[], skills: string[]): string[]` (pure, in `scripts/catalog-check.ts` or `lib/catalog/courses.ts`): every skill has ≥1 entry with `skills[0] === name` in each lane; every `doc` has `docKind`; no URL contains `/shorts/`; no duplicate URL.
 
-- [ ] **Step 1: Failing fixture** `scripts/liveness-fixtures.ts` — inject `fetch` (add optional `fetchImpl` param to `checkVideo`): 200 `{author_name:"Fireship"}` → `{liveness:"live", authorName:"Fireship"}`; 404 → dead; 400 → dead; 403 → live; thrown error → blocked. Plus `catalogProblems` cases: a `/shorts/` URL, a doc without `docKind`, a skill with no Read entry — each yields one problem string naming the skill/URL.
-- [ ] **Step 2:** Run → FAIL.
-- [ ] **Step 3:** Implement. `scripts/catalog-check.ts` (no DB): runs `catalogProblems`, then `checkCourseLink` on every entry (concurrency 5); for YouTube entries, fails when `authorName` is non-null and ≠ `def.author` (case-insensitive, trimmed); warns when `author` ∉ `KNOWN_CREATORS` for its skill's root. Exit 1 on any problem/dead/mismatch; prints a per-skill table `skill · lane · author · title · url`.
-- [ ] **Step 4 (Review Focus 5):** fixture also covers `youtu.be/<id>` and `youtube.com/playlist?list=<id>` routing to `checkVideo`. Run → PASS.
-- [ ] **Step 5:** Backfill `type` + `docKind` on the existing ~90 `COURSES` entries (roadmap helper sets `type: "roadmap"`). `pnpm check:catalog` will still fail on coverage — expected until Task 7.
-- [ ] **Step 6:** Commit `feat(catalog): explicit types, oEmbed liveness, catalog dry check`.
+- [x] **Step 1: Failing fixture** `scripts/liveness-fixtures.ts` — inject `fetch` (add optional `fetchImpl` param to `checkVideo`): 200 `{author_name:"Fireship"}` → `{liveness:"live", authorName:"Fireship"}`; 404 → dead; 400 → dead; 403 → live; thrown error → blocked. Plus `catalogProblems` cases: a `/shorts/` URL, a doc without `docKind`, a skill with no Read entry — each yields one problem string naming the skill/URL.
+- [x] **Step 2:** Run → FAIL.
+- [x] **Step 3:** Implement. `scripts/catalog-check.ts` (no DB): runs `catalogProblems`, then `checkCourseLink` on every entry (concurrency 5); for YouTube entries, fails when `authorName` is non-null and ≠ `def.author` (case-insensitive, trimmed); warns when `author` ∉ `KNOWN_CREATORS` for its skill's root. Exit 1 on any problem/dead/mismatch; prints a per-skill table `skill · lane · author · title · url`.
+- [x] **Step 4 (Review Focus 5):** fixture also covers `youtu.be/<id>` and `youtube.com/playlist?list=<id>` routing to `checkVideo`. Run → PASS.
+- [x] **Step 5:** Backfill `type` + `docKind` on the existing ~90 `COURSES` entries (roadmap helper sets `type: "roadmap"`). `pnpm check:catalog` will still fail on coverage — expected until Task 7.
+- [x] **Step 6:** Commit `feat(catalog): explicit types, oEmbed liveness, catalog dry check`.
 
 ### Task 4: Bundles and selection per lane
 
@@ -133,14 +133,14 @@
   - `export async function rebuildBundles(skillIds?: string[]): Promise<{ written: number; empty: number }>` — same algorithm, but `BUNDLE_SIZE` becomes per lane (`3` watch + `3` read, total ≤ 6) and `MAX_PER_AUTHOR` (2) is counted per lane.
   - `MAX_RESOURCES_PER_GAP` removed; callers use `MAX_PER_LANE`.
 
-- [ ] **Step 1: Failing fixture** `scripts/selection-fixtures.ts`:
+- [x] **Step 1: Failing fixture** `scripts/selection-fixtures.ts`:
   - bundle of 3 videos (one `isOverview`, shortest) + 2 docs (one official) → `selectLanes(..., 2)` gives `watch[0]` = the non-overview full course, `read[0]` = official doc.
   - (Review Focus 2) bundle of docs only → `watch` is `[]`, `read.length > 0`.
   - (Review Focus 3) `perLane = 1` → exactly one per lane.
-- [ ] **Step 2:** Run → FAIL.
-- [ ] **Step 3:** Implement; `lookupBundles` selects and maps `docKind`, `isOverview`. `rebuildBundles` reads `courseSkill` + course `status: "active"` exactly as the script did; with `skillIds` given, only those skills' bundles are rewritten.
-- [ ] **Step 4:** Run fixture → PASS. `pnpm bundles:rebuild` locally → prints written/empty counts, exits 0.
-- [ ] **Step 5:** Commit `feat(learning): per-lane bundles and selection`.
+- [x] **Step 2:** Run → FAIL.
+- [x] **Step 3:** Implement; `lookupBundles` selects and maps `docKind`, `isOverview`. `rebuildBundles` reads `courseSkill` + course `status: "active"` exactly as the script did; with `skillIds` given, only those skills' bundles are rewritten.
+- [x] **Step 4:** Run fixture → PASS. `pnpm bundles:rebuild` locally → prints written/empty counts, exits 0.
+- [x] **Step 5:** Commit `feat(learning): per-lane bundles and selection`.
 
 ### Task 5: Plan with one primary per gap; readers honour it
 
@@ -155,13 +155,13 @@
   - `LearningStepView` gains `lane: Lane`, `docKind: "official" | "tutorial" | null`, `isPrimary: boolean`. `LearningGapView` gains `cappedLanes: Lane[]`.
   - `CompileLearningStep` gains `skillName: string`; roadmap label for a learning step becomes `Learn ${short(skillName, 50)}` (entry label suffix kept when present).
 
-- [ ] **Step 1: Failing fixture** `scripts/primary-fixtures.ts` (pure parts): `primaryOf` cases (videos present → top video; docs only → top doc; empty → null); `compileRoadmap` with one learning step for "Kubernetes" → label `Learn Kubernetes`.
-- [ ] **Step 2:** Run → FAIL.
-- [ ] **Step 3:** In `build-plan.ts`: `perLane = perLaneCap(isUncapped(account.role), account.capCourses)`; per gap `lanes = selectLanes(bundle, ctx, perLane)`; `cappedLanes` = lanes where the bundle held more items of that lane than `perLane`; `plannable` contains **only** `primaryOf(lanes)`; S6 receives only scheduled primaries (unchanged cost). Write every selected resource of both lanes as a `LearningStep` with `lane`, `isPrimary` (true only for a scheduled primary); non-primary rows take the primary's `ordinal`/`startsAtMin` (0/0 if no scheduled primary) and `note: ""`. Write `cappedLanes` on the `SkillGap`. Corpus-gap/fallback logic keys off "both lanes empty".
-- [ ] **Step 4:** In `getLearningPlan`, `plannable` maps only `isPrimary` steps; non-primary steps get `deferred: false`. In `roadmap.ts` and `study.ts` queries add `where: { isPrimary: true }` to `steps`; `fallbackGaps` / topic filter still use "no primary step".
-- [ ] **Step 5 (Review Focus 4):** fixture asserts `solvePlan([primaryLongerThanBudget], 30).deferred.length === 1`; manual: open a Learning tab with a 30-min budget where the primary is longer → primary greyed, alternatives shown normally.
-- [ ] **Step 6:** Run fixture → PASS; `pnpm check:coverage`, `pnpm typecheck` → PASS.
-- [ ] **Step 7:** Commit `feat(learning): one primary per gap; alternatives carry no budget`.
+- [x] **Step 1: Failing fixture** `scripts/primary-fixtures.ts` (pure parts): `primaryOf` cases (videos present → top video; docs only → top doc; empty → null); `compileRoadmap` with one learning step for "Kubernetes" → label `Learn Kubernetes`.
+- [x] **Step 2:** Run → FAIL.
+- [x] **Step 3:** In `build-plan.ts`: `perLane = perLaneCap(isUncapped(account.role), account.capCourses)`; per gap `lanes = selectLanes(bundle, ctx, perLane)`; `cappedLanes` = lanes where the bundle held more items of that lane than `perLane`; `plannable` contains **only** `primaryOf(lanes)`; S6 receives only scheduled primaries (unchanged cost). Write every selected resource of both lanes as a `LearningStep` with `lane`, `isPrimary` (true only for a scheduled primary); non-primary rows take the primary's `ordinal`/`startsAtMin` (0/0 if no scheduled primary) and `note: ""`. Write `cappedLanes` on the `SkillGap`. Corpus-gap/fallback logic keys off "both lanes empty".
+- [x] **Step 4:** In `getLearningPlan`, `plannable` maps only `isPrimary` steps; non-primary steps get `deferred: false`. In `roadmap.ts` and `study.ts` queries add `where: { isPrimary: true }` to `steps`; `fallbackGaps` / topic filter still use "no primary step".
+- [x] **Step 5 (Review Focus 4):** fixture asserts `solvePlan([primaryLongerThanBudget], 30).deferred.length === 1`; manual: open a Learning tab with a 30-min budget where the primary is longer → primary greyed, alternatives shown normally.
+- [x] **Step 6:** Run fixture → PASS; `pnpm check:coverage`, `pnpm typecheck` → PASS.
+- [x] **Step 7:** Commit `feat(learning): one primary per gap; alternatives carry no budget`.
 
 ### Task 6: Watch | Read lanes UI
 
@@ -172,11 +172,11 @@
 **Interfaces — Consumes:** `LearningGapView.steps[].{lane, docKind, isPrimary, deferred}`, `cappedLanes` (Task 5).
 - Produces: `export function Lanes({ steps, cappedLanes }: { steps: LearningStepView[]; cappedLanes: Lane[] })`.
 
-- [ ] **Step 1:** Build `Lanes`: grid `[grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))]` so it stacks Watch-first on phones. Lane heading: 30px pill circle (`bg-[var(--color-sage-500)]` + `Play`, or `bg-[var(--color-accent-500)]` + `BookOpen`) + `eyebrow` "Watch"/"Read". Each row keeps today's anatomy (author, title, entry label, note, price, length, Open ↗) with the lane icon replacing `mark`; docs show `<Tag>` "Official"/"Tutorial"; non-primary rows show muted "or watch this instead" / "or read this instead"; deferred primary keeps `opacity-50` + "Outside your budget". Empty lane → muted line from Global Constraints. Lane in `cappedLanes` → `<Link href="/pricing">` "More videos on a higher plan" / "More reading on a higher plan".
-- [ ] **Step 2:** Swap the step list in `page.tsx` for `<Lanes …/>`; keep `FallbackNote` when **both** lanes are empty. Header count `scheduled` counts only `isPrimary && !deferred`.
-- [ ] **Step 3:** `pnpm typecheck`; grep the two new/changed files for `#[0-9a-f]{3,6}` → none.
-- [ ] **Step 4:** `pnpm dev`, open a ready analysis's Learning tab at desktop and 375px width. Expected: two lanes, correct icons, stacking, empty-lane copy on a single-lane skill, budget greying. (Review Focus 3: set a member's `cap_courses = 1` locally → 1 + 1 and the higher-plan line where applicable.)
-- [ ] **Step 5:** Commit `feat(learning): Watch | Read lanes with type icons`.
+- [x] **Step 1:** Build `Lanes`: grid `[grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr))]` so it stacks Watch-first on phones. Lane heading: 30px pill circle (`bg-[var(--color-sage-500)]` + `Play`, or `bg-[var(--color-accent-500)]` + `BookOpen`) + `eyebrow` "Watch"/"Read". Each row keeps today's anatomy (author, title, entry label, note, price, length, Open ↗) with the lane icon replacing `mark`; docs show `<Tag>` "Official"/"Tutorial"; non-primary rows show muted "or watch this instead" / "or read this instead"; deferred primary keeps `opacity-50` + "Outside your budget". Empty lane → muted line from Global Constraints. Lane in `cappedLanes` → `<Link href="/pricing">` "More videos on a higher plan" / "More reading on a higher plan".
+- [x] **Step 2:** Swap the step list in `page.tsx` for `<Lanes …/>`; keep `FallbackNote` when **both** lanes are empty. Header count `scheduled` counts only `isPrimary && !deferred`.
+- [x] **Step 3:** `pnpm typecheck`; grep the two new/changed files for `#[0-9a-f]{3,6}` → none.
+- [x] **Step 4:** `pnpm dev`, open a ready analysis's Learning tab at desktop and 375px width. Expected: two lanes, correct icons, stacking, empty-lane copy on a single-lane skill, budget greying. (Review Focus 3: set a member's `cap_courses = 1` locally → 1 + 1 and the higher-plan line where applicable.)
+- [x] **Step 5:** Commit `feat(learning): Watch | Read lanes with type icons`.
 
 ### Task 7: Curate videos and docs for all ~100 skills
 

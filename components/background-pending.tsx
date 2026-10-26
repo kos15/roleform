@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import { Button, Card } from "@/components/ui";
 
 /**
- * Prep and Learning finish behind the résumés (lib/pipeline/run-analysis.ts).
+ * Prep and Learning finish behind the résumés (lib/services/pipeline/run-analysis.ts).
  * While they do, the analysis layout mounts this poller once: a server refresh
  * every few seconds re-reads the rows, so the tab counts and any tab showing
  * `SectionPending` fill in on their own and the poller unmounts itself once

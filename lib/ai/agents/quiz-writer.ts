@@ -1,9 +1,10 @@
 import "server-only";
 import { quizRoundSchema } from "../schemas/drill";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
-import { SECONDS_PER_QUESTION, type Difficulty, type DrillTopic } from "@/lib/domain/drill";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
+import type { Difficulty, DrillTopic } from "@/lib/domain/drill";
 import { defineAgent } from "./define";
-import { enumOf, roleLine, topicBlock, type DrillRole } from "./drill-prompt";
+import * as prompt from "../prompts/quiz-writer";
+import { enumOf, type DrillRole } from "../prompts/drill";
 
 export interface QuizWriterInput {
   role: DrillRole;
@@ -21,12 +22,8 @@ export const quizWriter = defineAgent({
   model: "writer-fast",
   schema: (i: QuizWriterInput) => quizRoundSchema(enumOf(i.topics), i.count),
   system: SYSTEM.quizRound,
-  staticContext: (i) => roleLine(i.role),
-  dynamicContext: (i) =>
-    [
-      `Write exactly ${i.count} questions, mostly ${i.difficulty}. Time limit: ${SECONDS_PER_QUESTION[i.difficulty]} seconds each.`,
-      topicBlock(i.topics),
-    ].join("\n"),
+  staticContext: prompt.staticContext,
+  dynamicContext: prompt.dynamicContext,
   reasoningEffort: "low",
   maxOutputTokens: (i) => (300 + i.count * 190) * 2,
   retries: 1,

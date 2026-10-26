@@ -1,0 +1,19 @@
+{
+  "scripts/apply-policies": "scripts/db/apply-policies",
+  "scripts/schedule-reminders": "scripts/db/schedule-reminders",
+  "scripts/smoke-constraints": "scripts/db/smoke-constraints",
+  "scripts/grant-admin": "scripts/db/grant-admin",
+  "scripts/convert-token-topups": "scripts/db/convert-token-topups",
+  "scripts/seed-catalog": "scripts/catalog/seed-catalog",
+  "scripts/rebuild-bundles": "scripts/catalog/rebuild-bundles",
+  "scripts/catalog-check": "scripts/catalog/catalog-check",
+  "scripts/link-check": "scripts/catalog/link-check",
+  "scripts/corpus-health": "scripts/catalog/corpus-health",
+  "scripts/drill-bank": "scripts/catalog/drill-bank",
+  "scripts/app-icons": "scripts/ops/app-icons",
+  "scripts/push-keys": "scripts/ops/push-keys",
+  "scripts/indexnow": "scripts/ops/indexnow",
+  "scripts/render-samples": "scripts/ops/render-samples",
+  "scripts/docx-roundtrip": "scripts/ops/docx-roundtrip",
+  "scripts/tokens-calibrate": "scripts/ops/tokens-calibrate"
+}

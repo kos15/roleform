@@ -3,10 +3,10 @@ import { auth } from "@clerk/nextjs/server";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import { getDevices, getRounds } from "@/lib/db/queries/rounds";
 import { countdownPhrase, whenPhrase } from "@/lib/domain/reminders";
-import { pushConfigured } from "@/lib/push/send";
+import { pushConfigured } from "@/lib/services/push/send";
 import { NotificationsPanel } from "@/components/notifications-panel";
 import { RoundsClient, type RoundView } from "./rounds-client";
-import { requireFeaturePage } from "@/lib/features";
+import { requireFeaturePage } from "@/lib/services/features";
 
 export const metadata = { title: "Interview rounds" };
 

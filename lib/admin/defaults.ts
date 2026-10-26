@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import type { QuotaKey } from "@/lib/domain/quotas";
-import { loadPlan } from "@/lib/plans/catalog";
+import { loadPlan } from "@/lib/services/plans/catalog";
 
 /**
  * The caps a new account is provisioned with (F15).

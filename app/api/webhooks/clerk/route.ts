@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { Webhook } from "svix";
 import { db } from "@/lib/db";
-import { hashEmail } from "@/lib/auth";
+import { hashEmail } from "@/lib/services/auth";
 import { workspaceDefaults, capsFromDefaults } from "@/lib/admin/defaults";
 import { deleteEverythingFor } from "./delete";
 

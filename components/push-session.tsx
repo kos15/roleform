@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { deviceOwner, releaseThisDevice } from "@/lib/push/client";
+import { deviceOwner, releaseThisDevice } from "@/lib/services/push/client";
 
 /**
  * Sign-out and account switching for push (F29.2). Mounted on every page,

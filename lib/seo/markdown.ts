@@ -13,7 +13,7 @@ import { SPEND_BASIS, SUPPORT_SPEND, SUPPORT_TIERS } from "@/lib/content/support
 import { displayCap } from "@/lib/domain/quotas";
 import { TEMPLATES, ratingFor } from "@/lib/render/templates";
 import { atsViolations } from "@/lib/render/ats-rules";
-import { CATALOG_EMAIL, PRIVACY_EMAIL, SUPPORT_EMAIL } from "@/lib/mail/addresses";
+import { CATALOG_EMAIL, PRIVACY_EMAIL, SUPPORT_EMAIL } from "@/lib/services/mail/addresses";
 import { PUBLIC_PAGES, SITE_DEFINITION, SITE_NAME, SITE_URL, absoluteUrl } from "./site";
 
 const footer = (path: string) =>

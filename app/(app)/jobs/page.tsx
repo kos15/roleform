@@ -3,16 +3,16 @@ import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { getProfile } from "@/lib/db/queries/profile";
 import { listSavedJobs } from "@/lib/db/queries/jobs";
-import { checkJobSearchAllowance } from "@/lib/auth";
+import { checkJobSearchAllowance } from "@/lib/services/auth";
 import { buildJobQuery } from "@/lib/domain/job-query";
-import { latestSearchId, loadResults } from "@/lib/jobs/results";
+import { latestSearchId, loadResults } from "@/lib/services/jobs/results";
 import { EmptyState } from "@/components/ui";
 import { PageIntro } from "@/components/page-intro";
 import { JobSearchClient } from "./job-search-client";
 import { SavedJobsPanel } from "./saved-jobs-panel";
 import { CapNotice } from "./cap-notice";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
-import { requireFeaturePage } from "@/lib/features";
+import { requireFeaturePage } from "@/lib/services/features";
 
 /**
  * F22 — Job search. Listings from documented APIs, matched to the profile's

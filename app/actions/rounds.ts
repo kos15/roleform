@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUser } from "@/lib/services/auth";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import {
   MAX_DAYS_AHEAD,
@@ -17,7 +17,7 @@ import {
   type RoundKind,
 } from "@/lib/domain/reminders";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
-import { requireFeature } from "@/lib/features";
+import { requireFeature } from "@/lib/services/features";
 
 /**
  * Interview rounds (F29). Every field here is the member's own — the date,

@@ -6,11 +6,11 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
-import { rateLimit } from "@/lib/rate-limit";
+import { requireUser } from "@/lib/services/auth";
+import { rateLimit } from "@/lib/services/rate-limit";
 import { deviceLabel } from "@/lib/domain/reminders";
-import { pushConfigured } from "@/lib/push/send";
-import { enqueue, processOutbox } from "@/lib/push/outbox";
+import { pushConfigured } from "@/lib/services/push/send";
+import { enqueue, processOutbox } from "@/lib/services/push/outbox";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 /**

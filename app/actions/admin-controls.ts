@@ -9,7 +9,7 @@ import { FEATURES } from "@/lib/domain/features";
 import { clampCap, QUOTAS } from "@/lib/domain/quotas";
 import { PROMO_CODE_SHAPE, normaliseCode } from "@/lib/domain/promo";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
-import { capColumns, loadPlan } from "@/lib/plans/catalog";
+import { capColumns, loadPlan } from "@/lib/services/plans/catalog";
 
 /**
  * Admin controls (F31, F32): feature switches, the public plan catalog, a

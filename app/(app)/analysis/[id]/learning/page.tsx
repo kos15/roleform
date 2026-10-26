@@ -10,7 +10,7 @@ import { Card, EmptyState, Tag } from "@/components/ui";
 import { BudgetPicker } from "./budget-picker";
 import { Lanes } from "./lanes";
 import { SectionPending } from "@/components/background-pending";
-import { backgroundRunning } from "@/lib/pipeline/background";
+import { backgroundRunning } from "@/lib/services/pipeline/background";
 
 /**
  * Tab 3 — Learning. The Roleform Learning Engine's only user-facing surface.

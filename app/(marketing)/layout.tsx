@@ -9,7 +9,7 @@ import { NavLinks } from "@/components/nav-links";
 import { MobileTabBar } from "@/components/mobile-tabbar";
 import { SheetAccount } from "@/components/sheet-account";
 import { currentRole } from "@/lib/admin/role";
-import { featureEnabled } from "@/lib/features";
+import { featureEnabled } from "@/lib/services/features";
 
 /**
  * Chrome for the public surfaces: the landing page and everything a person

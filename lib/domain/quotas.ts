@@ -266,7 +266,7 @@ export interface CapWallOffer {
  * cap refusal carries this value so the UI never has to guess which wall it
  * is rendering.
  *
- * Built in `lib/auth.ts#buildCapWall`, which has the I/O (`listAdmins`,
+ * Built in `lib/services/auth.ts#buildCapWall`, which has the I/O (`listAdmins`,
  * `planAbove`) this type deliberately does not — this file stays PURE.
  */
 export interface CapWall {
