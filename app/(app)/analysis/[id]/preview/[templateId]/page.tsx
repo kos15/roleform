@@ -8,6 +8,9 @@ import { templateById } from "@/lib/render/templates";
 import { AtsBadge, Card, EmptyState, Tag } from "@/components/ui";
 import { atsViolations } from "@/lib/render/ats-rules";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
+import { DraftsPlaceholder } from "@/components/background-pending";
+import { draftsState } from "@/lib/services/pipeline/background";
+import { draftsPerRun } from "@/lib/db/queries/entitlement";
 import { PreviewSurface } from "./preview-surface";
 import { DownloadButtons } from "./download-buttons";
 import { TemplateSwitcher } from "./template-switcher";
@@ -39,6 +42,14 @@ export default async function PreviewPage({
   const draft = drafts.find((d) => d.templateId === templateId);
   const template = templateById(templateId);
   if (!draft || !template) {
+    // No drafts yet is not "that draft doesn't exist": the run may still be
+    // writing them, or stage ③ may be missing or off for this member.
+    const state = draftsState(analysis, drafts.length, await draftsPerRun(userId));
+    if (state !== "ready") {
+      return (
+        <DraftsPlaceholder state={state} analysisId={id} canResume={analysis.status === "ready"} />
+      );
+    }
     return (
       <EmptyState title="That draft doesn't exist for this analysis.">
         <Link href={`/analysis/${id}/resumes`} className="text-accent-body">

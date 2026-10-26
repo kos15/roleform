@@ -144,6 +144,31 @@ export function scoreAnalysis(
   return { score, verdict, note, buckets };
 }
 
+export interface NotEvidencedItem {
+  label: string;
+  necessity: Necessity;
+}
+
+/**
+ * The absent requirements as plain labels for the Résumés panel: required →
+ * preferred → implied (stable within a necessity), skill name over text,
+ * duplicates dropped case-insensitively. Read-only — inserts nothing (N1, N3).
+ */
+export function stillNotEvidenced(absent: readonly DomainRequirement[]): NotEvidencedItem[] {
+  const sorted = [...absent].sort((a, b) => WEIGHT[b.necessity] - WEIGHT[a.necessity]);
+  const seen = new Set<string>();
+  const out: NotEvidencedItem[] = [];
+  for (const r of sorted) {
+    const label = (r.skillName?.trim() || r.text).trim();
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ label, necessity: r.necessity });
+  }
+  return out;
+}
+
 /* ------------------------------------------------------- deterministic pass */
 
 /**

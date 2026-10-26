@@ -61,7 +61,7 @@ export default async function LearningTab({
   if (!plan && backgroundRunning(analysis)) {
     return (
       <SectionPending title="Matching your gaps to courses">
-        Your résumés are ready now. What this posting asks for that your profile doesn&rsquo;t
+        Your match is ready now. What this posting asks for that your profile doesn&rsquo;t
         evidence is still being matched against the vetted catalog — this tab fills in on its own.
       </SectionPending>
     );

@@ -4,6 +4,7 @@
  * Changes are highlighted BY DEFAULT, not behind a toggle (plan M4.6) — the
  * user should never have to hunt for what we altered in their own words.
  */
+import type { Transform } from "./types";
 
 export type DiffOp = { kind: "same" | "added" | "removed"; text: string };
 
@@ -64,4 +65,68 @@ export function summariseChanges(
   const changed = pairs.filter((p) => p.original.trim() !== p.rewritten.trim()).length;
   if (changed === 0) return "Nothing needed rewording — your bullets already match the posting's language.";
   return `${changed} of ${pairs.length} bullets reworded to the posting's vocabulary; the rest kept verbatim.`;
+}
+
+/* ------------------------------------------------- tailoring outcome helpers */
+
+export interface TailorOutcome {
+  originalText: string;
+  rewrittenText: string;
+  transform: Transform;
+  blockedBy: string[];
+}
+
+export type BlockCause = "checker" | "guard" | "ceiling" | "deadline" | "transient";
+
+/** Why a bullet stayed verbatim. A fabrication finding looks like `tool:Go`. */
+export function blockCause(blockedBy: readonly string[]): BlockCause | null {
+  if (blockedBy.length === 0) return null;
+  if (blockedBy.includes("token_ceiling")) return "ceiling";
+  if (blockedBy.includes("deadline")) return "deadline";
+  if (blockedBy.includes("checker")) return "checker";
+  if (blockedBy.some((b) => b.includes(":"))) return "guard";
+  return "transient";
+}
+
+export const STOPPED_PARTWAY =
+  "We stopped rewriting partway through — the rest of your bullets kept their original wording.";
+
+export function buildChangeList(tailored: readonly TailorOutcome[]): string[] {
+  const causes = tailored.map((t) => blockCause(t.blockedBy));
+  const changed = tailored.filter((t) => t.transform === "rephrase" || t.transform === "requantify");
+  const rejected = causes.filter((c) => c === "checker" || c === "guard").length;
+  const out = [summariseChanges(tailored.map((t) => ({ original: t.originalText, rewritten: t.rewrittenText })))];
+  if (changed.length > 0) out.push("Bullets reordered to lead with what the posting asks for most often.");
+  if (rejected > 0) {
+    // Surfaced deliberately: the guard firing is information, not an internal detail.
+    out.push(`${rejected} rewrite(s) were rejected for adding detail you hadn't stated, and kept verbatim.`);
+  }
+  if (causes.some((c) => c === "ceiling" || c === "deadline")) out.push(STOPPED_PARTWAY);
+  return out;
+}
+
+export interface TailorTally {
+  bullets: number;
+  rewritten: number;
+  verbatim: number;
+  transient: number;
+  checker: number;
+  guard: number;
+  ceiling: number;
+  deadline: number;
+}
+
+/** Counts only — safe to log (N7). */
+export function tailorTally(tailored: readonly TailorOutcome[]): TailorTally {
+  const tally: TailorTally = {
+    bullets: tailored.length, rewritten: 0, verbatim: 0,
+    transient: 0, checker: 0, guard: 0, ceiling: 0, deadline: 0,
+  };
+  for (const t of tailored) {
+    if (t.transform === "rephrase" || t.transform === "requantify") tally.rewritten++;
+    else if (t.transform === "verbatim") tally.verbatim++;
+    const cause = blockCause(t.blockedBy);
+    if (cause) tally[cause]++;
+  }
+  return tally;
 }

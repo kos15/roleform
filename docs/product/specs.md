@@ -492,7 +492,7 @@ ONBOARDING (once)
 
 PER ANALYSIS (Step 1 of 3)
   JD paste or upload
-    ↓  parsing screen: galaxy card, streamed; leaves for results when ③ ends (④ ⑤ finish behind)
+    ↓  parsing screen: galaxy card, streamed; leaves for results when ② ends (③ ④ ⑤ finish behind)
   ① analyze-jd      → JdMeta + jd_requirements (with mention_count)
   ② coverage        → coverage_items + score          [PURE, no LLM]
   ③ tailor          → capResumes × resume_drafts + tailored_bullets
@@ -638,16 +638,21 @@ a spinner that lies is worse than an error. The route's own `loading.tsx` render
 this screen is the loader. (Until Oct 2026 the card sat over a heading, a progress bar, a row of four
 stage cards and a looping stage figure — the same news four times. All of it went.)
 
-**The screen leaves when the résumés exist (Oct 2026).** The pipeline marks the analysis `ready` the
-moment stage ③ ends — before announcing it — and keeps running ④ + ⑤ in the same `after()`
-invocation, its claim (`runningAt`) held until they finish. The screen stops reading the stream on
-③'s `done`/`degraded` and `router.replace`s to the Résumés tab with no finish delay. While
-`backgroundRunning(analysis)` (`lib/services/pipeline/background.ts`: `ready` + a live claim) is true, the
-layout mounts one 3s `router.refresh()` poller, the Prep and Learning tab counts read
-`Preparing…` instead of a zero, and Prep, Learning, Study plan and Roadmap show a `SectionPending`
-card in place of their empty state. A claim gone stale is not "still generating": the tab shows its
-ordinary empty state, and Prep offers **Generate the questions**, which POSTs `?resume=1` —
-`resumeState` skips every stage whose rows exist, so only the missing one is billed.
+**The screen leaves when matching ends (Oct 2026).** The pipeline writes `ready` together with the
+score, verdict and note the moment stage ② ends — before announcing it — and keeps running ③ + ④ + ⑤
+in the same `after()` invocation, its claim (`runningAt`) held until they finish. The screen stops
+reading the stream when `parsingFinished` (`lib/services/pipeline/stages.ts`) is true — matching
+`done`, or `preparing` at 100 for a followed or already-finished run — and `router.replace`s to the
+Résumés tab with no finish delay. The card shows two pips (*Reading the posting → Matching against
+your profile*) and its done copy is **Your results are ready**. While `backgroundRunning(analysis)`
+(`lib/services/pipeline/background.ts`: `ready` + a live claim) is true — now covering the drafts as
+well as Prep and Learning — the layout mounts one 3s `router.refresh()` poller, the Résumés, Prep and
+Learning tab counts read `Preparing…` instead of a zero (the layout does not know the member's cap, so
+a cap-0 member sees `Preparing…` on Résumés until the claim releases, then `0`), and the tabs show a
+`SectionPending` card in place of their empty state. A claim gone stale is not "still generating":
+the tab shows its ordinary empty state, and offers a button that POSTs `?resume=1` — `resumeState`
+skips every stage whose rows exist, so only the missing one is billed (Prep: **Generate the
+questions**; Résumés: **Finish the drafts**, F5).
 
 **The wait card (Oct 2026, design "Roleform waits" v2).** While a run streams, the galaxy card from
 `<rf-wait>` (`components/rf-wait/rf-wait.js`, typed as `components/wait-overlay.tsx`) floats over the
@@ -670,8 +675,8 @@ analysis. It never fires on its own — a page reload must not bill anybody.
 **The run does not depend on the screen watching it.** The route hands the pipeline to `after()`
 and its `emit` goes quiet once the client disconnects, so a locked phone, a closed tab or a dropped
 connection no longer tears down whichever stage was running (it used to: the next `enqueue` threw).
-The screen only redirects to results when the stream said the résumés are done — stage ③ ending, or
-stage ④ at 100% from a followed or already-finished run — never merely because the stream ended. A stream that stops early is reconnected quietly, up to
+The screen only redirects to results when the stream said matching is done (`parsingFinished`) — never
+merely because the stream ended. A stream that stops early is reconnected quietly, up to
 three times, with `?reconnect=1`: that follows a run still in progress, reports one that ended
 (including a failure, which is still only picked up again on request), and bills nothing. A
 follower that finds the run's claim gone stale — its invocation killed by the platform — takes it
@@ -679,11 +684,16 @@ over and resumes it; one that finds the claim released without a finish reports 
 
 **Time budget.** The route caps at 300s, and a run the platform kills has no message and holds its
 claim for six minutes, so the pipeline is built to finish well inside it: stage ③ tailors five
-bullets at a time (results kept in ranked order, so ordinals are unchanged; the token ceiling is
-checked before each call starts, so at most four in-flight calls can finish past it), each tailoring
-attempt times out at 30s and falls back to the original bullet (with the Jev checker a bullet may
+bullets ten at a time (`TAILOR_CONCURRENCY`; results kept in ranked order, so ordinals are unchanged;
+the token ceiling is checked before each call starts, so at most nine in-flight calls can finish past
+it). Tailoring also stops starting calls 180s (`TAILOR_START_DEADLINE_MS`) after the run began; every
+bullet after that goes out in its own words, so the summary, the page measuring and the draft write
+still fit the 300s cap. The 180s is measured from the original invocation's start, including when a
+follower takes over a stale claim. Each tailoring attempt times out at 30s and falls back to the original bullet (with the Jev checker a bullet may
 take up to three writer attempts plus a 2s check each — measured at the agent plan's gate, Task 8), and ④ + ⑤ start as soon as ② has
-written coverage — they read nothing ③ produces — and are reported after ③. Learning still waits
+written coverage — they read nothing ③ produces. The drafts are written in one batch `$transaction`
+(all drafts and bullets, or none; no interactive transaction, because of pgbouncer), so ③ counts as
+complete only at the full draft count and a partial set is deleted before a redo. Learning still waits
 for the questions it binds to.
 
 **Resuming is enforced, not asserted.** `runAnalysis` consults `resumeState` before each stage and
@@ -728,6 +738,25 @@ The thumbnail is an abstract miniature of the layout — grey bars on white pape
 accent, no readable text. Its job is to make the ATS badge legible: you can *see* Ledger's two-column
 body and Atlas's icon-only contact row, which is what costs each of them its rating. Paper colours, not
 brand tokens; the §9 export exemption covers the picture of the document as well as the document.
+
+**Drafts arrive behind the score (Oct 2026).** The tab works out its state on read with `draftsState`
+(`lib/services/pipeline/background.ts`), storing nothing: **pending** — no drafts and the run's claim
+is live, so a loader reads "Writing your drafts"; **missing** — no drafts and no live claim, so the tab
+says so and, only for a `ready` analysis, offers **Finish the drafts**, which POSTs `?resume=1` and
+re-runs stage ③ alone; **off** — the member's cap is 0, stage ③ was skipped, no button. Drafts that
+exist are shown whatever the cap says now. A run the platform killed during ③ is already `ready` with a
+claim still set, so the tab reads pending until the claim goes stale (six minutes), then missing.
+
+**Tailoring.** Ten bullets are in flight at once. Past 180s from the run's start no new bullet is
+started: the rest go verbatim (blocked by `deadline`) and a notice saying so is added to `changes`.
+Only the checker and guard blocks count as "rejected for adding detail". Drafts are written in one
+batch transaction.
+
+**Still not evidenced.** Under the drafts — and under the placeholder when they are pending, missing
+or off — one read-only panel per analysis lists the requirements coverage found absent, from
+`scoreAnalysis(...).buckets.absent` via `stillNotEvidenced`, ordered required → preferred → implied,
+each as its skill name or requirement text, with a link to the Learning tab
+(`/learning?skills=`). It inserts nothing into any draft (N1, N3, §3): the gap goes to Learning.
 
 **Skills the profile never listed (Oct 2026).** Tailoring can only use what the profile states, so a
 skill the member has but never wrote down is missing from every draft. `lib/domain/skill-consent.ts`
@@ -1128,7 +1157,10 @@ to degrade.
 
 **Stopped part-way.** Deliberately *not* called parked: that word is spent on a posting filed
 against the allowance (F19), which has started nothing and cost nothing, and this is a run that
-started and spent tokens. For a signed-in viewer, the newest analysis still in `parsing`, not queued,
+started and spent tokens. A run is `ready` from the end of ②, so one killed during ③, ④ or ⑤ is no
+longer listed here as stalled; its missing drafts are recovered from the Résumés tab (**Finish the
+drafts**) once the claim goes stale (six minutes), and Prep and Learning from theirs. Only runs that
+stopped in ① or ② appear. For a signed-in viewer, the newest analysis still in `parsing`, not queued,
 and at least six minutes old — the stream's own route caps at 300s, so anything younger may still be
 running, and this panel used to tell people their live run had stopped. Progress is counted
 from what the run persisted — requirements mean reading finished, coverage items mean matching

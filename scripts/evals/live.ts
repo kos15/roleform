@@ -11,9 +11,24 @@ import { tailorBullet, tailorSummary, type TailoredResult } from "../../lib/ai/s
 import { generateAnswer } from "../../lib/ai/services/answer";
 import { analyzeJd } from "../../lib/ai/services/analyze-jd";
 import { extractProfile } from "../../lib/ai/services/extract-profile";
+import { bulletTailor } from "../../lib/ai/agents/bullet-tailor";
+import { summaryTailor } from "../../lib/ai/agents/summary-tailor";
+import { answerWriter } from "../../lib/ai/agents/answer-writer";
+import { postingReader } from "../../lib/ai/agents/posting-reader";
+import { profileReader } from "../../lib/ai/agents/profile-reader";
 import { checkFabrication } from "../../lib/domain/fabrication";
 import type { DomainBullet, DomainRequirement } from "../../lib/domain/types";
 import type { AgentKey } from "./fixtures";
+
+// The agent each eval key runs. `--role` rewrites `model` on one of these,
+// in this process only — the app never reads the override.
+const EVAL_AGENTS: Record<AgentKey, { model: "writer" | "writer-fast" }> = {
+  "bullet-tailor": bulletTailor,
+  "summary-tailor": summaryTailor,
+  "answer-writer": answerWriter,
+  "posting-reader": postingReader,
+  "profile-reader": profileReader,
+};
 
 const USER = process.env.EVAL_CLERK_USER_ID ?? "eval-user";
 const ANALYSIS = process.env.EVAL_ANALYSIS_ID;
@@ -114,10 +129,11 @@ function quantile(xs: number[], q: number): number {
   return s[Math.min(s.length - 1, Math.floor(q * s.length))];
 }
 
-export async function runLive(agent: AgentKey, set: string, cases: unknown[], arm: string) {
+export async function runLive(agent: AgentKey, set: string, cases: unknown[], arm: string, role?: "writer" | "writer-fast") {
   if (!ANALYSIS && agent !== "profile-reader") {
     throw new Error("Set EVAL_ANALYSIS_ID to an analysis you own — ai_runs rows reference it.");
   }
+  if (role) EVAL_AGENTS[agent].model = role;
   const startedAt = new Date();
   const results: CaseResult[] = [];
   for (const c of cases as Record<string, any>[]) {
@@ -159,7 +175,7 @@ export async function runLive(agent: AgentKey, set: string, cases: unknown[], ar
 
   const dir = join(__dirname, "reports");
   mkdirSync(dir, { recursive: true });
-  const file = join(dir, `${agent}-${set}-${arm}-${startedAt.toISOString().replace(/[:.]/g, "-")}.json`);
-  writeFileSync(file, JSON.stringify({ agent, set, arm, startedAt, metrics, results }, null, 2));
+  const file = join(dir, `${agent}-${set}-${arm}${role ? `-${role}` : ""}-${startedAt.toISOString().replace(/[:.]/g, "-")}.json`);
+  writeFileSync(file, JSON.stringify({ agent, set, arm, role: role ?? null, startedAt, metrics, results }, null, 2));
   console.log(`\nreport: ${file}`);
 }

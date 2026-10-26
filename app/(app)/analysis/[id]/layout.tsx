@@ -63,7 +63,7 @@ export default async function AnalysisLayout({
   // truncated for length, or a requirement excluded under IN-6 — surfaced
   // once, plainly, rather than left in a column nothing renders.
   const stageState = readStageState(analysis.stageState);
-  // Prep and Learning still landing behind the résumés: one poller for the
+  // Drafts, Prep and Learning still landing behind the score and match: one poller for the
   // whole analysis, and the tabs that wait on them say so.
   const generating = backgroundRunning(analysis);
 

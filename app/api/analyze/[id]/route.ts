@@ -33,11 +33,15 @@ export async function POST(
 
   // Re-running a finished analysis would re-bill it (F10). Reuse instead.
   //
-  // `?resume=1` is the one exception: a Prep tab whose background stage never
-  // landed (the invocation was killed after the drafts were written, or the
-  // stage degraded) asking for just that stage. `runAnalysis` skips every
-  // stage whose rows exist (`resumeState`), so this bills the missing stage
-  // and nothing else.
+  // The analysis is `ready` from stage ② onward (the score is written with it),
+  // so a run still writing drafts, Prep or Learning is already `ready`.
+  //
+  // `?resume=1` is the one exception: a tab whose background stage never
+  // landed (the invocation was killed after the score was written, or the
+  // stage degraded) asking for just that stage — Prep, Learning, or the
+  // Résumés tab's "Finish the drafts" asking for a missing stage ③.
+  // `runAnalysis` skips every stage whose rows exist (`resumeState`), so this
+  // bills the missing stage and nothing else.
   if (analysis.status === "ready" && search.get("resume") !== "1") {
     return new Response(
       `${JSON.stringify({ stage: "preparing", state: "done", progressPct: 100 } satisfies StageUpdate)}\n`,

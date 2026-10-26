@@ -8,7 +8,7 @@ import { expect, it } from "vitest";
  *
  *   all-evidenced → 100 · all-absent → 0 · mixed → the number you'd compute
  */
-import { computeCoverage, computeScore, scoreAnalysis } from "@/lib/domain/coverage";
+import { computeCoverage, computeScore, scoreAnalysis, stillNotEvidenced } from "@/lib/domain/coverage";
 import type { DomainBullet, DomainCoverageItem, DomainRequirement } from "@/lib/domain/types";
 
 const requirement = (
@@ -125,4 +125,32 @@ it("the note never reads like a prediction (N4)", () => {
     covered("d", "evidenced"),
   ]);
   expect(scored.note).not.toMatch(/\d+%|chance|likely to|will get/i);
+});
+
+it("stillNotEvidenced: required → preferred → implied, skill name over text, deduped", () => {
+  expect(stillNotEvidenced([
+    requirement("r1", "implied", "Writes docs"),
+    requirement("r2", "preferred", "Terraform", "Terraform"),
+    requirement("r3", "required", "Kubernetes at scale", "Kubernetes"),
+    requirement("r4", "required", "Owns on-call rotation"),
+    requirement("r5", "preferred", "k8s", "kubernetes"),
+  ])).toEqual([
+    { label: "Kubernetes", necessity: "required" },
+    { label: "Owns on-call rotation", necessity: "required" },
+    { label: "Terraform", necessity: "preferred" },
+    { label: "Writes docs", necessity: "implied" },
+  ]);
+  expect(stillNotEvidenced([])).toEqual([]);
+});
+
+it("stillNotEvidenced: an empty skill name falls back to the text; a blank label is dropped", () => {
+  expect(stillNotEvidenced([
+    requirement("r1", "required", "Owns on-call rotation", ""),
+    requirement("r2", "required", "  Terraform  ", "  "),
+    requirement("r3", "preferred", "   ", "   "),
+    requirement("r4", "preferred", "", null),
+  ])).toEqual([
+    { label: "Owns on-call rotation", necessity: "required" },
+    { label: "Terraform", necessity: "required" },
+  ]);
 });

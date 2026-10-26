@@ -69,17 +69,17 @@ export async function runAgent<I, S extends z.ZodType>(
   ctx: AgentContext,
 ): Promise<Result<RunOutcome<z.infer<S>>>> {
   const guarded = applyInputGuards(agent.dynamicContext(input), agent.inputGuards);
-  // Names and counts only — the flagged text is member or posting content (N7).
-  if (agent.inputGuards.includes("injection_jev") && agent.documentKind) {
-    // Flag and proceed (IN-5). The ai_runs row is the count; nothing else changes.
-    const verdict = await checkInjection(injectionCheckText(guarded.text), agent.documentKind, ctx);
-    if (verdict.flagged) guarded.flags.push("injection:jev");
-  }
-  if (guarded.flags.length > 0) console.warn(`[agent] ${agent.name} input flags: ${guarded.flags.join(",")}`);
+  // Flag and proceed (IN-5): the check runs alongside the model call rather
+  // than before it, and fails open — a check that errors flags nothing. The
+  // ai_runs row is the count; nothing else changes.
+  const injection =
+    agent.inputGuards.includes("injection_jev") && agent.documentKind
+      ? checkInjection(injectionCheckText(guarded.text), agent.documentKind, ctx).catch(() => null)
+      : null;
 
   const head = agent.staticContext ? agent.staticContext(input) : "";
 
-  return runStructured({
+  const run = runStructured({
     purpose: agent.name,
     promptVersion: agent.promptVersion,
     model: agent.model,
@@ -108,4 +108,13 @@ export async function runAgent<I, S extends z.ZodType>(
         }
       : {}),
   });
+
+  // Names and counts only — the flagged text is member or posting content (N7).
+  // `run` is observed here while the check is pending, so an early rejection
+  // is never unhandled; it is still returned (and so rethrown) below.
+  const [verdict] = await Promise.all([injection, run.then(() => null, () => null)]);
+  if (verdict?.flagged) guarded.flags.push("injection:jev");
+  if (guarded.flags.length > 0) console.warn(`[agent] ${agent.name} input flags: ${guarded.flags.join(",")}`);
+
+  return run;
 }

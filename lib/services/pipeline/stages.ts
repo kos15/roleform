@@ -79,6 +79,15 @@ export function progressWithin(stage: StageKey, done: number, total: number): nu
 }
 
 /**
+ * True when the parsing screen can hand over to the results: the run is
+ * `ready` before it announces matching done, so ③–⑤ finish behind the screen.
+ * A followed resume run that only has `preparing` left finishes at 100.
+ */
+export const parsingFinished = (update: StageUpdate): boolean =>
+  (update.stage === "matching" && update.state === "done") ||
+  (update.stage === "preparing" && update.progressPct >= 100 && update.state !== "running");
+
+/**
  * What `analyses.stage_state` can honestly say (G4). Written across three
  * places in the pipeline (`createAnalysis`'s injection scan, stage ①'s
  * usedRegions/truncated/protectedNotice) and read here in the one shape the

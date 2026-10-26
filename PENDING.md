@@ -117,3 +117,28 @@ own files; what is still open is here.
 - [ ] After this branch deploys: `APP_URL=https://roleform.koustubh.org pnpm db:schedule` — installs `roleform-catalog-refresh` (daily 03:17 UTC); without it the catalog re-check never runs (neji, final review)
 - [x] ~~Merge `feat/learning-watch-read` and `chore/layout-tdd` to `main` (this layout branch is cut from the watch-read branch)~~ — 2026-10-26
 - [ ] Local Node is v20.17.0; `package.json` engines asks for >=20.19.0 — upgrade
+
+### Progressive results — `docs/superpowers/plans/2026-10-26-progressive-results.md` (branch `feat/progressive-results`)
+
+- [x] ~~Task 1: `mapLimit(items, n, fn)` ordered concurrency helper in `lib/shared/utils.ts`~~ — 2026-10-26
+- [x] ~~Task 2: pure `blockCause` · `buildChangeList` · `tailorTally` in `lib/domain/diff.ts` (stopped-partway notice moves into draft.changes; ceiling/deadline/transient never counted as "rejected for adding detail")~~ — 2026-10-26
+- [x] ~~Task 3: pure `draftsState` in `lib/services/pipeline/background.ts`~~ — 2026-10-26
+- [x] ~~Task 4: pure `parsingFinished` in `lib/services/pipeline/stages.ts`~~ — 2026-10-26
+- [x] ~~Task 5: pure `stillNotEvidenced` in `lib/domain/coverage.ts`~~ — 2026-10-26
+- [x] ~~Task 6: pipeline writes `ready` in the score update on both paths, before `matching done`; later ready update deleted~~ — 2026-10-26
+- [x] ~~Task 7: pipeline skips stage ③ when the member's draft cap is 0~~ — 2026-10-26
+- [x] ~~Task 8: writeDrafts — app-made uuids, pages via mapLimit(4), one batch `$transaction`, `[pipeline] pages` log~~ — 2026-10-26
+- [x] ~~Task 9: tailoring via mapLimit — TAILOR_CONCURRENCY=10, 180s start deadline, per-run `[pipeline] tailor` count log~~ — 2026-10-26
+- [x] ~~Task 10: parsing screen finishes on `parsingFinished`, two pips, "Your results are ready"; route.ts comment~~ — 2026-10-26
+- [x] ~~Task 11: Résumés tab count reads "Preparing…" while drafts are generating~~ — 2026-10-26
+- [x] ~~Task 12: `DraftsPlaceholder` (pending · missing + "Finish the drafts" · off) and the "Still not evidenced" panel on the Résumés tab; preview pending state~~ — 2026-10-26
+- [x] ~~Task 13: runAgent starts the Jev injection check concurrently with the model call (fail open)~~ — 2026-10-26
+- [x] ~~Task 14: `pnpm eval bullet-tailor --role writer|writer-fast` (script-only model override)~~ — 2026-10-26
+- [x] ~~Task 15: docs — specs §8 flow, F3, F5, F14 (stalled-run behaviour change)~~ — 2026-10-26
+- [ ] Task 16 (T-final): flip `tailor_bullet` to writer-fast + specs §10 — ONLY after the fabrication eval passes on `--role writer-fast`
+- [ ] neji minor: `mapLimit` with a non-finite limit creates no workers and resolves with holes — guard `Number.isFinite(limit)` (no caller today passes one)
+- [ ] neji minor: 180s is a start deadline, not a finish deadline — confirm `[pipeline] tailor/pages ms=` on a real long profile stays under maxDuration 300; add an AbortSignal to tailorSummary if not
+- [ ] neji minor: Résumés page re-reads profile/requirements/coverage on every 3s poll while drafts pend — wrap in request-scoped cache()
+- [ ] neji minor: canResume={status==="ready"} is always true behind the pages' ready redirect — keep as defensive prop or drop
+- [ ] Verify on preview: array-form `$transaction` of 11 drafts + bullets is atomic under the production pooler and within payload limits
+- [ ] End-to-end click-through on preview: paste JD → results before drafts → drafts appear → all tabs → preview → both exports
