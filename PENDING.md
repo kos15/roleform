@@ -131,7 +131,7 @@ own files; what is still open is here.
 - [x] ~~Task 9: tailoring via mapLimit — TAILOR_CONCURRENCY=10, 180s start deadline, per-run `[pipeline] tailor` count log~~ — 2026-10-26
 - [x] ~~Task 10: parsing screen finishes on `parsingFinished`, two pips, "Your results are ready"; route.ts comment~~ — 2026-10-26
 - [x] ~~Task 11: Résumés tab count reads "Preparing…" while drafts are generating~~ — 2026-10-26
-- [ ] Task 12: `DraftsPlaceholder` (pending · missing + "Finish the drafts" · off) and the "Still not evidenced" panel on the Résumés tab; preview pending state
+- [x] ~~Task 12: `DraftsPlaceholder` (pending · missing + "Finish the drafts" · off) and the "Still not evidenced" panel on the Résumés tab; preview pending state~~ — 2026-10-26
 - [ ] Task 13: runAgent starts the Jev injection check concurrently with the model call (fail open)
 - [ ] Task 14: `pnpm eval bullet-tailor --role writer|writer-fast` (script-only model override)
 - [ ] Task 15: docs — specs §8 flow, F3, F5, F14 (stalled-run behaviour change)

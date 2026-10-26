@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { Button, Card } from "@/components/ui";
+import { Button, Card, EmptyState } from "@/components/ui";
+import type { DraftsState } from "@/lib/services/pipeline/background";
 
 /**
  * Prep and Learning finish behind the résumés (lib/services/pipeline/run-analysis.ts).
@@ -88,5 +89,48 @@ export function ResumeStageButton({ analysisId, label }: { analysisId: string; l
       </Button>
       {error ? <p className="text-sm text-[var(--color-text-muted)]">{error}</p> : null}
     </div>
+  );
+}
+
+/**
+ * The Résumés tab and the preview when no draft exists yet. Which of the three
+ * it is comes from `draftsState`; the copy never names a count (§5).
+ *
+ * "Finish the drafts" asks only for stage ③ (`?resume=1`) and is offered only
+ * where that is possible: `canResume` is false for an analysis that is not
+ * `ready`, which shows the empty state alone.
+ */
+export function DraftsPlaceholder({
+  state,
+  analysisId,
+  canResume = true,
+}: {
+  state: Exclude<DraftsState, "ready">;
+  analysisId: string;
+  canResume?: boolean;
+}) {
+  if (state === "pending") {
+    return (
+      <SectionPending title="Writing your drafts">
+        Your match is ready now. The drafts are still being written from your own bullets — this
+        tab fills in on its own.
+      </SectionPending>
+    );
+  }
+  if (state === "off") {
+    return (
+      <EmptyState title="Drafts are off for your account">
+        Your match, Prep and Learning are unaffected.
+      </EmptyState>
+    );
+  }
+  return (
+    <>
+      <EmptyState title="The drafts didn't finish">
+        Your match and the other tabs are unaffected. Finishing them runs only this stage — nothing
+        that already finished is charged twice.
+      </EmptyState>
+      {canResume ? <ResumeStageButton analysisId={analysisId} label="Finish the drafts" /> : null}
+    </>
   );
 }

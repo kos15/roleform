@@ -9,15 +9,19 @@ import {
   getRequirements,
 } from "@/lib/db/queries/analysis";
 import { unlistedSkills } from "@/lib/domain/skill-consent";
-import { backgroundRunning } from "@/lib/services/pipeline/background";
+import { scoreAnalysis, stillNotEvidenced } from "@/lib/domain/coverage";
+import { backgroundRunning, draftsState } from "@/lib/services/pipeline/background";
+import { draftsPerRun } from "@/lib/db/queries/entitlement";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 import { templateById } from "@/lib/render/templates";
-import { AtsBadge, Card, EmptyState, Tag } from "@/components/ui";
+import { AtsBadge, Card, Tag } from "@/components/ui";
+import { DraftsPlaceholder } from "@/components/background-pending";
 import { TemplateThumb } from "@/components/template-thumb";
 import { PortfolioPromo } from "@/components/portfolio-promo";
 import { db } from "@/lib/db";
 import { DownloadAll } from "./download-all";
 import { SkillConsent } from "./skill-consent";
+import { NotEvidencedPanel } from "./not-evidenced";
 import { featureEnabled } from "@/lib/services/features";
 
 /**
@@ -39,20 +43,33 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
   // bar — the layout only draws those for a `ready` analysis — which left a
   // page with no score, no tabs and no way back. The run's own screen is the
   // right place to be until there is something to tab between.
-  const [analysis, drafts, portfolio] = await Promise.all([
+  const [analysis, drafts, cap, portfolio] = await Promise.all([
     getAnalysis(userId, id),
     getDrafts(userId, id),
+    draftsPerRun(userId),
     db.portfolioSite.findUnique({ where: { clerkUserId: userId }, select: { status: true } }),
   ]);
   if (!analysis) redirect("/history");
   if (analysis.status !== "ready") redirect(`/analysis/${id}`);
 
-  if (drafts.length === 0) {
+  // The score and buckets exist before the drafts do, so the "Still not
+  // evidenced" panel reads coverage whatever state the drafts are in.
+  const [profile, requirements, coverage] = await Promise.all([
+    getProfileById(userId, analysis.profileId),
+    getRequirements(userId, id),
+    getCoverage(userId, id),
+  ]);
+  const notEvidenced = stillNotEvidenced(scoreAnalysis(requirements, coverage).buckets.absent);
+
+  // Pending, missing or off is worked out on read (draftsState); nothing new
+  // is stored. "Finish the drafts" is offered only for a `ready` analysis.
+  const state = draftsState(analysis, drafts.length, cap);
+  if (state !== "ready") {
     return (
-      <EmptyState title="The drafts didn't generate">
-        Your match and the other tabs are unaffected. A failure on one surface never takes the
-        rest of the analysis with it.
-      </EmptyState>
+      <section>
+        <DraftsPlaceholder state={state} analysisId={id} canResume={analysis.status === "ready"} />
+        <NotEvidencedPanel analysisId={id} items={notEvidenced} />
+      </section>
     );
   }
 
@@ -62,11 +79,6 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
   // skill-consent.ts). Offered for the member to confirm; never added unasked.
   // Hidden while Prep and Learning are still writing, since a rebuild then
   // would race them for the same run.
-  const [profile, requirements, coverage] = await Promise.all([
-    getProfileById(userId, analysis.profileId),
-    getRequirements(userId, id),
-    getCoverage(userId, id),
-  ]);
   const resume = profile?.resumeJson as unknown as StoredResume | undefined;
   const unlisted =
     resume && !backgroundRunning(analysis)
@@ -130,6 +142,7 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
         })}
       </div>
 
+      <NotEvidencedPanel analysisId={id} items={notEvidenced} />
     </section>
   );
 }

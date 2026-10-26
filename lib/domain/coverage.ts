@@ -159,7 +159,8 @@ export function stillNotEvidenced(absent: readonly DomainRequirement[]): NotEvid
   const seen = new Set<string>();
   const out: NotEvidencedItem[] = [];
   for (const r of sorted) {
-    const label = r.skillName ?? r.text;
+    const label = (r.skillName?.trim() || r.text).trim();
+    if (!label) continue;
     const key = label.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
