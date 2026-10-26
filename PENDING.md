@@ -41,7 +41,10 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] scripts/db/schedule.ts: `vault.update_secret(id, secret)` keeps production's old description — pass name + 'Bearer token for /api/cron/* (N24)' (verify against a non-production DB) — neji, Task 5 review
 - [ ] scripts/db/schedule.ts: wrap unschedule+schedule in `sql.begin` so a dropped connection can't leave reminders unscheduled (pre-existing gap; verify against a non-production DB) — neji, Task 5 review
 - [ ] Minor: tests/services/cron.test.ts picks jobs by index — find by name — neji, Task 5 review
-- [ ] Task 6: seed stagger + checkCourseLink + catalogProblems gate; link-check alignment
+- [x] ~~Task 6: seed stagger + checkCourseLink + catalogProblems gate; link-check alignment~~ — 2026-10-26
+- [ ] Seed: a link the seed itself finds dead is skipped and stays `active` in the DB until the cron re-checks it (≤7 days) — on a dead verdict, `updateMany({ where: { url, status: "active" }, data: { status: "dead", checkedAt: today } })` (pre-existing) — neji, Task 6 review
+- [ ] Seed `--skip-link-check` still stamps `verifiedAt: today` on rows it never checked (pre-existing; plan kept it) — neji, Task 6 review
+- [ ] Seed never writes `author`; bundles fall back to `provider` for diversity — neji, Task 6 review
 - [ ] Task 7: docs — N24, §8, §10, specs F8/F29, README, notifications, courses.ts header, schema `///`, corpus-health overdue30
 
 ## Carried over
@@ -88,6 +91,7 @@ own files; what is still open is here.
 
 ### Branch housekeeping
 
-- [ ] DO NOT run `pnpm seed:catalog` until catalog-refresh Task 6 lands — the current seed writes no `docKind`, so every catalog doc would violate CHECK `courses_doc_needs_kind`
+- [x] ~~DO NOT run `pnpm seed:catalog` until catalog-refresh Task 6 lands — the current seed writes no `docKind`, so every catalog doc would violate CHECK `courses_doc_needs_kind`~~ — 2026-10-26
+- [ ] Re-seed the catalog once (`pnpm seed:catalog`) after this branch deploys: writes batch A/B entries, doc_kind/is_overview and the 7-day checked_at stagger — needs Node ≥ 20.19 locally
 - [x] ~~Merge `feat/learning-watch-read` and `chore/layout-tdd` to `main` (this layout branch is cut from the watch-read branch)~~ — 2026-10-26
 - [ ] Local Node is v20.17.0; `package.json` engines asks for >=20.19.0 — upgrade

@@ -21,3 +21,8 @@ export function nextStatus(current: "active", verdict: Liveness): "active" | "de
   void current;
   return verdict === "dead" ? "dead" : "active";
 }
+
+/** The seed's stamp: row i is due i % 7 days from now's perspective, so a re-seed never makes the whole catalog due on one day. */
+export function staggeredCheckedAt(now: Date, index: number): Date {
+  return daysBefore(now, index % CATALOG_TTL_DAYS);
+}

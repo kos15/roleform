@@ -1,9 +1,8 @@
 /**
- * M7.10 — quarterly catalog link check.
+ * The manual full sweep of the catalog; the daily `/api/cron/catalog` re-checks due rows (N24).
  *
  * Requests every URL already in the `courses` table and flags dead links and
- * stale verified_at dates. Manual run, on purpose: this is an accepted
- * maintenance cost (F8), not a cron job pretending the problem is solved.
+ * stale verified_at dates.
  *
  * Refreshes verified_at for links that still resolve, so the staleness column
  * means something.
@@ -13,7 +12,8 @@
 import "../env";
 import { db } from "../../lib/db";
 import { NODES, roadmapUrl } from "../../lib/catalog/taxonomy";
-import { checkLiveness } from "../../lib/catalog/liveness";
+import { checkCourseLink } from "../../lib/catalog/liveness";
+import { nextStatus } from "../../lib/domain/catalog-refresh";
 
 const STALE_DAYS = 120;
 
@@ -28,7 +28,7 @@ async function main() {
   const blocked: typeof rows = [];
 
   for (const course of rows) {
-    const liveness = await checkLiveness(course.url);
+    const { liveness } = await checkCourseLink({ url: course.url, type: course.type });
     const alive = liveness !== "dead";
     if (liveness === "blocked") blocked.push(course);
     const ageDays = Math.floor(
@@ -38,9 +38,13 @@ async function main() {
     if (!alive) {
       dead.push(course);
       // OUT-7: excluded from bundles immediately, without waiting for a
-      // rebuild. A recommendation that 404s destroys more trust than a missing
-      // one, and `status` is read on every bundle lookup.
-      await db.course.update({ where: { id: course.id }, data: { status: "dead" } });
+      // rebuild. Only an active row flips (one way: never writes active); a
+      // dead verdict on a quarantined or already-dead row is counted, not written.
+      const flip = course.status === "active" && nextStatus("active", liveness) === "dead";
+      await db.course.update({
+        where: { id: course.id },
+        data: flip ? { checkedAt: today, status: "dead" } : { checkedAt: today },
+      });
       console.log(`DEAD   ${course.provider} — ${course.title}\n       ${course.url}`);
       continue;
     }
@@ -48,7 +52,7 @@ async function main() {
       console.log(`BLOCKED ${course.provider} — ${course.title} (host refused the check)`);
     }
 
-    await db.course.update({ where: { id: course.id }, data: { verifiedAt: today } });
+    await db.course.update({ where: { id: course.id }, data: { verifiedAt: today, checkedAt: today } });
     if (ageDays > STALE_DAYS) {
       stale.push(course);
       console.log(`STALE  ${course.title} (last verified ${ageDays} days ago, now refreshed)`);
@@ -79,7 +83,7 @@ async function main() {
   const deadRoadmaps: string[] = [];
   console.log(`\nChecking ${roadmapUrls.size} roadmap.sh fallback targets\n`);
   for (const [url, name] of roadmapUrls) {
-    if ((await checkLiveness(url)) === "dead") {
+    if ((await checkCourseLink({ url, type: "roadmap" })).liveness === "dead") {
       deadRoadmaps.push(`${name} → ${url}`);
       console.log(`DEAD   ${name}\n       ${url}`);
     }
@@ -95,10 +99,11 @@ async function main() {
 
   if (dead.length > 0) {
     console.error(
-      `\nRemove or replace these in lib/catalog/courses.ts, then re-run pnpm seed:catalog.\n` +
-        `Until then they are still being served — delete them from the table if that matters today:\n`,
+      `\n${dead.length} course(s) came back dead. Rows that were active are now marked dead and are no longer served;\n` +
+        `rows found dead that were already non-active are unchanged.\n` +
+        `Fix or remove them in lib/catalog/courses.ts, then re-run pnpm seed:catalog:\n`,
     );
-    for (const course of dead) console.error(`  delete from courses where url = '${course.url}';`);
+    for (const course of dead) console.error(`  - ${course.provider} — ${course.title} → ${course.url}`);
   }
 
   await db.$disconnect();

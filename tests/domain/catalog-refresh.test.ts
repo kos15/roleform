@@ -9,6 +9,7 @@ import {
   daysBefore,
   isDue,
   nextStatus,
+  staggeredCheckedAt,
 } from "@/lib/domain/catalog-refresh";
 
 const now = new Date("2026-10-26T03:17:00.000Z");
@@ -36,4 +37,15 @@ it("nextStatus moves one way: only a dead verdict flips", () => {
   assert.equal(nextStatus("active", "dead"), "dead");
   assert.equal(nextStatus("active", "live"), "active");
   assert.equal(nextStatus("active", "blocked"), "active");
+});
+
+it("staggeredCheckedAt spreads rows over the 7-day TTL window", () => {
+  assert.equal(staggeredCheckedAt(now, 0).toISOString(), "2026-10-26T03:17:00.000Z");
+  assert.equal(staggeredCheckedAt(now, 6).toISOString(), "2026-10-20T03:17:00.000Z");
+  assert.equal(staggeredCheckedAt(now, 7).toISOString(), "2026-10-26T03:17:00.000Z");
+  assert.equal(staggeredCheckedAt(now, 13).toISOString(), "2026-10-20T03:17:00.000Z");
+  assert.ok([0, 1, 2, 3, 4, 5, 6].every((i) => !isDue(staggeredCheckedAt(now, i), now)));
+  const next = daysBefore(now, -1);
+  assert.equal(isDue(staggeredCheckedAt(now, 6), next), true);
+  assert.equal(isDue(staggeredCheckedAt(now, 5), next), false);
 });
