@@ -7,7 +7,7 @@
  * call site the way it could when each caller wired its own.
  *
  * `injection_jev` is declared here but applied by runAgent, because it is a
- * model call (lib/ai/checkers/injection.ts) and this file has no I/O.
+ * model call (lib/ai/typesafe/injection.ts) and this file has no I/O.
  */
 import {
   JD_MAX_CHARS,

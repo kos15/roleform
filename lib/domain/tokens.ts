@@ -8,7 +8,7 @@
  * what the models actually consumed.
  *
  * **Usage is measured, never decremented.** `ai_runs` already records the real
- * input and output tokens of every call (lib/ai/run.ts), so the balance is a
+ * input and output tokens of every call (lib/ai/openai/run.ts), so the balance is a
  * SUM over rows in the current cycle — the same "count what exists" rule that
  * keeps the analyses cap refund-free (lib/auth.ts). A run that dies half-way
  * costs exactly the tokens it burned, and a crash between two writes cannot

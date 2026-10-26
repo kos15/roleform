@@ -25,11 +25,11 @@ import { ReviewScreen } from "./review-screen";
  * at the strong tier) used to sit behind a single "Reading…" line and then
  * either worked or dropped the user back at the drop zone with one sentence.
  * Now each attempt is visible, a failed attempt is retried with the reason it
- * failed (lib/ai/extract-profile.ts), and a final failure keeps the upload so
+ * failed (lib/ai/services/extract-profile.ts), and a final failure keeps the upload so
  * "Try again" resumes at the stage that failed instead of starting over.
  */
 
-/** Mirrors EXTRACT_ATTEMPTS in lib/ai/extract-profile.ts (server-only). */
+/** Mirrors EXTRACT_ATTEMPTS in lib/ai/services/extract-profile.ts (server-only). */
 const ATTEMPTS = 3;
 const MIN_PASTE = 200;
 

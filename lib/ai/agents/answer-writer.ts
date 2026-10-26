@@ -3,7 +3,7 @@ import { QuestionAnswerSchema } from "../schemas/question-answer";
 import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
 import type { DomainBullet } from "@/lib/domain/types";
 import { defineAgent } from "./define";
-import { checkAnswerClaims } from "../checkers/answer-claims";
+import { checkAnswerClaims } from "../typesafe/answer-claims";
 
 export interface AnswerWriterInput {
   jobTitle: string;

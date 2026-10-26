@@ -3,7 +3,7 @@ import { TailorSummarySchema } from "../schemas/tailored-bullets";
 import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
 import { checkFabrication } from "@/lib/domain/fabrication";
 import { defineAgent } from "./define";
-import { checkFabrication as checkWithJev } from "../checkers/fabrication";
+import { checkFabrication as checkWithJev } from "../typesafe/fabrication";
 
 export interface SummaryTailorInput {
   jobTitle: string;

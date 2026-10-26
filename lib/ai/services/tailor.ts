@@ -1,7 +1,7 @@
 import "server-only";
-import { runAgent } from "./agents/define";
-import { bulletTailor } from "./agents/bullet-tailor";
-import { summaryTailor } from "./agents/summary-tailor";
+import { runAgent } from "../agents/define";
+import { bulletTailor } from "../agents/bullet-tailor";
+import { summaryTailor } from "../agents/summary-tailor";
 import { checkFabrication } from "@/lib/domain/fabrication";
 import type { DomainBullet, DomainRequirement, Result, Transform } from "@/lib/domain/types";
 

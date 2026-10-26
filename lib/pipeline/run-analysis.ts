@@ -1,8 +1,8 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { analyzeJd } from "@/lib/ai/analyze-jd";
-import { tailorBullet, tailorSummary, type TailoredResult } from "@/lib/ai/tailor";
-import { generateQuestions } from "@/lib/ai/interview";
+import { analyzeJd } from "@/lib/ai/services/analyze-jd";
+import { tailorBullet, tailorSummary, type TailoredResult } from "@/lib/ai/services/tailor";
+import { generateQuestions } from "@/lib/ai/services/interview";
 import { buildLearningPlan } from "@/lib/learning/build-plan";
 import { computeCoverage, scoreAnalysis } from "@/lib/domain/coverage";
 import { orderSkills, rankBullets } from "@/lib/domain/ordering";

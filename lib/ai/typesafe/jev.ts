@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { featureEnabled } from "@/lib/features";
-import { MODELS } from "../models";
+import { MODELS } from "../openai/models";
 import { JevResponseSchema, type JevResponse, type SystemOneRequest } from "./requests";
 
 /**

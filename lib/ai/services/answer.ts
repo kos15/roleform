@@ -1,7 +1,7 @@
 import "server-only";
-import { runAgent } from "./agents/define";
-import { answerWriter } from "./agents/answer-writer";
-import type { QuestionAnswerOut } from "./schemas/question-answer";
+import { runAgent } from "../agents/define";
+import { answerWriter } from "../agents/answer-writer";
+import type { QuestionAnswerOut } from "../schemas/question-answer";
 import type { DomainBullet, Result } from "@/lib/domain/types";
 
 /**
@@ -95,7 +95,7 @@ export async function generateAnswer(args: {
 
   if (!outcome.ok) return outcome;
 
-  // Last line of defence, mirroring lib/ai/interview.ts: drop, never repair.
+  // Last line of defence, mirroring lib/ai/services/interview.ts: drop, never repair.
   // A hook we cannot trace to a bullet is a first-person claim with no
   // provenance — exactly the thing N1 exists to make impossible.
   const answer: QuestionAnswerOut = {

@@ -1,7 +1,7 @@
 import "server-only";
-import { runAgent } from "./agents/define";
-import { questionWriter } from "./agents/question-writer";
-import type { InterviewQuestionOut } from "./schemas/interview-questions";
+import { runAgent } from "../agents/define";
+import { questionWriter } from "../agents/question-writer";
+import type { InterviewQuestionOut } from "../schemas/interview-questions";
 import type { DomainBullet, DomainRequirement, Result } from "@/lib/domain/types";
 
 /**

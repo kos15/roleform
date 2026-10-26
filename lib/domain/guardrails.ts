@@ -38,7 +38,7 @@ export const JD_MAX_CHARS = 20_000;
  *
  * ── Scope note ──────────────────────────────────────────────────────────────
  * This runs on the learning path — the bullet text handed to the synthesiser.
- * It deliberately does NOT run on lib/ai/extract-profile.ts: that call's entire
+ * It deliberately does NOT run on lib/ai/services/extract-profile.ts: that call's entire
  * job is to transcribe the résumé into JSON Resume, including `basics.email`
  * and `basics.phone`, and redacting its input would break the feature rather
  * than protect anyone. The résumé's contact block reaches a provider exactly

@@ -3,7 +3,7 @@
 import { db } from "@/lib/db";
 import { checkAnswerAllowance, checkTokenAllowance, requireUser } from "@/lib/auth";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
-import { generateAnswer } from "@/lib/ai/answer";
+import { generateAnswer } from "@/lib/ai/services/answer";
 import {
   getAnalysis,
   getCatalog,
@@ -22,7 +22,7 @@ import type { AnswerView } from "@/app/(app)/analysis/[id]/prep/types";
  * On demand, one question at a time, and cached in `question_answers` after the
  * first run — a full analysis already makes a dozen model calls, and putting
  * twelve more on its critical path would buy latency for a surface most users
- * open once. The mid tier does the writing (lib/ai/answer.ts explains why).
+ * open once. The mid tier does the writing (lib/ai/services/answer.ts explains why).
  *
  * Idempotent: a second click returns the stored row rather than paying again.
  */

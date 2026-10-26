@@ -7,8 +7,8 @@ import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { z } from "zod";
 import { extractText, MAX_UPLOAD_BYTES } from "@/lib/extract/text";
 import { MAX_RESUME_CHARS } from "@/lib/extract/normalise";
-import { EXTRACT_ATTEMPTS, extractProfile as extractProfileAi } from "@/lib/ai/extract-profile";
-import { transcribeDocument } from "@/lib/ai/transcribe";
+import { EXTRACT_ATTEMPTS, extractProfile as extractProfileAi } from "@/lib/ai/services/extract-profile";
+import { transcribeDocument } from "@/lib/ai/services/transcribe";
 import { BUCKET_RESUMES, downloadObject, resumePath, uploadObject } from "@/lib/supabase/storage";
 import { commitProfile as commitProfileDb, saveProfileEdit } from "@/lib/db/queries/profile";
 import {
@@ -214,7 +214,7 @@ const ExtractRequestSchema = z.object({
 /**
  * One extraction attempt. The client calls this up to EXTRACT_ATTEMPTS times
  * and shows each one, passing back why the last one failed so the next is
- * adjusted rather than repeated (lib/ai/extract-profile.ts).
+ * adjusted rather than repeated (lib/ai/services/extract-profile.ts).
  */
 export async function extractProfile(
   request: z.input<typeof ExtractRequestSchema>,

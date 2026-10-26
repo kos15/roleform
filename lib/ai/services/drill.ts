@@ -1,13 +1,13 @@
 import "server-only";
-import type { CodeReview, RevisionCard, StoredChallenge } from "./schemas/drill";
+import type { CodeReview, RevisionCard, StoredChallenge } from "../schemas/drill";
 import { clampCorrectness, type CaseResult, type CodeLanguage, type Difficulty, type DrillTopic, type QuizItem, type Signature } from "@/lib/domain/drill";
 import type { Result } from "@/lib/domain/types";
-import { runAgent } from "./agents/define";
-import { revisionWriter } from "./agents/revision-writer";
-import { quizWriter } from "./agents/quiz-writer";
-import { challengeWriter, verifiedTests } from "./agents/challenge-writer";
-import { codeReviewer } from "./agents/code-reviewer";
-import type { DrillRole } from "./agents/drill-prompt";
+import { runAgent } from "../agents/define";
+import { revisionWriter } from "../agents/revision-writer";
+import { quizWriter } from "../agents/quiz-writer";
+import { challengeWriter, verifiedTests } from "../agents/challenge-writer";
+import { codeReviewer } from "../agents/code-reviewer";
+import type { DrillRole } from "../agents/drill-prompt";
 
 export type { DrillRole };
 

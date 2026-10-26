@@ -1,7 +1,7 @@
 import "server-only";
-import { runAgent } from "./agents/define";
-import { postingReader } from "./agents/posting-reader";
-import type { JdAnalysis } from "./schemas/jd-analysis";
+import { runAgent } from "../agents/define";
+import { postingReader } from "../agents/posting-reader";
+import type { JdAnalysis } from "../schemas/jd-analysis";
 import { JD_MAX_CHARS } from "@/lib/domain/guardrails";
 import { stripBoilerplate } from "@/lib/domain/jd-segment";
 import type { Result } from "@/lib/domain/types";

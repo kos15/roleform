@@ -18,7 +18,7 @@ export { ACCEPT_ATTR, ACCEPTED_LABEL, MAX_UPLOAD_BYTES } from "./formats";
  *
  * Scans and photos have no text to extract here. They come back with
  * `needsOcr: true` and an empty `text`; the onboarding flow transcribes them
- * with a vision call (lib/ai/transcribe.ts). Callers that cannot do that —
+ * with a vision call (lib/ai/services/transcribe.ts). Callers that cannot do that —
  * the JD upload — refuse them with `requireText`.
  */
 

@@ -1,0 +1,15 @@
+{
+  "lib/ai/models": "lib/ai/openai/models",
+  "lib/ai/run": "lib/ai/openai/run",
+  "lib/ai/usage": "lib/ai/openai/usage",
+  "lib/ai/checkers/": "lib/ai/typesafe/",
+  "lib/ai/analyze-jd": "lib/ai/services/analyze-jd",
+  "lib/ai/answer": "lib/ai/services/answer",
+  "lib/ai/drill": "lib/ai/services/drill",
+  "lib/ai/extract-profile": "lib/ai/services/extract-profile",
+  "lib/ai/interview": "lib/ai/services/interview",
+  "lib/ai/synthesise-plan": "lib/ai/services/synthesise-plan",
+  "lib/ai/tailor": "lib/ai/services/tailor",
+  "lib/ai/transcribe": "lib/ai/services/transcribe",
+  "lib/ai/agents/prompt": "lib/ai/prompts/assemble"
+}

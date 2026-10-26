@@ -4,7 +4,7 @@ import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
 import { checkFabrication } from "@/lib/domain/fabrication";
 import type { DomainBullet, DomainRequirement } from "@/lib/domain/types";
 import { defineAgent } from "./define";
-import { checkFabrication as checkWithJev } from "../checkers/fabrication";
+import { checkFabrication as checkWithJev } from "../typesafe/fabrication";
 
 export interface BulletTailorInput {
   jobTitle: string;

@@ -14,7 +14,7 @@ import {
   toRoundResult,
   toRoundView,
 } from "@/lib/db/queries/drill";
-import { generateChallenge, generateQuizRound, generateRevisionDeck, reviewCode } from "@/lib/ai/drill";
+import { generateChallenge, generateQuizRound, generateRevisionDeck, reviewCode } from "@/lib/ai/services/drill";
 import { StoredCardsSchema, StoredQuizSchema } from "@/lib/ai/schemas/drill";
 import { BANK, bankProblem } from "@/lib/drill/bank";
 import { runJsCases } from "@/lib/drill/sandbox";

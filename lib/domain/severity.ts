@@ -16,7 +16,7 @@
  * ── Where this implementation substitutes for the spec ──────────────────────
  * Spec §5's `w_section` and `w_modality` read a `section` and a `modality`
  * field that the RLE's own S2 extractor emits. Roleform's existing JD extractor
- * (lib/ai/analyze-jd.ts) emits `kind` and `necessity` instead, over the same JD.
+ * (lib/ai/services/analyze-jd.ts) emits `kind` and `necessity` instead, over the same JD.
  * Rather than add a second extraction call — which would violate the spine and
  * put a second small-model call on every run for information we already have —
  * the two factors are read off the fields we already extract. The mapping is

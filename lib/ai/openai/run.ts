@@ -4,9 +4,9 @@ import type { z } from "zod";
 import { db } from "@/lib/db";
 import { modelFor, MODELS, openaiOptions, type ReasoningEffort, type WriterRole } from "./models";
 import { appError, err, ok, type ModelFailure, type Result } from "@/lib/domain/types";
-import type { CheckVerdict } from "./checkers/types";
-import { decideAfterCheck } from "./checkers/loop";
-import { correctionFor } from "./checkers/verdict";
+import type { CheckVerdict } from "../typesafe/types";
+import { decideAfterCheck } from "../typesafe/loop";
+import { correctionFor } from "../typesafe/verdict";
 import { sumUsage, type Usage } from "./usage";
 
 /**

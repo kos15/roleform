@@ -3,8 +3,8 @@ import { it } from "vitest";
  * The agent layer's pure decisions. Each block names the production change that would break it.
  */
 import assert from "node:assert/strict";
-import { MODELS, openaiOptions } from "@/lib/ai/models";
-import { assemblePrompt, PROMPT_SEPARATOR } from "@/lib/ai/agents/prompt";
+import { MODELS, openaiOptions } from "@/lib/ai/openai/models";
+import { assemblePrompt, PROMPT_SEPARATOR } from "@/lib/ai/prompts/assemble";
 import { applyInputGuards, outputGuardProblem, injectionCheckText } from "@/lib/ai/agents/guards";
 import { postingReader } from "@/lib/ai/agents/posting-reader";
 import { profileReader } from "@/lib/ai/agents/profile-reader";
@@ -16,12 +16,12 @@ import { learningPlanner } from "@/lib/ai/agents/learning-planner";
 import { quizWriter } from "@/lib/ai/agents/quiz-writer";
 import { revisionWriter } from "@/lib/ai/agents/revision-writer";
 import { AGENTS } from "@/lib/ai/agents/roster";
-import { verdictFrom, correctionFor, CHECK_KINDS } from "@/lib/ai/checkers/verdict";
-import { fabricationRequest, answerClaimRequest, JevResponseSchema } from "@/lib/ai/checkers/requests";
-import { decideAfterCheck, budgetsAfterGuardRetry } from "@/lib/ai/checkers/loop";
-import { SKIPPED } from "@/lib/ai/checkers/verdict";
-import { injectionRequest } from "@/lib/ai/checkers/requests";
-import { sumUsage } from "@/lib/ai/usage";
+import { verdictFrom, correctionFor, CHECK_KINDS } from "@/lib/ai/typesafe/verdict";
+import { fabricationRequest, answerClaimRequest, JevResponseSchema } from "@/lib/ai/typesafe/requests";
+import { decideAfterCheck, budgetsAfterGuardRetry } from "@/lib/ai/typesafe/loop";
+import { SKIPPED } from "@/lib/ai/typesafe/verdict";
+import { injectionRequest } from "@/lib/ai/typesafe/requests";
+import { sumUsage } from "@/lib/ai/openai/usage";
 
 it("writers are GPT-5", () => {
   assert.equal(MODELS.writer, "gpt-5");

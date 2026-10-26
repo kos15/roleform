@@ -5,9 +5,9 @@
  *
  *   pnpm script scripts/evals/jev-smoke.ts
  */
-import { checkFabrication } from "../../lib/ai/checkers/fabrication";
-import { checkAnswerClaims } from "../../lib/ai/checkers/answer-claims";
-import { checkInjection } from "../../lib/ai/checkers/injection";
+import { checkFabrication } from "../../lib/ai/typesafe/fabrication";
+import { checkAnswerClaims } from "../../lib/ai/typesafe/answer-claims";
+import { checkInjection } from "../../lib/ai/typesafe/injection";
 
 const ctx = { clerkUserId: "eval_smoke" };
 let failed = 0;

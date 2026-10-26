@@ -139,7 +139,7 @@ export interface AppError {
   /** Set only on `cap_wall` (F23). The count-based counterpart of `wall`. */
   capWall?: CapWall;
   /**
-   * Set only on a failed model call (lib/ai/run.ts): why the last attempt
+   * Set only on a failed model call (lib/ai/openai/run.ts): why the last attempt
    * failed. Lets a caller that retries from the client (onboarding) say what
    * happened and adjust the next attempt — a structural reason, never content.
    */

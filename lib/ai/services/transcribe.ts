@@ -1,6 +1,6 @@
 import "server-only";
-import { runAgent } from "./agents/define";
-import { documentTranscriber } from "./agents/document-transcriber";
+import { runAgent } from "../agents/define";
+import { documentTranscriber } from "../agents/document-transcriber";
 import { cleanExtractedText } from "@/lib/extract/normalise";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 

@@ -31,7 +31,7 @@ an id used in §6 and in `planning.md`.
 
 ### 1.1 What is solid and must not be disturbed
 
-- One door for every model call (`lib/ai/run.ts`), Zod at the boundary, `ai_runs` per call (N6, F19).
+- One door for every model call (`lib/ai/openai/run.ts`), Zod at the boundary, `ai_runs` per call (N6, F19).
 - Caps are counted from rows, never decremented (`lib/auth.ts`). A plan is its caps (`lib/content/pricing.ts`). Both new caps must follow this shape exactly.
 - The learning engine's one-call rule and its guardrail set (`lib/domain/guardrails.ts`) — the model for how the new surfaces are guarded.
 - The token wall is a value returned by the refusal, rendered as-is (`TokenWall`). The cap wall (§4.3) copies this pattern.
@@ -40,7 +40,7 @@ an id used in §6 and in `planning.md`.
 
 | Id | Where | Finding | Severity |
 |---|---|---|---|
-| G1 | `lib/ai/run.ts` | No `maxOutputTokens` on any call. Learning-engine invariant I6 says every call declares one. | High (cost) |
+| G1 | `lib/ai/openai/run.ts` | No `maxOutputTokens` on any call. Learning-engine invariant I6 says every call declares one. | High (cost) |
 | G2 | `lib/domain/guardrails.ts` → only `build-plan.ts` | Injection scan (IN-5) runs at stage ⑤, after three model calls have already read the JD. Nothing scans Prep output prose for links or odds. | Medium |
 | G3 | `run-analysis.ts` ① | Protected-attribute firewall (IN-6) runs only in learning. A discriminatory requirement is still written to `jd_requirements`, scored, and can seed a question. | High (policy) |
 | G4 | `run-analysis.ts` ① | `stageState.truncated` is written and never read. The user is not told what was dropped (IN-1). | Low |
@@ -53,8 +53,8 @@ an id used in §6 and in `planning.md`.
 | G11 | `lib/domain/tokens.ts` | `TOKEN_STAGES` are hand-typed constants described as "measured". Nothing recalibrates them. | Low |
 | G12 | `run-analysis.ts` ③ | No per-run token ceiling for the analysis. One long profile × one retry each = an unbounded bill. Learning has one (15k); the pipeline does not. | Medium (cost) |
 | G13 | `deleteEverythingFor` | `contact_messages.clerk_user_id` survives account deletion. | Low |
-| G14 | `lib/ai/analyze-jd.ts`, `lib/ai/extract-profile.ts` | `retries: 2` on both — COST-3 says one corrective retry per stage. Worst case is 3× the largest input in the run. | Low |
-| G15 | `lib/ai/answer.ts` | Sends up to 40 "other" bullets per answer (~1.2k tokens) with no relevance ranking. | Medium (cost) |
+| G14 | `lib/ai/services/analyze-jd.ts`, `lib/ai/services/extract-profile.ts` | `retries: 2` on both — COST-3 says one corrective retry per stage. Worst case is 3× the largest input in the run. | Low |
+| G15 | `lib/ai/services/answer.ts` | Sends up to 40 "other" bullets per answer (~1.2k tokens) with no relevance ranking. | Medium (cost) |
 | G16 | all prose schemas | No "no URL in model-written text" check outside learning. A worked answer `body` can carry a link (N8 in spirit). | Medium |
 | G17 | specs §6.3 | "Exports expire after 90 days" — nothing enforces it; there is no scheduler. Doc drift. | Low |
 | G18 | prompts + schemas | Instructions live in three places at once: system prompt, `.describe()`, validator. The JSON schema is sent on every call, so each duplicate is billed twice. | Medium (cost) |

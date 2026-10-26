@@ -856,7 +856,7 @@ only by the deterministic binder, which returns null rather than something plaus
 | S5b · select | deterministic personalisation (`lib/domain/selection.ts`) | 0 tokens |
 | S5c · bind | gap → bullet, gap → question (`lib/domain/binding.ts`) | 0 tokens |
 | S5.5 · plan | knapsack over durations (`lib/domain/plan.ts`) | 0 tokens |
-| S6 · synthesise | narrative + staged bullets (`lib/ai/synthesise-plan.ts`) | ONE strong call |
+| S6 · synthesise | narrative + staged bullets (`lib/ai/services/synthesise-plan.ts`) | ONE strong call |
 | S7 · validate | OUT-1 link resolution (`lib/learning/validate.ts`) | 0 tokens |
 
 The spine: **every expensive operation happens once at ingest, never at query time.** Retrieval,
@@ -1748,7 +1748,7 @@ lives in the system prompt, enforcement lives in a validator — never two homes
 URL" is `noUrls()`'s job, not a sentence's (PR-2). The shared `LAW` block across all seven prompts
 collapses to one sentence: *"Nothing is invented: you never add a fact the user did not state."*
 
-**Every call now declares a ceiling.** `runStructured` (renamed `lib/ai/run.ts`'s `runOutcome`
+**Every call now declares a ceiling.** `runStructured` (renamed `lib/ai/openai/run.ts`'s `runOutcome`
 path) refuses to compile without a `maxOutputTokens` (PR-3, G1): extract 6,000 · analyzeJd 3,000 ·
 tailor 200 · summary 400 · questions 3,500 · answer 2,500 · plan 2,500. A response the ceiling cuts
 short fails schema validation, takes its one corrective retry (PR-4), and then follows the
@@ -1756,7 +1756,7 @@ purpose's existing fallback.
 
 **Per-call inputs are trimmed by pure ranking before the call is made — never by asking a model to
 ignore content** (PR-5). `answerQuestion`'s `otherBullets` narrows to the top 12 by term overlap
-with the question (`lib/ai/answer.ts`'s `rankByOverlap`). `generateQuestions`'s bullets cap at 40,
+with the question (`lib/ai/services/answer.ts`'s `rankByOverlap`). `generateQuestions`'s bullets cap at 40,
 ranked by coverage relevance. The JD itself is pre-stripped of boilerplate — benefits, EEO,
 "About us" — by `lib/domain/jd-segment.ts`'s `stripBoilerplate()`, a conservative regex on
 headings with an absolute floor (not a percentage — a percentage floor reverts stripping on
@@ -2318,7 +2318,7 @@ ceilings include reasoning tokens, which are metered like any other.
 | `coding_challenge` (F26) | `generateChallenge` | `generatedChallengeSchema(topics)` | writer-fast | 1, tests re-run in sandbox | — |
 | `code_review` (F26) | `reviewCode` | `CodeReviewSchema` | writer-fast | 1, clamped by tests | — |
 
-**Checkers** (`lib/ai/checkers/`) are Jev, called over `fetch` with a 2 s timeout, answers Zod-parsed.
+**Checkers** (`lib/ai/typesafe/`) are Jev, called over `fetch` with a 2 s timeout, answers Zod-parsed.
 A checker sees exactly the evidence its writer saw (profile terms, other profile facts). Its rewrite
 budget is separate from the schema/guard retry. It **fails open**: no key, the `ai_checkers` switch
 off (F31), a timeout or a malformed answer means the deterministic guards' verdict stands. Every

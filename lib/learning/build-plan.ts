@@ -17,7 +17,7 @@ import {
 import { MAX_GAPS, rankGaps, type ScoredGap } from "@/lib/domain/severity";
 import { isUncapped } from "@/lib/domain/entitlements";
 import { laneOf, perLaneCap, type Lane } from "@/lib/domain/lanes";
-import { synthesisePlan, type SynthesisGap } from "@/lib/ai/synthesise-plan";
+import { synthesisePlan, type SynthesisGap } from "@/lib/ai/services/synthesise-plan";
 import type {
   DomainBullet,
   DomainCoverageItem,

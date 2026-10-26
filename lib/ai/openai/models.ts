@@ -5,7 +5,7 @@ import type { LanguageModel } from "ai";
  * Model roles (specs §10; docs/superpowers/specs/2026-10-21-agent-architecture-design.md).
  *
  * Writers are GPT-5 reasoning models; the checker is TypeSafe's Jev, called
- * through lib/ai/checkers/jev.ts rather than the AI SDK. Every model id lives
+ * through lib/ai/typesafe/jev.ts rather than the AI SDK. Every model id lives
  * here and nowhere else.
  *
  * Cost target is <$0.35 per full analysis (specs §11) — `ai_runs` makes the

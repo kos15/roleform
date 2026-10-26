@@ -13,7 +13,7 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 1: Vitest harness, PENDING.md, test-first policy~~ — 2026-10-26
 - [x] ~~Task 2: Port the offline fixture scripts to Vitest~~ — 2026-10-26
 - [x] ~~Task 3: Tested module-move codemod~~ — 2026-10-26
-- [ ] Task 4: AI provider (`openai/`), checkers (`typesafe/`), `services/` folders
+- [x] ~~Task 4: AI provider (`openai/`), checkers (`typesafe/`), `services/` folders~~ — 2026-10-26
 - [ ] Task 5: Split system prompts into `lib/ai/system-prompts/`, byte-identical
 - [ ] Task 6: Per-agent user-prompt builders in `lib/ai/prompts/`
 - [ ] Task 7: `lib/services/` and `lib/shared/`

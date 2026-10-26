@@ -1,7 +1,7 @@
 import "server-only";
-import { runAgent } from "./agents/define";
-import { learningPlanner, type SynthesisGap } from "./agents/learning-planner";
-import type { LearningPlanOut } from "./schemas/learning-plan";
+import { runAgent } from "../agents/define";
+import { learningPlanner, type SynthesisGap } from "../agents/learning-planner";
+import type { LearningPlanOut } from "../schemas/learning-plan";
 import type { Result } from "@/lib/domain/types";
 
 export type { SynthesisGap };
