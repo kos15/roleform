@@ -11,6 +11,7 @@ import {
   nextStatus,
   seededStatus,
   staggeredCheckedAt,
+  stampsVerifiedAt,
 } from "@/lib/domain/catalog-refresh";
 
 const now = new Date("2026-10-26T03:17:00.000Z");
@@ -58,4 +59,14 @@ it("seededStatus: a blocked check never revives an existing row", () => {
   assert.equal(seededStatus("live", true), "active");
   assert.equal(seededStatus("blocked", true), "active");
   assert.equal(seededStatus("dead", true), null);
+});
+
+it("stampsVerifiedAt: a new row always stamps; an existing row only when live", () => {
+  assert.equal(stampsVerifiedAt(null, true), true);
+  assert.equal(stampsVerifiedAt("live", true), true);
+  assert.equal(stampsVerifiedAt("blocked", true), true);
+  assert.equal(stampsVerifiedAt("live", false), true);
+  assert.equal(stampsVerifiedAt("blocked", false), false);
+  assert.equal(stampsVerifiedAt("dead", false), false);
+  assert.equal(stampsVerifiedAt(null, false), false);
 });

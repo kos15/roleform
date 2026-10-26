@@ -12,18 +12,23 @@
  *
  * That is what makes N8 true in practice rather than in principle: a dead link
  * cannot enter the database, so the Learning tab cannot serve one. Run with
- * --skip-link-check only for local work against a network you don't trust.
+ * --skip-link-check only for local work against a network you don't trust:
+ * local-only — production builds never pass it (N25). It stamps no verified_at
+ * on an existing row and creates new rows already due for the daily re-check.
+ * Rows come from the pure lib/catalog/seed-rows.ts, the same source the deploy
+ * sync writes from.
  */
 import "../env";
 import { db } from "../../lib/db";
 import { SKILLS } from "../../lib/catalog/skills";
 import { COURSES } from "../../lib/catalog/courses";
+import { catalogSeedRows } from "../../lib/catalog/seed-rows";
+import { writeCourseSkills, writeSkills, writeTemplates } from "./catalog-writes";
 import { catalogProblems } from "../../lib/catalog/problems";
-import { CATALOG_TTL_DAYS, daysBefore, seededStatus, staggeredCheckedAt } from "../../lib/domain/catalog-refresh";
-import { assertTaxonomy, NODES } from "../../lib/catalog/taxonomy";
-import { levelOf, primacyOf, qualityOf, summaryFor, tagsFor, typeOf } from "../../lib/catalog/quality";
+import { CATALOG_TTL_DAYS, daysBefore, seededStatus, staggeredCheckedAt, stampsVerifiedAt } from "../../lib/domain/catalog-refresh";
+import { assertTaxonomy } from "../../lib/catalog/taxonomy";
 import { checkCourseLink, type Liveness } from "../../lib/catalog/liveness";
-import { assertTemplates, TEMPLATES } from "../../lib/render/templates";
+import { assertTemplates } from "../../lib/render/templates";
 import { rateAts } from "../../lib/render/ats-rules";
 
 const skipLinkCheck = process.argv.includes("--skip-link-check");
@@ -48,26 +53,11 @@ async function main() {
     process.exit(1);
   }
 
-  for (const template of TEMPLATES) {
-    await db.template.upsert({
-      where: { id: template.id },
-      create: {
-        id: template.id,
-        name: template.name,
-        kind: template.kind,
-        blurb: template.blurb,
-        accent: template.accent,
-        structuralFlags: template.structuralFlags as unknown as object,
-      },
-      update: {
-        name: template.name,
-        kind: template.kind,
-        blurb: template.blurb,
-        accent: template.accent,
-        structuralFlags: template.structuralFlags as unknown as object,
-      },
-    });
-    console.log(`template ${template.id} → ATS ${rateAts(template.structuralFlags)}`);
+  const rows = catalogSeedRows();
+
+  await writeTemplates(rows.templates);
+  for (const row of rows.templates) {
+    console.log(`template ${row.id} → ATS ${rateAts(row.structuralFlags)}`);
   }
 
   /* ---------------------------------------------------------------- skills */
@@ -84,47 +74,11 @@ async function main() {
     process.exit(1);
   }
 
-  // Pass 1 — every node, without its parent. Parents are set in pass 2 because
-  // a child can be declared before the row its parent_id points at exists.
-  for (const skill of SKILLS) {
-    const node = NODES.get(skill.name)!;
-    await db.skill.upsert({
-      where: { name: skill.name },
-      create: {
-        name: skill.name,
-        category: skill.category,
-        aliases: skill.aliases,
-        slug: node.slug,
-        roadmapPath: node.roadmap,
-        depth: node.depth,
-        volatility: node.volatility,
-      },
-      update: {
-        category: skill.category,
-        aliases: skill.aliases,
-        slug: node.slug,
-        roadmapPath: node.roadmap,
-        depth: node.depth,
-        volatility: node.volatility,
-      },
-    });
-  }
+  const skillIdByName = await writeSkills(rows.skills);
 
-  const skillRows = await db.skill.findMany();
-  const skillIdByName = new Map(skillRows.map((s) => [s.name, s.id]));
-
-  // Pass 2 — the tree.
-  let parented = 0;
-  for (const skill of SKILLS) {
-    const node = NODES.get(skill.name)!;
-    const parentId = node.parent ? (skillIdByName.get(node.parent) ?? null) : null;
-    await db.skill.update({ where: { name: skill.name }, data: { parentId } });
-    if (parentId) parented++;
-  }
-
-  const roots = SKILLS.length - parented;
-  const deepest = Math.max(...[...NODES.values()].map((n) => n.depth));
-  console.log(`skills: ${skillRows.length} (${roots} roots, depth ${deepest})`);
+  const roots = rows.skills.filter((s) => !s.parent).length;
+  const deepest = Math.max(...rows.skills.map((s) => s.depth));
+  console.log(`skills: ${skillIdByName.size} (${roots} roots, depth ${deepest})`);
 
   /* --------------------------------------------------------------- courses */
   const today = new Date();
@@ -134,8 +88,16 @@ async function main() {
   const blocked: string[] = [];
   const unknownSkills = new Set<string>();
 
-  for (const [index, course] of COURSES.entries()) {
-    const skillIds = course.skills.map((name) => {
+  const skillRowsByUrl = new Map<string, typeof rows.courseSkills>();
+  for (const row of rows.courseSkills) {
+    const list = skillRowsByUrl.get(row.courseUrl);
+    if (list) list.push(row);
+    else skillRowsByUrl.set(row.courseUrl, [row]);
+  }
+
+  for (const [index, course] of rows.courses.entries()) {
+    const { url, skills, ...written } = course;
+    const skillIds = skills.map((name) => {
       const id = skillIdByName.get(name);
       if (!id) unknownSkills.add(name);
       return id;
@@ -147,32 +109,16 @@ async function main() {
       // Three outcomes, not two (lib/catalog/liveness.ts). A 403 from a
       // bot-walled host is not evidence that a tutorial was deleted, and
       // treating it as such was silently shrinking the catalog.
-      const { liveness } = await checkCourseLink({ url: course.url, type: typeOf(course) });
+      const { liveness } = await checkCourseLink({ url, type: course.type });
       verdict = liveness;
       if (liveness === "dead") {
-        dead.push(`${course.provider} — ${course.title} → ${course.url}`);
+        dead.push(`${course.provider} — ${course.title} → ${url}`);
         continue;
       }
       if (liveness === "blocked") {
-        blocked.push(`${course.provider} — ${course.title} → ${course.url}`);
+        blocked.push(`${course.provider} — ${course.title} → ${url}`);
       }
     }
-
-    // The learning engine's resource columns, all computed (lib/catalog/quality)
-    // rather than authored: a hand-set quality score is a hand-set bundle
-    // ranking, and the whole point of the score is that it can be argued with.
-    const resource = {
-      type: typeOf(course),
-      qualityScore: qualityOf(course).toFixed(3),
-      tags: tagsFor(course),
-    };
-
-    // CHECK courses_doc_needs_kind (type doc ⇒ doc_kind not null): these are
-    // written on EVERY path, create and update, link-checked or not.
-    const curation = {
-      docKind: course.docKind ?? null,
-      isOverview: course.isOverview ?? false,
-    };
 
     // checked_at/status: a link-checked run stamps the staggered TTL (we did
     // check) and revives an existing row only on a "live" verdict (seededStatus:
@@ -197,74 +143,34 @@ async function main() {
             ...(seededStatus(verdict, false) === "active" ? { status: "active" as const } : {}),
           };
 
+    // An existing row's verified_at moves only when this run reached the URL and
+    // it answered (stampsVerifiedAt); --skip-link-check and a blocked host prove nothing.
+    const updateVerified = stampsVerifiedAt(verdict, false) ? { verifiedAt: today } : {};
+
     const row = await db.course.upsert({
-      where: { url: course.url },
+      where: { url },
       create: {
-        provider: course.provider,
-        title: course.title,
-        url: course.url,
-        priceLabel: course.priceLabel,
-        lengthLabel: course.lengthLabel,
-        lengthMinutes: course.lengthMinutes,
-        level: course.level,
-        mark: course.mark,
-        isFree: course.isFree,
+        url,
+        ...written,
         skillIds: skillIds as string[],
         verifiedAt: today,
-        ...resource,
-        ...curation,
         ...createChecked,
       },
       update: {
-        provider: course.provider,
-        title: course.title,
-        priceLabel: course.priceLabel,
-        lengthLabel: course.lengthLabel,
-        lengthMinutes: course.lengthMinutes,
-        level: course.level,
-        mark: course.mark,
-        isFree: course.isFree,
+        ...written,
         skillIds: skillIds as string[],
-        verifiedAt: today,
-        ...resource,
-        ...curation,
+        ...updateVerified,
         ...updateChecked,
       },
       select: { id: true },
     });
 
-    // The (resource, skill) join the bundle builder reads — RLE spec §3.
-    //
-    // `entryLabel` / `entryUrl` stay null for catalog entries, and that is
-    // honest rather than pending: a timestamp we did not derive from a real
-    // transcript would be a made-up number pointing into someone else's video.
-    // The columns exist and the whole path renders them, so the day the ingest
-    // pipeline (spec §3, planning.md Phase 3) produces real ones, nothing
-    // downstream changes.
-    for (const skillName of course.skills) {
-      const skillId = skillIdByName.get(skillName)!;
-      // `skills[0]` is what the course TEACHES; the rest are what it is useful
-      // to. Collapsing that distinction is what put the Redux tutorial at the
-      // top of React's own bundle — see lib/catalog/quality.ts.
-      const primacy = primacyOf(course, skillName);
-      const payload = {
-        level: levelOf(course),
-        confidence: primacy.confidence.toFixed(3),
-        isPrimary: primacy.isPrimary,
-        summary: summaryFor(course, skillName),
-      };
-      await db.courseSkill.upsert({
-        where: { courseId_skillId: { courseId: row.id, skillId } },
-        create: { courseId: row.id, skillId, ...payload },
-        update: payload,
-      });
-      links++;
-    }
+    links += await writeCourseSkills(row.id, skillRowsByUrl.get(url) ?? [], skillIdByName);
 
     seeded++;
   }
 
-  console.log(`\ncourses seeded: ${seeded} / ${COURSES.length} (${links} skill links)`);
+  console.log(`\ncourses seeded: ${seeded} / ${rows.courses.length} (${links} skill links)`);
   console.log(`run \`pnpm bundles:rebuild\` next — bundles are what the Learning tab reads.`);
 
   if (unknownSkills.size > 0) {
@@ -291,7 +197,7 @@ async function main() {
 
   // Report which canonical skills have no course at all — D4's trigger is gap
   // coverage dropping below 80%, and this is how you'd notice.
-  const covered = new Set(COURSES.flatMap((c) => c.skills));
+  const covered = new Set(rows.courses.flatMap((c) => c.skills));
   const uncovered = SKILLS.filter((s) => !covered.has(s.name));
   console.log(
     `\ncatalog covers ${covered.size} of ${SKILLS.length} canonical skills ` +

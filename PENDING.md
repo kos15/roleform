@@ -43,7 +43,7 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] Minor: tests/services/cron.test.ts picks jobs by index — find by name — neji, Task 5 review
 - [x] ~~Task 6: seed stagger + checkCourseLink + catalogProblems gate; link-check alignment~~ — 2026-10-26
 - [ ] Seed: a link the seed itself finds dead is skipped and stays `active` in the DB until the cron re-checks it (≤7 days) — on a dead verdict, `updateMany({ where: { url, status: "active" }, data: { status: "dead", checkedAt: today } })` (pre-existing) — neji, Task 6 review
-- [ ] Seed `--skip-link-check` still stamps `verifiedAt: today` on rows it never checked (pre-existing; plan kept it) — neji, Task 6 review
+- [x] ~~Seed `--skip-link-check` still stamps `verifiedAt: today` on rows it never checked (pre-existing; plan kept it) — neji, Task 6 review~~ — 2026-10-26
 - [ ] Seed never writes `author`; bundles fall back to `provider` for diversity — neji, Task 6 review
 - [x] ~~Task 7: docs — N24, §8, §10, specs F8/F29, README, notifications, courses.ts header, schema `///`, corpus-health overdue30~~ — 2026-10-26
 - [ ] /api/cron/reminders has no claimUntil deadline — relies on maxDuration 60 / pg_net 55 s (N24 wording now says so) — neji, Task 7 review
@@ -55,7 +55,7 @@ the struck list is the record. New work gets its line *before* its first failing
 ## Deploy-time sync — `docs/superpowers/plans/2026-10-26-deploy-time-sync.md` (branch `feat/deploy-time-sync`)
 
 - [x] ~~Task 1: `scripts/deploy/gate.ts` (`isProductionBuild`, `skipLine`) + tests~~ — 2026-10-26
-- [ ] Task 2: pure `lib/catalog/seed-rows.ts` (`catalogSeedRows`, `catalogHash`, `SEED_FORMAT`), `scripts/catalog/catalog-writes.ts`, manual seed writes from rows; `verifiedAt` stamped on update only on a live verdict
+- [x] ~~Task 2: pure `lib/catalog/seed-rows.ts` (`catalogSeedRows`, `catalogHash`, `SEED_FORMAT`), `scripts/catalog/catalog-writes.ts`, manual seed writes from rows; `verifiedAt` stamped on update only on a live verdict~~ — 2026-10-26
 - [ ] Task 3: `CatalogSync` model, migration `20261026000000_catalog_syncs` (hand-added CHECKs), `catalog_syncs` RLS on/no policy
 - [ ] Task 4: `pnpm deploy:catalog` — `syncCatalog` (hash gate, advisory lock, new-URL link check at concurrency 5, bundles, sync row last)
 - [ ] Task 5: `pnpm deploy:schedule` — `installSchedule` extracted to `scripts/db/install-schedule.ts`; `build` runs both deploy steps
