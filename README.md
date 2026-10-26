@@ -137,15 +137,15 @@ flowchart TB
     end
 
     subgraph core["lib/ — server"]
-        pipeline["lib/pipeline<br/>run-analysis · stages"]
-        agents["lib/ai/agents<br/>runAgent + Zod schemas (N6)"]
-        checkers["lib/ai/checkers<br/>fabrication · answer claims · injection"]
-        learning["lib/learning<br/>bundles · build-plan · validate<br/>ONE model call (N12)"]
+        pipeline["lib/services/pipeline<br/>run-analysis · stages"]
+        agents["lib/ai/agents · prompts · system-prompts<br/>runAgent + Zod schemas (N6) · lib/ai/openai"]
+        checkers["lib/ai/typesafe<br/>fabrication · answer claims · injection"]
+        learning["lib/services/learning<br/>bundles · build-plan · validate<br/>ONE model call (N12)"]
         catalog["lib/catalog<br/>skills · courses · matcher (N8)"]
-        jobs["lib/jobs<br/>search + API adapters (N17–N19)"]
+        jobs["lib/services/jobs<br/>search + API adapters (N17–N19)"]
         render["lib/render<br/>ats-rules · pdf · docx · zip"]
-        plans["lib/plans · lib/promo · lib/payments<br/>plan catalog · promos · razorpay"]
-        push["lib/push · lib/mail<br/>dispatch · outbox · web-push · Resend"]
+        plans["lib/services/plans · promo · payments<br/>plan catalog · promos · razorpay"]
+        push["lib/services/push · mail<br/>dispatch · outbox · web-push · Resend"]
     end
 
     domain["lib/domain — PURE<br/>coverage · fabrication · ordering · diff<br/>binding · guardrails · entitlements"]
