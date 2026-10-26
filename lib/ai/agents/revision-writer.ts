@@ -1,6 +1,6 @@
 import "server-only";
 import { revisionDeckSchema } from "../schemas/drill";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import type { DrillTopic } from "@/lib/domain/drill";
 import { defineAgent } from "./define";
 import { enumOf, roleLine, topicBlock, type DrillRole } from "./drill-prompt";

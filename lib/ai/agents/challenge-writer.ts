@@ -1,6 +1,6 @@
 import "server-only";
 import { generatedChallengeSchema, type StoredChallenge } from "../schemas/drill";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import { LANGUAGE_LABEL, parseTestCase, type CodeLanguage, type Difficulty, type DrillTopic, type Signature } from "@/lib/domain/drill";
 import { loadSandbox, runJsCasesSync } from "@/lib/drill/sandbox";
 import { defineAgent } from "./define";

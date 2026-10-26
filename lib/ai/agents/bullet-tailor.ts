@@ -1,6 +1,6 @@
 import "server-only";
 import { TailoredBulletSchema } from "../schemas/tailored-bullets";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import { checkFabrication } from "@/lib/domain/fabrication";
 import type { DomainBullet, DomainRequirement } from "@/lib/domain/types";
 import { defineAgent } from "./define";

@@ -1,6 +1,6 @@
 import "server-only";
 import { CodeReviewSchema } from "../schemas/drill";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import { LANGUAGE_LABEL, type CaseResult, type CodeLanguage, type Signature } from "@/lib/domain/drill";
 import { defineAgent } from "./define";
 

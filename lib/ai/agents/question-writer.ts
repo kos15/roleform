@@ -1,6 +1,6 @@
 import "server-only";
 import { InterviewQuestionsSchema } from "../schemas/interview-questions";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import type { DomainBullet, DomainRequirement } from "@/lib/domain/types";
 import { defineAgent } from "./define";
 

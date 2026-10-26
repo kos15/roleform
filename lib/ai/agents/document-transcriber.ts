@@ -1,6 +1,6 @@
 import "server-only";
 import { TranscriptionSchema } from "../schemas/resume-json";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import { defineAgent } from "./define";
 
 export interface DocumentTranscriberInput {

@@ -1,6 +1,6 @@
 import "server-only";
 import { JdAnalysisSchema } from "../schemas/jd-analysis";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import { defineAgent } from "./define";
 
 export interface PostingReaderInput {

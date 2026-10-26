@@ -1,6 +1,6 @@
 import "server-only";
 import { QuestionAnswerSchema } from "../schemas/question-answer";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import type { DomainBullet } from "@/lib/domain/types";
 import { defineAgent } from "./define";
 import { checkAnswerClaims } from "../typesafe/answer-claims";

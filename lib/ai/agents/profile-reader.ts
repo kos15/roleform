@@ -1,6 +1,6 @@
 import "server-only";
 import { DraftResumeSchema } from "../schemas/resume-json";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import type { ModelFailure } from "@/lib/domain/types";
 import { defineAgent } from "./define";
 

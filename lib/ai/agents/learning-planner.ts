@@ -1,6 +1,6 @@
 import "server-only";
 import { LearningPlanSchema } from "../schemas/learning-plan";
-import { PROMPT_VERSIONS, SYSTEM } from "../prompts";
+import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import { checkStagedBullet, isGroundedQuote, noUrls, redactPii, scanTone } from "@/lib/domain/guardrails";
 import { formatMinutes } from "@/lib/domain/plan";
 import type { EvidenceBucket } from "@/lib/domain/severity";
