@@ -73,11 +73,18 @@ describe("catalog scripts", () => {
     expect(deploy()).not.toContain("checkLiveness");
   });
   it("the deploy path never skips the link check", () => expect(deploy()).not.toMatch(/skip-?link-?check|skipLinkCheck/i));
-  it("deploy entries check the gate before importing their worker", () => {
-    const src = sourceOf("scripts/deploy/catalog.ts");
-    expect([...src.matchAll(/\bfrom\s*["']([^"']+)["']/g)].map((m) => m[1])).toEqual(["./gate"]);
-    expect(src.indexOf("isProductionBuild(")).toBeGreaterThan(-1);
-    expect(src.indexOf("isProductionBuild(")).toBeLessThan(src.indexOf("await import("));
+  for (const entry of ["scripts/deploy/catalog.ts", "scripts/deploy/schedule.ts"]) {
+    it(`${entry} checks the gate before importing its worker`, () => {
+      const src = sourceOf(entry);
+      expect([...src.matchAll(/\bfrom\s*["']([^"']+)["']/g)].map((m) => m[1])).toEqual(["./gate"]);
+      expect(src.indexOf("isProductionBuild(")).toBeGreaterThan(-1);
+      expect(src.indexOf("isProductionBuild(")).toBeLessThan(src.indexOf("await import("));
+    });
+  }
+  it("build runs migrate → policies → catalog → next → schedule", () => {
+    expect(JSON.parse(sourceOf("package.json")).scripts.build).toBe(
+      "prisma migrate deploy && pnpm db:policies && pnpm deploy:catalog && next build --turbopack && pnpm deploy:schedule",
+    );
   });
   // Ruling 9: the worker modules must not reach a `scripts/…` module that loads .env.local.
   it("catalog-store and catalog-sync reach no module that imports ../env", () => {
@@ -95,6 +102,7 @@ describe("catalog scripts", () => {
     };
     walk("scripts/deploy/catalog-store.ts");
     walk("scripts/deploy/catalog-sync.ts");
+    walk("scripts/db/install-schedule.ts");
     expect(seen.size).toBeGreaterThan(2);
     const offenders = [...seen].filter((f) => importsOf(f).some((s) => /(^|\/)env(\.ts)?$|^dotenv(\/|$)/.test(s)));
     expect(offenders).toEqual([]);

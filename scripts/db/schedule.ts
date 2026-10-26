@@ -25,7 +25,8 @@
  */
 import "../env";
 import postgres from "postgres";
-import { CRON_JOBS, CRON_SECRET_NAME, scheduleCommand } from "../../lib/services/cron";
+import { CRON_JOBS } from "../../lib/services/cron";
+import { installSchedule, scheduleTarget } from "./install-schedule";
 
 async function main() {
   const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
@@ -41,24 +42,8 @@ async function main() {
       return;
     }
 
-    const appUrl = (process.env.APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/+$/, "");
-    const secret = process.env.CRON_SECRET ?? "";
-    if (!/^https:\/\//.test(appUrl)) throw new Error("APP_URL must be the deployment's https:// origin");
-    if (secret.length < 32) throw new Error("CRON_SECRET must be set, and at least 32 characters");
-
-    await sql`create extension if not exists pg_cron`;
-    await sql`create extension if not exists pg_net`;
-
-    // Vault: update in place when it exists, so a rotation leaves one secret.
-    const [existing] = await sql<{ id: string }[]>`select id from vault.secrets where name = ${CRON_SECRET_NAME}`;
-    if (existing) await sql`select vault.update_secret(${existing.id}::uuid, ${secret})`;
-    else await sql`select vault.create_secret(${secret}, ${CRON_SECRET_NAME}, 'Bearer token for /api/cron/* (N24)')`;
-
-    for (const job of CRON_JOBS) {
-      await sql`select cron.unschedule(jobid) from cron.job where jobname = ${job.name}`;
-      await sql`select cron.schedule(${job.name}, ${job.schedule}, ${scheduleCommand(job, appUrl)})`;
-      console.log(`scheduled ${job.name}: ${job.schedule} → ${appUrl}${job.path}`);
-    }
+    const { appUrl, secret } = scheduleTarget(process.env.APP_URL ?? process.env.NEXT_PUBLIC_SITE_URL, process.env.CRON_SECRET);
+    for (const line of await installSchedule(sql, appUrl, secret)) console.log(line);
   } finally {
     await sql.end();
   }

@@ -39,7 +39,7 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] Minor: tests/app/cron-catalog.test.ts throw-test title says 'count-free log' — it asserts an error-free log — neji, Task 4 review
 - [x] ~~Task 5: `scripts/db/schedule.ts` schedules every `CRON_JOBS` job~~ — 2026-10-26
 - [ ] scripts/db/schedule.ts: `vault.update_secret(id, secret)` keeps production's old description — pass name + 'Bearer token for /api/cron/* (N24)' (verify against a non-production DB) — neji, Task 5 review
-- [ ] scripts/db/schedule.ts: wrap unschedule+schedule in `sql.begin` so a dropped connection can't leave reminders unscheduled (pre-existing gap; verify against a non-production DB) — neji, Task 5 review
+- [ ] scripts/db/install-schedule.ts: unschedule-then-schedule per job is not atomic and now runs on EVERY production deploy — a dropped connection between the two leaves that job unscheduled (deploy fails loudly; old deployment keeps serving). Fix: drop the unschedule (pg_cron ≥ 1.3 `cron.schedule(name, …)` replaces by name — atomic per job) or wrap in `sql.begin`; verify against a non-production DB — neji, Task 5 review
 - [ ] Minor: tests/services/cron.test.ts picks jobs by index — find by name — neji, Task 5 review
 - [x] ~~Task 6: seed stagger + checkCourseLink + catalogProblems gate; link-check alignment~~ — 2026-10-26
 - [ ] Seed: a link the seed itself finds dead is skipped and stays `active` in the DB until the cron re-checks it (≤7 days) — on a dead verdict, `updateMany({ where: { url, status: "active" }, data: { status: "dead", checkedAt: today } })` (pre-existing) — neji, Task 6 review
@@ -58,7 +58,9 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 2: pure `lib/catalog/seed-rows.ts` (`catalogSeedRows`, `catalogHash`, `SEED_FORMAT`), `scripts/catalog/catalog-writes.ts`, manual seed writes from rows; `verifiedAt` stamped on update only on a live verdict~~ — 2026-10-26
 - [x] ~~Task 3: `CatalogSync` model, migration `20261026000000_catalog_syncs` (hand-added CHECKs), `catalog_syncs` RLS on/no policy~~ — 2026-10-26
 - [x] ~~Task 4: `pnpm deploy:catalog` — `syncCatalog` (hash gate, advisory lock, new-URL link check at concurrency 5, bundles, sync row last)~~ — 2026-10-26
-- [ ] Task 5: `pnpm deploy:schedule` — `installSchedule` extracted to `scripts/db/install-schedule.ts`; `build` runs both deploy steps
+- [x] ~~Task 5: `pnpm deploy:schedule` — `installSchedule` extracted to `scripts/db/install-schedule.ts`; `build` runs both deploy steps~~ — 2026-10-26
+- [ ] First-ever concurrent production builds can both call vault.create_secret; the second fails on the unique name once — note only — neji, deploy-sync Task 5
+- [ ] deploySchedule's `DATABASE_URL` fallback would hit pgbouncer prepared-statement errors if ever reached; unreachable in builds (migrate deploy needs DIRECT_URL first) — consider requiring DIRECT_URL — neji, deploy-sync Task 5
 - [ ] Task 6: docs — N24 wording, new N25, §8 Jobs, §13 (policies run by every build, `CatalogSync`), README build order, `docs/notifications.md` §3/§5, specs F8 freshness, `.env.example` APP_URL
 - [ ] After the first production build: confirm the log shows `[deploy:catalog] synced …` (or `unchanged`) and `[deploy:schedule] scheduled …` for both jobs, then strike the two "After this branch deploys" lines (re-seed; db:schedule). Rows seeded before the lanes migration stay bunched on one `checked_at` until a manual full `pnpm seed:catalog` (plan Ruling 5)
 - [ ] `catalog_syncs` CHECKs are unexercised (no local DB) — add bad inserts to `pnpm check:constraints`
