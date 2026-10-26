@@ -33,7 +33,8 @@
     "seo:indexnow": "pnpm script scripts/indexnow.ts",
     "eval": "pnpm script scripts/evals/run.ts",
     "check:catalog": "pnpm script scripts/catalog-check.ts",
-    "topups:convert": "pnpm script scripts/convert-token-topups.ts"
+    "topups:convert": "pnpm script scripts/convert-token-topups.ts",
+    "move": "pnpm script scripts/tools/move-modules.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.20",
