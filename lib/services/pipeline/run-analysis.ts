@@ -6,7 +6,7 @@ import { generateQuestions } from "@/lib/ai/services/interview";
 import { buildLearningPlan } from "@/lib/services/learning/build-plan";
 import { computeCoverage, scoreAnalysis } from "@/lib/domain/coverage";
 import { orderSkills, rankBullets } from "@/lib/domain/ordering";
-import { summariseChanges } from "@/lib/domain/diff";
+import { buildChangeList, tailorTally } from "@/lib/domain/diff";
 import { canonicalSkill } from "@/lib/catalog/skills";
 import { draftCount } from "@/lib/domain/entitlements";
 import { PROTECTED_NOTICE, TokenAccumulator, scanProtected } from "@/lib/domain/guardrails";
@@ -16,6 +16,7 @@ import { buildRenderModel, type RenderModel } from "@/lib/render/model";
 import { renderFitted } from "@/lib/render/pdf";
 import { getBullets, toDomainBullets } from "@/lib/db/queries/profile";
 import { getCoverage, getProfileById, getRequirements } from "@/lib/db/queries/analysis";
+import { mapLimit } from "@/lib/shared/utils";
 import { progressFor, progressWithin, readStageState, type StageEmitter, type StageUpdate } from "./stages";
 import { RUN_LOCK_STALE_MS } from "./background";
 
@@ -28,7 +29,7 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
  *
  *   ① analyze-jd     → JdMeta + jd_requirements
  *   ② coverage       → coverage_items + score            [PURE, no LLM]
- *   ③ tailor         → 6 × resume_drafts + tailored_bullets
+ *   ③ tailor         → capResumes × resume_drafts + tailored_bullets
  *   ④ interview      → 10 × interview_questions
  *   ⑤ learning        → skill_gaps + learning_plan + learning_steps
  *
@@ -53,7 +54,7 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
  *
  * The completeness test per stage is `resumeState` below. A stage that wrote
  * its rows in one `createMany` is all-or-nothing, so a single row proves it
- * finished. Drafts are written one per template in a loop, so that stage is
+ * finished. Drafts are written in one batch transaction, so that stage is
  * complete only at the full count — and a partial set is deleted before the
  * redo, because the unique constraint leaves no other way through.
  */
@@ -62,7 +63,14 @@ import type { StoredResume } from "@/lib/ai/schemas/resume-json";
  * stage from minutes to well under one, few enough that a single run never
  * crowds the provider's rate limit or the database pool.
  */
-const TAILOR_CONCURRENCY = 5;
+export const TAILOR_CONCURRENCY = 10;
+
+/**
+ * Tailoring stops starting new calls this long after `executeAnalysis` began.
+ * Measured from the run's start, so the summary, the page measuring and the
+ * draft write still fit `maxDuration = 300`.
+ */
+export const TAILOR_START_DEADLINE_MS = 180_000;
 
 /**
  * Claims this analysis for the caller, atomically. `updateMany`'s WHERE and
@@ -185,6 +193,7 @@ async function executeAnalysis(args: {
   analysisId: string;
   emit: StageEmitter;
 }): Promise<void> {
+  const startedAt = Date.now();
   const { clerkUserId, analysisId, emit } = args;
 
   const analysis = await db.analysis.findFirst({ where: { clerkUserId, id: analysisId } });
@@ -386,11 +395,15 @@ async function executeAnalysis(args: {
 
   // Written on BOTH paths, including the skip.
   //
+  // `ready` means "the score and the buckets exist". The résumés, Prep and
+  // Learning land behind it while the run keeps its claim; each tab works out
+  // on read whether its rows are still coming.
+  //
   // `fail()` reports a stage failure by putting its message in `scoreNote` —
   // the same column the score's own calibration lives in. So a run that failed
   // has already lost that sentence, and a resume that skipped this stage would
   // leave the results header explaining the crash where it should be explaining
-  // the number. Three derived values from rows we are already holding: writing
+  // the number. Derived values from rows we are already holding: writing
   // them again is idempotent and repairs the note.
   await db.analysis.update({
     where: { id: analysisId },
@@ -398,6 +411,7 @@ async function executeAnalysis(args: {
       score: scored.score.toFixed(2),
       scoreVerdict: scored.verdict,
       scoreNote: scored.note,
+      status: "ready",
     },
   });
 
@@ -482,17 +496,16 @@ async function executeAnalysis(args: {
 
   // The expensive stage: one model call per bullet plus one for the summary.
   // Skipping it is most of what "resume rather than restart" is worth.
-  // How stage ③ ended. Reported only after the analysis is marked `ready`
-  // (below), because the parsing screen leaves for the Résumés tab the moment
-  // it hears it — and that tab redirects back to this screen for any run that
-  // is not `ready` yet.
+  // How stage ③ ended. Nothing listens for this emit any more: the parsing
+  // screen finishes on `matching done`, so it is kept only for the stream's log.
   let rewritingUpdate: StageUpdate = {
     stage: "rewriting",
     state: "done",
     progressPct: progressFor("rewriting", "done"),
   };
 
-  if (!done.rewriting) {
+  // F15: a cap of 0 means no drafts, so no tailoring is billed for them.
+  if (!done.rewriting && expectedDrafts > 0) {
     try {
       const ranked = rankBullets(bullets, requirements, coverage);
       const requirementById = new Map(requirements.map((r) => [r.id, r]));
@@ -502,90 +515,75 @@ async function executeAnalysis(args: {
       // ceiling, remaining bullets go out exactly as written rather than the
       // run spending whatever it takes to keep rewriting.
       const budget = new TokenAccumulator(ANALYSIS_TOKEN_CEILING);
-      let ceilingHit = false;
-
       // One call per bullet, each scoped to its single best-matching requirement.
       //
-      // A few at a time rather than one after another. Sequential, 20–30
-      // bullets at a few seconds each was most of a run's wall clock, and with
-      // ③–⑤ in series it pushed long profiles past the route's 300s ceiling —
-      // where the platform kills the function mid-stage with no message. The
-      // provider's own 429s are retried with backoff inside `runStructured`,
-      // and the per-user limit (LIMITS.analysis) counts runs, not calls.
-      //
-      // Results land at their ranked index, so the order the drafts are built
-      // in — and every `ordinal` — is the same as the sequential loop gave.
-      // The ceiling is checked before each call starts; at most
-      // TAILOR_CONCURRENCY − 1 calls already in flight can finish past it,
-      // a few hundred tokens each against a 60,000 budget.
-      const slots: (TailoredResult | null)[] = new Array(ranked.length).fill(null);
-      let nextIndex = 0;
+      // `mapLimit` keeps TAILOR_CONCURRENCY calls in flight and returns results
+      // in ranked order, so the order the drafts are built in — and every
+      // `ordinal` — is the same as a sequential loop gave. The deadline and the
+      // ceiling are checked synchronously before each call starts: past either,
+      // the bullet goes out exactly as written, labelled by `blockedBy`, and the
+      // notice reaches the member through `draft.changes`. At most
+      // TAILOR_CONCURRENCY − 1 calls already in flight can finish past the
+      // ceiling. A throw rejects `mapLimit`, which stops new starts and lands in
+      // the catch below, degrading the stage.
       let finished = 0;
-      let aborted = false;
+      const results = await mapLimit(ranked, TAILOR_CONCURRENCY, async (entry) => {
+        let out: TailoredResult | null;
+        const verbatim = (reason: string): TailoredResult => ({
+          sourceBulletId: entry.bullet.id,
+          originalText: entry.bullet.text,
+          rewrittenText: entry.bullet.text,
+          transform: "verbatim",
+          targetsRequirementId: null,
+          aiRunId: null,
+          blockedBy: [reason],
+          tokensUsed: 0,
+        });
 
-      const worker = async () => {
-        while (!aborted && nextIndex < ranked.length) {
-          const i = nextIndex++;
-          const entry = ranked[i];
+        if (Date.now() - startedAt > TAILOR_START_DEADLINE_MS) {
+          out = verbatim("deadline");
+        } else if (budget.exceeded()) {
+          out = verbatim("token_ceiling");
+        } else {
+          const target = entry.requirementIds
+            .map((id) => requirementById.get(id))
+            .filter((r): r is DomainRequirement => Boolean(r))
+            .sort((a, b) => weight(b) - weight(a))[0];
 
-          if (budget.exceeded()) {
-            ceilingHit = true;
-            slots[i] = {
-              sourceBulletId: entry.bullet.id,
-              originalText: entry.bullet.text,
-              rewrittenText: entry.bullet.text,
-              transform: "verbatim",
-              targetsRequirementId: null,
-              aiRunId: null,
-              blockedBy: ["token_ceiling"],
-              tokensUsed: 0,
-            };
+          const result = await tailorBullet({
+            clerkUserId,
+            analysisId,
+            bullet: entry.bullet,
+            requirement: target ?? null,
+            profileTerms: scopedTerms(entry.bullet.scopeRef),
+            jobTitle: jobMeta.title,
+          });
+          if (result.ok) {
+            budget.add(result.value.tokensUsed);
+            out = result.value;
           } else {
-            const target = entry.requirementIds
-              .map((id) => requirementById.get(id))
-              .filter((r): r is DomainRequirement => Boolean(r))
-              .sort((a, b) => weight(b) - weight(a))[0];
-
-            try {
-              const result = await tailorBullet({
-                clerkUserId,
-                analysisId,
-                bullet: entry.bullet,
-                requirement: target ?? null,
-                profileTerms: scopedTerms(entry.bullet.scopeRef),
-                jobTitle: jobMeta.title,
-              });
-              if (result.ok) {
-                slots[i] = result.value;
-                budget.add(result.value.tokensUsed);
-              }
-            } catch (e) {
-              // Same outcome as the sequential loop's throw: the stage stops
-              // and degrades. The other workers take nothing further.
-              aborted = true;
-              throw e;
-            }
-          }
-
-          // This is the run's slowest stretch, and a progress bar that sat at
-          // 45% for all of it read as broken, not slow — exactly what sends a
-          // member reloading mid-run (see `claimRun` above). Interpolated
-          // across the stage's own 45–80% band by bullets finished so far.
-          finished++;
-          if (!aborted) {
-            emit({
-              stage: "rewriting",
-              state: "running",
-              progressPct: progressWithin("rewriting", finished, ranked.length),
-            });
+            out = null;
           }
         }
-      };
 
-      await Promise.all(
-        Array.from({ length: Math.min(TAILOR_CONCURRENCY, ranked.length) }, () => worker()),
+        // This is the run's slowest stretch, and a progress bar that sat at
+        // 45% for all of it read as broken, not slow — exactly what sends a
+        // member reloading mid-run (see `claimRun` above). Interpolated
+        // across the stage's own 45–80% band by bullets finished so far.
+        finished++;
+        emit({
+          stage: "rewriting",
+          state: "running",
+          progressPct: progressWithin("rewriting", finished, ranked.length),
+        });
+        return out;
+      });
+      tailored.push(...results.filter((r): r is TailoredResult => Boolean(r)));
+
+      const t = tailorTally(tailored);
+      console.log(
+        `[pipeline] tailor bullets=${t.bullets} rewritten=${t.rewritten} verbatim=${t.verbatim} transient=${t.transient} checker=${t.checker} guard=${t.guard} ceiling=${t.ceiling} deadline=${t.deadline} ms=${Date.now() - startedAt}`,
       );
-      for (const slot of slots) if (slot) tailored.push(slot);
 
       const summary = await tailorSummary({
         clerkUserId,
@@ -611,19 +609,6 @@ async function executeAnalysis(args: {
         summaryLine,
         absent: scored.buckets.absent,
       });
-
-      // GR-5: past the ceiling the stage still finished — every bullet has a
-      // draft — it just could not rewrite all of them. Degraded, not failed:
-      // the other tabs, and every bullet that was rewritten, are unaffected.
-      if (ceilingHit) {
-        rewritingUpdate = {
-          stage: "rewriting",
-          state: "degraded",
-          progressPct: progressFor("rewriting", "done"),
-          message:
-            "This posting was long enough that we stopped rewriting partway through — the rest of your bullets kept their original wording.",
-        };
-      }
     } catch (e) {
       // The résumés degrade; Prep and Learning still run below.
       rewritingUpdate = {
@@ -636,12 +621,6 @@ async function executeAnalysis(args: {
     }
   }
 
-  // The résumés are the first thing a member opens, and they no longer wait
-  // for Prep and Learning. `ready` here means "there is something to show";
-  // ④ and ⑤ keep running in this same invocation (the route hands it to
-  // `after()`), and their tabs show a loader while `runningAt` is held and
-  // their rows are missing — `backgroundRunning` below.
-  await db.analysis.update({ where: { id: analysisId }, data: { status: "ready" } });
   emit(rewritingUpdate);
 
   /* ------------------------------------------------- ④ + ⑤ prep and learning */
@@ -684,7 +663,7 @@ function weight(r: DomainRequirement): number {
  * |-----------|------------------------------|---------------|
  * | reading   | one `createManyAndReturn`    | any row       |
  * | matching  | one `createMany`             | any row       |
- * | rewriting | one `create` per template    | the full count |
+ * | rewriting | one batch `$transaction`     | the full count |
  * | preparing | one `createMany`             | any row       |
  * | learning  | plan first, then gaps/steps  | the plan row  |
  *
@@ -854,25 +833,28 @@ async function writeDrafts(args: {
     summary: resumeJson.basics.summary,
   });
 
-  for (const template of templatesFor(args.capResumes)) {
-    const draft = await db.resumeDraft.create({
-      data: {
-        clerkUserId: args.clerkUserId,
-        analysisId: args.analysisId,
-        templateId: template.id,
-        resumeJson: resumeJson as object,
-        // N5: computed from structural rules, never hand-assigned.
-        atsRating: ratingFor(template.id),
-        pageCount: await measurePages(model, template.id, args.tailored.length),
-        changes: [args.summaryLine, ...changes].filter(Boolean).slice(0, 8),
-        missing,
-      },
-      select: { id: true },
-    });
+  const plan = templatesFor(args.capResumes);
+  const t0 = Date.now();
+  const pages = await mapLimit(plan, 4, (t) => measurePages(model, t.id, args.tailored.length));
+  console.log(`[pipeline] pages templates=${plan.length} ms=${Date.now() - t0}`);
 
-    const rows = args.tailored.map((t, i) => ({
+  const draftRows = plan.map((template, k) => ({
+    id: crypto.randomUUID(),
+    clerkUserId: args.clerkUserId,
+    analysisId: args.analysisId,
+    templateId: template.id,
+    resumeJson: resumeJson as object,
+    // N5: computed from structural rules, never hand-assigned.
+    atsRating: ratingFor(template.id),
+    pageCount: pages[k],
+    changes: [args.summaryLine, ...changes].filter(Boolean).slice(0, 8),
+    missing,
+  }));
+
+  const bulletRows = draftRows.flatMap((d) =>
+    args.tailored.map((t, i) => ({
       clerkUserId: args.clerkUserId,
-      draftId: draft.id,
+      draftId: d.id,
       // N1: NOT NULL. Nothing reaches this table without provenance.
       sourceBulletId: t.sourceBulletId,
       originalText: t.originalText,
@@ -881,23 +863,15 @@ async function writeDrafts(args: {
       targetsRequirementId: t.targetsRequirementId,
       aiRunId: t.aiRunId || null,
       ordinal: i,
-    }));
-    if (rows.length > 0) await db.tailoredBullet.createMany({ data: rows });
-  }
-}
+    })),
+  );
 
-function buildChangeList(tailored: TailoredResult[]): string[] {
-  const changed = tailored.filter((t) => t.transform !== "verbatim" && t.transform !== "omit");
-  const blocked = tailored.filter((t) => t.blockedBy.length > 0);
-  const out = [summariseChanges(tailored.map((t) => ({ original: t.originalText, rewritten: t.rewrittenText })))];
-  if (changed.length > 0) {
-    out.push(`Bullets reordered to lead with what the posting asks for most often.`);
-  }
-  if (blocked.length > 0) {
-    // Surfaced deliberately: the guard firing is information, not an internal detail.
-    out.push(`${blocked.length} rewrite(s) were rejected for adding detail you hadn't stated, and kept verbatim.`);
-  }
-  return out;
+  // Batch form: pgbouncer rules out an interactive transaction. All drafts and
+  // all their bullets land together or not at all.
+  await db.$transaction([
+    db.resumeDraft.createMany({ data: draftRows }),
+    ...(bulletRows.length ? [db.tailoredBullet.createMany({ data: bulletRows })] : []),
+  ]);
 }
 
 /**
