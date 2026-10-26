@@ -34,7 +34,9 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] Minor: T13 in tests/services/learning/refresh-catalog.test.ts is a tripwire only — misses `data: { url }` shorthand, spreads, `type`/`qualityScore` writes
 - [ ] Minor: `bundlesNamingNonActive` loads every non-active id (grows forever since dead is permanent) — switch to an EXISTS join if dead rows reach thousands
 - [ ] Measure one real `rebuildBundles()` at the phase gate (estimated 3–10 s, ~290 sequential round trips; refresh budget assumes ≤ ~50 s)
-- [ ] Task 4: `/api/cron/catalog` route + middleware + `CRON_JOBS` entry
+- [x] ~~Task 4: `/api/cron/catalog` route + middleware + `CRON_JOBS` entry~~ — 2026-10-26
+- [ ] Minor: tests/structure/cron.test.ts first-statement guard checks a function named `handle` but not that GET/POST export it — neji, Task 4 review
+- [ ] Minor: tests/app/cron-catalog.test.ts throw-test title says 'count-free log' — it asserts an error-free log — neji, Task 4 review
 - [ ] Task 5: `scripts/db/schedule.ts` schedules every `CRON_JOBS` job
 - [ ] Task 6: seed stagger + checkCourseLink + catalogProblems gate; link-check alignment
 - [ ] Task 7: docs — N24, §8, §10, specs F8/F29, README, notifications, courses.ts header, schema `///`, corpus-health overdue30

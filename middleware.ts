@@ -26,6 +26,9 @@ const isPublic = createRouteMatcher([
   // F29: called by the scheduler, which has no session. It checks
   // CRON_SECRET before reading anything — that is its lock.
   "/api/cron/reminders",
+  // F8: the daily catalog link re-check (N24). Same lock as the reminders
+  // route — CRON_SECRET is checked before anything is read.
+  "/api/cron/catalog",
   // F29.2: a signed-out device asking to be forgotten. No session exists by
   // then; the device proves possession with its subscription's auth secret.
   "/api/push/release",

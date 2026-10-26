@@ -26,7 +26,10 @@ describe("cron routes", () => {
     for (const job of CRON_JOBS) {
       const file = `app${job.path}/route.ts`;
       expect(importsOf(file)).toContain("@/lib/services/cron");
-      expect(sourceOf(file)).toMatch(/if \(!cronAuthorised\(request\)\) return new Response\("unauthorised", \{ status: 401 \}\)/);
+      // The guard is the FIRST statement of `handle`, not merely present.
+      expect(sourceOf(file)).toMatch(
+        /async function handle\(request: Request\)(: Promise<Response>)? \{\s*if \(!cronAuthorised\(request\)\) return new Response\("unauthorised", \{ status: 401 \}\);/,
+      );
     }
   });
 

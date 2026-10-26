@@ -40,9 +40,10 @@ describe("cronAuthorised", () => {
 });
 
 describe("CRON_JOBS", () => {
-  it("lists the reminders job", () => {
+  it("lists the reminders and catalog-refresh jobs", () => {
     expect(CRON_JOBS).toEqual([
       { name: "roleform-round-reminders", path: "/api/cron/reminders", schedule: "*/5 * * * *", timeoutMs: 55_000 },
+      { name: "roleform-catalog-refresh", path: "/api/cron/catalog", schedule: "17 3 * * *", timeoutMs: 290_000 },
     ]);
   });
 

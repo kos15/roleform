@@ -14,6 +14,7 @@ export interface CronJob {
 
 export const CRON_JOBS: readonly CronJob[] = [
   { name: "roleform-round-reminders", path: "/api/cron/reminders", schedule: "*/5 * * * *", timeoutMs: 55_000 },
+  { name: "roleform-catalog-refresh", path: "/api/cron/catalog", schedule: "17 3 * * *", timeoutMs: 290_000 },
 ];
 
 export function cronAuthorised(request: Request): boolean {
