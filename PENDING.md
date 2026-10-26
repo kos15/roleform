@@ -21,6 +21,10 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 9: Docs under `docs/product/`, CLAUDE.md §10 drift guard~~ — 2026-10-26
 - [x] ~~Task 10: Carry over pending work from earlier plans, final verification~~ — 2026-10-26
 
+## Agent team — `.claude/agents/`
+
+- [x] ~~Six Naruto-named project agents (ino · hokage · shikamaru · kakashi · neji · jiraiya), pinned by `tests/structure/agents.test.ts`, documented in CLAUDE.md §16~~ — 2026-10-26
+
 ## Carried over
 
 Audited 2026-10-26 against `git log` and disk. Earlier plans' finished tasks are ticked in their
@@ -51,5 +55,5 @@ own files; what is still open is here.
 
 ### Branch housekeeping
 
-- [ ] Merge `feat/learning-watch-read` and `chore/layout-tdd` to `main` (this layout branch is cut from the watch-read branch)
+- [x] ~~Merge `feat/learning-watch-read` and `chore/layout-tdd` to `main` (this layout branch is cut from the watch-read branch)~~ — 2026-10-26
 - [ ] Local Node is v20.17.0; `package.json` engines asks for >=20.19.0 — upgrade
