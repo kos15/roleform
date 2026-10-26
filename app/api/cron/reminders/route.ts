@@ -6,7 +6,7 @@ import { processOutbox } from "@/lib/services/push/outbox";
  * Sends the interview-round reminders that have come due (F29).
  *
  * Called by a machine with no session — Supabase pg_cron by default
- * (scripts/schedule-reminders.ts), or Vercel Cron on a plan that allows a
+ * (scripts/db/schedule-reminders.ts), or Vercel Cron on a plan that allows a
  * sub-daily schedule. Both send `Authorization: Bearer $CRON_SECRET`, and that
  * header is what stands in for the session: it is checked before anything is
  * read. Unset CRON_SECRET refuses everything rather than running open.

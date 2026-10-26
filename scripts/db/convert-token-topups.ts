@@ -14,11 +14,11 @@
  *   pnpm topups:convert            dry run — what would be granted
  *   pnpm topups:convert --apply    write the grants
  */
-import "./env";
-import { db } from "../lib/db";
-import { grantedTokens, unspentTopups, usageByCycle } from "../lib/db/queries/tokens";
-import { PRE_CHANGE_ALLOWANCE, convertedAnalyses } from "../lib/domain/entitlements";
-import { cycleStart } from "../lib/domain/quotas";
+import "../env";
+import { db } from "../../lib/db";
+import { grantedTokens, unspentTopups, usageByCycle } from "../../lib/db/queries/tokens";
+import { PRE_CHANGE_ALLOWANCE, convertedAnalyses } from "../../lib/domain/entitlements";
+import { cycleStart } from "../../lib/domain/quotas";
 
 /** RUN_ESTIMATE before counts-only pricing (lib/domain/tokens.ts, 2026-10-21). Frozen on purpose. */
 const PRE_CHANGE_RUN_ESTIMATE = 20_000;

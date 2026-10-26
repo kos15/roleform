@@ -14,9 +14,9 @@
  *   pnpm check:drill
  */
 import { spawnSync } from "node:child_process";
-import { BANK } from "../lib/drill/bank";
-import { runJsCases } from "../lib/drill/sandbox";
-import { CODE_LANGUAGES, parseTestCase, sameValue, snake, starterCode } from "../lib/domain/drill";
+import { BANK } from "../../lib/drill/bank";
+import { runJsCases } from "../../lib/drill/sandbox";
+import { CODE_LANGUAGES, parseTestCase, sameValue, snake, starterCode } from "../../lib/domain/drill";
 
 async function main() {
   let failures = 0;

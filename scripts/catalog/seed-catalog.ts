@@ -10,15 +10,15 @@
  * cannot enter the database, so the Learning tab cannot serve one. Run with
  * --skip-link-check only for local work against a network you don't trust.
  */
-import "./env";
-import { db } from "../lib/db";
-import { SKILLS } from "../lib/catalog/skills";
-import { COURSES } from "../lib/catalog/courses";
-import { assertTaxonomy, NODES } from "../lib/catalog/taxonomy";
-import { levelOf, primacyOf, qualityOf, summaryFor, tagsFor, typeOf } from "../lib/catalog/quality";
-import { checkLiveness } from "../lib/catalog/liveness";
-import { assertTemplates, TEMPLATES } from "../lib/render/templates";
-import { rateAts } from "../lib/render/ats-rules";
+import "../env";
+import { db } from "../../lib/db";
+import { SKILLS } from "../../lib/catalog/skills";
+import { COURSES } from "../../lib/catalog/courses";
+import { assertTaxonomy, NODES } from "../../lib/catalog/taxonomy";
+import { levelOf, primacyOf, qualityOf, summaryFor, tagsFor, typeOf } from "../../lib/catalog/quality";
+import { checkLiveness } from "../../lib/catalog/liveness";
+import { assertTemplates, TEMPLATES } from "../../lib/render/templates";
+import { rateAts } from "../../lib/render/ats-rules";
 
 const skipLinkCheck = process.argv.includes("--skip-link-check");
 

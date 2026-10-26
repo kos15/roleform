@@ -10,9 +10,9 @@
  *
  *   pnpm check:corpus
  */
-import "./env";
-import { db } from "../lib/db";
-import { NODES } from "../lib/catalog/taxonomy";
+import "../env";
+import { db } from "../../lib/db";
+import { NODES } from "../../lib/catalog/taxonomy";
 
 /** Targets from rag-strategy.md §11. Not aspirations — thresholds. */
 const TARGET = {

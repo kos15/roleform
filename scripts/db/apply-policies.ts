@@ -5,7 +5,7 @@
  * the Supabase dashboard (CLAUDE.md §13). A policy you cannot diff is a policy
  * you cannot trust, and with light testing RLS *is* the security model.
  */
-import "./env";
+import "../env";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import postgres from "postgres";

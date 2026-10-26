@@ -10,10 +10,10 @@
  *
  *   pnpm check:links
  */
-import "./env";
-import { db } from "../lib/db";
-import { NODES, roadmapUrl } from "../lib/catalog/taxonomy";
-import { checkLiveness } from "../lib/catalog/liveness";
+import "../env";
+import { db } from "../../lib/db";
+import { NODES, roadmapUrl } from "../../lib/catalog/taxonomy";
+import { checkLiveness } from "../../lib/catalog/liveness";
 
 const STALE_DAYS = 120;
 

@@ -19,7 +19,7 @@
  * Usage: APP_URL=https://roleform.koustubh.org pnpm db:schedule
  *        pnpm db:schedule --remove
  */
-import "./env";
+import "../env";
 import postgres from "postgres";
 
 const JOB = "roleform-round-reminders";

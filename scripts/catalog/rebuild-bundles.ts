@@ -19,9 +19,9 @@
  * The logic lives in `lib/services/learning/rebuild-bundles.ts` (I/O) and
  * `lib/domain/bundle-rank.ts` (pure ranking); this file only reports.
  */
-import "./env";
-import { db } from "../lib/db";
-import { rebuildBundles } from "../lib/services/learning/rebuild-bundles";
+import "../env";
+import { db } from "../../lib/db";
+import { rebuildBundles } from "../../lib/services/learning/rebuild-bundles";
 
 const LEVELS = 3;
 

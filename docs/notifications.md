@@ -172,7 +172,7 @@ own account; **never test against real members' devices**.
 
 ## 7. Icons
 
-`pnpm icons` re-renders every app icon from the mark in `scripts/app-icons.ts`. Then bump
+`pnpm icons` re-renders every app icon from the mark in `scripts/ops/app-icons.ts`. Then bump
 `ICON_VERSION` (`lib/seo/icons.ts`) and the worker's `VERSION`: phones cache icons under their URL,
 and an already-installed iPhone app keeps its old icon until it is removed and re-added.
 

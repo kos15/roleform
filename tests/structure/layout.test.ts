@@ -2,8 +2,10 @@
  * The repo's shape (CLAUDE.md §10). Each test names a folder rule; moving a
  * file to the wrong place, or importing across a boundary, fails here.
  */
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { APP_SOURCES, entriesOf, filesUnder, importsOf, sourceOf, valueImportsOf } from "./files";
+import { APP_SOURCES, ROOT, entriesOf, filesUnder, importsOf, sourceOf, valueImportsOf } from "./files";
 
 describe("lib/ai", () => {
   it("@ai-sdk/openai is imported only under lib/ai/openai", () => {
@@ -55,5 +57,21 @@ describe("client boundary", () => {
         .map((s) => `${f} → ${s}`),
     );
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("scripts", () => {
+  it("every package.json script path exists", () => {
+    const pkg = JSON.parse(sourceOf("package.json")) as { scripts: Record<string, string> };
+    const missing = Object.entries(pkg.scripts).flatMap(([name, cmd]) =>
+      [...cmd.matchAll(/scripts\/[\w/.-]+\.ts/g)].map((m) => m[0]).filter((p) => !existsSync(join(ROOT, p))).map((p) => `${name} → ${p}`),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it("the root holds only role folders and the two shared helpers", () => {
+    const loose = entriesOf("scripts").filter((e) => !e.isDir).map((e) => e.name).sort();
+    expect(loose).toEqual(["env.ts", "server-only-stub.ts"]);
+    expect(entriesOf("scripts").filter((e) => e.isDir).map((e) => e.name).sort()).toEqual(["catalog", "db", "evals", "ops", "tools"]);
   });
 });

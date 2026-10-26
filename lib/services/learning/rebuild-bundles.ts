@@ -2,7 +2,7 @@
  * The bundle builder's I/O half — RLE spec §7, rag-strategy.md §7.
  *
  * Gathers candidates and freezes bundles; the ranking itself is pure and lives
- * in `lib/domain/bundle-rank.ts`. `scripts/rebuild-bundles.ts` is the thin
+ * in `lib/domain/bundle-rank.ts`. `scripts/catalog/rebuild-bundles.ts` is the thin
  * caller. NEVER call this from a user request — that is invariant I1, and doing
  * so converts a fixed nightly cost into a per-run one.
  *

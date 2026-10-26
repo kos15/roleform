@@ -15,9 +15,9 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import mammoth from "mammoth";
-import { renderDocx } from "../lib/render/docx";
-import { TEMPLATES } from "../lib/render/templates";
-import type { RenderModel } from "../lib/render/model";
+import { renderDocx } from "../../lib/render/docx";
+import { TEMPLATES } from "../../lib/render/templates";
+import type { RenderModel } from "../../lib/render/model";
 
 const MODEL: RenderModel = {
   name: "Priya Raman",

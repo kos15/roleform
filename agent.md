@@ -59,7 +59,7 @@ app/actions/
 app/(app)/analysis/[id]/roadmap/    page.tsx · loading.tsx · item-row.tsx
 app/(app)/jobs/                     page.tsx · loading.tsx · query-editor.tsx · results.tsx · saved.tsx
 components/cap-wall.tsx             mirrors token-wall.tsx
-scripts/tokens-calibrate.ts         pnpm tokens:calibrate
+scripts/ops/tokens-calibrate.ts         pnpm tokens:calibrate
 ```
 
 `lib/domain/` imports nothing from `db`, `ai`, `jobs`, `supabase` or `next`. If a function needs a
@@ -79,7 +79,7 @@ row, it takes the row.
 6. `lib/admin/defaults.ts`, `lib/services/auth.ts#provisionUser`, `app/api/webhooks/clerk/route.ts`, `app/api/webhooks/razorpay/route.ts#raisePlan`: write the column.
 7. `lib/admin/members.ts`: `caps` and `used` gain the key; `usageFor` counts the rows.
 8. `lib/services/auth.ts`: `checkCap(key)` counts rows since `cycleStart` and returns `cap_wall`.
-9. `scripts/smoke-constraints.ts`: one out-of-bounds insert.
+9. `scripts/db/smoke-constraints.ts`: one out-of-bounds insert.
 10. `specs.md` §6.2 and F17 table.
 
 Grep for `capCourses` before you finish; every hit is a place the new key belongs.

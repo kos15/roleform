@@ -12,14 +12,14 @@
  *
  *   pnpm check:catalog
  */
-import { COURSES } from "../lib/catalog/courses";
-import { SKILLS } from "../lib/catalog/skills";
-import { NODES } from "../lib/catalog/taxonomy";
-import { typeOf } from "../lib/catalog/quality";
-import { laneOf } from "../lib/domain/lanes";
-import { catalogProblems } from "../lib/catalog/problems";
-import { checkCourseLink, type LinkCheck } from "../lib/catalog/liveness";
-import { KNOWN_CREATORS } from "../lib/catalog/creators";
+import { COURSES } from "../../lib/catalog/courses";
+import { SKILLS } from "../../lib/catalog/skills";
+import { NODES } from "../../lib/catalog/taxonomy";
+import { typeOf } from "../../lib/catalog/quality";
+import { laneOf } from "../../lib/domain/lanes";
+import { catalogProblems } from "../../lib/catalog/problems";
+import { checkCourseLink, type LinkCheck } from "../../lib/catalog/liveness";
+import { KNOWN_CREATORS } from "../../lib/catalog/creators";
 
 const CONCURRENCY = 5;
 const norm = (s: string) => s.trim().toLowerCase();

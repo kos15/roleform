@@ -116,7 +116,7 @@ provider's field. Logs for the session contain no title or city.
 | M12.1 | Pricing: Pro tagline, refusal line, renewal copy (PRD §4.2, §4.6) | Every number on the page equals `PLANS`; no sentence describes a limit in words |
 | M12.2 | How it works: a fifth block "Then the roadmap and the search", with refusals ("won't tick a step for you", "won't invent a listing link") | Renders signed out |
 | M12.3 | `specs.md`: F21–F25 sections, §6.2 tables, §14 API surface, G17 correction; `CLAUDE.md` §2 gains N13–N22 from `rules.md`; `README.md` gains the two scripts and the two API keys in `.env.example` | Docs drift is a bug (CLAUDE.md §15.7) |
-| M12.4 | Smoke test count updated in `specs.md` §12 | Number matches `scripts/smoke-constraints.ts` |
+| M12.4 | Smoke test count updated in `specs.md` §12 | Number matches `scripts/db/smoke-constraints.ts` |
 
 **Gate — the RLS re-check.** Two users, every new table: `roadmaps`, `roadmap_items`,
 `saved_jobs`, `job_searches`. Neither reads the other's rows through the anon client. The cache

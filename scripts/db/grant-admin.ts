@@ -1,6 +1,6 @@
-import "./env";
+import "../env";
 import { createClerkClient } from "@clerk/backend";
-import { db } from "../lib/db";
+import { db } from "../../lib/db";
 
 /**
  * Grant or revoke the admin role from a terminal.

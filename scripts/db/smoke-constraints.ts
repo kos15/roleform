@@ -20,7 +20,7 @@
  *
  *   pnpm check:constraints
  */
-import "./env";
+import "../env";
 import postgres from "postgres";
 import { createClient } from "@supabase/supabase-js";
 

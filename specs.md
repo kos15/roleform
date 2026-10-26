@@ -919,7 +919,7 @@ cross-encoder reranking, amortised HyDE, and the YouTube/PDF/repo ingest pipelin
 corpus and ingest infrastructure this repo does not have (planning.md Phase 3). Candidate generation
 in the bundle builder is the taxonomy join instead; the roll-up, diversity and freeze steps are
 implemented as specified. When the corpus exists, only `candidatesFor()` in
-`scripts/rebuild-bundles.ts` changes.
+`scripts/catalog/rebuild-bundles.ts` changes.
 
 ### F9 — Export
 
@@ -1836,7 +1836,7 @@ plan table and the pricing page reading from one `PLANS` source, the two new key
 nowhere else.
 
 A guardrail that has never been watched rejecting something is not a guardrail (GR-6): every CHECK
-above has a case in `scripts/smoke-constraints.ts` (§12), added in the same change as the
+above has a case in `scripts/db/smoke-constraints.ts` (§12), added in the same change as the
 constraint itself.
 
 ### F26 — Rapid prep
@@ -2214,7 +2214,7 @@ Static caching only keeps same-origin 200s not marked `private`/`no-store`, trim
 **Install and opt-in states.** The panel distinguishes unsupported · iOS below 16.4 (update first)
 · iPhone/iPad in a Safari tab (add to Home Screen, open from the icon) · not configured · blocked ·
 off · on. Android without a parked install prompt is pointed at the browser menu's *Install app*.
-Icons are rendered from the one mark by `pnpm icons` (`scripts/app-icons.ts`): apple-touch 180
+Icons are rendered from the one mark by `pnpm icons` (`scripts/ops/app-icons.ts`): apple-touch 180
 opaque with the mark at ~80%, maskable opaque with the mark inside the safe zone at ~70%, "any" at
 ~84% on a rounded tile; `ICON_VERSION` 4.
 

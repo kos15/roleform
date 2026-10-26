@@ -11,12 +11,12 @@
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { renderPdf } from "../lib/render/pdf";
-import { renderDocx } from "../lib/render/docx";
-import { TEMPLATES } from "../lib/render/templates";
-import { atsViolations, rateAts } from "../lib/render/ats-rules";
-import { assertTemplates } from "../lib/render/templates";
-import type { RenderModel } from "../lib/render/model";
+import { renderPdf } from "../../lib/render/pdf";
+import { renderDocx } from "../../lib/render/docx";
+import { TEMPLATES } from "../../lib/render/templates";
+import { atsViolations, rateAts } from "../../lib/render/ats-rules";
+import { assertTemplates } from "../../lib/render/templates";
+import type { RenderModel } from "../../lib/render/model";
 
 const MODEL: RenderModel = {
   name: "Priya Raman",

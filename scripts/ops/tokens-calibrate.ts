@@ -12,9 +12,9 @@
  *
  *   pnpm tokens:calibrate
  */
-import "./env";
-import { db } from "../lib/db";
-import { RUN_ESTIMATE, TOKEN_STAGES } from "../lib/domain/tokens";
+import "../env";
+import { db } from "../../lib/db";
+import { RUN_ESTIMATE, TOKEN_STAGES } from "../../lib/domain/tokens";
 
 const WINDOW_DAYS = 30;
 
