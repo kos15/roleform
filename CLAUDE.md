@@ -51,7 +51,8 @@ analysis as much as to résumé bullets.
 | N20 | Fit between a listing and the profile is shown as named facts — skills it names, skills it asks for that you lack, title, location, stated years. Listings may be grouped into tiers (Shortlist / Worth a look / Long shot / Ruled out) only by those facts, with the reasons on every card. No number, no ring, no "match". | N4: the match score is coverage over a full posting; a snippet cannot earn it. A tier is a sort, not a score. |
 | N21 | A paid plan has an expiry; Free has none (CHECK). Lapse is settled by one function on read. Nothing raises a plan except (a) the webhook on a captured payment of the right amount — the live `plan_configs` price, or the `promo_redemptions` row checkout wrote for that order — or (b) an admin's `assignMemberPlan`, which always sets an expiry and writes an audited `plan_purchases` row (`admin:` reference + `granted_by`, CHECKed). Nothing else lowers a plan. | A plan granted forever for one payment is the revenue bug; an unaudited writer to `users.plan` is the next one. |
 | N22 | A plan **is** its caps: every plan-gated capability is a `QuotaKey` with a column, a CHECK, a `PLANS` value, a `NOTES` line and an enforcement seam that counts rows. No boolean feature flags per plan. Site-wide switches (`feature_switches`, F31) are allowed: they open or close a surface for everyone and never vary by plan. A quota may be **internal** — unprinted — only if it is a fair-use ceiling sized so every printed count binds first; the page then says "Fair-use limit applies". Today only `tokens` is internal, and members never see a token number (Oct 2026). | The pricing page prints `QUOTAS`; a gate outside it is a promise the page cannot show and the admin cannot move. |
-| N23 | Interview rounds are user-authored facts; reminders are rows derived from them. The sender claims a row before it sends, pushes only label · company · time · an in-app path (never notes), and logs counts. The service worker never caches a signed-in page. `/api/cron/reminders` is the only scheduled path in the product. | A reminder is the one thing we do on our own clock — it has to arrive at most once, honest about when, and safe on a lock screen. |
+| N23 | Interview rounds are user-authored facts; reminders are rows derived from them. The sender claims a row before it sends, pushes only label · company · time · an in-app path (never notes), and logs counts. The service worker never caches a signed-in page. Its sender runs on the product's clock (N24). | A reminder is the one thing we do on our own clock — it has to arrive at most once, honest about when, and safe on a lock screen. |
+| N24 | Scheduled work is a closed list kept in `lib/services/cron.ts` (`CRON_JOBS`): `/api/cron/reminders` (F29, every 5 min) and `/api/cron/catalog` (F8, daily link re-check against a 7-day TTL). Each is scheduled by `pnpm db:schedule` and listed by name in middleware. Each checks the shared Bearer `CRON_SECRET` before reading anything, claims a row before acting on it, finishes inside its function limit (`maxDuration`) — stopping new work at its own deadline where the batch can outrun it, makes no model call, writes no user-authored row, and logs counts only. Anything that can be settled on read is settled on read; a new entry must say why it cannot. | A clock is code that runs with nobody watching. Each one is a standing cost and a standing risk, so each is named, bounded and justified. |
 
 ## 3. The fabrication boundary
 
@@ -189,7 +190,7 @@ Rules:
 | DOCX | `docx` (npm) | Real named paragraph styles | Medium |
 | Extraction | `unpdf` (PDF), `mammoth` (DOCX), `word-extractor` (DOC), `fflate` (ODT), pure readers for RTF/HTML/MD/TXT, one vision call for scans and photos (specs F1) | Raw text only; the LLM does the structuring | Low |
 | Zip | `archiver` | "Download all" = 6 templates × 2 formats | Low |
-| Jobs | None in v1 — inline + streaming. One exception: the F29 reminder sender, called every 5 min by Supabase pg_cron (`pnpm db:schedule`), not Vercel Cron (Hobby is daily-only) | See §12 trigger | Low |
+| Jobs | None in v1 — inline + streaming. Scheduled work is N24's closed list (F29 reminder sender every 5 min; F8 catalog link re-check daily), both called by Supabase pg_cron (`pnpm db:schedule`), not Vercel Cron — one scheduler keeps one list, and Hobby is daily-only. | See §12 trigger | Low |
 | Push | `web-push` (VAPID, RFC 8291) + `public/sw.js` | Standard Web Push reaches Android, desktop and iOS ≥16.4 Home Screen apps with no native app | Low |
 
 **Not chosen:** Puppeteer (bundle size), LangChain (the AI SDK covers this shape), a vector DB (the
@@ -240,7 +241,7 @@ app/
   actions/                   Server Actions
   api/
     webhooks/                Clerk, Razorpay
-    cron/                    reminders (F29, Bearer CRON_SECRET)
+    cron/                    reminders (F29) · catalog (F8) — Bearer CRON_SECRET, N24
   offline/                   the service worker's offline page (public, static)
 components/
 lib/
@@ -256,11 +257,12 @@ lib/
   admin/                     operator reads and writes (members, plans, inbox)
   services/                  SERVER. feature I/O
     auth.ts                  session, plan settlement, cap walls
+    cron.ts                  N24 closed list of scheduled jobs · cronAuthorised
     features.ts              F31 site-wide switches — requireFeaturePage (404) / requireFeature (action)
     account/                 F33 greeting name
     extract/                 résumé text extraction (specs F1)
     jobs/                    F22 job search over documented APIs only
-    learning/                the learning engine's I/O half: bundles (PK lookup) · build-plan (ONE model call) · validate
+    learning/                the learning engine's I/O half: bundles (PK lookup) · build-plan (ONE model call) · validate · refresh-catalog (daily link re-check)
     mail/
     payments/                Razorpay
     pipeline/                the analysis run
@@ -285,7 +287,7 @@ lib/
   content/                   public copy and guides — every claim must match the rules the code enforces
 tests/                       Vitest, mirrors lib/ · tests/structure/ holds the repo-shape rules
 scripts/
-  db/                        policies, reminders schedule, constraint smoke test, admin grants
+  db/                        policies, cron schedule (N24), constraint smoke test, admin grants
   catalog/                   seed, bundles, link and corpus checks, drill bank
   ops/                       icons, push keys, IndexNow, render samples, DOCX round-trip
   evals/                     agent evals (pnpm eval)

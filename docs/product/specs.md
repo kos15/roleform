@@ -901,6 +901,22 @@ type, author, quality score and status; `course_skills` carries the per-skill en
 summary. Never model-generated. `pnpm check:links` sweeps course URLs *and* roadmap fallback targets
 — a dead fallback is a 404 in front of a job-hunter exactly as a dead course is.
 
+**Lanes.** The Learning tab splits a gap's material into two lanes (`lib/domain/lanes.ts`): **Watch**
+is video and course; **Read** is doc, roadmap and repo. `MAX_PER_LANE` is 3, and the per-lane cap a
+member sees comes from the `courses` quota through `perLaneCap`. Each gap gets one primary resource;
+when the cap trims a lane, the `cappedLanes` copy says so. YouTube videos are checked through oEmbed; other links by HEAD/GET. Design:
+`docs/superpowers/specs/2026-10-25-learning-watch-read-design.md`.
+
+**Freshness.** `courses.checked_at` is the TTL stamp (when a re-check last claimed the row);
+`status` carries the verdict. The daily `/api/cron/catalog` (N24) re-checks at most 150 active rows
+whose `checked_at` is 7 or more days old, oldest first. Only a GET 404/410, or an oEmbed 400/404, is
+conclusive: that flips `active → dead`. An unscoped bundle rebuild runs when a row flips dead, or when
+a bundle still names a non-active course. A blocked or live result leaves the row active. A dead row
+stays dead until a link-checked re-seed finds its URL live (normally after a curator fixes `courses.ts`).
+The seed staggers `checked_at` across 7 days so a first run does not become one daily spike. It is
+best effort: `pnpm check:corpus` reports how many active rows are overdue past 30 days, and
+`pnpm check:links` is the manual full sweep.
+
 **Guardrails** (`lib/domain/guardrails.ts`), each code and not prompt:
 
 | Rule | What it stops |
@@ -2042,12 +2058,12 @@ permission is already granted; the OS permission prompt is only ever raised by t
 button (iOS refuses a prompt no tap asked for). The panel lives on `/profile` and beside the
 rounds; it can send a test (5 per 10 minutes).
 
-**The scheduler — the one clock in the product.** `GET /api/cron/reminders`, authorised by
+**The scheduler — one of the product's clocks (N24).** `GET /api/cron/reminders`, authorised by
 `Authorization: Bearer $CRON_SECRET` (timing-safe; unset refuses everything), called every five
 minutes by **Supabase pg_cron + pg_net** (`pnpm db:schedule`, secret in Supabase Vault). Not Vercel
 Cron: on Hobby it runs at most daily, and "in an hour" cannot come from a daily job. The route also
 answers Vercel Cron's GET, so a plan with sub-daily crons can switch with one `vercel.json` line;
-the claim makes two schedulers safe. Nothing else in the product moved onto this clock — parked
+the claim makes two schedulers safe. The only other clock is F8's daily catalog re-check (N24); parked
 analyses (F19), plan lapse (F23) and listing expiry (F22) are still settled on read.
 
 Unset VAPID keys are a supported state, like Razorpay's (F17): the panel says notifications are not
@@ -2442,7 +2458,8 @@ removePushSubscription({id}|{endpoint}) → null              // F29
 setDeviceEnabled(id, enabled)         → null                // F29.2, pause/resume one device
 setNotificationPrefs(prefs)           → null                // F29.2, rounds · study · details
 sendTestNotification({later?})        → { accepted, devices, retrying } // F29.2, own devices, 5 per 10 min
-GET|POST /api/cron/reminders          → DispatchSummary + push summary // F29, Bearer CRON_SECRET; the one clock
+GET|POST /api/cron/reminders          → DispatchSummary + push summary // F29, Bearer CRON_SECRET; N24
+GET|POST /api/cron/catalog            → RefreshSummary      // F8, Bearer CRON_SECRET; N24, daily
 POST /api/push/release                → 204                 // F29.2, signed-out device, endpoint + auth proof
 
 sendContactMessage(prev, formData)    → ContactState        // F13, public — no session

@@ -13,6 +13,7 @@
 import "../env";
 import { db } from "../../lib/db";
 import { NODES } from "../../lib/catalog/taxonomy";
+import { daysBefore, OVERDUE_DAYS } from "../../lib/domain/catalog-refresh";
 
 /** Targets from rag-strategy.md §11. Not aspirations — thresholds. */
 const TARGET = {
@@ -141,6 +142,16 @@ async function main() {
     value: `${pct(courseDead / Math.max(1, courseTotal))} (${courseDead} dead, ${courseBlocked} quarantined, ${courseTotal} total)`,
     ok: courseDead / Math.max(1, courseTotal) <= TARGET.deadLinkRate,
     meaning: "A recommendation that 404s destroys more trust than a missing one. Run pnpm check:links.",
+  });
+
+  const overdue = await db.course.count({
+    where: { status: "active", checkedAt: { lt: daysBefore(new Date(), OVERDUE_DAYS) } },
+  });
+  metrics.push({
+    name: "Link re-checks overdue (>30 days)",
+    value: `${overdue} active course(s)`,
+    ok: overdue === 0,
+    meaning: "The daily /api/cron/catalog re-check is behind or not running. Check cron.job_run_details.",
   });
 
   /* ------------------------------------------- 5. freshness, high-volatility */

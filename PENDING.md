@@ -25,6 +25,33 @@ the struck list is the record. New work gets its line *before* its first failing
 
 - [x] ~~Six Naruto-named project agents (ino · hokage · shikamaru · kakashi · neji · jiraiya), pinned by `tests/structure/agents.test.ts`, documented in CLAUDE.md §16~~ — 2026-10-26
 
+## Catalog refresh — `docs/superpowers/plans/2026-10-26-catalog-refresh.md` (branch `feat/learning-catalog-refresh`)
+
+- [x] ~~Task 1: pure `lib/domain/catalog-refresh.ts` (TTL, `isDue`, `nextStatus`)~~ — 2026-10-26
+- [ ] Minor: `lib/domain/catalog-refresh.ts` — drop the no-op `void current;` (repo convention is an `_`-prefixed unused param) — neji, Task 1 review
+- [x] ~~Task 2: `lib/services/cron.ts` (`cronAuthorised` moved, `CRON_JOBS`) + `tests/structure/cron.test.ts`~~ — 2026-10-26
+- [x] ~~Task 3: `refreshDueLinks` in `lib/services/learning/refresh-catalog.ts`~~ — 2026-10-26
+- [ ] Minor: T13 in tests/services/learning/refresh-catalog.test.ts is a tripwire only — misses `data: { url }` shorthand, spreads, `type`/`qualityScore` writes
+- [ ] Minor: `bundlesNamingNonActive` loads every non-active id (grows forever since dead is permanent) — switch to an EXISTS join if dead rows reach thousands
+- [ ] Measure one real `rebuildBundles()` at the phase gate (estimated 3–10 s, ~290 sequential round trips; refresh budget assumes ≤ ~50 s)
+- [x] ~~Task 4: `/api/cron/catalog` route + middleware + `CRON_JOBS` entry~~ — 2026-10-26
+- [ ] Minor: tests/structure/cron.test.ts first-statement guard checks a function named `handle` but not that GET/POST export it — neji, Task 4 review
+- [ ] Minor: tests/app/cron-catalog.test.ts throw-test title says 'count-free log' — it asserts an error-free log — neji, Task 4 review
+- [x] ~~Task 5: `scripts/db/schedule.ts` schedules every `CRON_JOBS` job~~ — 2026-10-26
+- [ ] scripts/db/schedule.ts: `vault.update_secret(id, secret)` keeps production's old description — pass name + 'Bearer token for /api/cron/* (N24)' (verify against a non-production DB) — neji, Task 5 review
+- [ ] scripts/db/schedule.ts: wrap unschedule+schedule in `sql.begin` so a dropped connection can't leave reminders unscheduled (pre-existing gap; verify against a non-production DB) — neji, Task 5 review
+- [ ] Minor: tests/services/cron.test.ts picks jobs by index — find by name — neji, Task 5 review
+- [x] ~~Task 6: seed stagger + checkCourseLink + catalogProblems gate; link-check alignment~~ — 2026-10-26
+- [ ] Seed: a link the seed itself finds dead is skipped and stays `active` in the DB until the cron re-checks it (≤7 days) — on a dead verdict, `updateMany({ where: { url, status: "active" }, data: { status: "dead", checkedAt: today } })` (pre-existing) — neji, Task 6 review
+- [ ] Seed `--skip-link-check` still stamps `verifiedAt: today` on rows it never checked (pre-existing; plan kept it) — neji, Task 6 review
+- [ ] Seed never writes `author`; bundles fall back to `provider` for diversity — neji, Task 6 review
+- [x] ~~Task 7: docs — N24, §8, §10, specs F8/F29, README, notifications, courses.ts header, schema `///`, corpus-health overdue30~~ — 2026-10-26
+- [ ] /api/cron/reminders has no claimUntil deadline — relies on maxDuration 60 / pg_net 55 s (N24 wording now says so) — neji, Task 7 review
+- [ ] Seed should mark rows absent from COURSES as `quarantined`
+- [ ] A live re-seed returns `quarantined`/`stale` rows to active (recorded in a seed comment) — revisit if quarantine becomes a deliberate curator verdict; pairs with the 'mark rows absent from COURSES quarantined' item — neji, final review
+- [ ] Death is decided by one 404/410 (or oEmbed 400/404) from a Vercel IP — a host that 404s datacenter IPs would quietly shrink the catalog; watch the `dead=` count in `[cron:catalog]` logs — neji, final review
+- [ ] Spec F8 could state the seed's full write rule: a blocked re-seed re-stamps checked_at but never changes status; --skip-link-check writes neither — neji, final review
+
 ## Carried over
 
 Audited 2026-10-26 against `git log` and disk. Earlier plans' finished tasks are ticked in their
@@ -36,9 +63,9 @@ own files; what is still open is here.
 
 ### Learning Watch | Read lanes — `docs/superpowers/plans/2026-10-25-learning-watch-read.md` (branch `feat/learning-watch-read`)
 
-- [ ] Task 7: curate the remaining skill batches (done: JavaScript…Redux, RxJS…Elasticsearch); finish when `pnpm check:catalog` exits 0 — today it reports 46 problems, 1 dead link, 4 blocked
-- [ ] Task 8: seed stagger + daily catalog refresh cron (`lib/catalog/refresh.ts`, `/api/cron/catalog`, 7-day TTL) — test-first in `tests/catalog/refresh.test.ts`
-- [ ] Task 9: docs — specs F8 lanes and refresh, CLAUDE.md N23 names `/api/cron/catalog`, `courses.ts` header
+- [x] ~~Task 7: curate the remaining skill batches (done: JavaScript…Redux, RxJS…Elasticsearch, Data Modeling…Serverless + UX Research dead-link replacement; batch B open); finish when `pnpm check:catalog` exits 0 — now reports 375 entries · problems 24 (all batch B: React Native onward) · dead 0~~ — 2026-10-26 (`pnpm check:catalog` now exits 0: 447 entries · problems 0 · dead 0 · mismatches 0)
+- [x] ~~Task 8: seed stagger + daily catalog refresh cron (`lib/catalog/refresh.ts`, `/api/cron/catalog`, 7-day TTL) — test-first in `tests/catalog/refresh.test.ts`~~ — 2026-10-26 (superseded and delivered by docs/superpowers/plans/2026-10-26-catalog-refresh.md Tasks 1–7)
+- [x] ~~Task 9: docs — specs F8 lanes and refresh, CLAUDE.md N23 names `/api/cron/catalog`, `courses.ts` header~~ — 2026-10-26 (superseded and delivered by docs/superpowers/plans/2026-10-26-catalog-refresh.md Tasks 1–7)
 
 ### Layout review minors (final review of `chore/layout-tdd`, 2026-10-26)
 
@@ -53,7 +80,24 @@ own files; what is still open is here.
 - [ ] `tests/domain/push.test.ts`, `tests/domain/quotas.test.ts` read cwd-relative paths — use `ROOT`
 - [ ] `lib/domain/guardrails.ts:5` says "the prompt in lib/ai/prompts" — means `lib/ai/system-prompts`
 
+### Catalog batch A review minors (2026-10-26)
+
+- [ ] Docker, Kubernetes, Terraform have 1 doc each — plan asks 2–3
+- [ ] dbt, Snowflake, Google Cloud, Azure have 1 YouTube video each (a `course` fills the second Watch slot)
+- [ ] Data Modeling, ETL, UX Research have no official doc (none exists — revisit if one appears)
+
+### Catalog batch B review minors (2026-10-26)
+
+- [ ] 21 entries still `type: "course"` but are text (Vitest Guide, Pro Git, OWASP Top Ten, 12factor, Refactoring Guru, Google eng-practices, scikit-learn Getting Started, Kaggle Learn, …) — retype to doc + docKind like batch B's seven
+- [ ] Hugging Face LLM Course entry still carries the old NLP-course length (~15 hrs) — re-estimate
+- [ ] Stakeholder Management Read: Kanda Software blog is vendor marketing — replace with a stronger non-vendor read when one is verified
+- [ ] Optional: 'Why Engineers Need Product Thinking' (Product Driven, 9m) reads as an overview
+- [ ] Vector Databases and Encryption, TDD, Technical Leadership, Stakeholder Management, Product Thinking have no official doc (no standards owner) — revisit if one appears
+
 ### Branch housekeeping
 
+- [x] ~~DO NOT run `pnpm seed:catalog` until catalog-refresh Task 6 lands — the current seed writes no `docKind`, so every catalog doc would violate CHECK `courses_doc_needs_kind`~~ — 2026-10-26
+- [ ] Re-seed the catalog once (`pnpm seed:catalog`) after this branch deploys: writes batch A/B entries, doc_kind/is_overview and the 7-day checked_at stagger — needs Node ≥ 20.19 locally
+- [ ] After this branch deploys: `APP_URL=https://roleform.koustubh.org pnpm db:schedule` — installs `roleform-catalog-refresh` (daily 03:17 UTC); without it the catalog re-check never runs (neji, final review)
 - [x] ~~Merge `feat/learning-watch-read` and `chore/layout-tdd` to `main` (this layout branch is cut from the watch-read branch)~~ — 2026-10-26
 - [ ] Local Node is v20.17.0; `package.json` engines asks for >=20.19.0 — upgrade

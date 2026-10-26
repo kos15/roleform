@@ -1346,7 +1346,7 @@ model Course {
   isFree        Boolean     @map("is_free")
   lengthMinutes Int         @map("length_minutes")
   verifiedAt    DateTime    @map("verified_at") @db.Date
-  /// When the URL was last confirmed live — the TTL stamp a re-check reads.
+  /// When a re-check last claimed this row — the TTL stamp; `status` carries the verdict.
   /// Distinct from `verifiedAt` (the date the content was vetted).
   checkedAt     DateTime    @default(now()) @map("checked_at") @db.Timestamptz
 

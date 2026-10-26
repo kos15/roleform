@@ -4,7 +4,11 @@
  * ── The link check is not optional ──────────────────────────────────────────
  * Every course URL is requested before it is inserted. A URL that does not
  * resolve is REPORTED AND SKIPPED, never seeded. verified_at is stamped with
- * the date of the run that actually reached it.
+ * the date of the run that actually reached it. checked_at (the TTL stamp the
+ * daily re-check reads, N24) is staggered over 7 days by row index, so a
+ * re-seed never makes the whole catalog due on the same day.
+ *
+ * The seed refuses to run while `catalogProblems` reports anything.
  *
  * That is what makes N8 true in practice rather than in principle: a dead link
  * cannot enter the database, so the Learning tab cannot serve one. Run with
@@ -14,15 +18,24 @@ import "../env";
 import { db } from "../../lib/db";
 import { SKILLS } from "../../lib/catalog/skills";
 import { COURSES } from "../../lib/catalog/courses";
+import { catalogProblems } from "../../lib/catalog/problems";
+import { CATALOG_TTL_DAYS, daysBefore, seededStatus, staggeredCheckedAt } from "../../lib/domain/catalog-refresh";
 import { assertTaxonomy, NODES } from "../../lib/catalog/taxonomy";
 import { levelOf, primacyOf, qualityOf, summaryFor, tagsFor, typeOf } from "../../lib/catalog/quality";
-import { checkLiveness } from "../../lib/catalog/liveness";
+import { checkCourseLink, type Liveness } from "../../lib/catalog/liveness";
 import { assertTemplates, TEMPLATES } from "../../lib/render/templates";
 import { rateAts } from "../../lib/render/ats-rules";
 
 const skipLinkCheck = process.argv.includes("--skip-link-check");
 
 async function main() {
+  const problems = catalogProblems(COURSES, SKILLS.map((s) => s.name));
+  if (problems.length > 0) {
+    console.error("Catalog has problems (pnpm check:catalog):");
+    for (const problem of problems) console.error(`  - ${problem}`);
+    process.exit(1);
+  }
+
   /* ------------------------------------------------------------- templates */
   //
   // The rating is computed (N5), but `atsWhy` is prose beside it, and prose
@@ -121,7 +134,7 @@ async function main() {
   const blocked: string[] = [];
   const unknownSkills = new Set<string>();
 
-  for (const course of COURSES) {
+  for (const [index, course] of COURSES.entries()) {
     const skillIds = course.skills.map((name) => {
       const id = skillIdByName.get(name);
       if (!id) unknownSkills.add(name);
@@ -129,11 +142,13 @@ async function main() {
     });
     if (skillIds.some((id) => !id)) continue;
 
+    let verdict: Liveness | null = null;
     if (!skipLinkCheck) {
       // Three outcomes, not two (lib/catalog/liveness.ts). A 403 from a
       // bot-walled host is not evidence that a tutorial was deleted, and
       // treating it as such was silently shrinking the catalog.
-      const liveness = await checkLiveness(course.url);
+      const { liveness } = await checkCourseLink({ url: course.url, type: typeOf(course) });
+      verdict = liveness;
       if (liveness === "dead") {
         dead.push(`${course.provider} — ${course.title} → ${course.url}`);
         continue;
@@ -150,8 +165,37 @@ async function main() {
       type: typeOf(course),
       qualityScore: qualityOf(course).toFixed(3),
       tags: tagsFor(course),
-      status: "active" as const,
     };
+
+    // CHECK courses_doc_needs_kind (type doc ⇒ doc_kind not null): these are
+    // written on EVERY path, create and update, link-checked or not.
+    const curation = {
+      docKind: course.docKind ?? null,
+      isOverview: course.isOverview ?? false,
+    };
+
+    // checked_at/status: a link-checked run stamps the staggered TTL (we did
+    // check) and revives an existing row only on a "live" verdict (seededStatus:
+    // a blocked check must not undo the cron's dead verdict). --skip-link-check
+    // proved nothing, so a new row is created already due and an existing row
+    // keeps whatever the re-check last wrote.
+    // Create: a new row is a curator's addition, so live or blocked starts it
+    // active (seededStatus(verdict, true)); unchecked, it is created already due.
+    // A live re-seed also returns quarantined/stale rows to active (recorded decision).
+    const createChecked =
+      verdict === null
+        ? { status: "active" as const, checkedAt: daysBefore(today, CATALOG_TTL_DAYS) }
+        : {
+            status: seededStatus(verdict, true) ?? ("active" as const),
+            checkedAt: staggeredCheckedAt(today, index),
+          };
+    const updateChecked =
+      verdict === null
+        ? {}
+        : {
+            checkedAt: staggeredCheckedAt(today, index),
+            ...(seededStatus(verdict, false) === "active" ? { status: "active" as const } : {}),
+          };
 
     const row = await db.course.upsert({
       where: { url: course.url },
@@ -168,6 +212,8 @@ async function main() {
         skillIds: skillIds as string[],
         verifiedAt: today,
         ...resource,
+        ...curation,
+        ...createChecked,
       },
       update: {
         provider: course.provider,
@@ -181,6 +227,8 @@ async function main() {
         skillIds: skillIds as string[],
         verifiedAt: today,
         ...resource,
+        ...curation,
+        ...updateChecked,
       },
       select: { id: true },
     });

@@ -61,7 +61,9 @@ APP_URL=https://roleform.koustubh.org pnpm db:schedule
 Installs a Supabase **pg_cron** job (`roleform-round-reminders`, every 5 minutes) that calls
 `GET /api/cron/reminders` through **pg_net**, with the secret read from **Supabase Vault** at run
 time. Each call (a) queues the reminders that came due into `push_deliveries`, then (b) drains the
-outbox — including retries that an earlier call scheduled. `pnpm db:schedule --remove` takes it out.
+outbox — including retries that an earlier call scheduled. `pnpm db:schedule` installs both N24
+jobs (`roleform-round-reminders` every 5 min, `roleform-catalog-refresh` daily 03:17 UTC);
+`pnpm db:schedule --remove` removes both.
 
 Why not Vercel Cron: on the Hobby plan a cron job runs at most once a day. On a plan that allows
 sub-daily crons you may add instead:
@@ -151,8 +153,10 @@ own account; **never test against real members' devices**.
   previous code runs against the new schema unchanged: it ignores `push_deliveries` and the new
   columns. Anything still `queued` in the outbox simply waits; when F29.2 is redeployed, rows past
   their `expires_at` settle as `expired` instead of buzzing a phone late.
-- **Stop all pushes immediately**: `pnpm db:schedule --remove` (nothing is queued or sent without
-  the cron), or unset `VAPID_PRIVATE_KEY` and redeploy (the outbox and the test button refuse to
+- **Stop all pushes immediately**: unschedule only the reminders with
+  `select cron.unschedule('roleform-round-reminders');` (nothing is queued or sent without the
+  cron; `pnpm db:schedule --remove` removes both N24 jobs, including the daily catalog re-check),
+  or unset `VAPID_PRIVATE_KEY` and redeploy (the outbox and the test button refuse to
   send). Re-enable by reversing the step.
 - **Schema** (only if the migration itself must go): there is no down-migration by policy. Drop by
   hand, in this order, on the affected database:

@@ -1,7 +1,11 @@
 /**
- * Schedules the F29 reminder sender in Supabase: pg_cron calls
- * `GET {APP_URL}/api/cron/reminders` every five minutes through pg_net, with
- * `Authorization: Bearer {CRON_SECRET}`.
+ * Schedules every job in CRON_JOBS (lib/services/cron.ts, N24) in Supabase:
+ * pg_cron calls `GET {APP_URL}{job.path}` on the job's schedule through
+ * pg_net, with `Authorization: Bearer {CRON_SECRET}`. Today that is the F29
+ * reminder sender (every five minutes) and the daily catalog link re-check.
+ *
+ * It keeps the original job name "roleform-round-reminders", so running it
+ * over a database scheduled by the old script replaces that `cron.job` row.
  *
  * Why the database and not Vercel Cron: on Vercel's Hobby plan a cron job may
  * run at most once a day, and "your interview is in an hour" cannot be sent
@@ -13,7 +17,7 @@
  *
  * The secret is kept in Supabase Vault, not in the cron job's command text,
  * so `select * from cron.job` never shows it. Re-running this script replaces
- * both the secret and the job, so rotating CRON_SECRET is: set the env var on
+ * both the secret and the jobs, so rotating CRON_SECRET is: set the env var on
  * Vercel and locally, run `pnpm db:schedule`.
  *
  * Usage: APP_URL=https://roleform.koustubh.org pnpm db:schedule
@@ -21,9 +25,7 @@
  */
 import "../env";
 import postgres from "postgres";
-
-const JOB = "roleform-round-reminders";
-const SECRET_NAME = "roleform_cron_secret";
+import { CRON_JOBS, CRON_SECRET_NAME, scheduleCommand } from "../../lib/services/cron";
 
 async function main() {
   const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
@@ -32,8 +34,10 @@ async function main() {
 
   try {
     if (process.argv.includes("--remove")) {
-      await sql`select cron.unschedule(jobid) from cron.job where jobname = ${JOB}`;
-      console.log(`unscheduled ${JOB}`);
+      for (const job of CRON_JOBS) {
+        await sql`select cron.unschedule(jobid) from cron.job where jobname = ${job.name}`;
+        console.log(`unscheduled ${job.name}`);
+      }
       return;
     }
 
@@ -46,26 +50,15 @@ async function main() {
     await sql`create extension if not exists pg_net`;
 
     // Vault: update in place when it exists, so a rotation leaves one secret.
-    const [existing] = await sql<{ id: string }[]>`select id from vault.secrets where name = ${SECRET_NAME}`;
+    const [existing] = await sql<{ id: string }[]>`select id from vault.secrets where name = ${CRON_SECRET_NAME}`;
     if (existing) await sql`select vault.update_secret(${existing.id}::uuid, ${secret})`;
-    else await sql`select vault.create_secret(${secret}, ${SECRET_NAME}, 'Bearer token for /api/cron/reminders (F29)')`;
+    else await sql`select vault.create_secret(${secret}, ${CRON_SECRET_NAME}, 'Bearer token for /api/cron/* (N24)')`;
 
-    const endpoint = `${appUrl}/api/cron/reminders`;
-    // The command is a literal; only the endpoint is interpolated, and it was
-    // validated as an https origin above. The secret is read at run time.
-    const command = `
-      select net.http_get(
-        url := '${endpoint.replace(/'/g, "''")}',
-        headers := jsonb_build_object(
-          'Authorization',
-          'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = '${SECRET_NAME}')
-        ),
-        timeout_milliseconds := 55000
-      );`;
-
-    await sql`select cron.unschedule(jobid) from cron.job where jobname = ${JOB}`;
-    await sql`select cron.schedule(${JOB}, '*/5 * * * *', ${command})`;
-    console.log(`scheduled ${JOB}: every 5 minutes → ${endpoint}`);
+    for (const job of CRON_JOBS) {
+      await sql`select cron.unschedule(jobid) from cron.job where jobname = ${job.name}`;
+      await sql`select cron.schedule(${job.name}, ${job.schedule}, ${scheduleCommand(job, appUrl)})`;
+      console.log(`scheduled ${job.name}: ${job.schedule} → ${appUrl}${job.path}`);
+    }
   } finally {
     await sql.end();
   }
