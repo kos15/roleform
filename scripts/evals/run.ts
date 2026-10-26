@@ -2,13 +2,17 @@
  * The eval harness (agent design §6.8, §7). Run by hand at a gate — not CI
  * (CLAUDE.md §11).
  *
- *   pnpm eval <agent> [--set <name>] [--arm gpt5|gpt5+jev] [--dry]
+ *   pnpm eval <agent> [--set <name>] [--arm gpt5|gpt5+jev] [--role writer|writer-fast] [--dry]
  *
  * --dry validates the fixture set offline (shape and count) and calls nothing.
  * A live run needs OPENAI_API_KEY and DATABASE_URL (every call writes an
  * ai_runs row under EVAL_CLERK_USER_ID); the gpt5+jev arm also needs
  * TYPESAFE_API_KEY. The gpt5 arm unsets that key in-process, so the checkers
  * skip exactly as they do in production when TypeSafe is unreachable.
+ *
+ * --role overrides the agent's model for this process only (the script never
+ * touches the app's configuration), so a cheaper model can be judged on the
+ * same fixtures before the agent definition is changed.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -17,6 +21,15 @@ import { SETS, type AgentKey } from "./fixtures";
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
   return i > 0 ? process.argv[i + 1] : undefined;
+}
+
+/** `--role writer|writer-fast`, or undefined when absent. Throws on anything else. */
+export function parseRole(argv: readonly string[]): "writer" | "writer-fast" | undefined {
+  const i = argv.indexOf("--role");
+  if (i < 0) return undefined;
+  const value = argv[i + 1];
+  if (value !== "writer" && value !== "writer-fast") throw new Error("--role must be writer or writer-fast");
+  return value;
 }
 
 export function loadSet(agent: AgentKey, set: string): unknown[] {
@@ -33,9 +46,10 @@ export function loadSet(agent: AgentKey, set: string): unknown[] {
 async function main() {
   const agent = process.argv[2] as AgentKey | undefined;
   if (!agent || !(agent in SETS)) {
-    console.error(`Usage: pnpm eval <${Object.keys(SETS).join("|")}> [--set name] [--arm gpt5|gpt5+jev] [--dry]`);
+    console.error(`Usage: pnpm eval <${Object.keys(SETS).join("|")}> [--set name] [--arm gpt5|gpt5+jev] [--role writer|writer-fast] [--dry]`);
     process.exit(2);
   }
+  const role = parseRole(process.argv);
   const sets = arg("set") ? [arg("set")!] : Object.keys(SETS[agent]);
   for (const set of sets) {
     const cases = loadSet(agent, set);
@@ -46,7 +60,7 @@ async function main() {
   const arm = arg("arm") ?? "gpt5+jev";
   if (arm === "gpt5") delete process.env.TYPESAFE_API_KEY;
   const { runLive } = await import("./live");
-  for (const set of sets) await runLive(agent, set, loadSet(agent, set), arm);
+  for (const set of sets) await runLive(agent, set, loadSet(agent, set), arm, role);
 }
 
 if (require.main === module) {

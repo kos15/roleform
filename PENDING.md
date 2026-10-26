@@ -133,6 +133,6 @@ own files; what is still open is here.
 - [x] ~~Task 11: Résumés tab count reads "Preparing…" while drafts are generating~~ — 2026-10-26
 - [x] ~~Task 12: `DraftsPlaceholder` (pending · missing + "Finish the drafts" · off) and the "Still not evidenced" panel on the Résumés tab; preview pending state~~ — 2026-10-26
 - [x] ~~Task 13: runAgent starts the Jev injection check concurrently with the model call (fail open)~~ — 2026-10-26
-- [ ] Task 14: `pnpm eval bullet-tailor --role writer|writer-fast` (script-only model override)
+- [x] ~~Task 14: `pnpm eval bullet-tailor --role writer|writer-fast` (script-only model override)~~ — 2026-10-26
 - [ ] Task 15: docs — specs §8 flow, F3, F5, F14 (stalled-run behaviour change)
 - [ ] Task 16 (T-final): flip `tailor_bullet` to writer-fast + specs §10 — ONLY after the fabrication eval passes on `--role writer-fast`
