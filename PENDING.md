@@ -122,7 +122,7 @@ own files; what is still open is here.
 
 - [x] ~~Task 1: `mapLimit(items, n, fn)` ordered concurrency helper in `lib/shared/utils.ts`~~ — 2026-10-26
 - [x] ~~Task 2: pure `blockCause` · `buildChangeList` · `tailorTally` in `lib/domain/diff.ts` (stopped-partway notice moves into draft.changes; ceiling/deadline/transient never counted as "rejected for adding detail")~~ — 2026-10-26
-- [ ] Task 3: pure `draftsState` in `lib/services/pipeline/background.ts`
+- [x] ~~Task 3: pure `draftsState` in `lib/services/pipeline/background.ts`~~ — 2026-10-26
 - [ ] Task 4: pure `parsingFinished` in `lib/services/pipeline/stages.ts`
 - [ ] Task 5: pure `stillNotEvidenced` in `lib/domain/coverage.ts`
 - [ ] Task 6: pipeline writes `ready` in the score update on both paths, before `matching done`; later ready update deleted
