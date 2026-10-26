@@ -134,5 +134,9 @@ own files; what is still open is here.
 - [x] ~~Task 12: `DraftsPlaceholder` (pending · missing + "Finish the drafts" · off) and the "Still not evidenced" panel on the Résumés tab; preview pending state~~ — 2026-10-26
 - [x] ~~Task 13: runAgent starts the Jev injection check concurrently with the model call (fail open)~~ — 2026-10-26
 - [x] ~~Task 14: `pnpm eval bullet-tailor --role writer|writer-fast` (script-only model override)~~ — 2026-10-26
-- [ ] Task 15: docs — specs §8 flow, F3, F5, F14 (stalled-run behaviour change)
+- [x] ~~Task 15: docs — specs §8 flow, F3, F5, F14 (stalled-run behaviour change)~~ — 2026-10-26
 - [ ] Task 16 (T-final): flip `tailor_bullet` to writer-fast + specs §10 — ONLY after the fabrication eval passes on `--role writer-fast`
+- [ ] neji minor: `mapLimit` with a non-finite limit creates no workers and resolves with holes — guard `Number.isFinite(limit)` (no caller today passes one)
+- [ ] neji minor: 180s is a start deadline, not a finish deadline — confirm `[pipeline] tailor/pages ms=` on a real long profile stays under maxDuration 300; add an AbortSignal to tailorSummary if not
+- [ ] Verify on preview: array-form `$transaction` of 11 drafts + bullets is atomic under the production pooler and within payload limits
+- [ ] End-to-end click-through on preview: paste JD → results before drafts → drafts appear → all tabs → preview → both exports
