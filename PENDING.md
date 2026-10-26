@@ -29,7 +29,7 @@ the struck list is the record. New work gets its line *before* its first failing
 
 - [x] ~~Task 1: pure `lib/domain/catalog-refresh.ts` (TTL, `isDue`, `nextStatus`)~~ — 2026-10-26
 - [ ] Minor: `lib/domain/catalog-refresh.ts` — drop the no-op `void current;` (repo convention is an `_`-prefixed unused param) — neji, Task 1 review
-- [ ] Task 2: `lib/services/cron.ts` (`cronAuthorised` moved, `CRON_JOBS`) + `tests/structure/cron.test.ts`
+- [x] ~~Task 2: `lib/services/cron.ts` (`cronAuthorised` moved, `CRON_JOBS`) + `tests/structure/cron.test.ts`~~ — 2026-10-26
 - [ ] Task 3: `refreshDueLinks` in `lib/services/learning/refresh-catalog.ts`
 - [ ] Task 4: `/api/cron/catalog` route + middleware + `CRON_JOBS` entry
 - [ ] Task 5: `scripts/db/schedule.ts` schedules every `CRON_JOBS` job
