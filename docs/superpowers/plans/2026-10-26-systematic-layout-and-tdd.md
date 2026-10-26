@@ -47,7 +47,7 @@ PENDING.md           the single pending-work list
 - `lib/domain/` imports nothing from `db`, `ai`, `supabase`, `services`, or `next` (CLAUDE.md §10 rule, now tested).
 - `lib/supabase/admin.ts` imported only from server paths (CLAUDE.md §10 rule, now tested).
 - Vitest pinned `vitest@3.2.4`. Tests live in `tests/`, named `*.test.ts(x)`, path mirrors the module under test.
-- `PENDING.md` format: `- [ ] item` while open; on completion `- [x] ~~item~~ — <short sha>, <YYYY-MM-DD>`. Never delete a line.
+- `PENDING.md` format: `- [ ] item` while open; on completion `- [x] ~~item~~ — <YYYY-MM-DD>` (the commit is `git log -S "~~item~~"`; a commit cannot name its own sha). Never delete a line.
 - After every task: `pnpm typecheck` and `pnpm test` both green, PENDING.md line struck, one commit.
 - DB-, network- and runtime-dependent checks stay as scripts (`check:constraints`, `check:catalog`, `check:drill`, `check:roundtrip`, `check:links`, `check:corpus`, `check:fabrication`, evals) — they are not unit tests.
 

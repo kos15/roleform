@@ -279,25 +279,23 @@ belongs a layer up.
 **Rule:** `lib/supabase/admin.ts` is server-only. If it ever appears in a client bundle, that is a
 security incident, not a bug.
 
-## 11. Verification policy — light by design
+## 11. Verification policy — test-driven (since Oct 2026)
 
-We do **not** run a continuous test suite, per-merge tests, or CI gating. Verification happens **once
-per milestone, at the phase gate**, as a manual checklist run against a deployed preview.
+Every behaviour change starts with a **failing test** in `tests/` (Vitest, `pnpm test`). Watch it
+fail, make it pass, then commit. `pnpm test` and `pnpm typecheck` are green before every commit.
+Tests mirror the module they cover (`lib/domain/lanes.ts` → `tests/domain/lanes.test.ts`);
+repo-shape rules (layout, import boundaries, this file's paths) live in `tests/structure/`.
+`server-only` resolves to `scripts/server-only-stub.ts` under Vitest so server modules are testable.
 
-This is a deliberate trade of coverage for speed. It has a consequence worth internalising:
-
-> With no test suite, the structural guarantees are the safety net. Database constraints, RLS
-> policies, and Zod schemas are now doing the job tests would otherwise do — and unlike tests, they
-> run on every request for free. So they get **stricter**, not looser.
-
-Which means:
+Tests do not replace the structural guarantees — database constraints, RLS policies and Zod
+schemas run on every request for free, so they stay **strict**:
 - Prefer a `NOT NULL` / `CHECK` constraint over a validation function.
 - Prefer a narrow Zod schema over a permissive one plus a runtime check.
 - Prefer an enum over a string.
 - Prefer making a wrong state unrepresentable over remembering to check for it.
 
-**Three checks survive, because each catches a failure that would be expensive and silent.** All
-three are one-shot manual runs at a phase gate, not suites:
+**Three checks need a database, the network or a model, so they stay scripts** run at a phase gate
+rather than in `pnpm test`:
 
 | Check | When | Why it survives |
 |---|---|---|
@@ -305,13 +303,12 @@ three are one-shot manual runs at a phase gate, not suites:
 | Fabrication eval — 30 bullets against postings demanding absent skills | M4 gate | This is the product's entire promise. Unverified, we're shipping a claim we haven't checked. |
 | DOCX round-trip — export, re-import, compare | M6 gate | Parsability is invisible until a user is rejected by it. |
 
-Everything else is checked by looking at it. Render the PDF and open it. Click through the flow.
-That's the standard.
+Visual output is still checked by looking at it as well: render the PDF and open it, click
+through the flow.
 
 ## 12. When to revisit
 
 - **Add a job queue** when "Download all" (12 renders + zip) exceeds the function budget, or p95 analysis passes 45s. Most likely trigger to actually fire — measure at M6.
-- **Add automated tests** if the same bug is fixed twice. A second regression is the cheapest possible signal that the light policy has stopped paying.
 - **Cache JD analysis** — in v1 via `content_hash`; extend cross-user only if postings genuinely recur.
 - **Add embeddings** only if maintaining the skill alias table becomes the bottleneck. Candidate generation only, never status assignment.
 
@@ -336,14 +333,16 @@ That's the standard.
 
 - Read `specs.md` before implementing; read `plan.md` before choosing what to work on.
 - Build the walking skeleton first (plan M1) and keep it alive. Never leave the repo broken across a task boundary.
-- Verify at each seam by looking — render the PDF, open the page. Light testing raises the value of actually looking at the output, it doesn't remove it.
+- Test first (§11), then verify at each seam by looking — render the PDF, open the page.
+- All pending work lives in `PENDING.md`. Add a line before the first failing test; strike it
+  (`- [x] ~~item~~ — <date>`) in the commit that finishes it. Never delete a line.
 - On failure: state what you expected, what happened, and the smallest experiment separating the top two causes. Two failed fixes on one symptom means the mental model is wrong — stop and re-derive.
 - State decisions with reasons rather than asking permission. Flag assumptions in one line.
 - If a task balloons past its importance to the spine, cut scope and say so.
 
 ## 15. Definition of done (per feature)
 
-1. Types check, lint clean.
+1. Types check, `pnpm test` green, the feature's tests were written first. `PENDING.md` line struck.
 2. End-to-end path still works: profile → paste JD → analyze → all three tabs → preview → both exports.
 3. Exports open cleanly in Word and Preview; PDF text is selectable.
 4. No new nullable FK on any evidence relation; RLS enabled on any new user table.
