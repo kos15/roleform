@@ -298,6 +298,8 @@ prisma/
   schema.prisma              the truth
   migrations/                generated; never edited after apply
 PENDING.md                   every pending item; struck through when done
+.claude/
+  agents/                    the agent team (§16) — one file per agent
 ```
 
 **Rule:** `lib/domain/` imports nothing from `db`, `ai`, `services`, `supabase`, or `next` — except
@@ -376,3 +378,37 @@ through the flow.
 5. No hard-coded hex, font, or radius that a DS token already carries.
 6. `lib/supabase/admin.ts` still imported only from server paths.
 7. Specs updated if behaviour changed. Docs drift is a bug.
+
+## 16. The agent team (since Oct 2026)
+
+Every requirement, bug or analysis runs through these project agents (`.claude/agents/`). The
+user asked for this standing workflow, so spawning them is expected, not optional. Each runs
+on the model its job needs: thinking where judgment matters, speed where it does not.
+
+| Agent | Naruto ability | Role | Model | Edits files? |
+|---|---|---|---|---|
+| `ino` | Mind Transfer: reads what you mean | Curates the raw request into a brief: goal, scope, acceptance criteria, constraints, ≤3 open questions | Haiku 5.5 | No |
+| `hokage` | The village's final word | Critical, hard-to-reverse architecture only: schema/migrations, RLS/auth, payments, AI cost model, any N-rule | Opus 5.5, effort `high` (`max` for production data, money, security) | No |
+| `shikamaru` | IQ-200 strategist | Turns the brief into an exact test-first plan: files, signatures, failing tests, commands | Opus 5.5 | No |
+| `kakashi` | Copy Ninja: copies the technique exactly | Writes the code for one planned task: RED → GREEN → full suite. No redesign, no git | Sonnet 5.5 | Yes |
+| `neji` | Byakugan: sees every point at once | Reviews against the plan, CLAUDE.md, best practice and test coverage; runs the tests itself | Opus 5.5 | No |
+| `jiraiya` | The Sannin who writes everything down | All git: branches, systematic revert-friendly commits, PENDING.md strikes, merges, gated pushes | Sonnet 5.5 | Git + PENDING.md only |
+
+**Flow.**
+
+```
+user request
+  → ino            brief (+ questions → main session asks the user)
+  → hokage         only if ino or shikamaru flags an irreversible call (+ questions → user)
+  → shikamaru      plan → saved to docs/superpowers/plans/, lines added to PENDING.md
+  → per task: kakashi (code) → neji (review) → kakashi (fixes, if Critical/Important)
+  → jiraiya        commit per task; merge and push only when the user asks
+```
+
+- Subagents cannot ask the user directly. Questions from `ino` or `hokage` come back to the main
+  session, which asks the user before work continues.
+- Small, obvious changes (a typo, a one-line copy fix) may skip `ino`, `hokage` and `shikamaru`.
+  They never skip a test, `neji`'s review, or `jiraiya`'s commit standard.
+- `neji`'s Minor findings go to `PENDING.md`. They do not trigger another coding round.
+- `tests/structure/agents.test.ts` pins each agent's model and tool limits.
+
