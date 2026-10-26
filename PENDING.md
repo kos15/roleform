@@ -121,7 +121,7 @@ own files; what is still open is here.
 ### Progressive results — `docs/superpowers/plans/2026-10-26-progressive-results.md` (branch `feat/progressive-results`)
 
 - [x] ~~Task 1: `mapLimit(items, n, fn)` ordered concurrency helper in `lib/shared/utils.ts`~~ — 2026-10-26
-- [ ] Task 2: pure `blockCause` · `buildChangeList` · `tailorTally` in `lib/domain/diff.ts` (stopped-partway notice moves into draft.changes; ceiling/deadline/transient never counted as "rejected for adding detail")
+- [x] ~~Task 2: pure `blockCause` · `buildChangeList` · `tailorTally` in `lib/domain/diff.ts` (stopped-partway notice moves into draft.changes; ceiling/deadline/transient never counted as "rejected for adding detail")~~ — 2026-10-26
 - [ ] Task 3: pure `draftsState` in `lib/services/pipeline/background.ts`
 - [ ] Task 4: pure `parsingFinished` in `lib/services/pipeline/stages.ts`
 - [ ] Task 5: pure `stillNotEvidenced` in `lib/domain/coverage.ts`
