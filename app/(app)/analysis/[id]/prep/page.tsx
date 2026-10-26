@@ -50,7 +50,7 @@ export default async function PrepTab({
     if (backgroundRunning(analysis)) {
       return (
         <SectionPending title="Drawing your interview questions">
-          Your résumés are ready now. The questions this posting invites are still being written —
+          Your match is ready now. The questions this posting invites are still being written —
           this tab fills in on its own.
         </SectionPending>
       );

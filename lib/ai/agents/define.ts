@@ -110,7 +110,9 @@ export async function runAgent<I, S extends z.ZodType>(
   });
 
   // Names and counts only — the flagged text is member or posting content (N7).
-  const verdict = await injection;
+  // `run` is observed here while the check is pending, so an early rejection
+  // is never unhandled; it is still returned (and so rethrown) below.
+  const [verdict] = await Promise.all([injection, run.then(() => null, () => null)]);
   if (verdict?.flagged) guarded.flags.push("injection:jev");
   if (guarded.flags.length > 0) console.warn(`[agent] ${agent.name} input flags: ${guarded.flags.join(",")}`);
 

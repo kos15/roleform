@@ -138,5 +138,7 @@ own files; what is still open is here.
 - [ ] Task 16 (T-final): flip `tailor_bullet` to writer-fast + specs §10 — ONLY after the fabrication eval passes on `--role writer-fast`
 - [ ] neji minor: `mapLimit` with a non-finite limit creates no workers and resolves with holes — guard `Number.isFinite(limit)` (no caller today passes one)
 - [ ] neji minor: 180s is a start deadline, not a finish deadline — confirm `[pipeline] tailor/pages ms=` on a real long profile stays under maxDuration 300; add an AbortSignal to tailorSummary if not
+- [ ] neji minor: Résumés page re-reads profile/requirements/coverage on every 3s poll while drafts pend — wrap in request-scoped cache()
+- [ ] neji minor: canResume={status==="ready"} is always true behind the pages' ready redirect — keep as defensive prop or drop
 - [ ] Verify on preview: array-form `$transaction` of 11 drafts + bullets is atomic under the production pooler and within payload limits
 - [ ] End-to-end click-through on preview: paste JD → results before drafts → drafts appear → all tabs → preview → both exports

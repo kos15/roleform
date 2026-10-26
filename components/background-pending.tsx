@@ -7,7 +7,7 @@ import { Button, Card, EmptyState } from "@/components/ui";
 import type { DraftsState } from "@/lib/services/pipeline/background";
 
 /**
- * Prep and Learning finish behind the résumés (lib/services/pipeline/run-analysis.ts).
+ * Drafts, Prep and Learning finish behind the score and match (lib/services/pipeline/run-analysis.ts).
  * While they do, the analysis layout mounts this poller once: a server refresh
  * every few seconds re-reads the rows, so the tab counts and any tab showing
  * `SectionPending` fill in on their own and the poller unmounts itself once
@@ -127,8 +127,8 @@ export function DraftsPlaceholder({
   return (
     <>
       <EmptyState title="The drafts didn't finish">
-        Your match and the other tabs are unaffected. Finishing them runs only this stage — nothing
-        that already finished is charged twice.
+        Your match and the other tabs are unaffected. Finishing them runs only what&rsquo;s missing —
+        nothing that already finished is charged twice.
       </EmptyState>
       {canResume ? <ResumeStageButton analysisId={analysisId} label="Finish the drafts" /> : null}
     </>

@@ -14,6 +14,21 @@ describe("parsing screen", () => {
   });
 });
 
+describe("pending loader copy", () => {
+  it("Prep and Learning say the match is ready, not the résumés", () => {
+    for (const f of ["prep", "learning"]) {
+      const src = sourceOf(`app/(app)/analysis/[id]/${f}/page.tsx`);
+      expect(src).not.toContain("résumés are ready");
+      expect(src).toContain("Your match is ready now.");
+    }
+  });
+  it("the missing-drafts copy says it runs only what's missing", () => {
+    const src = sourceOf("components/background-pending.tsx");
+    expect(src).toContain("runs only what&rsquo;s missing");
+    expect(src).not.toContain("runs only this stage");
+  });
+});
+
 describe("Résumés tab and preview", () => {
   const resumes = sourceOf("app/(app)/analysis/[id]/resumes/page.tsx");
   const preview = sourceOf("app/(app)/analysis/[id]/preview/[templateId]/page.tsx");
