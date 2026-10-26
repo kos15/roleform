@@ -5,7 +5,7 @@
  * how long to wait before one, and how long a push is still worth sending.
  * The sender (lib/push/outbox.ts) does the I/O; every decision it makes about
  * a response is made here, so it can be checked without a phone
- * (scripts/push-fixtures.ts).
+ * (tests/domain/push.test.ts).
  *
  * This module is PURE. It imports nothing from db, ai, supabase or next.
  */

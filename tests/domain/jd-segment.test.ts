@@ -1,20 +1,16 @@
+import { expect, it } from "vitest";
 /**
- * The boilerplate pre-strip, checked by hand against fixtures (F24 §5.2).
+ * The boilerplate pre-strip, against fixtures (F24 §5.2).
  *
  * `lib/domain/jd-segment.ts#stripBoilerplate` is pure and has no I/O, so —
- * same reasoning as `check:coverage` — this needs no mocking and no database.
+ * same reasoning as tests/domain/coverage.test.ts — this needs no mocking and no database.
  * The one property that matters: a paragraph carrying a real requirement is
  * NEVER dropped, even under a boilerplate-looking heading.
- *
- *   pnpm check:jdstrip
  */
-import { stripBoilerplate } from "../lib/domain/jd-segment";
-
-let failures = 0;
+import { stripBoilerplate } from "@/lib/domain/jd-segment";
 
 function check(label: string, condition: boolean, detail: string) {
-  if (!condition) failures++;
-  console.log(`${condition ? "PASS" : "FAIL"}  ${label}${condition ? "" : ` — ${detail}`}`);
+  it(label, () => expect(condition, detail).toBe(true));
 }
 
 /* ---------------------------------------------------- 1. ordinary boilerplate is dropped */
@@ -115,5 +111,3 @@ function check(label: string, condition: boolean, detail: string) {
   check("drops the boilerplate even though it is most of the document", !/venture funding|4% match/i.test(result.text), result.text);
 }
 
-console.log(`\n${failures === 0 ? "All fixtures passed." : `${failures} fixture(s) failed.`}`);
-if (failures > 0) process.exit(1);

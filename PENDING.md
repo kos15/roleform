@@ -11,7 +11,7 @@ the struck list is the record. New work gets its line *before* its first failing
 ## Systematic layout + TDD — `docs/superpowers/plans/2026-10-26-systematic-layout-and-tdd.md`
 
 - [x] ~~Task 1: Vitest harness, PENDING.md, test-first policy~~ — 2026-10-26
-- [ ] Task 2: Port the offline fixture scripts to Vitest
+- [x] ~~Task 2: Port the offline fixture scripts to Vitest~~ — 2026-10-26
 - [ ] Task 3: Tested module-move codemod
 - [ ] Task 4: AI provider (`openai/`), checkers (`typesafe/`), `services/` folders
 - [ ] Task 5: Split system prompts into `lib/ai/system-prompts/`, byte-identical

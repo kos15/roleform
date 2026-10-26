@@ -1,14 +1,13 @@
+import { it } from "vitest";
 /**
- * Renders the Learning tab's Watch | Read lanes over hand-built gaps, checked by hand — CLAUDE.md §11.
- *
- *   pnpm check:lanes-render
+ * Renders the Learning tab's Watch | Read lanes over hand-built gaps.
  */
 import assert from "node:assert/strict";
 import * as React from "react";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Lanes } from "../app/(app)/analysis/[id]/learning/lanes";
-import type { LearningStepView } from "../lib/db/queries/learning";
+import { Lanes } from "@/app/(app)/analysis/[id]/learning/lanes";
+import type { LearningStepView } from "@/lib/db/queries/learning";
 
 // tsx compiles the component with the classic JSX transform here (the scripts
 // tsconfig only includes .ts), so it looks for a global React.
@@ -27,14 +26,8 @@ const render = (steps: LearningStepView[], cappedLanes: ("watch" | "read")[]) =>
 const has = (html: string, s: string) => assert.ok(html.includes(s), `missing "${s}"`);
 const lacks = (html: string, s: string) => assert.ok(!html.includes(s), `unexpected "${s}"`);
 
-let passed = 0;
-function check(name: string, fn: () => void) {
-  fn();
-  passed++;
-  console.log(`  ✓ ${name}`);
-}
 
-check("both lanes full, deferred primary, alternative marker, doc kind", () => {
+it("both lanes full, deferred primary, alternative marker, doc kind", () => {
   const html = render(
     [
       step({ id: "a", deferred: true, startsAtMin: 0 }),
@@ -48,25 +41,23 @@ check("both lanes full, deferred primary, alternative marker, doc kind", () => {
   lacks(html, "higher plan");
 });
 
-check("docs-only: Watch lane says no vetted videos; primary shows budget tag", () => {
+it("docs-only: Watch lane says no vetted videos; primary shows budget tag", () => {
   const html = render([step({ id: "d", lane: "read", docKind: "official", startsAtMin: 90 })], []);
   has(html, "No vetted videos for this yet");
   has(html, "from 1h 30m in");
   lacks(html, "Outside your budget");
 });
 
-check("quota-emptied: both lanes show only the higher-plan line", () => {
+it("quota-emptied: both lanes show only the higher-plan line", () => {
   const html = render([], ["watch", "read"]);
   has(html, "More videos on a higher plan");
   has(html, "More reading on a higher plan");
   lacks(html, "No vetted");
 });
 
-check("non-empty capped lane shows rows then the higher-plan line", () => {
+it("non-empty capped lane shows rows then the higher-plan line", () => {
   const html = render([step({ id: "e" })], ["watch"]);
   has(html, "A title");
   has(html, "More videos on a higher plan");
   has(html, "No vetted reading for this yet");
 });
-
-console.log(`\n${passed} checks passed`);

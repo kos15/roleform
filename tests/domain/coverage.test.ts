@@ -1,17 +1,15 @@
+import { expect, it } from "vitest";
 /**
- * M3.5 / M3.6 — the score, checked by hand against three fixtures.
+ * M3.5 / M3.6 — the score, against three fixtures.
  *
- * Not a test suite (CLAUDE.md §11). It's the "sanity-check by hand" the plan
- * asks for, written down so the numbers don't have to be recomputed on paper
- * every time someone touches the formula. `lib/domain/coverage.ts` is pure and
+ * Written down so the numbers don't have to be recomputed on paper every time
+ * someone touches the formula. `lib/domain/coverage.ts` is pure and
  * has no I/O, so this needs no mocking and no database.
  *
  *   all-evidenced → 100 · all-absent → 0 · mixed → the number you'd compute
- *
- *   pnpm check:coverage
  */
-import { computeCoverage, computeScore, scoreAnalysis } from "../lib/domain/coverage";
-import type { DomainBullet, DomainCoverageItem, DomainRequirement } from "../lib/domain/types";
+import { computeCoverage, computeScore, scoreAnalysis } from "@/lib/domain/coverage";
+import type { DomainBullet, DomainCoverageItem, DomainRequirement } from "@/lib/domain/types";
 
 const requirement = (
   id: string,
@@ -35,12 +33,8 @@ const covered = (id: string, status: DomainCoverageItem["status"]): DomainCovera
   rationale: "",
 });
 
-let failures = 0;
-
 function check(label: string, actual: number, expected: number) {
-  const passed = Math.abs(actual - expected) < 0.005;
-  if (!passed) failures++;
-  console.log(`${passed ? "PASS" : "FAIL"}  ${label}: got ${actual}, expected ${expected}`);
+  it(label, () => expect(actual).toBeCloseTo(expected, 2));
 }
 
 /* ------------------------------------------------------------- fixture one */
@@ -118,31 +112,17 @@ const coverage = computeCoverage(
 );
 
 const status = (id: string) => coverage.find((c) => c.requirementId === id)!.status;
-console.log(
-  `${status("r1") === "evidenced" ? "PASS" : "FAIL"}  React evidenced by a bullet → ${status("r1")}`,
-);
-console.log(
-  `${status("r2") === "absent" ? "PASS" : "FAIL"}  Kubernetes nowhere in profile → ${status("r2")}`,
-);
-console.log(
-  `${status("r3") === "partial" ? "PASS" : "FAIL"}  GraphQL listed but not demonstrated → ${status("r3")}`,
-);
-if (status("r1") !== "evidenced" || status("r2") !== "absent" || status("r3") !== "partial") {
-  failures++;
-}
+it("React evidenced by a bullet", () => expect(status("r1")).toBe("evidenced"));
+it("Kubernetes nowhere in profile is absent", () => expect(status("r2")).toBe("absent"));
+it("GraphQL listed but not demonstrated is partial", () => expect(status("r3")).toBe("partial"));
 
 /* ---------------------------------------------- verdict wording, not probability */
-const scored = scoreAnalysis(reqs3, [
-  covered("a", "evidenced"),
-  covered("b", "partial"),
-  covered("c", "absent"),
-  covered("d", "evidenced"),
-]);
-console.log(`\nverdict: "${scored.verdict}" — note: "${scored.note}"`);
-if (/\d+%|chance|likely to|will get/i.test(scored.note)) {
-  console.error("FAIL  the note reads like a prediction. N4 forbids that.");
-  failures++;
-}
-
-console.log(failures === 0 ? "\nAll coverage fixtures pass." : `\n${failures} fixture(s) failed.`);
-process.exit(failures === 0 ? 0 : 1);
+it("the note never reads like a prediction (N4)", () => {
+  const scored = scoreAnalysis(reqs3, [
+    covered("a", "evidenced"),
+    covered("b", "partial"),
+    covered("c", "absent"),
+    covered("d", "evidenced"),
+  ]);
+  expect(scored.note).not.toMatch(/\d+%|chance|likely to|will get/i);
+});
