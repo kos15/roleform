@@ -53,4 +53,22 @@ describe("cron routes", () => {
     );
     expect(offenders).toEqual([]);
   });
+
+  const row = (n: string) =>
+    sourceOf("CLAUDE.md")
+      .split("\n")
+      .find((l) => l.startsWith(`| ${n} |`))!;
+
+  it("N24 names lib/services/cron.ts and every cron path", () => {
+    const n24 = row("N24");
+    expect(n24).toBeDefined();
+    expect(n24).toContain("`lib/services/cron.ts`");
+    for (const job of CRON_JOBS) expect(n24).toContain(`\`${job.path}\``);
+  });
+
+  it("N23 no longer claims to be the only scheduled path", () => {
+    const n23 = row("N23");
+    expect(n23).not.toContain("only scheduled path");
+    expect(n23).toContain("(N24)");
+  });
 });

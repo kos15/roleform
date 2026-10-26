@@ -78,7 +78,7 @@ milestone, at the gate. These are the commands behind it.
 | `pnpm test` | Every pure check (score, pre-strip, agents, quotas, lanes, push, jobs…) plus repo-shape rules. No DB, no keys | before every commit |
 | `pnpm check:drill` | Runs every DSA bank solution against its own tests — JavaScript in the QuickJS sandbox, Python via local `python3` (F26). No DB, no keys | whenever the bank changes |
 | `pnpm render:samples` | Renders all eleven templates to `.samples/`. Open them | anytime |
-| `pnpm check:links` | Catalog link check, refreshes `verified_at` | quarterly |
+| `pnpm check:links` | Catalog link check, refreshes `verified_at` | manual full sweep (the daily cron re-checks due rows) |
 | `pnpm tokens:calibrate` | Measured p50/p95 tokens per purpose, for hand-recalibrating `TOKEN_STAGES` (F24) | after a prompt change, or quarterly |
 
 The three ★ checks are the ones that survive the light-testing policy, because each catches a
@@ -133,14 +133,14 @@ flowchart TB
         actions["app/actions/*<br/>Server Actions"]
         stream["app/api/analyze/[id]<br/>streaming route"]
         hooks["app/api/webhooks<br/>clerk · razorpay"]
-        cron["app/api/cron/reminders<br/>Bearer CRON_SECRET"]
+        cron["app/api/cron/*<br/>reminders · catalog<br/>Bearer CRON_SECRET (N24)"]
     end
 
     subgraph core["lib/ — server"]
         pipeline["lib/services/pipeline<br/>run-analysis · stages"]
         agents["lib/ai/agents · prompts · system-prompts<br/>runAgent + Zod schemas (N6) · lib/ai/openai"]
         checkers["lib/ai/typesafe<br/>fabrication · answer claims · injection"]
-        learning["lib/services/learning<br/>bundles · build-plan · validate<br/>ONE model call (N12)"]
+        learning["lib/services/learning<br/>bundles · build-plan · validate · refresh-catalog<br/>ONE model call (N12)"]
         catalog["lib/catalog<br/>skills · courses · matcher (N8)"]
         jobs["lib/services/jobs<br/>search + API adapters (N17–N19)"]
         render["lib/render<br/>ats-rules · pdf · docx · zip"]
@@ -153,7 +153,7 @@ flowchart TB
     subgraph data["Supabase"]
         pg[("Postgres via Prisma<br/>RLS on every user table (N10)<br/>NOT NULL evidence FKs (N1/N2)")]
         storage[("Storage<br/>resumes · exports (private)")]
-        pgcron["pg_cron<br/>every 5 min"]
+        pgcron["pg_cron<br/>every 5 min · daily"]
     end
 
     subgraph ext["External services"]
@@ -198,6 +198,7 @@ flowchart TB
     rzp -.->|captured payment| hooks
     hooks --> pg
     pgcron -.-> cron --> push
+    cron --> learning
     push --> pg
     push --> pushsvc -.-> member
 ```

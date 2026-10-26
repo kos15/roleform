@@ -7,7 +7,9 @@
  * inserts only the ones that resolve, stamping verifiedAt with that run's date.
  * A dead link therefore cannot enter the database at all — which is the failure
  * specs §16.4 says destroys the Learning tab's credibility in one click.
- * `pnpm check:links` re-runs the same check quarterly against what's already in.
+ * A daily job (`/api/cron/catalog`, N24) re-checks rows whose `checked_at` is
+ * 7 or more days old and marks a conclusive 404/410 dead. A dead row stays dead
+ * until it is fixed here and re-seeded; `pnpm check:links` is the manual full sweep.
  *
  * ── ★ Skill order is load-bearing ───────────────────────────────────────────
  * `skills[0]` is what the entry TEACHES. Everything after it is what the entry

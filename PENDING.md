@@ -45,7 +45,8 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] Seed: a link the seed itself finds dead is skipped and stays `active` in the DB until the cron re-checks it (≤7 days) — on a dead verdict, `updateMany({ where: { url, status: "active" }, data: { status: "dead", checkedAt: today } })` (pre-existing) — neji, Task 6 review
 - [ ] Seed `--skip-link-check` still stamps `verifiedAt: today` on rows it never checked (pre-existing; plan kept it) — neji, Task 6 review
 - [ ] Seed never writes `author`; bundles fall back to `provider` for diversity — neji, Task 6 review
-- [ ] Task 7: docs — N24, §8, §10, specs F8/F29, README, notifications, courses.ts header, schema `///`, corpus-health overdue30
+- [x] ~~Task 7: docs — N24, §8, §10, specs F8/F29, README, notifications, courses.ts header, schema `///`, corpus-health overdue30~~ — 2026-10-26
+- [ ] /api/cron/reminders has no claimUntil deadline — relies on maxDuration 60 / pg_net 55 s (N24 wording now says so) — neji, Task 7 review
 
 ## Carried over
 
@@ -59,8 +60,8 @@ own files; what is still open is here.
 ### Learning Watch | Read lanes — `docs/superpowers/plans/2026-10-25-learning-watch-read.md` (branch `feat/learning-watch-read`)
 
 - [x] ~~Task 7: curate the remaining skill batches (done: JavaScript…Redux, RxJS…Elasticsearch, Data Modeling…Serverless + UX Research dead-link replacement; batch B open); finish when `pnpm check:catalog` exits 0 — now reports 375 entries · problems 24 (all batch B: React Native onward) · dead 0~~ — 2026-10-26 (`pnpm check:catalog` now exits 0: 447 entries · problems 0 · dead 0 · mismatches 0)
-- [ ] Task 8: seed stagger + daily catalog refresh cron (`lib/catalog/refresh.ts`, `/api/cron/catalog`, 7-day TTL) — test-first in `tests/catalog/refresh.test.ts`
-- [ ] Task 9: docs — specs F8 lanes and refresh, CLAUDE.md N23 names `/api/cron/catalog`, `courses.ts` header
+- [x] ~~Task 8: seed stagger + daily catalog refresh cron (`lib/catalog/refresh.ts`, `/api/cron/catalog`, 7-day TTL) — test-first in `tests/catalog/refresh.test.ts`~~ — 2026-10-26 (superseded and delivered by docs/superpowers/plans/2026-10-26-catalog-refresh.md Tasks 1–7)
+- [x] ~~Task 9: docs — specs F8 lanes and refresh, CLAUDE.md N23 names `/api/cron/catalog`, `courses.ts` header~~ — 2026-10-26 (superseded and delivered by docs/superpowers/plans/2026-10-26-catalog-refresh.md Tasks 1–7)
 
 ### Layout review minors (final review of `chore/layout-tdd`, 2026-10-26)
 
