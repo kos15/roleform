@@ -61,7 +61,7 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 5: `pnpm deploy:schedule` — `installSchedule` extracted to `scripts/db/install-schedule.ts`; `build` runs both deploy steps~~ — 2026-10-26
 - [ ] First-ever concurrent production builds can both call vault.create_secret; the second fails on the unique name once — note only — neji, deploy-sync Task 5
 - [ ] deploySchedule's `DATABASE_URL` fallback would hit pgbouncer prepared-statement errors if ever reached; unreachable in builds (migrate deploy needs DIRECT_URL first) — consider requiring DIRECT_URL — neji, deploy-sync Task 5
-- [ ] Task 6: docs — N24 wording, new N25, §8 Jobs, §13 (policies run by every build, `CatalogSync`), README build order, `docs/notifications.md` §3/§5, specs F8 freshness, `.env.example` APP_URL
+- [x] ~~Task 6: docs — N24 wording, new N25, §8 Jobs, §13 (policies run by every build, `CatalogSync`), README build order, `docs/notifications.md` §3/§5, specs F8 freshness, `.env.example` APP_URL~~ — 2026-10-26
 - [ ] After the first production build: confirm the log shows `[deploy:catalog] synced …` (or `unchanged`) and `[deploy:schedule] scheduled …` for both jobs, then strike the two "After this branch deploys" lines (re-seed; db:schedule). Rows seeded before the lanes migration stay bunched on one `checked_at` until a manual full `pnpm seed:catalog` (plan Ruling 5)
 - [ ] `catalog_syncs` CHECKs are unexercised (no local DB) — add bad inserts to `pnpm check:constraints`
 

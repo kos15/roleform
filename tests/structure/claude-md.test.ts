@@ -48,6 +48,22 @@ describe("CLAUDE.md", () => {
   });
 });
 
+describe("deploy-time sync rules", () => {
+  const row = (n: string) => doc.split("\n").find((l) => l.startsWith(`| ${n} |`)) ?? "";
+
+  it("N25 exists and names the gate, the table and the command", () => {
+    const n25 = row("N25");
+    expect(n25).toContain("VERCEL_ENV");
+    expect(n25).toContain("catalog_syncs");
+    // The verbatim N25 text does not name the commands; N24 (same section) does.
+    expect(/pnpm deploy:schedule|deploy:catalog/.test(row("N24") + n25)).toBe(true);
+  });
+
+  it("N24 says every production build runs the schedule install", () => {
+    expect(row("N24")).toContain("which every production build runs");
+  });
+});
+
 describe("runbook commands", () => {
   it("every `pnpm <script>` named in README.md and CLAUDE.md exists in package.json", () => {
     const pkg = JSON.parse(sourceOf("package.json")) as { scripts: Record<string, string> };
