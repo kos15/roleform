@@ -30,7 +30,10 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 1: pure `lib/domain/catalog-refresh.ts` (TTL, `isDue`, `nextStatus`)~~ — 2026-10-26
 - [ ] Minor: `lib/domain/catalog-refresh.ts` — drop the no-op `void current;` (repo convention is an `_`-prefixed unused param) — neji, Task 1 review
 - [x] ~~Task 2: `lib/services/cron.ts` (`cronAuthorised` moved, `CRON_JOBS`) + `tests/structure/cron.test.ts`~~ — 2026-10-26
-- [ ] Task 3: `refreshDueLinks` in `lib/services/learning/refresh-catalog.ts`
+- [x] ~~Task 3: `refreshDueLinks` in `lib/services/learning/refresh-catalog.ts`~~ — 2026-10-26
+- [ ] Minor: T13 in tests/services/learning/refresh-catalog.test.ts is a tripwire only — misses `data: { url }` shorthand, spreads, `type`/`qualityScore` writes
+- [ ] Minor: `bundlesNamingNonActive` loads every non-active id (grows forever since dead is permanent) — switch to an EXISTS join if dead rows reach thousands
+- [ ] Measure one real `rebuildBundles()` at the phase gate (estimated 3–10 s, ~290 sequential round trips; refresh budget assumes ≤ ~50 s)
 - [ ] Task 4: `/api/cron/catalog` route + middleware + `CRON_JOBS` entry
 - [ ] Task 5: `scripts/db/schedule.ts` schedules every `CRON_JOBS` job
 - [ ] Task 6: seed stagger + checkCourseLink + catalogProblems gate; link-check alignment

@@ -161,7 +161,7 @@ export const CONCURRENCY = 5;
   - T10 check rejects → `{ blocked: 1, dead: 0 }`, no markDead.
   - T11 countOverdue called with `2026-09-26T03:17:00.000Z`; `overdue: 4` → `overdue30 4`.
   - T12 a dead, lose b, overdue 4 → summary toEqual `{ due: 2, checked: 1, dead: 1, blocked: 0, skipped: 1, overdue30: 4, rebuilt: "yes" }`; console.log once with `"[cron:catalog] due=2 checked=1 dead=1 blocked=0 skipped=1 overdue30=4 rebuilt=yes"`.
-  - T13 source of `lib/services/learning/refresh-catalog.ts` (via `../../structure/files`) does not match `/verifiedAt|["']stale["']|\btitle:|\bauthor:|\bdocKind:|\burl:\s*[^t]/`; contains `data: { checkedAt: now }` and `data: { status: "dead" }`.
+  - T13 source of `lib/services/learning/refresh-catalog.ts` (via `../../structure/files`) does not match `/verifiedAt|["']stale["']|\btitle:|\bauthor:|\bdocKind:|\burl:\s*[^ts\s]/`; contains `data: { checkedAt: now }` and `data: { status: "dead" }`.
 - [ ] **Step 2:** run → FAIL `Failed to resolve import "@/lib/services/learning/refresh-catalog"`.
 - [ ] **Step 3:** Implement. Header: never called from a user request; shares the I1 reasoning in `rebuild-bundles.ts`.
 - [ ] **Step 4:** PASS; suite + typecheck green.
