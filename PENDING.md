@@ -52,6 +52,17 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] Death is decided by one 404/410 (or oEmbed 400/404) from a Vercel IP — a host that 404s datacenter IPs would quietly shrink the catalog; watch the `dead=` count in `[cron:catalog]` logs — neji, final review
 - [ ] Spec F8 could state the seed's full write rule: a blocked re-seed re-stamps checked_at but never changes status; --skip-link-check writes neither — neji, final review
 
+## Deploy-time sync — `docs/superpowers/plans/2026-10-26-deploy-time-sync.md` (branch `feat/deploy-time-sync`)
+
+- [ ] Task 1: `scripts/deploy/gate.ts` (`isProductionBuild`, `skipLine`) + tests
+- [ ] Task 2: pure `lib/catalog/seed-rows.ts` (`catalogSeedRows`, `catalogHash`, `SEED_FORMAT`), `scripts/catalog/catalog-writes.ts`, manual seed writes from rows; `verifiedAt` stamped on update only on a live verdict
+- [ ] Task 3: `CatalogSync` model, migration `20261026000000_catalog_syncs` (hand-added CHECKs), `catalog_syncs` RLS on/no policy
+- [ ] Task 4: `pnpm deploy:catalog` — `syncCatalog` (hash gate, advisory lock, new-URL link check at concurrency 5, bundles, sync row last)
+- [ ] Task 5: `pnpm deploy:schedule` — `installSchedule` extracted to `scripts/db/install-schedule.ts`; `build` runs both deploy steps
+- [ ] Task 6: docs — N24 wording, new N25, §8 Jobs, §13 (policies run by every build, `CatalogSync`), README build order, `docs/notifications.md` §3/§5, specs F8 freshness, `.env.example` APP_URL
+- [ ] After the first production build: confirm the log shows `[deploy:catalog] synced …` (or `unchanged`) and `[deploy:schedule] scheduled …` for both jobs, then strike the two "After this branch deploys" lines (re-seed; db:schedule). Rows seeded before the lanes migration stay bunched on one `checked_at` until a manual full `pnpm seed:catalog` (plan Ruling 5)
+- [ ] `catalog_syncs` CHECKs are unexercised (no local DB) — add bad inserts to `pnpm check:constraints`
+
 ## Carried over
 
 Audited 2026-10-26 against `git log` and disk. Earlier plans' finished tasks are ticked in their
