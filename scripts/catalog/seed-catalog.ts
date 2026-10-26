@@ -19,10 +19,10 @@ import { db } from "../../lib/db";
 import { SKILLS } from "../../lib/catalog/skills";
 import { COURSES } from "../../lib/catalog/courses";
 import { catalogProblems } from "../../lib/catalog/problems";
-import { CATALOG_TTL_DAYS, daysBefore, staggeredCheckedAt } from "../../lib/domain/catalog-refresh";
+import { CATALOG_TTL_DAYS, daysBefore, seededStatus, staggeredCheckedAt } from "../../lib/domain/catalog-refresh";
 import { assertTaxonomy, NODES } from "../../lib/catalog/taxonomy";
 import { levelOf, primacyOf, qualityOf, summaryFor, tagsFor, typeOf } from "../../lib/catalog/quality";
-import { checkCourseLink } from "../../lib/catalog/liveness";
+import { checkCourseLink, type Liveness } from "../../lib/catalog/liveness";
 import { assertTemplates, TEMPLATES } from "../../lib/render/templates";
 import { rateAts } from "../../lib/render/ats-rules";
 
@@ -142,11 +142,13 @@ async function main() {
     });
     if (skillIds.some((id) => !id)) continue;
 
+    let verdict: Liveness | null = null;
     if (!skipLinkCheck) {
       // Three outcomes, not two (lib/catalog/liveness.ts). A 403 from a
       // bot-walled host is not evidence that a tutorial was deleted, and
       // treating it as such was silently shrinking the catalog.
       const { liveness } = await checkCourseLink({ url: course.url, type: typeOf(course) });
+      verdict = liveness;
       if (liveness === "dead") {
         dead.push(`${course.provider} — ${course.title} → ${course.url}`);
         continue;
@@ -172,12 +174,28 @@ async function main() {
       isOverview: course.isOverview ?? false,
     };
 
-    // checked_at/status: a link-checked run stamps the staggered TTL and marks
-    // the row active. --skip-link-check proved nothing, so a new row is created
-    // already due and an existing row keeps whatever the re-check last wrote.
-    const checked = skipLinkCheck
-      ? null
-      : { status: "active" as const, checkedAt: staggeredCheckedAt(today, index) };
+    // checked_at/status: a link-checked run stamps the staggered TTL (we did
+    // check) and revives an existing row only on a "live" verdict (seededStatus:
+    // a blocked check must not undo the cron's dead verdict). --skip-link-check
+    // proved nothing, so a new row is created already due and an existing row
+    // keeps whatever the re-check last wrote.
+    // Create: a new row is a curator's addition, so live or blocked starts it
+    // active (seededStatus(verdict, true)); unchecked, it is created already due.
+    // A live re-seed also returns quarantined/stale rows to active (recorded decision).
+    const createChecked =
+      verdict === null
+        ? { status: "active" as const, checkedAt: daysBefore(today, CATALOG_TTL_DAYS) }
+        : {
+            status: seededStatus(verdict, true) ?? ("active" as const),
+            checkedAt: staggeredCheckedAt(today, index),
+          };
+    const updateChecked =
+      verdict === null
+        ? {}
+        : {
+            checkedAt: staggeredCheckedAt(today, index),
+            ...(seededStatus(verdict, false) === "active" ? { status: "active" as const } : {}),
+          };
 
     const row = await db.course.upsert({
       where: { url: course.url },
@@ -195,7 +213,7 @@ async function main() {
         verifiedAt: today,
         ...resource,
         ...curation,
-        ...(checked ?? { status: "active" as const, checkedAt: daysBefore(today, CATALOG_TTL_DAYS) }),
+        ...createChecked,
       },
       update: {
         provider: course.provider,
@@ -210,7 +228,7 @@ async function main() {
         verifiedAt: today,
         ...resource,
         ...curation,
-        ...(checked ?? {}),
+        ...updateChecked,
       },
       select: { id: true },
     });

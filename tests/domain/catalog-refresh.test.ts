@@ -9,6 +9,7 @@ import {
   daysBefore,
   isDue,
   nextStatus,
+  seededStatus,
   staggeredCheckedAt,
 } from "@/lib/domain/catalog-refresh";
 
@@ -48,4 +49,13 @@ it("staggeredCheckedAt spreads rows over the 7-day TTL window", () => {
   const next = daysBefore(now, -1);
   assert.equal(isDue(staggeredCheckedAt(now, 6), next), true);
   assert.equal(isDue(staggeredCheckedAt(now, 5), next), false);
+});
+
+it("seededStatus: a blocked check never revives an existing row", () => {
+  assert.equal(seededStatus("live", false), "active");
+  assert.equal(seededStatus("blocked", false), null);
+  assert.equal(seededStatus("dead", false), null);
+  assert.equal(seededStatus("live", true), "active");
+  assert.equal(seededStatus("blocked", true), "active");
+  assert.equal(seededStatus("dead", true), null);
 });

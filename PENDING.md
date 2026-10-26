@@ -47,6 +47,10 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] Seed never writes `author`; bundles fall back to `provider` for diversity — neji, Task 6 review
 - [x] ~~Task 7: docs — N24, §8, §10, specs F8/F29, README, notifications, courses.ts header, schema `///`, corpus-health overdue30~~ — 2026-10-26
 - [ ] /api/cron/reminders has no claimUntil deadline — relies on maxDuration 60 / pg_net 55 s (N24 wording now says so) — neji, Task 7 review
+- [ ] Seed should mark rows absent from COURSES as `quarantined`
+- [ ] A live re-seed returns `quarantined`/`stale` rows to active (recorded in a seed comment) — revisit if quarantine becomes a deliberate curator verdict; pairs with the 'mark rows absent from COURSES quarantined' item — neji, final review
+- [ ] Death is decided by one 404/410 (or oEmbed 400/404) from a Vercel IP — a host that 404s datacenter IPs would quietly shrink the catalog; watch the `dead=` count in `[cron:catalog]` logs — neji, final review
+- [ ] Spec F8 could state the seed's full write rule: a blocked re-seed re-stamps checked_at but never changes status; --skip-link-check writes neither — neji, final review
 
 ## Carried over
 
@@ -94,5 +98,6 @@ own files; what is still open is here.
 
 - [x] ~~DO NOT run `pnpm seed:catalog` until catalog-refresh Task 6 lands — the current seed writes no `docKind`, so every catalog doc would violate CHECK `courses_doc_needs_kind`~~ — 2026-10-26
 - [ ] Re-seed the catalog once (`pnpm seed:catalog`) after this branch deploys: writes batch A/B entries, doc_kind/is_overview and the 7-day checked_at stagger — needs Node ≥ 20.19 locally
+- [ ] After this branch deploys: `APP_URL=https://roleform.koustubh.org pnpm db:schedule` — installs `roleform-catalog-refresh` (daily 03:17 UTC); without it the catalog re-check never runs (neji, final review)
 - [x] ~~Merge `feat/learning-watch-read` and `chore/layout-tdd` to `main` (this layout branch is cut from the watch-read branch)~~ — 2026-10-26
 - [ ] Local Node is v20.17.0; `package.json` engines asks for >=20.19.0 — upgrade

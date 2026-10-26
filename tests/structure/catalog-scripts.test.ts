@@ -45,4 +45,16 @@ describe("catalog scripts", () => {
     expect(create).toContain("...curation");
     expect(update).toContain("...curation");
   });
+
+  // A blocked verdict (403/timeout) must not revive a row the daily cron marked
+  // dead (F8 Freshness, N8): the update's status goes through seededStatus.
+  it("the seed derives an existing row's status through seededStatus", () => {
+    const src = sourceOf(SEED);
+    const upsert = src.slice(src.indexOf("db.course.upsert"));
+    const update = upsert.slice(upsert.indexOf("update:"), upsert.indexOf("select:"));
+    expect(update).toContain("...updateChecked");
+    expect(update).not.toMatch(/checked \?\?/);
+    expect(update).not.toMatch(/status:\s*"active"/);
+    expect(src).toMatch(/seededStatus\(verdict, false\)/);
+  });
 });
