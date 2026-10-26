@@ -5,6 +5,8 @@ import { getStudyContext } from "@/lib/db/queries/study";
 import { localDate } from "@/lib/domain/study-plan";
 import { pushConfigured } from "@/lib/push/send";
 import { EmptyState } from "@/components/ui";
+import { SectionPending } from "@/components/background-pending";
+import { backgroundRunning } from "@/lib/pipeline/background";
 import { StudyPlanClient } from "./study-plan-client";
 import { requireFeaturePage } from "@/lib/features";
 
@@ -29,6 +31,15 @@ export default async function SchedulePage({ params }: { params: Promise<{ id: s
   if (analysis.status !== "ready") redirect(`/analysis/${id}`);
 
   const ctx = await getStudyContext(userId, id);
+  if (ctx.topics.length === 0 && backgroundRunning(analysis)) {
+    return (
+      <SectionPending title="Waiting on your learning plan">
+        The study plan is built from the courses your Learning tab recommends, which are still
+        being matched. This tab fills in on its own.
+      </SectionPending>
+    );
+  }
+
   if (ctx.topics.length === 0) {
     return (
       <EmptyState title="Nothing to plan">

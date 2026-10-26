@@ -35,11 +35,13 @@ export interface CompileLearningStep {
   id: string;
   gapId: string;
   ordinal: number;
+  /** The gap's skill — what the roadmap item names. Only a gap's primary step is compiled. */
+  skillName: string;
   courseTitle: string;
   entryLabel: string | null;
 }
 
-/** A gap whose every step was deferred or that never had one — only the roadmap fallback applies. */
+/** A gap with no primary step (both lanes empty) — only the roadmap fallback applies. */
 export interface CompileFallbackGap {
   id: string;
   skillName: string;
@@ -123,8 +125,8 @@ export function compileRoadmap(input: CompileRoadmapInput): RoadmapItemDraft[] {
   const sortedSteps = [...input.learningSteps].sort((a, b) => a.ordinal - b.ordinal);
   for (const step of sortedSteps) {
     const label = step.entryLabel
-      ? `Complete: ${short(step.courseTitle, 70)} · ${short(step.entryLabel, 20)}`
-      : `Complete: ${short(step.courseTitle)}`;
+      ? `Learn ${short(step.skillName, 50)} · ${short(step.entryLabel, 20)}`
+      : `Learn ${short(step.skillName, 50)}`;
     items.push({
       key: `learn-step-${step.id}`,
       section: "learn",

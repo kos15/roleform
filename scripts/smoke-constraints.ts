@@ -244,12 +244,77 @@ async function main() {
         name: "learning_step of zero minutes",
         rule: "RLE §10",
         statement: `insert into learning_steps
-          (clerk_user_id, plan_id, gap_id, course_id, ordinal, starts_at_min,
+          (clerk_user_id, plan_id, gap_id, course_id, lane, ordinal, starts_at_min,
            duration_min, unlocks_bullet_id, answers_question_id)
           values ('smoke-user', gen_random_uuid(), gen_random_uuid(), gen_random_uuid(),
-                  0, 0, 0, null, null)`,
+                  'read', 0, 0, 0, null, null)`,
       },
       "23514",
+    ),
+  );
+
+  /* ------------------- 3c. Learning lanes — a doc says what kind it is */
+
+  // A doc with no kind cannot be labelled official or tutorial on its card,
+  // and the Read lane would be presenting a blog post as documentation.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "doc course with no doc_kind",
+        rule: "courses_doc_needs_kind",
+        statement: `insert into courses
+          (provider, title, url, price_label, length_label, level, mark, is_free,
+           length_minutes, verified_at, type, doc_kind)
+          values ('Smoke', 'Smoke doc', 'https://example.invalid/smoke-doc-kind', 'Free',
+                  '5 min', 'beginner', 'S', true, 5, current_date, 'doc', null)`,
+      },
+      "23514",
+    ),
+  );
+
+  /* -------------------- 3d. Learning lanes — one primary step per gap */
+
+  // Seeds the full parent chain so the partial unique index is what rejects
+  // the second primary, not a foreign key at the end of the first statement.
+  results.push(
+    await expectRejection(
+      sql,
+      {
+        name: "two primary learning_steps for one gap",
+        rule: "learning_steps_one_primary",
+        statement: `${SEED_ANALYSIS}
+          insert into skills (id, name, category)
+            values ('00000000-0000-4000-8000-0000000000ad', 'SmokeSkill4', 'practice');
+          insert into skill_gaps
+            (id, clerk_user_id, analysis_id, skill_id, user_level, required_level, note)
+          values ('00000000-0000-4000-8000-0000000000ae', 'smoke-user',
+                  '00000000-0000-4000-8000-00000000cafe',
+                  '00000000-0000-4000-8000-0000000000ad', 'none', 'working', 'x');
+          insert into learning_plans (id, clerk_user_id, analysis_id, opening, sequence_note)
+          values ('00000000-0000-4000-8000-0000000000af', 'smoke-user',
+                  '00000000-0000-4000-8000-00000000cafe', 'x', 'x');
+          insert into courses
+            (id, provider, title, url, price_label, length_label, level, mark, is_free,
+             length_minutes, verified_at, type)
+          values ('00000000-0000-4000-8000-0000000000b0', 'Smoke', 'Smoke video',
+                  'https://example.invalid/smoke-one-primary', 'Free', '5 min', 'beginner',
+                  'S', true, 5, current_date, 'video');
+          insert into learning_steps
+            (clerk_user_id, plan_id, gap_id, course_id, lane, is_primary, ordinal,
+             starts_at_min, duration_min)
+          values ('smoke-user', '00000000-0000-4000-8000-0000000000af',
+                  '00000000-0000-4000-8000-0000000000ae',
+                  '00000000-0000-4000-8000-0000000000b0', 'watch', true, 0, 0, 5);
+          insert into learning_steps
+            (clerk_user_id, plan_id, gap_id, course_id, lane, is_primary, ordinal,
+             starts_at_min, duration_min)
+          values ('smoke-user', '00000000-0000-4000-8000-0000000000af',
+                  '00000000-0000-4000-8000-0000000000ae',
+                  '00000000-0000-4000-8000-0000000000b0', 'watch', true, 1, 5, 5)`,
+      },
+      // 23505 unique_violation. Anything else means the rows never met the index.
+      "23505",
     ),
   );
 

@@ -38,21 +38,32 @@ export function AnalysisTabs({
   analysisId,
   counts,
   hidden = [],
+  generating = false,
 }: {
   analysisId: string;
   counts: TabCounts;
   /** F31: tab slugs whose feature is switched off site-wide. */
   hidden?: string[];
+  /** Prep and Learning still generating behind the résumés. */
+  generating?: boolean;
 }) {
   const pathname = usePathname();
+  // A zero while the stage is still writing would read as "generated nothing".
+  const PENDING = "Preparing…";
 
   const tabs = [
     { slug: "resumes", label: "Résumés", count: String(counts.resumes), icon: FileText },
-    { slug: "prep", label: "Interview prep", count: String(counts.questions), icon: MessageSquareText },
+    {
+      slug: "prep",
+      label: "Interview prep",
+      count: generating && counts.questions === 0 ? PENDING : String(counts.questions),
+      icon: MessageSquareText,
+    },
     {
       slug: "learning",
       label: "Learning",
-      count: `${counts.gaps} gap${counts.gaps === 1 ? "" : "s"}`,
+      count:
+        generating && counts.gaps === 0 ? PENDING : `${counts.gaps} gap${counts.gaps === 1 ? "" : "s"}`,
       icon: GraduationCap,
     },
     { slug: "schedule", label: "Study plan", count: counts.study, icon: CalendarDays },

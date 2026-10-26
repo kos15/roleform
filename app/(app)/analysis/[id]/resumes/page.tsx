@@ -1,13 +1,23 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { getAnalysis, getDrafts } from "@/lib/db/queries/analysis";
+import {
+  getAnalysis,
+  getCoverage,
+  getDrafts,
+  getProfileById,
+  getRequirements,
+} from "@/lib/db/queries/analysis";
+import { unlistedSkills } from "@/lib/domain/skill-consent";
+import { backgroundRunning } from "@/lib/pipeline/background";
+import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 import { templateById } from "@/lib/render/templates";
 import { AtsBadge, Card, EmptyState, Tag } from "@/components/ui";
 import { TemplateThumb } from "@/components/template-thumb";
 import { PortfolioPromo } from "@/components/portfolio-promo";
 import { db } from "@/lib/db";
 import { DownloadAll } from "./download-all";
+import { SkillConsent } from "./skill-consent";
 import { featureEnabled } from "@/lib/features";
 
 /**
@@ -48,6 +58,24 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
 
   const summary = drafts[0].changes[0] ?? "";
 
+  // Skills the posting names that the profile never listed (lib/domain/
+  // skill-consent.ts). Offered for the member to confirm; never added unasked.
+  // Hidden while Prep and Learning are still writing, since a rebuild then
+  // would race them for the same run.
+  const [profile, requirements, coverage] = await Promise.all([
+    getProfileById(userId, analysis.profileId),
+    getRequirements(userId, id),
+    getCoverage(userId, id),
+  ]);
+  const resume = profile?.resumeJson as unknown as StoredResume | undefined;
+  const unlisted =
+    resume && !backgroundRunning(analysis)
+      ? unlistedSkills(requirements, coverage, [
+          ...resume.skills.map((s) => s.name),
+          ...resume.skills.flatMap((s) => s.keywords),
+        ])
+      : [];
+
   return (
     <section>
       {/* The portfolio leads the tab: it is built from the same evidence as the
@@ -67,6 +95,8 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
         </div>
         <DownloadAll analysisId={id} />
       </div>
+
+      {unlisted.length > 0 ? <SkillConsent analysisId={id} skills={unlisted} /> : null}
 
       <div
         data-tour="shelf"

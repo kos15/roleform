@@ -2,7 +2,8 @@ import "server-only";
 import { db } from "@/lib/db";
 import { roadmapUrl } from "@/lib/catalog/taxonomy";
 import { solvePlan, type PlannableStep } from "@/lib/domain/plan";
-import type { EvidenceBucket, SkillLevel } from "@/lib/generated/prisma/enums";
+import { compareGapSteps } from "@/lib/domain/lanes";
+import type { DocKind, EvidenceBucket, Lane, SkillLevel } from "@/lib/generated/prisma/enums";
 import type { RequiredLevel, UserLevel } from "@/lib/domain/types";
 
 /**
@@ -39,8 +40,16 @@ export interface LearningStepView {
   /** Position after the current budget was solved for. */
   order: number;
   startsAtMin: number;
-  /** True when this step did not fit the budget the user asked for. */
+  /** True when this step did not fit the budget the user asked for. Primaries only. */
   deferred: boolean;
+  lane: Lane;
+  /** Read lane only: official documentation or a tutorial. */
+  docKind: DocKind | null;
+  /**
+   * The gap's one step that spends budget, enters the study plan and the
+   * roadmap. Every other step is an alternative: no budget cost, never deferred.
+   */
+  isPrimary: boolean;
 }
 
 export interface LearningGapView {
@@ -62,6 +71,8 @@ export interface LearningGapView {
   unlocksBullet: { id: string; text: string; draft: string } | null;
   answersQuestion: { id: string; text: string } | null;
   fallback: { url: string; label: string } | null;
+  /** Lanes the member's per-lane course cap cut short for this gap. */
+  cappedLanes: Lane[];
   steps: LearningStepView[];
 }
 
@@ -100,6 +111,7 @@ export async function getLearningPlan(
               url: true,
               priceLabel: true,
               isFree: true,
+              docKind: true,
             },
           },
         },
@@ -112,15 +124,18 @@ export async function getLearningPlan(
   const plan = await db.learningPlan.findUnique({ where: { analysisId } });
 
   // Re-solve for whatever budget is in force now. When the caller passes null,
-  // this is a pure re-ordering and nothing is deferred.
+  // this is a pure re-ordering and nothing is deferred. Only primaries spend
+  // budget — the lanes are alternatives, and an alternative is never deferred.
   const plannable: PlannableStep[] = gaps.flatMap((gap) =>
-    gap.steps.map((step, rank) => ({
-      key: step.id,
-      skillName: gap.skill.name,
-      severity: Number(gap.severity),
-      rankInGap: rank,
-      durationMin: step.durationMin,
-    })),
+    gap.steps
+      .filter((step) => step.isPrimary)
+      .map((step) => ({
+        key: step.id,
+        skillName: gap.skill.name,
+        severity: Number(gap.severity),
+        rankInGap: 0,
+        durationMin: step.durationMin,
+      })),
   );
   const solved = solvePlan(plannable, budgetMin);
   const scheduled = new Map(solved.steps.map((s) => [s.key, s]));
@@ -145,16 +160,24 @@ export async function getLearningPlan(
     answersQuestion: gap.answersQuestion
       ? { id: gap.answersQuestion.id, text: gap.answersQuestion.text }
       : null,
-    // A stored fallback wins; otherwise a gap whose every step was deferred out
-    // of the budget still deserves somewhere to go, so the roadmap stands in.
+    // A stored fallback wins; otherwise a gap with no primary step (both lanes
+    // empty) still deserves somewhere to go, so the roadmap stands in. A
+    // deferred primary is NOT a fallback — it is shown, greyed. Nor is a gap
+    // the member's quota emptied: its `cappedLanes` say why, and "still being
+    // added" would be false about material that exists.
     fallback:
       gap.fallbackUrl && gap.fallbackLabel
         ? { url: gap.fallbackUrl, label: gap.fallbackLabel }
-        : gap.steps.length === 0
+        : !gap.steps.some((s) => s.isPrimary) && (gap.cappedLanes ?? []).length === 0
           ? roadmapFallback(gap.skill.name)
           : null,
-    steps: gap.steps.map((step) => {
-      const placed = scheduled.get(step.id);
+    cappedLanes: gap.cappedLanes ?? [],
+    // Primary first, then Watch → Read, each alternative in its selection rank.
+    steps: [...gap.steps].sort(compareGapSteps).map((step) => {
+      // An alternative sits at its primary's place in the plan; its own
+      // `ordinal` is its rank within its lane, not a plan position.
+      const primary = gap.steps.find((s) => s.isPrimary);
+      const placed = primary ? scheduled.get(primary.id) : undefined;
       return {
         id: step.id,
         courseId: step.course.id,
@@ -169,9 +192,12 @@ export async function getLearningPlan(
         isFree: step.course.isFree,
         durationMin: step.durationMin,
         note: step.note,
-        order: placed?.order ?? step.ordinal,
+        order: placed?.order ?? primary?.ordinal ?? 0,
         startsAtMin: placed?.startsAtMin ?? step.startsAtMin,
-        deferred: !placed,
+        deferred: step.isPrimary ? !placed : false,
+        lane: step.lane,
+        docKind: step.course.docKind,
+        isPrimary: step.isPrimary,
       };
     }),
   }));

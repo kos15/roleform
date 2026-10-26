@@ -32,7 +32,10 @@ export async function getStudyContext(clerkUserId: string, analysisId: string): 
         id: true,
         severity: true,
         skill: { select: { name: true } },
+        // Primaries only: the study plan schedules one way through each gap,
+        // never every alternative beside it.
         steps: {
+          where: { isPrimary: true },
           orderBy: { ordinal: "asc" },
           select: { id: true, durationMin: true, entryLabel: true, course: { select: { title: true } } },
         },

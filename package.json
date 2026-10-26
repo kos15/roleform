@@ -35,6 +35,12 @@
     "seo:indexnow": "pnpm script scripts/indexnow.ts",
     "check:agents": "pnpm script scripts/agent-fixtures.ts",
     "eval": "pnpm script scripts/evals/run.ts",
+    "check:liveness": "pnpm script scripts/liveness-fixtures.ts",
+    "check:catalog": "pnpm script scripts/catalog-check.ts",
+    "check:selection": "pnpm script scripts/selection-fixtures.ts",
+    "check:lanes": "pnpm script scripts/lanes-fixtures.ts",
+    "check:primary": "pnpm script scripts/primary-fixtures.ts",
+    "check:lanes-render": "pnpm script scripts/lanes-render-fixtures.ts",
     "check:quotas": "pnpm script scripts/quota-fixtures.ts",
     "topups:convert": "pnpm script scripts/convert-token-topups.ts",
     "check:tokencopy": "pnpm script scripts/token-copy-gate.ts"

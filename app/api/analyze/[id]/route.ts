@@ -29,8 +29,16 @@ export async function POST(
   const analysis = await getAnalysis(userId, id);
   if (!analysis) return new Response("not found", { status: 404 });
 
+  const search = new URL(request.url).searchParams;
+
   // Re-running a finished analysis would re-bill it (F10). Reuse instead.
-  if (analysis.status === "ready") {
+  //
+  // `?resume=1` is the one exception: a Prep tab whose background stage never
+  // landed (the invocation was killed after the drafts were written, or the
+  // stage degraded) asking for just that stage. `runAnalysis` skips every
+  // stage whose rows exist (`resumeState`), so this bills the missing stage
+  // and nothing else.
+  if (analysis.status === "ready" && search.get("resume") !== "1") {
     return new Response(
       `${JSON.stringify({ stage: "preparing", state: "done", progressPct: 100 } satisfies StageUpdate)}\n`,
       { headers: STREAM_HEADERS },
@@ -42,7 +50,7 @@ export async function POST(
   // run it was watching ended — not to start another. A run that failed says
   // so here, and the member decides whether to pick it up again, exactly as
   // after a reload.
-  const reconnect = new URL(request.url).searchParams.get("reconnect") === "1";
+  const reconnect = search.get("reconnect") === "1";
   if (reconnect && analysis.status === "failed") {
     return new Response(
       `${JSON.stringify({
