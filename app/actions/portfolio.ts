@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
-import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { requireUser } from "@/lib/services/auth";
+import { LIMITS, rateLimit } from "@/lib/services/rate-limit";
 import { getAnalysis, getRequirements } from "@/lib/db/queries/analysis";
 import { getProfile } from "@/lib/db/queries/profile";
 import { StoredResumeSchema } from "@/lib/ai/schemas/resume-json";
@@ -12,7 +12,7 @@ import { portfolioMaterials } from "@/lib/domain/portfolio";
 import { EXPERIENCE_IDS, siteData, tuneSite } from "@/lib/domain/portfolio-site";
 import { exportPortfolioHtml } from "@/lib/render/portfolio/export";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
-import { requireFeature } from "@/lib/features";
+import { requireFeature } from "@/lib/services/features";
 
 /**
  * F28 — the in-app portfolio build. One per account, ever. No model call

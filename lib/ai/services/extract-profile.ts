@@ -2,7 +2,7 @@ import "server-only";
 import { runAgent } from "../agents/define";
 import { profileReader } from "../agents/profile-reader";
 import type { ExtractProfileResult } from "../schemas/resume-json";
-import { clampForModel, cleanExtractedText } from "@/lib/extract/normalise";
+import { clampForModel, cleanExtractedText } from "@/lib/services/extract/normalise";
 import { normaliseDraft } from "@/lib/domain/profile-draft";
 import { err, appError, type ModelFailure, type Result } from "@/lib/domain/types";
 

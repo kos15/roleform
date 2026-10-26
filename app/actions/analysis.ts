@@ -3,14 +3,14 @@
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { checkAnalysisAllowance, checkTokenAllowance, requireUser } from "@/lib/auth";
-import { rateLimit, LIMITS } from "@/lib/rate-limit";
-import { extractText, MAX_UPLOAD_BYTES, requireText } from "@/lib/extract/text";
+import { checkAnalysisAllowance, checkTokenAllowance, requireUser } from "@/lib/services/auth";
+import { rateLimit, LIMITS } from "@/lib/services/rate-limit";
+import { extractText, MAX_UPLOAD_BYTES, requireText } from "@/lib/services/extract/text";
 import { getProfile } from "@/lib/db/queries/profile";
 import { findByContentHash, getCoverage, getProfileById, getRequirements } from "@/lib/db/queries/analysis";
 import { saveProfileEdit } from "@/lib/db/queries/profile";
 import { unlistedSkills } from "@/lib/domain/skill-consent";
-import { RUN_LOCK_STALE_MS } from "@/lib/pipeline/background";
+import { RUN_LOCK_STALE_MS } from "@/lib/services/pipeline/background";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 import { JD_MIN_CHARS, scanForInjection } from "@/lib/domain/guardrails";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
@@ -117,7 +117,7 @@ export async function createAnalysis(input: {
     console.warn(`[analysis] injection_patterns=${injection.patterns.join(",")}`);
   }
 
-  // The row IS the charge — see lib/auth.ts. A create that throws leaves
+  // The row IS the charge — see lib/services/auth.ts. A create that throws leaves
   // nothing behind, so there is no refund to get wrong.
   //
   // Decided again inside a per-member advisory lock: the check above ran

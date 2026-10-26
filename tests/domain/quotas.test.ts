@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { QUOTAS, displayCap } from "@/lib/domain/quotas";
 import { PLANS, TOPUPS, LEGACY_TOKEN_TOPUPS, PLAN_ROWS, compareRows } from "@/lib/content/pricing";
 import { practiceSessionWhere, analysesAvailable, convertedAnalyses } from "@/lib/domain/entitlements";
-import { capColumns } from "@/lib/plans/catalog";
+import { capColumns } from "@/lib/services/plans/catalog";
 import { capsFromDefaults } from "@/lib/admin/defaults";
 import { fairUseCeiling, WORST_CASE } from "@/lib/domain/tokens";
 import { lowCountNotice } from "@/lib/domain/quotas";

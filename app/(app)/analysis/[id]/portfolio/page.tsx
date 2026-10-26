@@ -10,7 +10,7 @@ import { portfolioMaterials } from "@/lib/domain/portfolio";
 import { siteData } from "@/lib/domain/portfolio-site";
 import { EmptyState } from "@/components/ui";
 import { PortfolioStudio } from "./portfolio-studio";
-import { requireFeaturePage } from "@/lib/features";
+import { requireFeaturePage } from "@/lib/services/features";
 
 /**
  * F28 — portfolio site, reached from the promo card on the Resumes tab.

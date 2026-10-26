@@ -24,7 +24,7 @@ export interface CycleCounts {
 
 /**
  * What a member has used of each printed count this cycle (counts-only
- * pricing). The same reads the allowance checks in lib/auth.ts make, in one
+ * pricing). The same reads the allowance checks in lib/services/auth.ts make, in one
  * place, for the surfaces that show counts: the account sheet, the low-count
  * banner and the profile's usage panel. Memoised per request.
  */

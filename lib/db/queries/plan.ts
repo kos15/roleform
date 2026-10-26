@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { effectivePlan } from "@/lib/domain/entitlements";
-import { capColumns, loadPlan } from "@/lib/plans/catalog";
+import { capColumns, loadPlan } from "@/lib/services/plans/catalog";
 
 /**
  * Settle a lapsed plan (F23, PAY-2/PAY-3).
@@ -11,10 +11,10 @@ import { capColumns, loadPlan } from "@/lib/plans/catalog";
  * brings the stored row into agreement with it — the same shape
  * `lib/admin/role.ts#currentRole` already uses for the Clerk role mirror.
  *
- * Lives in `lib/db/queries/`, not `lib/auth.ts`, so both `lib/auth.ts`
+ * Lives in `lib/db/queries/`, not `lib/services/auth.ts`, so both `lib/services/auth.ts`
  * (every allowance check) and `lib/admin/members.ts` (the panel, so an
  * admin never reads a stale plan) can call it without importing each other:
- * `lib/auth.ts` already imports `listAdmins` from `lib/admin/members.ts`,
+ * `lib/services/auth.ts` already imports `listAdmins` from `lib/admin/members.ts`,
  * so the reverse import would be a real circular dependency between two
  * modules whose functions are called, not just typed.
  *

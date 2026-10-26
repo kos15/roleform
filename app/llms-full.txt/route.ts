@@ -1,5 +1,5 @@
 import { llmsFullTxt } from "@/lib/seo/markdown";
-import { loadPlans } from "@/lib/plans/catalog";
+import { loadPlans } from "@/lib/services/plans/catalog";
 
 /** Every public page's Markdown in one request, so an agent needn't crawl. */
 /** Five minutes, not build-time: it carries the live plan catalog (F31). */

@@ -85,7 +85,7 @@ export function formatCap(cap: number, zeroLabel = "Off"): string {
  * past — no scheduler settles this (CLAUDE.md §8), so every reader of "what
  * plan is this member on" has to ask the question fresh, on read, against the
  * clock. This is the ONE function that is allowed to answer it: a member's
- * plan and caps are read through this everywhere except `lib/auth.ts#settlePlan`
+ * plan and caps are read through this everywhere except `lib/services/auth.ts#settlePlan`
  * (which writes the mirror back) and `lib/admin/members.ts` (which settles the
  * same way for the panel). A direct reader of `users.plan` anywhere else is a
  * bug (rules.md PAY-2).

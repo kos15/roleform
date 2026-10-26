@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireUser, checkRoadmapAllowance } from "@/lib/auth";
+import { requireUser, checkRoadmapAllowance } from "@/lib/services/auth";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import { createRoadmap, getRoadmap, roadmapExists } from "@/lib/db/queries/roadmap";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
-import { requireFeature } from "@/lib/features";
+import { requireFeature } from "@/lib/services/features";
 
 /**
  * Building a roadmap (F21).

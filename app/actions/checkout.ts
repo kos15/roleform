@@ -1,12 +1,12 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
-import { requireUser } from "@/lib/auth";
+import { requireUser } from "@/lib/services/auth";
 import { z } from "zod";
-import { createOrder, verifyPaymentSignature, type RazorpayOrder } from "@/lib/payments/razorpay";
+import { createOrder, verifyPaymentSignature, type RazorpayOrder } from "@/lib/services/payments/razorpay";
 import { topupById, canBuyTopup, type PlanId } from "@/lib/content/pricing";
-import { loadPlan } from "@/lib/plans/catalog";
-import { pricePromo, type PricedPromo } from "@/lib/promo/server";
+import { loadPlan } from "@/lib/services/plans/catalog";
+import { pricePromo, type PricedPromo } from "@/lib/services/promo/server";
 import { db } from "@/lib/db";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 

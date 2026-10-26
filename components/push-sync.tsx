@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { reconcilePushSubscription } from "@/app/actions/push";
-import { currentSubscription, deviceOwner, forgetDevice, lastEndpoint, rememberDevice } from "@/lib/push/client";
+import { currentSubscription, deviceOwner, forgetDevice, lastEndpoint, rememberDevice } from "@/lib/services/push/client";
 
 /**
  * Keeps this device and the server in agreement (F29, F29.2). Once per

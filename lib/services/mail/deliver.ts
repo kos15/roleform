@@ -1,8 +1,8 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { appUrl, isMailConfigured } from "@/lib/mail/config";
-import { notification, receipt, type ContactMail } from "@/lib/mail/contact";
-import { sendMail } from "@/lib/mail/send";
+import { appUrl, isMailConfigured } from "@/lib/services/mail/config";
+import { notification, receipt, type ContactMail } from "@/lib/services/mail/contact";
+import { sendMail } from "@/lib/services/mail/send";
 import type { MailDelivery } from "@/lib/generated/prisma/enums";
 
 /**

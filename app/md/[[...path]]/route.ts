@@ -1,6 +1,6 @@
 import { markdownFor, markdownPaths } from "@/lib/seo/markdown";
 import { absoluteUrl } from "@/lib/seo/site";
-import { loadPlans } from "@/lib/plans/catalog";
+import { loadPlans } from "@/lib/services/plans/catalog";
 
 /**
  * Markdown mirror of a public page. Reached by rewrite from `/<path>.md` and

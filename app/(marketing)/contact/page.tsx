@@ -3,7 +3,7 @@ import { pageMetadata } from "@/lib/seo/metadata";
 import Link from "next/link";
 import { currentUser } from "@clerk/nextjs/server";
 import { PageIntro } from "@/components/page-intro";
-import { CATALOG_EMAIL, PRIVACY_EMAIL, SUPPORT_EMAIL } from "@/lib/mail/addresses";
+import { CATALOG_EMAIL, PRIVACY_EMAIL, SUPPORT_EMAIL } from "@/lib/services/mail/addresses";
 import { ContactForm } from "./contact-form";
 
 export const metadata: Metadata = pageMetadata({
@@ -39,7 +39,7 @@ export default async function ContactPage() {
               Direct
             </div>
             <div className="flex flex-col gap-3.5 text-[15px]">
-              {/* Configuration, not copy (lib/mail/addresses.ts) — a deployment
+              {/* Configuration, not copy (lib/services/mail/addresses.ts) — a deployment
                   that routes support somewhere else should not have to edit a
                   page to say so. */}
               <div>

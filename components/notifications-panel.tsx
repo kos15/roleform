@@ -21,7 +21,7 @@ import {
   subscribe,
   unsubscribe,
   type PushState,
-} from "@/lib/push/client";
+} from "@/lib/services/push/client";
 
 export interface DeviceView {
   id: string;

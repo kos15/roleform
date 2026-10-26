@@ -1,5 +1,5 @@
 import "server-only";
-import { hashEmail } from "@/lib/email-hash";
+import { hashEmail } from "@/lib/shared/email-hash";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { listAdmins } from "@/lib/admin/members";
@@ -19,11 +19,11 @@ import {
   type TokenWall,
 } from "@/lib/domain/tokens";
 import { canBuyTopup, TOPUPS, type PlanId } from "@/lib/content/pricing";
-import { loadPlan, loadPlanAbove } from "@/lib/plans/catalog";
+import { loadPlan, loadPlanAbove } from "@/lib/services/plans/catalog";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 // Re-exported: callers have always imported it from here.
-export { hashEmail } from "@/lib/email-hash";
+export { hashEmail } from "@/lib/shared/email-hash";
 
 /**
  * Create the account row if the webhook hasn't yet.
@@ -401,7 +401,7 @@ export async function checkJobSearchAllowance(
  * — both are cyclical, count-based caps with no cost or content-specific
  * refusal copy, unlike analyses and answers (which keep their own bespoke
  * wording above, and predate this helper). `countUsage` takes the table to
- * count from, because the two caps count different rows and `lib/auth.ts`
+ * count from, because the two caps count different rows and `lib/services/auth.ts`
  * is not the place to teach a generic function about every table in the
  * schema.
  */

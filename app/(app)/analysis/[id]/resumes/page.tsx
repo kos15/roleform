@@ -9,7 +9,7 @@ import {
   getRequirements,
 } from "@/lib/db/queries/analysis";
 import { unlistedSkills } from "@/lib/domain/skill-consent";
-import { backgroundRunning } from "@/lib/pipeline/background";
+import { backgroundRunning } from "@/lib/services/pipeline/background";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
 import { templateById } from "@/lib/render/templates";
 import { AtsBadge, Card, EmptyState, Tag } from "@/components/ui";
@@ -18,7 +18,7 @@ import { PortfolioPromo } from "@/components/portfolio-promo";
 import { db } from "@/lib/db";
 import { DownloadAll } from "./download-all";
 import { SkillConsent } from "./skill-consent";
-import { featureEnabled } from "@/lib/features";
+import { featureEnabled } from "@/lib/services/features";
 
 /**
  * F5 — Tab 1: "N drafts, same evidence".

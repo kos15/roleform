@@ -1,5 +1,5 @@
 import "server-only";
-import { mailConfig } from "@/lib/mail/config";
+import { mailConfig } from "@/lib/services/mail/config";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 /**

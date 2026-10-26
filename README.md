@@ -114,7 +114,7 @@ lib/catalog/     skills canon + alias table · curated courses · deterministic 
 lib/render/      ats-rules (the badge) · pdf/ · docx/ · zip · shared render model
 lib/db/          index.ts (Prisma client) · policies.sql · queries/ (all scoped by subject)
 prisma/          schema.prisma is the truth · migrations/ (in-repo, generated)
-lib/pipeline/    the five stages, with per-tab degradation
+lib/services/pipeline/    the five stages, with per-tab degradation
 app/actions/     Server Actions · app/api/ streaming + webhooks only
 ```
 

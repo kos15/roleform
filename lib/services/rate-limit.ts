@@ -6,7 +6,7 @@ import "server-only";
  * In-memory, per-instance. Honest about what that means: on Vercel this limits
  * each lambda instance rather than the fleet, so it stops a runaway client and
  * an accidental retry loop, not a determined attacker. The per-user monthly
- * quota (lib/auth.ts) is the real spend ceiling; this is the burst guard.
+ * quota (lib/services/auth.ts) is the real spend ceiling; this is the burst guard.
  *
  * Move to Redis/Upstash when the quota stops being the binding constraint.
  */

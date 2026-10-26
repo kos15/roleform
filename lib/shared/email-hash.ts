@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
  *
  * Its own module so the three doors into an account — `provisionUser`, the
  * Clerk webhook and the admin panel's directory sync — share one hash without
- * lib/admin/members.ts importing lib/auth.ts, which already imports it.
+ * lib/admin/members.ts importing lib/services/auth.ts, which already imports it.
  */
 export function hashEmail(email: string): string {
   return createHash("sha256").update(email.toLowerCase()).digest("hex");

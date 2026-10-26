@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
-import { LIMITS, rateLimit } from "@/lib/rate-limit";
+import { requireUser } from "@/lib/services/auth";
+import { LIMITS, rateLimit } from "@/lib/services/rate-limit";
 import {
   getAnalysis,
   getDraft,

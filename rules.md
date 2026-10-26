@@ -34,7 +34,7 @@ still applies unchanged. A rule here wins over a convenience in `PRD.md` or `pla
 
 ## 3. Job search rules
 
-- JS-1 One adapter per source behind `JobSource`; adapters live in `lib/jobs/sources/`; nothing else calls a provider.
+- JS-1 One adapter per source behind `JobSource`; adapters live in `lib/services/jobs/sources/`; nothing else calls a provider.
 - JS-2 Per search: one call per enabled source, 8 s timeout each, ≤ 50 listings total. The action is the only caller.
 - JS-3 Cap counted from `job_searches` rows (durable), plus `LIMITS.jobSearch` burst limit (12/hour).
 - JS-4 A repeat of the same `query_hash` within 12 h reads the cache and writes no `job_searches` row.
@@ -48,7 +48,7 @@ still applies unchanged. A rule here wins over a convenience in `PRD.md` or `pla
 ## 4. Pay rules
 
 - PAY-1 Expiry extends from `greatest(now, current expiry)`. A second purchase never shortens a plan.
-- PAY-2 `effectivePlan(row, now)` is pure and is the only way to read a member's plan. Direct readers of `users.plan` or `users.cap_*` outside `lib/auth.ts` and `lib/admin/members.ts` are a bug.
+- PAY-2 `effectivePlan(row, now)` is pure and is the only way to read a member's plan. Direct readers of `users.plan` or `users.cap_*` outside `lib/services/auth.ts` and `lib/admin/members.ts` are a bug.
 - PAY-3 Lapse writes Free caps back, the mirror of upgrade. Admin overrides do not survive a lapse (D10).
 - PAY-4 Amount ≠ price: grant nothing, file an inbox row, answer 200. Never retry money.
 - PAY-5 Every cap refusal is a `cap_wall` value with the exits in this order: the reset, the plan above, an admin. A refusal without a value is the generic error F15 removed.

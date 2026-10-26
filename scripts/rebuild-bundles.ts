@@ -16,12 +16,12 @@
  * Run it after `pnpm seed:catalog`, and again whenever the catalog changes.
  * NEVER on a user request — that is invariant I1.
  *
- * The logic lives in `lib/learning/rebuild-bundles.ts` (I/O) and
+ * The logic lives in `lib/services/learning/rebuild-bundles.ts` (I/O) and
  * `lib/domain/bundle-rank.ts` (pure ranking); this file only reports.
  */
 import "./env";
 import { db } from "../lib/db";
-import { rebuildBundles } from "../lib/learning/rebuild-bundles";
+import { rebuildBundles } from "../lib/services/learning/rebuild-bundles";
 
 const LEVELS = 3;
 

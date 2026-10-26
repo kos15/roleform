@@ -11,7 +11,7 @@ import {
   type PromoState,
 } from "@/lib/domain/promo";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
-import { loadPlan } from "@/lib/plans/catalog";
+import { loadPlan } from "@/lib/services/plans/catalog";
 import type { PromoCode } from "@/lib/generated/prisma/client";
 
 /**

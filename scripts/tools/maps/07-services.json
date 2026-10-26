@@ -1,0 +1,20 @@
+{
+  "lib/account/": "lib/services/account/",
+  "lib/extract/": "lib/services/extract/",
+  "lib/jobs/": "lib/services/jobs/",
+  "lib/learning/": "lib/services/learning/",
+  "lib/mail/": "lib/services/mail/",
+  "lib/payments/": "lib/services/payments/",
+  "lib/pipeline/": "lib/services/pipeline/",
+  "lib/plans/": "lib/services/plans/",
+  "lib/promo/": "lib/services/promo/",
+  "lib/push/": "lib/services/push/",
+  "lib/status/": "lib/services/status/",
+  "lib/auth": "lib/services/auth",
+  "lib/features": "lib/services/features",
+  "lib/rate-limit": "lib/services/rate-limit",
+  "lib/workspace": "lib/services/workspace",
+  "lib/utils": "lib/shared/utils",
+  "lib/email-hash": "lib/shared/email-hash",
+  "lib/sample-jd": "lib/shared/sample-jd"
+}

@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import { SectionTitle } from "@/components/ui";
 import { RapidNav } from "./rapid-nav";
-import { requireFeaturePage } from "@/lib/features";
+import { requireFeaturePage } from "@/lib/services/features";
 
 /**
  * F26 — Rapid prep. Three drills on the posting's own topics, one route each

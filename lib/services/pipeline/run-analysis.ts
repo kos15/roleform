@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { analyzeJd } from "@/lib/ai/services/analyze-jd";
 import { tailorBullet, tailorSummary, type TailoredResult } from "@/lib/ai/services/tailor";
 import { generateQuestions } from "@/lib/ai/services/interview";
-import { buildLearningPlan } from "@/lib/learning/build-plan";
+import { buildLearningPlan } from "@/lib/services/learning/build-plan";
 import { computeCoverage, scoreAnalysis } from "@/lib/domain/coverage";
 import { orderSkills, rankBullets } from "@/lib/domain/ordering";
 import { summariseChanges } from "@/lib/domain/diff";
@@ -439,7 +439,7 @@ async function executeAnalysis(args: {
     let learningDegraded = false;
     if (!done.learning) {
       try {
-        // The Learning Engine, S3–S7 (lib/learning/build-plan.ts). One large-model
+        // The Learning Engine, S3–S7 (lib/services/learning/build-plan.ts). One large-model
         // call; everything else is a pure function or a primary-key read against
         // the precomputed bundles.
         //

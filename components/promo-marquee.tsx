@@ -1,4 +1,4 @@
-import { promoBanners } from "@/lib/promo/server";
+import { promoBanners } from "@/lib/services/promo/server";
 import { PromoMarqueeTrack } from "@/components/promo-marquee-track";
 
 /**

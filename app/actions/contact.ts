@@ -3,9 +3,9 @@
 import { z } from "zod";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { rateLimit } from "@/lib/rate-limit";
-import { deliver } from "@/lib/mail/deliver";
-import { SUPPORT_EMAIL } from "@/lib/mail/addresses";
+import { rateLimit } from "@/lib/services/rate-limit";
+import { deliver } from "@/lib/services/mail/deliver";
+import { SUPPORT_EMAIL } from "@/lib/services/mail/addresses";
 
 /**
  * Support mail (F16).
@@ -66,7 +66,7 @@ export async function sendContactMessage(
   const { userId } = await auth();
 
   // Keyed on the subject when there is one and the address when there isn't.
-  // Per-instance like the rest of lib/rate-limit.ts — this stops a stuck submit
+  // Per-instance like the rest of lib/services/rate-limit.ts — this stops a stuck submit
   // button and an accidental double-click, not a determined spammer.
   const limited = rateLimit(`contact:${userId ?? parsed.data.email}`, 5, 3600);
   if (!limited.allowed) {

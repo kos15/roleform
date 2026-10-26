@@ -32,7 +32,7 @@ an id used in §6 and in `planning.md`.
 ### 1.1 What is solid and must not be disturbed
 
 - One door for every model call (`lib/ai/openai/run.ts`), Zod at the boundary, `ai_runs` per call (N6, F19).
-- Caps are counted from rows, never decremented (`lib/auth.ts`). A plan is its caps (`lib/content/pricing.ts`). Both new caps must follow this shape exactly.
+- Caps are counted from rows, never decremented (`lib/services/auth.ts`). A plan is its caps (`lib/content/pricing.ts`). Both new caps must follow this shape exactly.
 - The learning engine's one-call rule and its guardrail set (`lib/domain/guardrails.ts`) — the model for how the new surfaces are guarded.
 - The token wall is a value returned by the refusal, rendered as-is (`TokenWall`). The cap wall (§4.3) copies this pattern.
 
@@ -48,8 +48,8 @@ an id used in §6 and in `planning.md`.
 | G6 | `lib/domain/fabrication.ts` | Tool allowlist is profile-wide, so a tool from role A can surface on a bullet from role B. Seniority ladder matches "lead" as a verb → false verbatim fallbacks. | Medium |
 | G7 | `users.plan`, Razorpay webhook | A plan is raised on one `payment.captured` and never lowered. "₹499 per month" is charged once and granted forever. | **Critical (revenue)** |
 | G8 | `app/api/webhooks/razorpay/route.ts` | Captured amount is not compared to the plan's price before granting. | Medium |
-| G9 | `lib/auth.ts` refusals | Cap refusals say "ask an admin to raise it". On a self-serve pricing model the first exit is the plan. | Medium (conversion) |
-| G10 | `lib/rate-limit.ts` | Per-instance memory. Documented and acceptable for LLM seams; **not** enough for a metered third-party API. | Medium (F22) |
+| G9 | `lib/services/auth.ts` refusals | Cap refusals say "ask an admin to raise it". On a self-serve pricing model the first exit is the plan. | Medium (conversion) |
+| G10 | `lib/services/rate-limit.ts` | Per-instance memory. Documented and acceptable for LLM seams; **not** enough for a metered third-party API. | Medium (F22) |
 | G11 | `lib/domain/tokens.ts` | `TOKEN_STAGES` are hand-typed constants described as "measured". Nothing recalibrates them. | Low |
 | G12 | `run-analysis.ts` ③ | No per-run token ceiling for the analysis. One long profile × one retry each = an unbounded bill. Learning has one (15k); the pipeline does not. | Medium (cost) |
 | G13 | `deleteEverythingFor` | `contact_messages.clerk_user_id` survives account deletion. | Low |
@@ -431,7 +431,7 @@ The proposed prompt texts are in **Appendix A**.
 | Id | Rule | Enforced by |
 |---|---|---|
 | JS-1 | Documented APIs only. No HTML scraping, no headless browser, no fetching an employer's page. | Adapter interface; `agent.md` never-list. |
-| JS-2 | Every provider response crosses the boundary through a Zod schema (`JobListingInSchema`). Unparseable records are dropped and counted, never coerced. | `lib/jobs/sources/*.ts`. |
+| JS-2 | Every provider response crosses the boundary through a Zod schema (`JobListingInSchema`). Unparseable records are dropped and counted, never coerced. | `lib/services/jobs/sources/*.ts`. |
 | JS-3 | A listing's `url` is the provider's own field. The app never assembles a URL. | Schema requires `url`; no template strings. |
 | JS-4 | Nothing from the résumé beyond titles, skill names and city leaves the server. Never a bullet, a name, an email, a JD. | `JobQuery` type has no such field. |
 | JS-5 | Fit is "skill overlap", listed as names. Never a number, ring, or the word "match". | Copy review. |
@@ -446,7 +446,7 @@ The proposed prompt texts are in **Appendix A**.
 | Id | Rule | Enforced by |
 |---|---|---|
 | PAY-1 | A paid plan has an expiry; a free one has none. | CHECK on `users`. |
-| PAY-2 | Lapse is settled on read by one function; nothing else lowers a plan. | `settlePlan` in `lib/auth.ts`. |
+| PAY-2 | Lapse is settled on read by one function; nothing else lowers a plan. | `settlePlan` in `lib/services/auth.ts`. |
 | PAY-3 | A captured amount that differs from the price grants nothing and files an inbox row. | Webhook. |
 | PAY-4 | Every cap refusal is a `cap_wall` value; the plan is an exit before an admin is. | `checkCap()` shared helper. |
 | PAY-5 | Plan caps and the pricing page are one table (`PLANS`). | Unchanged; the two new keys are added there and nowhere else. |

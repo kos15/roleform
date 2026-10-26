@@ -33,7 +33,7 @@ Resolve before the milestone that depends on each. Each has a ≤ 1-day experime
 |---|---|---|---|---|
 | **R4** | Adzuna + Jooble return usable listings for Indian target titles | Job search reads as empty; a paid source (JSearch) becomes mandatory and the Pro margin changes | 20 title × city pairs from real profiles. Count listings with a working `url`. **Need ≥ 70% of pairs with ≥ 5 listings.** | M11 |
 | **R5** | Prompt v2 keeps the fabrication eval at zero | The diet is reverted per prompt; the token target is missed for that stage | Run `check:fabrication` on v1 and v2 of `tailor-bullets` on the same 30 bullets. **Need zero fabrications on v2.** | M9 |
-| **R6** | Settling lapse on read reaches every enforcement seam | A lapsed account keeps Pro caps at one seam and the page lies | List every reader of `users.cap_*` and `users.plan`; each must go through `effectivePlan`. **Need: grep finds no direct reader outside `lib/auth.ts` and `lib/admin/members.ts`.** | M8 |
+| **R6** | Settling lapse on read reaches every enforcement seam | A lapsed account keeps Pro caps at one seam and the page lies | List every reader of `users.cap_*` and `users.plan`; each must go through `effectivePlan`. **Need: grep finds no direct reader outside `lib/services/auth.ts` and `lib/admin/members.ts`.** | M8 |
 
 ---
 
@@ -43,7 +43,7 @@ Resolve before the milestone that depends on each. Each has a ≤ 1-day experime
 |---|---|---|
 | M8.1 | Schema: `plan_expires_at`, `cap_roadmaps`, `cap_job_searches` on `users` and `workspace_settings`; CHECKs (bounds; `(plan='free') = (plan_expires_at IS NULL)`); backfill paid rows to `now() + 30d`, new caps from each row's `plan` | Migration applies on a copy of preview data; `pnpm check:constraints` gains three cases and all pass |
 | M8.2 | `QUOTAS` gains `roadmaps` (cycle, 0–200, step 5) and `jobSearches` (cycle, 0–500, step 10); `PLANS` caps per PRD §4.1; `NOTES` for both | `/pricing` comparison table shows seven rows; admin panel edits both without a code change beyond `CapsShape` |
-| M8.3 | `effectivePlan(row, now)` pure; `settlePlan` write-behind in `lib/auth.ts`; every allowance check and `listMembers` call it | R6 passes; a Pro row with a past expiry reads Free on the next action and the row is rewritten |
+| M8.3 | `effectivePlan(row, now)` pure; `settlePlan` write-behind in `lib/services/auth.ts`; every allowance check and `listMembers` call it | R6 passes; a Pro row with a past expiry reads Free on the next action and the row is rewritten |
 | M8.4 | Cap wall: `CapWall` value, `cap_wall` error code, `checkCap(key)` helper; analyses and answers migrated onto it | Every cap refusal on every seam carries `upgrade` where a plan above exists; the dialog renders from the value alone |
 | M8.5 | Webhook: expiry extension on plan purchase; amount check; inbox row on mismatch; seven caps written | Paying twice yields one row, expiry 60 days out; a wrong-amount capture grants nothing and appears in `/admin?panel=inbox` |
 | M8.6 | Renewal surfaces: profile panel "Pro until …", once-per-cycle renewal banner (5 days out), pricing CTA "Renew" on the current plan | Banner shows once, dismiss survives reload, does not show on Free |
@@ -95,7 +95,7 @@ it names. `ai_runs` count before and after is equal. No "%" and no "ready" on th
 | # | Task | Done-state |
 |---|---|---|
 | M11.0 | **R4 spike** — keys for Adzuna and Jooble; 20 title × city pairs; terms read, attribution and rate limits written into each adapter's header comment | ≥ 70% of pairs return ≥ 5 listings with a working `url`; decision on JSearch (D12) recorded |
-| M11.1 | `lib/jobs/sources/{adzuna,jooble}.ts` behind `JobSource`; `JobListingInSchema`; timeout 8 s; ≤ 50 results | An adapter returning a malformed record drops it and counts it; never throws the search |
+| M11.1 | `lib/services/jobs/sources/{adzuna,jooble}.ts` behind `JobSource`; `JobListingInSchema`; timeout 8 s; ≤ 50 results | An adapter returning a malformed record drops it and counts it; never throws the search |
 | M11.2 | `lib/domain/job-query.ts` (pure) and `lib/domain/job-rank.ts` (pure: skill overlap → recency → source) | Fixtures: a profile with no `targetTitles` falls back to the latest position; overlap chips list canonical names only |
 | M11.3 | Tables `job_listings`, `job_search_hits`, `job_searches`, `saved_jobs`; `analyses.listing_id`; RLS (own rows on `saved_jobs`, `job_searches`; on with no policy for the cache); smoke cases | Cross-user read of `saved_jobs` denied; `applied` without `applied_at` rejected |
 | M11.4 | Actions: `searchJobs(query)` (cap → `checkCap('jobSearches')`, burst limit, cache by `query_hash` 12 h), `saveJob`, `setSavedJobStatus`, `unsaveJob` | A repeat query within 12 h creates no `job_searches` row and makes no outbound call |

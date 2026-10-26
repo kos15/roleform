@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
-import { dispatchDueReminders } from "@/lib/push/dispatch";
-import { processOutbox } from "@/lib/push/outbox";
+import { dispatchDueReminders } from "@/lib/services/push/dispatch";
+import { processOutbox } from "@/lib/services/push/outbox";
 
 /**
  * Sends the interview-round reminders that have come due (F29).

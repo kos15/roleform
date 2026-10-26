@@ -13,7 +13,7 @@
  * address that bounces is worse than no address at all.
  *
  * Inbound and outbound are separate systems on purpose: Cloudflare receives
- * (these three), Resend sends (lib/mail/config.ts). `CONTACT_TO` decides where
+ * (these three), Resend sends (lib/services/mail/config.ts). `CONTACT_TO` decides where
  * the form's mail goes; these three decide only what the page invites you to
  * write to by hand.
  */

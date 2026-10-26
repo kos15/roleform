@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { loadPlan } from "@/lib/plans/catalog";
+import { loadPlan } from "@/lib/services/plans/catalog";
 import { settlePlan } from "@/lib/db/queries/plan";
 import { RenewalNotice } from "@/components/renewal-notice";
 

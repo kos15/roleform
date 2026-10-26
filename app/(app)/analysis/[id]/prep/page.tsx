@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getAnalysis, getAnswers, getBulletTexts, getQuestions } from "@/lib/db/queries/analysis";
 import { EmptyState } from "@/components/ui";
 import { ResumeStageButton, SectionPending } from "@/components/background-pending";
-import { backgroundRunning } from "@/lib/pipeline/background";
+import { backgroundRunning } from "@/lib/services/pipeline/background";
 import { NextRoundStrip } from "@/components/next-round-strip";
 import { QuestionList } from "./question-list";
 import type { QuestionType } from "./types";

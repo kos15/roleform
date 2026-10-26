@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
-import { STAGES, type StageKey } from "@/lib/pipeline/stages";
+import { STAGES, type StageKey } from "@/lib/services/pipeline/stages";
 
 /**
  * Per-stage pipeline health, derived from what actually ran (F14).

@@ -11,7 +11,7 @@ import type { PushPayload } from "@/lib/domain/push";
  * title, a body and an in-app path — never notes, never a résumé line (N7).
  *
  * One call is one attempt at one device. Retries, TTL, dedupe and cleanup are
- * the outbox's job (lib/push/outbox.ts); this module only reports what the
+ * the outbox's job (lib/services/push/outbox.ts); this module only reports what the
  * push service said.
  *
  * Unset VAPID keys are a supported state, like Razorpay's (F17): the profile

@@ -15,7 +15,7 @@ import {
 } from "@/app/actions/onboarding";
 import type { DraftResume, ExtractProfileResult } from "@/lib/ai/schemas/resume-json";
 import type { AppError, ModelFailure, Result } from "@/lib/domain/types";
-import { ACCEPT_ATTR, ACCEPTED_SHORT, MAX_UPLOAD_BYTES } from "@/lib/extract/formats";
+import { ACCEPT_ATTR, ACCEPTED_SHORT, MAX_UPLOAD_BYTES } from "@/lib/services/extract/formats";
 import { ReviewScreen } from "./review-screen";
 
 /**

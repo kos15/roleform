@@ -3,7 +3,7 @@
  *
  * What a payload may contain, which push-service answers are worth a retry,
  * how long to wait before one, and how long a push is still worth sending.
- * The sender (lib/push/outbox.ts) does the I/O; every decision it makes about
+ * The sender (lib/services/push/outbox.ts) does the I/O; every decision it makes about
  * a response is made here, so it can be checked without a phone
  * (tests/domain/push.test.ts).
  *

@@ -35,7 +35,7 @@ Set on Vercel (Production and Preview **separately** — never share keys across
 | Variable | Exposed to browser | Notes |
 |---|---|---|
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | yes | Baked in at build time — redeploy after setting it. |
-| `VAPID_PRIVATE_KEY` | **no** | Signs every push. Only `lib/push/send.ts` reads it. Rotating it invalidates every subscription (members turn notifications on again). |
+| `VAPID_PRIVATE_KEY` | **no** | Signs every push. Only `lib/services/push/send.ts` reads it. Rotating it invalidates every subscription (members turn notifications on again). |
 | `VAPID_SUBJECT` | no | `mailto:` or `https:` contact for push services. Defaults to support. |
 | `CRON_SECRET` | **no** | 32+ chars. Unset → the reminder route refuses every call. |
 

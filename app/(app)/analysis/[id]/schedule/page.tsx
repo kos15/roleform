@@ -3,12 +3,12 @@ import { auth } from "@clerk/nextjs/server";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import { getStudyContext } from "@/lib/db/queries/study";
 import { localDate } from "@/lib/domain/study-plan";
-import { pushConfigured } from "@/lib/push/send";
+import { pushConfigured } from "@/lib/services/push/send";
 import { EmptyState } from "@/components/ui";
 import { SectionPending } from "@/components/background-pending";
-import { backgroundRunning } from "@/lib/pipeline/background";
+import { backgroundRunning } from "@/lib/services/pipeline/background";
 import { StudyPlanClient } from "./study-plan-client";
-import { requireFeaturePage } from "@/lib/features";
+import { requireFeaturePage } from "@/lib/services/features";
 
 export const metadata = { title: "Study plan" };
 

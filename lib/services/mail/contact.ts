@@ -1,6 +1,6 @@
 import "server-only";
-import type { Mail } from "@/lib/mail/send";
-import { SUPPORT_EMAIL } from "@/lib/mail/addresses";
+import type { Mail } from "@/lib/services/mail/send";
+import { SUPPORT_EMAIL } from "@/lib/services/mail/addresses";
 
 /**
  * The two messages the contact form sends (F16).
@@ -72,7 +72,7 @@ export function notification(message: ContactMail, appUrl: string | null): Mail 
   `);
 
   return {
-    // No `to`: this one goes to CONTACT_TO, which only lib/mail/config.ts knows.
+    // No `to`: this one goes to CONTACT_TO, which only lib/services/mail/config.ts knows.
     // Prefixed so a filter can find these, and carrying the sender's own
     // subject rather than a generic one — an inbox of "New contact message" is
     // an inbox you have to open every row of.

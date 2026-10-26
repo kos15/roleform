@@ -5,11 +5,11 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireUser } from "@/lib/services/auth";
 import { currentRole } from "@/lib/admin/role";
 import { clampCap, QUOTAS, QUOTA_BY_KEY } from "@/lib/domain/quotas";
 import { formatCount } from "@/lib/domain/tokens";
-import { deliver } from "@/lib/mail/deliver";
+import { deliver } from "@/lib/services/mail/deliver";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
 /**

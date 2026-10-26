@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { checkAnswerAllowance, checkTokenAllowance, requireUser } from "@/lib/auth";
-import { rateLimit, LIMITS } from "@/lib/rate-limit";
+import { checkAnswerAllowance, checkTokenAllowance, requireUser } from "@/lib/services/auth";
+import { rateLimit, LIMITS } from "@/lib/services/rate-limit";
 import { generateAnswer } from "@/lib/ai/services/answer";
 import {
   getAnalysis,

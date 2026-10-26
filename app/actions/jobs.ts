@@ -2,16 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { requireUser, checkJobSearchAllowance } from "@/lib/auth";
-import { rateLimit, LIMITS } from "@/lib/rate-limit";
+import { requireUser, checkJobSearchAllowance } from "@/lib/services/auth";
+import { rateLimit, LIMITS } from "@/lib/services/rate-limit";
 import { getProfile } from "@/lib/db/queries/profile";
 import { buildJobQuery, clampPostedWithin, type JobQuery } from "@/lib/domain/job-query";
-import { findCachedSearchId, runSearch } from "@/lib/jobs/search";
-import { loadResults, type ResultsView } from "@/lib/jobs/results";
+import { findCachedSearchId, runSearch } from "@/lib/services/jobs/search";
+import { loadResults, type ResultsView } from "@/lib/services/jobs/results";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 import type { SavedJobStatus } from "@/lib/generated/prisma/enums";
 import type { StoredResume } from "@/lib/ai/schemas/resume-json";
-import { requireFeature } from "@/lib/features";
+import { requireFeature } from "@/lib/services/features";
 
 /**
  * Job search (F22).
@@ -21,7 +21,7 @@ import { requireFeature } from "@/lib/features";
  * ever called (JS-9). A repeat of the same query inside the 12h cache window
  * is read back and costs no cap unit and no outbound request (JS-4).
  *
- * F22.1: the result comes back triaged (lib/jobs/results.ts) — tiers, named
+ * F22.1: the result comes back triaged (lib/services/jobs/results.ts) — tiers, named
  * reasons, New/Saved flags, market gaps and source health — all computed on
  * read from rows, never by a model (N13).
  */

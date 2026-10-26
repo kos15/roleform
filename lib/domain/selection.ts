@@ -3,7 +3,7 @@
  *
  * RLE spec §7. The expensive half of retrieval — hybrid search, reranking,
  * diversity enforcement — already ran, once, in the bundle builder
- * (`lib/learning/rebuild-bundles.ts`). What is left at request time is a lookup
+ * (`lib/services/learning/rebuild-bundles.ts`). What is left at request time is a lookup
  * and these filters, which are cheap deterministic reads over the precomputed
  * top three Watch and top three Read.
  *

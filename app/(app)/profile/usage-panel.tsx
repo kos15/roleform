@@ -2,7 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { cycleCounts, type CountLine } from "@/lib/db/queries/usage";
 import { formatResetDate, formatResetIn } from "@/lib/domain/tokens";
-import { loadPlan } from "@/lib/plans/catalog";
+import { loadPlan } from "@/lib/services/plans/catalog";
 import { settlePlan } from "@/lib/db/queries/plan";
 import { Tag } from "@/components/ui";
 

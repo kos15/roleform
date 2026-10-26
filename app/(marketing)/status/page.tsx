@@ -4,9 +4,9 @@ import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { BrandMark } from "@/components/brand";
 import { Tag } from "@/components/ui";
-import { anyDegraded, pipelineHealth } from "@/lib/status/health";
-import { stalledRun } from "@/lib/status/stalled";
-import { STAGES } from "@/lib/pipeline/stages";
+import { anyDegraded, pipelineHealth } from "@/lib/services/status/health";
+import { stalledRun } from "@/lib/services/status/stalled";
+import { STAGES } from "@/lib/services/pipeline/stages";
 import { RefreshRing } from "./refresh-ring";
 
 export const metadata: Metadata = pageMetadata({

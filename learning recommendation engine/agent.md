@@ -84,7 +84,7 @@ work, not the pipeline shape.
 
 **While writing code**
 
-- Deterministic stages go in `lib/pipeline/` as pure functions with no I/O and no network. They must
+- Deterministic stages go in `lib/services/pipeline/` as pure functions with no I/O and no network. They must
   be callable from a unit test with a literal input. If a stage needs a DB read, it takes the data
   as an argument.
 - LLM calls live only in `lib/llm/`. Never inline a model call in a route handler or a React server

@@ -9,7 +9,7 @@ import { displayCap } from "@/lib/domain/quotas";
 import { Check, ChevronRight, Minus } from "lucide-react";
 import { FaqList } from "@/components/faq-list";
 import { BILLING_FAQ, compareRows, PLAN_ROWS, PRICING_REFUSALS, TOPUPS } from "@/lib/content/pricing";
-import { loadPlans } from "@/lib/plans/catalog";
+import { loadPlans } from "@/lib/services/plans/catalog";
 import { PlanCheckout } from "@/components/plan-checkout";
 import { db } from "@/lib/db";
 import { settlePlan } from "@/lib/db/queries/plan";
@@ -30,7 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
 /**
  * F17 — pricing.
  *
- * Every number on this page is a cap the code enforces (lib/plans/catalog.ts —
+ * Every number on this page is a cap the code enforces (lib/services/plans/catalog.ts —
  * the admin-editable catalog over the defaults in lib/content/pricing.ts),
  * so the table cannot drift from what actually happens when you reach one. The
  * refusals at the bottom are there for the same reason the four pipeline stages

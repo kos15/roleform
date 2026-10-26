@@ -79,7 +79,7 @@ export const learningPlanner = defineAgent({
       if (!source) continue;
 
       // OUT-1, first half. The second half — "does this id resolve to a live
-      // row" — runs in lib/learning/validate.ts against the database.
+      // row" — runs in lib/services/learning/validate.ts against the database.
       for (const resource of gap.resources) {
         if (!allowedResourceIds.has(resource.id)) {
           problems.push(`Resource id "${resource.id}" was not in the material for ${gap.skillName}.`);

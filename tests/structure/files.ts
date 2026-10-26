@@ -30,6 +30,13 @@ export function importsOf(file: string): string[] {
   return forms.flatMap((re) => [...src.matchAll(re)].map((m) => m[1]));
 }
 
+/** Like importsOf, minus `import type` / `export type` statements, which erase at build time. */
+export function valueImportsOf(file: string): string[] {
+  const src = sourceOf(file).replace(/^\s*(import|export)\s+type\b[^;]*;/gm, "");
+  const forms = [/\bfrom\s*["']([^"'\n]+)["']/g, /\bimport\s*["']([^"'\n]+)["']/g, /\bimport\s*\(\s*["']([^"'\n]+)["']/g];
+  return forms.flatMap((re) => [...src.matchAll(re)].map((m) => m[1]));
+}
+
 export const APP_SOURCES = () => ["app", "components", "lib", "scripts", "tests", "middleware.ts"].flatMap(filesUnder);
 
 /** Entries of a directory, ignoring OS litter. */

@@ -564,7 +564,7 @@ Or paste the text instead (`pasteResume`), which stores it as a `.txt` and takes
 | DOCX | `mammoth` |
 | DOC (Word 97–2003) | `word-extractor` |
 | ODT | `fflate` → `content.xml` |
-| RTF, HTML, Markdown, TXT (UTF-8, UTF-16, Latin-1) | `lib/extract/normalise.ts`, pure |
+| RTF, HTML, Markdown, TXT (UTF-8, UTF-16, Latin-1) | `lib/services/extract/normalise.ts`, pure |
 | JPG, PNG, WEBP, GIF | OCR pass: one strong-tier vision call (`transcribeDocument`), text stored on the source document so it is paid for once |
 
 HEIC, TIFF, Pages and zip files are refused with the export step that fixes them. 4 MB, not 5:
@@ -642,7 +642,7 @@ stage cards and a looping stage figure — the same news four times. All of it w
 moment stage ③ ends — before announcing it — and keeps running ④ + ⑤ in the same `after()`
 invocation, its claim (`runningAt`) held until they finish. The screen stops reading the stream on
 ③'s `done`/`degraded` and `router.replace`s to the Résumés tab with no finish delay. While
-`backgroundRunning(analysis)` (`lib/pipeline/background.ts`: `ready` + a live claim) is true, the
+`backgroundRunning(analysis)` (`lib/services/pipeline/background.ts`: `ready` + a live claim) is true, the
 layout mounts one 3s `router.refresh()` poller, the Prep and Learning tab counts read
 `Preparing…` instead of a zero, and Prep, Learning, Study plan and Roadmap show a `SectionPending`
 card in place of their empty state. A claim gone stale is not "still generating": the tab shows its
@@ -852,12 +852,12 @@ only by the deterministic binder, which returns null rather than something plaus
 |---|---|---|
 | S3 · resolve | free text → canonical skill, 4 tiers, no LLM (`lib/domain/resolve.ts`) | 0 tokens |
 | S4 · score | `importance × (1 − evidence) × 100` (`lib/domain/severity.ts`) | 0 tokens |
-| S5 · retrieve | `skill_bundles` primary-key lookup (`lib/learning/bundles.ts`) | 0 tokens |
+| S5 · retrieve | `skill_bundles` primary-key lookup (`lib/services/learning/bundles.ts`) | 0 tokens |
 | S5b · select | deterministic personalisation (`lib/domain/selection.ts`) | 0 tokens |
 | S5c · bind | gap → bullet, gap → question (`lib/domain/binding.ts`) | 0 tokens |
 | S5.5 · plan | knapsack over durations (`lib/domain/plan.ts`) | 0 tokens |
 | S6 · synthesise | narrative + staged bullets (`lib/ai/services/synthesise-plan.ts`) | ONE strong call |
-| S7 · validate | OUT-1 link resolution (`lib/learning/validate.ts`) | 0 tokens |
+| S7 · validate | OUT-1 link resolution (`lib/services/learning/validate.ts`) | 0 tokens |
 
 The spine: **every expensive operation happens once at ingest, never at query time.** Retrieval,
 ranking and diversity enforcement run in `pnpm bundles:rebuild`, once per `(skill, level)`, and are
@@ -1079,7 +1079,7 @@ subject and sets `Reply-To` to the sender, so replying just works. The **receipt
 quotes their message back — the one thing a receipt has to prove is that we hold the words they
 typed — and points `Reply-To` at the support address, never no-reply.
 
-Provider: Resend, over `fetch`, in `lib/mail/send.ts`. No SDK, for the reason Razorpay has none
+Provider: Resend, over `fetch`, in `lib/services/mail/send.ts`. No SDK, for the reason Razorpay has none
 (CLAUDE.md §8). Swapping providers is that one file.
 
 **Unset is a supported state.** With no mail keys the form still files everything, the rows read
@@ -1539,7 +1539,7 @@ job-board APIs, with save, status tracking, and a one-click path into an analysi
 loop the other tabs open: find → analyse → roadmap → apply → track.
 
 **Sourcing is documented APIs only — never scraping** (N17). Four keyless adapters ship behind one
-interface, `lib/jobs/sources/{freehire,greenhouse,lever,ashby}.ts` implementing `JobSource { id,
+interface, `lib/services/jobs/sources/{freehire,greenhouse,lever,ashby}.ts` implementing `JobSource { id,
 search(keywords, q, signal) → SourceRun, attribution }`: freehire (keyless public API, full postings — F22.1), and Greenhouse, Lever and Ashby (vendors'
 public job-board APIs over a curated list of employer boards — F22.2). Each adapter's terms are read once and its
 attribution and rate limits are recorded in its own file before it ships; an adapter with no
@@ -1668,7 +1668,7 @@ page. Every listing's `url` is the vendor's own field (`absolute_url` / `hostedU
 
 **No keyword search exists on these APIs** — each serves one company's whole board — so:
 
-- **The board list is curated** (`lib/jobs/sources/ats-boards.ts`), the same shape as the course
+- **The board list is curated** (`lib/services/jobs/sources/ats-boards.ts`), the same shape as the course
   catalog. Twelve Greenhouse, six Lever and ten Ashby boards were each checked live on 2026-10-14
   and listed India-based or remote roles that day. `JOBS_ATS_BOARDS=ats:token,…` adds more per
   deployment. OpenAI's Ashby board (~13 MB) is left out because it can't be read inside one
@@ -1711,7 +1711,7 @@ effectivePlan(row, now)` is the pure read: expired reads as `free`. Lapse is **s
 by a scheduler** — every allowance check, and `listMembers`, calls `settlePlan`, which writes the
 Free plan, the Free caps and a null expiry back when `effectivePlan` disagrees with the stored row
 (PAY-2, PAY-3; this is the mirror of what raising a plan already does on the way up). Direct reads
-of `users.plan` or `users.cap_*` outside `lib/auth.ts` and `lib/admin/members.ts` are a bug
+of `users.plan` or `users.cap_*` outside `lib/services/auth.ts` and `lib/admin/members.ts` are a bug
 (assumption R6, verified by grep at the M8 gate). Read access to everything already generated is
 unaffected by a lapse — the pricing page's "you keep read access" line was already the promise.
 
@@ -2022,7 +2022,7 @@ reminder twice.
 moment is still ahead (`planReminders`, pure) — a lead already in the past is never written, so a
 round booked for this afternoon never gets "your interview is tomorrow". Moving the date clears
 every reminder, sent ones included; keeping it keeps the record of what went out. The sender
-(`lib/push/dispatch.ts`) **claims** a due row (pending → settled in one conditional UPDATE) before
+(`lib/services/push/dispatch.ts`) **claims** a due row (pending → settled in one conditional UPDATE) before
 sending, so overlapping invocations can never buzz a phone twice; a crash after the claim loses
 that reminder rather than repeating it. A round that has started, finished or been called off is
 skipped, never delivered late. The copy is computed at send time in the round's own zone ("Acme
@@ -2153,7 +2153,7 @@ signed out of Roleform kept its owner's reminders. F29.2 makes delivery durable 
 honest. Runbook: `docs/notifications.md`.
 
 **The outbox.** `push_deliveries` — one row per push per device. A reminder coming due (F29/F30)
-or the member's own test is QUEUED there (`lib/push/outbox.ts#enqueue`), never sent inline; the
+or the member's own test is QUEUED there (`lib/services/push/outbox.ts#enqueue`), never sent inline; the
 reminder row reads `sent` once queued and `delivered` counts the device rows. The sender
 (`processOutbox`, run by the same cron route after the reminders are queued) leases due rows with
 one `UPDATE … FOR UPDATE SKIP LOCKED` (90-second lease; a lapsed lease is retried), and settles each
@@ -2236,7 +2236,7 @@ tab or promo card is not rendered; its write actions call `requireFeature` and r
 
 **Editable public plans.** `plan_configs` — one row per `PlanTier` an admin has saved; a missing row
 means the shipped defaults in `lib/content/pricing.ts`. Every surface that prints or charges a price
-reads `lib/plans/catalog.ts#loadPlans()`: /pricing (and its metadata, JSON-LD, Markdown mirror and
+reads `lib/services/plans/catalog.ts#loadPlans()`: /pricing (and its metadata, JSON-LD, Markdown mirror and
 `llms-full.txt`), checkout, the Razorpay webhook's amount check, the token and cap walls, `settlePlan`,
 the workspace defaults seed and the admin panel. CHECKs: Free costs 0; a paid plan costs at least ₹1
 (Razorpay's floor); caps share the `users` bounds. One featured plan at most. Saving never moves an

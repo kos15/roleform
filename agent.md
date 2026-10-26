@@ -12,7 +12,7 @@ manual (`learning recommendation engine/agent.md`) is the model this one follows
 2. `rules.md` — N13–N22 and the per-feature rule sets.
 3. `PRD.md` §1.2 — the gap register; every id there is referenced by a task.
 4. `planning.md` — the milestone you are on and its done-state.
-5. The code the task touches, and its neighbour that already does the same thing: `lib/auth.ts` before any cap, `lib/domain/tokens.ts` + `components/token-wall.tsx` before the cap wall, `lib/learning/build-plan.ts` before any new pipeline seam, `lib/catalog/liveness.ts` before any outbound fetch.
+5. The code the task touches, and its neighbour that already does the same thing: `lib/services/auth.ts` before any cap, `lib/domain/tokens.ts` + `components/token-wall.tsx` before the cap wall, `lib/services/learning/build-plan.ts` before any new pipeline seam, `lib/catalog/liveness.ts` before any outbound fetch.
 
 Do not start a task whose done-state you cannot state in one sentence.
 
@@ -45,14 +45,14 @@ lib/domain/                 PURE, no I/O
   quotas.ts                 + roadmaps, jobSearches
   guardrails.ts             + noUrls · scanTone split into odds/comparison vs deficiency
   tokens.ts                 + ANALYSIS_TOKEN_CEILING · estimates re-typed from calibrate
-lib/jobs/                   SERVER — the I/O half of job search
+lib/services/jobs/                   SERVER — the I/O half of job search
   sources/types.ts          JobSource, JobQuery, JobListingIn, JobListingInSchema
   sources/adzuna.ts         one adapter; header comment carries terms, attribution, limits
   sources/jooble.ts         same
   search.ts                 fan-out, timeout, cache by query_hash, hit rows
 lib/db/queries/
   roadmap.ts · jobs.ts      reads; every function takes clerkUserId first
-lib/auth.ts                 + settlePlan · + checkCap(key) → Result<…, cap_wall>
+lib/services/auth.ts                 + settlePlan · + checkCap(key) → Result<…, cap_wall>
 app/actions/
   roadmap.ts                buildRoadmap · setRoadmapItemDone
   jobs.ts                   searchJobs · saveJob · setSavedJobStatus · unsaveJob
@@ -76,9 +76,9 @@ row, it takes the row.
 3. `lib/domain/quotas.ts`: `QuotaKey`, `QUOTAS` entry (label, unit, period, step, bounds, description).
 4. `lib/content/pricing.ts`: value in each of `PLANS`, a line in `NOTES`.
 5. `app/actions/admin.ts`: key in `CapsShape` (and therefore `DefaultsSchema`).
-6. `lib/admin/defaults.ts`, `lib/auth.ts#provisionUser`, `app/api/webhooks/clerk/route.ts`, `app/api/webhooks/razorpay/route.ts#raisePlan`: write the column.
+6. `lib/admin/defaults.ts`, `lib/services/auth.ts#provisionUser`, `app/api/webhooks/clerk/route.ts`, `app/api/webhooks/razorpay/route.ts#raisePlan`: write the column.
 7. `lib/admin/members.ts`: `caps` and `used` gain the key; `usageFor` counts the rows.
-8. `lib/auth.ts`: `checkCap(key)` counts rows since `cycleStart` and returns `cap_wall`.
+8. `lib/services/auth.ts`: `checkCap(key)` counts rows since `cycleStart` and returns `cap_wall`.
 9. `scripts/smoke-constraints.ts`: one out-of-bounds insert.
 10. `specs.md` §6.2 and F17 table.
 
@@ -102,8 +102,8 @@ array (or the no-policy block for cache tables) → smoke case → `deleteEveryt
 
 1. Read the provider's terms. Write attribution text, rate limit and the date read into the adapter's header comment. No terms, no adapter.
 2. Implement `JobSource`; parse with `JobListingInSchema`; map to `JobListingIn`. Drop and count what fails.
-3. Register in `lib/jobs/search.ts` behind an env key (`ADZUNA_APP_ID` …). Unset means the source is off, silently, and the results view says which sources ran.
-4. Never add a fetch outside `lib/jobs/sources/`.
+3. Register in `lib/services/jobs/search.ts` behind an env key (`ADZUNA_APP_ID` …). Unset means the source is off, silently, and the results view says which sources ran.
+4. Never add a fetch outside `lib/services/jobs/sources/`.
 
 ### 4.5 A new enforcement seam
 
@@ -133,8 +133,8 @@ Promoting a tier needs the golden-set delta written down (learning engine `agent
 
 ## 6. Never
 
-- Never call a model from `lib/domain/`, `lib/jobs/`, a roadmap path or a job-search path.
-- Never scrape. Never fetch a listing's target page. Never add a fetch outside `lib/jobs/sources/`.
+- Never call a model from `lib/domain/`, `lib/services/jobs/`, a roadmap path or a job-search path.
+- Never scrape. Never fetch a listing's target page. Never add a fetch outside `lib/services/jobs/sources/`.
 - Never construct a listing URL; never render one that did not parse through the schema.
 - Never send bullet text, a name, an email or a JD to a job provider.
 - Never write `users.plan` outside the Razorpay webhook (up) and `settlePlan` (down).

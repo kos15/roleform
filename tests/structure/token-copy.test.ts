@@ -12,7 +12,7 @@ import ts from "typescript";
 import { expect, it } from "vitest";
 
 const ROOT = join(__dirname, "../..");
-const SCAN = ["app", "components", "lib/content", "lib/seo", "lib/auth.ts"];
+const SCAN = ["app", "components", "lib/content", "lib/seo", "lib/services/auth.ts"];
 const SKIP = [/^app\/\(app\)\/admin\//, /^app\/actions\/admin/, /^app\/api\//];
 const WORD = /\btokens?\b/i;
 

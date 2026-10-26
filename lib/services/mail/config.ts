@@ -4,7 +4,7 @@ import { appError, err, ok, type Result } from "@/lib/domain/types";
 /**
  * Mail configuration (F16).
  *
- * **Unset is a supported state**, the same way payments are (lib/payments/
+ * **Unset is a supported state**, the same way payments are (lib/services/payments/
  * razorpay.ts). A deployment with no mail keys still takes contact messages —
  * they land in `contact_messages` and the admin inbox is the read path. What it
  * must never do is tell the sender we have emailed anyone.
@@ -16,7 +16,7 @@ import { appError, err, ok, type Result } from "@/lib/domain/types";
  *                     from a domain we cannot sign is mail that lands in spam.
  *   CONTACT_TO      — where support mail is read. Comma-separated is allowed.
  *
- * Provider: Resend, over `fetch` (lib/mail/send.ts). Swapping to another HTTP
+ * Provider: Resend, over `fetch` (lib/services/mail/send.ts). Swapping to another HTTP
  * mail API is one file — that file — because nothing above this layer knows a
  * provider name.
  */

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { cycleCounts } from "@/lib/db/queries/usage";
 import { currentRole, initialsOf } from "@/lib/admin/role";
-import { greetingName } from "@/lib/account/name";
+import { greetingName } from "@/lib/services/account/name";
 
 /**
  * The account row at the top of the mobile sheet.

@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { STAGES, type StageKey } from "@/lib/pipeline/stages";
+import { STAGES, type StageKey } from "@/lib/services/pipeline/stages";
 
 /**
  * The run that stopped part-way (F14).
@@ -34,7 +34,7 @@ export interface StalledRun {
   startedAt: Date;
 }
 
-/** End of each stage's band, matching lib/pipeline/stages.ts. */
+/** End of each stage's band, matching lib/services/pipeline/stages.ts. */
 const BAND_END: Record<StageKey, number> = {
   reading: 25,
   matching: 45,

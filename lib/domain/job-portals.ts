@@ -1,7 +1,7 @@
 /**
  * Deep-link-out buttons for the big job portals (F22 addendum).
  *
- * NOT a `JobSource` (lib/jobs/sources/*.ts) — no request ever leaves this
+ * NOT a `JobSource` (lib/services/jobs/sources/*.ts) — no request ever leaves this
  * server for these, and nothing here is ever fetched, parsed or stored.
  * Each entry is a pure URL builder against a portal's own public search
  * page, filled in with the member's own query. N17 ("documented APIs only,

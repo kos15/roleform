@@ -1,6 +1,6 @@
 /**
  * The switchable surfaces (F31). PURE — the list the admin panel renders and
- * `lib/features.ts` reads against. Mirrors the `feature_key` enum; adding a
+ * `lib/services/features.ts` reads against. Mirrors the `feature_key` enum; adding a
  * surface is a migration, a row here, and a `requireFeature` at its seams.
  */
 export type FeatureKey = "jobs" | "portfolio" | "rapid" | "roadmap" | "study" | "rounds" | "ai_checkers";

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { greetingName } from "@/lib/account/name";
+import { greetingName } from "@/lib/services/account/name";
 
 /**
  * "Hi, Asha" beside the account button (F33) — or, when we have no name for

@@ -4,10 +4,10 @@ import { getAnalysis } from "@/lib/db/queries/analysis";
 import { getRoadmap } from "@/lib/db/queries/roadmap";
 import { EmptyState } from "@/components/ui";
 import { SectionPending } from "@/components/background-pending";
-import { backgroundRunning } from "@/lib/pipeline/background";
+import { backgroundRunning } from "@/lib/services/pipeline/background";
 import { Checklist } from "./checklist";
 import { BuildButton } from "./build-button";
-import { requireFeaturePage } from "@/lib/features";
+import { requireFeaturePage } from "@/lib/services/features";
 
 /**
  * F21 — Roadmap. Compiled once, on demand, from rows the analysis already

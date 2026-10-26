@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
-import { requireUser } from "@/lib/auth";
+import { requireUser } from "@/lib/services/auth";
 import { getAnalysis } from "@/lib/db/queries/analysis";
 import { getStudyContext } from "@/lib/db/queries/study";
 import { isTimeZone } from "@/lib/domain/reminders";
@@ -26,7 +26,7 @@ import {
   type StudyPersona,
 } from "@/lib/domain/study-plan";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
-import { requireFeature } from "@/lib/features";
+import { requireFeature } from "@/lib/services/features";
 
 /**
  * F30 — saving the study plan and ticking sessions. Every value written here

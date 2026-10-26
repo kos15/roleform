@@ -4,7 +4,7 @@
  * One file per documented API this deployment is keyed for — never a scrape,
  * never a fetch of an employer's own page. Registering a source is adding a
  * value to the `JobProvider` enum, a file here, and a line in
- * `lib/jobs/search.ts`; nothing else in the app calls a provider directly.
+ * `lib/services/jobs/search.ts`; nothing else in the app calls a provider directly.
  *
  * An adapter never throws and never hides a failure: it returns a
  * `SourceRun` saying what happened — the listings that parsed, how many

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, ErrorRegion } from "@/components/ui";
 import { WaitOverlay } from "@/components/wait-overlay";
 import { TokenWallDialog } from "@/components/token-wall";
-import { STAGES, type StageKey, type StageState, type StageUpdate } from "@/lib/pipeline/stages";
+import { STAGES, type StageKey, type StageState, type StageUpdate } from "@/lib/services/pipeline/stages";
 import type { AppError } from "@/lib/domain/types";
 import type { TokenWall } from "@/lib/domain/tokens";
 
@@ -18,7 +18,7 @@ import type { TokenWall } from "@/lib/domain/tokens";
  *
  * One animation — the galaxy card — follows the stage the pipeline says is
  * running, and the screen leaves for the results the moment the résumés exist.
- * Prep and Learning finish behind them (lib/pipeline/run-analysis.ts).
+ * Prep and Learning finish behind them (lib/services/pipeline/run-analysis.ts).
  */
 /** Quiet reconnects after a dropped stream, before the screen says anything. */
 const RECONNECTS = 3;
