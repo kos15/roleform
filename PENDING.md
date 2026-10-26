@@ -27,7 +27,8 @@ the struck list is the record. New work gets its line *before* its first failing
 
 ## Catalog refresh — `docs/superpowers/plans/2026-10-26-catalog-refresh.md` (branch `feat/learning-catalog-refresh`)
 
-- [ ] Task 1: pure `lib/domain/catalog-refresh.ts` (TTL, `isDue`, `nextStatus`)
+- [x] ~~Task 1: pure `lib/domain/catalog-refresh.ts` (TTL, `isDue`, `nextStatus`)~~ — 2026-10-26
+- [ ] Minor: `lib/domain/catalog-refresh.ts` — drop the no-op `void current;` (repo convention is an `_`-prefixed unused param) — neji, Task 1 review
 - [ ] Task 2: `lib/services/cron.ts` (`cronAuthorised` moved, `CRON_JOBS`) + `tests/structure/cron.test.ts`
 - [ ] Task 3: `refreshDueLinks` in `lib/services/learning/refresh-catalog.ts`
 - [ ] Task 4: `/api/cron/catalog` route + middleware + `CRON_JOBS` entry
