@@ -126,3 +126,20 @@ it("the note never reads like a prediction (N4)", () => {
   ]);
   expect(scored.note).not.toMatch(/\d+%|chance|likely to|will get/i);
 });
+
+import { stillNotEvidenced } from "@/lib/domain/coverage";
+it("stillNotEvidenced: required → preferred → implied, skill name over text, deduped", () => {
+  expect(stillNotEvidenced([
+    requirement("r1", "implied", "Writes docs"),
+    requirement("r2", "preferred", "Terraform", "Terraform"),
+    requirement("r3", "required", "Kubernetes at scale", "Kubernetes"),
+    requirement("r4", "required", "Owns on-call rotation"),
+    requirement("r5", "preferred", "k8s", "kubernetes"),
+  ])).toEqual([
+    { label: "Kubernetes", necessity: "required" },
+    { label: "Owns on-call rotation", necessity: "required" },
+    { label: "Terraform", necessity: "preferred" },
+    { label: "Writes docs", necessity: "implied" },
+  ]);
+  expect(stillNotEvidenced([])).toEqual([]);
+});

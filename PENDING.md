@@ -124,7 +124,7 @@ own files; what is still open is here.
 - [x] ~~Task 2: pure `blockCause` · `buildChangeList` · `tailorTally` in `lib/domain/diff.ts` (stopped-partway notice moves into draft.changes; ceiling/deadline/transient never counted as "rejected for adding detail")~~ — 2026-10-26
 - [x] ~~Task 3: pure `draftsState` in `lib/services/pipeline/background.ts`~~ — 2026-10-26
 - [x] ~~Task 4: pure `parsingFinished` in `lib/services/pipeline/stages.ts`~~ — 2026-10-26
-- [ ] Task 5: pure `stillNotEvidenced` in `lib/domain/coverage.ts`
+- [x] ~~Task 5: pure `stillNotEvidenced` in `lib/domain/coverage.ts`~~ — 2026-10-26
 - [ ] Task 6: pipeline writes `ready` in the score update on both paths, before `matching done`; later ready update deleted
 - [ ] Task 7: pipeline skips stage ③ when the member's draft cap is 0
 - [ ] Task 8: writeDrafts — app-made uuids, pages via mapLimit(4), one batch `$transaction`, `[pipeline] pages` log
