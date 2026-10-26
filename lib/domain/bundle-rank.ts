@@ -14,6 +14,8 @@
  * Read picks — so the `SkillBundle` row shape and `lookupBundles` are unchanged.
  * Readers re-partition by `laneOf(type)`, so the order across lanes carries no
  * meaning; it is only deterministic.
+ *
+ * Changing this needs SEED_FORMAT bumped in lib/catalog/seed-rows.ts — the catalog hash can't see it (N25).
  */
 import { laneOf, type Lane } from "./lanes";
 import type { ResourceType } from "./selection";

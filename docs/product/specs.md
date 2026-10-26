@@ -916,6 +916,7 @@ stays dead until a link-checked re-seed finds its URL live (normally after a cur
 The seed staggers `checked_at` across 7 days so a first run does not become one daily spike. It is
 best effort: `pnpm check:corpus` reports how many active rows are overdue past 30 days, and
 `pnpm check:links` is the manual full sweep.
+Production builds run `pnpm deploy:catalog` (N25): when the hash of the seed rows differs from the last `catalog_syncs` row, it link-checks only URLs not yet in `courses`, fails the deploy on any dead one before writing, creates new rows active with a staggered `checked_at`, updates existing rows' content without touching `status`, `checked_at` or `verified_at`, rebuilds bundles, then records the sync. `pnpm seed:catalog` remains the manual full re-check; it stamps `verified_at` on an existing row only on a live verdict.
 
 **Guardrails** (`lib/domain/guardrails.ts`), each code and not prompt:
 

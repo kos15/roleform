@@ -21,7 +21,7 @@ cp .env.example .env.local     # fill in Clerk, Supabase, OpenAI
 
 Two connection strings, both required (`.env.example` documents both): `DATABASE_URL` is the
 pooled pgbouncer connection (port 6543) the app runs on; `DIRECT_URL` is a real session
-connection (port 5432) that migrations and the two admin scripts need — a transaction-mode
+connection (port 5432) that migrations, the two admin scripts, and the deploy-time catalog lock and schedule install need — a transaction-mode
 pooler can't provide one.
 
 ```bash
@@ -32,13 +32,24 @@ pnpm db:policies                # apply lib/db/policies.sql — RLS lives in the
 pnpm seed:catalog               # templates + skills + link-checked course catalog
 ```
 
-**On Vercel, the last two run automatically on every deploy:** `build` is
-`prisma migrate deploy && pnpm db:policies && next build`, in that order, against whatever
-`DATABASE_URL`/`DIRECT_URL` that Vercel environment (production vs. preview) has configured. Both
-steps are idempotent — a deploy with nothing pending is a no-op on both — so this is safe to run on
-every build, not just the first one. A failure in either step fails the build before `next build`
-ever runs, so a broken migration cannot ship. Local `pnpm db:migrate` / `pnpm db:policies` above
+**On Vercel, the build runs these automatically on every deploy** (not `seed:catalog` — `deploy:catalog` syncs the catalog instead, link-checking only new URLs, and `deploy:schedule` installs the pg_cron schedule): `build` is
+`prisma migrate deploy && pnpm db:policies && pnpm deploy:catalog && next build --turbopack && pnpm deploy:schedule`,
+in that order, against whatever `DATABASE_URL`/`DIRECT_URL` that Vercel environment (production vs.
+preview) has configured. Every step is idempotent, so this is safe to run on every build. A failure
+in any step fails the build, so a broken migration cannot ship. Local `pnpm db:migrate` / `pnpm db:policies` above
 are for authoring and testing a migration before it reaches that pipeline.
+
+Deploy-time sync (N25):
+
+- `pnpm deploy:catalog` and `pnpm deploy:schedule` act only when `VERCEL_ENV=production`; on preview
+  and local builds they log one skip line and exit 0.
+- The catalog sync runs only when the hash of the seed rows differs from the last `catalog_syncs` row.
+- A dead new course URL, or a schedule that cannot be installed, fails the deploy.
+- Required production build-time variables: `DATABASE_URL`, `DIRECT_URL`, `APP_URL`, `CRON_SECRET`.
+- Promote and Instant Rollback do not rerun the scripts: run `pnpm db:schedule` by hand after either.
+- A *Redeploy* (rebuild) of an OLDER commit does rerun them and syncs that commit's older catalog
+  back over the newer one (content fields revert; no rows are deleted) until the next normal deploy.
+  Prefer Instant Rollback, which does not rebuild.
 
 `prisma/schema.prisma` is the truth; migrations are generated, never hand-authored — except the
 two CHECK constraints (N1/N2), which Prisma has no schema syntax for and which are added by

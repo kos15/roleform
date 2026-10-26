@@ -19,7 +19,7 @@ type Level = "intro" | "working" | "deep";
 
 const LEVELS: Level[] = ["intro", "working", "deep"];
 
-/** Resources below this never enter a bundle (guardrails.md, Corpus). */
+/** Resources below this never enter a bundle (guardrails.md, Corpus). Changing this needs SEED_FORMAT bumped in lib/catalog/seed-rows.ts — the catalog hash can't see it (N25). */
 const QUALITY_FLOOR = 0.35;
 
 export async function rebuildBundles(

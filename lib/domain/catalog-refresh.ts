@@ -41,3 +41,8 @@ export function seededStatus(verdict: Liveness, isNew: boolean): "active" | null
 export function staggeredCheckedAt(now: Date, index: number): Date {
   return daysBefore(now, index % CATALOG_TTL_DAYS);
 }
+
+/** Does this write stamp verified_at? A new row always does (NOT NULL); an existing row only when the link was confirmed live. */
+export function stampsVerifiedAt(verdict: Liveness | null, isNew: boolean): boolean {
+  return isNew || verdict === "live";
+}

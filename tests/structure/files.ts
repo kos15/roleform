@@ -23,17 +23,17 @@ export function sourceOf(file: string): string {
   return readFileSync(join(ROOT, file), "utf8");
 }
 
-/** Every module specifier a file names: static, type-only, re-export, side-effect and dynamic imports. */
+/** Every module specifier a file names: static, type-only, re-export, side-effect, dynamic and require() imports. */
 export function importsOf(file: string): string[] {
   const src = sourceOf(file);
-  const forms = [/\bfrom\s*["']([^"'\n]+)["']/g, /\bimport\s*["']([^"'\n]+)["']/g, /\bimport\s*\(\s*["']([^"'\n]+)["']/g];
+  const forms = [/\bfrom\s*["']([^"'\n]+)["']/g, /\bimport\s*["']([^"'\n]+)["']/g, /\bimport\s*\(\s*["']([^"'\n]+)["']/g, /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g];
   return forms.flatMap((re) => [...src.matchAll(re)].map((m) => m[1]));
 }
 
 /** Like importsOf, minus `import type` / `export type` statements, which erase at build time. */
 export function valueImportsOf(file: string): string[] {
   const src = sourceOf(file).replace(/^\s*(import|export)\s+type\b[^;]*;/gm, "");
-  const forms = [/\bfrom\s*["']([^"'\n]+)["']/g, /\bimport\s*["']([^"'\n]+)["']/g, /\bimport\s*\(\s*["']([^"'\n]+)["']/g];
+  const forms = [/\bfrom\s*["']([^"'\n]+)["']/g, /\bimport\s*["']([^"'\n]+)["']/g, /\bimport\s*\(\s*["']([^"'\n]+)["']/g, /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g];
   return forms.flatMap((re) => [...src.matchAll(re)].map((m) => m[1]));
 }
 

@@ -187,6 +187,22 @@ begin
   end loop;
 end $$;
 
+-- ------------------------------------------------------- catalog sync (N25)
+-- catalog_syncs is build bookkeeping: one row per successful production
+-- catalog sync, written only by `pnpm deploy:catalog` over the Prisma
+-- connection (which bypasses RLS) and read by nothing a JWT holds. RLS on,
+-- NO policy — the same shape workspace_settings uses (N10).
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['catalog_syncs'] loop
+    execute format('alter table public.%I enable row level security', t);
+    execute format('alter table public.%I force row level security', t);
+    execute format('drop policy if exists "public read" on public.%I', t);
+  end loop;
+end $$;
+
 -- ------------------------------------------------------------- job listings
 -- job_listings is the shared cache underneath F22: one row per posting a
 -- provider returned, carrying no clerk_user_id. The listing is public content

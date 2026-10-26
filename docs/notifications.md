@@ -52,7 +52,10 @@ Migrations run with every deploy (`pnpm build` runs `prisma migrate deploy` then
 
 Re-run the guard check at the gate: `pnpm check:constraints` (27 cases, two of them F29.2's).
 
-## 3. The scheduler (once per environment, and after rotating `CRON_SECRET`)
+## 3. The scheduler (automatic on production builds; manual elsewhere)
+
+Production builds run `pnpm deploy:schedule` (`APP_URL` required, no fallback). The command below is
+the manual fallback for preview databases, rotations between deploys, and after a promote or rollback.
 
 ```bash
 APP_URL=https://roleform.koustubh.org pnpm db:schedule
@@ -142,8 +145,8 @@ own account; **never test against real members' devices**.
 
 1. Set the four variables in §1 on the target environment; redeploy (the public key is build-time).
 2. Merge → Vercel builds: `prisma migrate deploy` (applies `20261016000000_push_outbox`) →
-   `pnpm db:policies` → `next build`.
-3. `pnpm db:schedule` once per environment (§3) if not installed.
+   `pnpm db:policies` → `pnpm deploy:catalog` → `next build --turbopack` → `pnpm deploy:schedule`.
+3. Production: automatic. Preview: `pnpm db:schedule` against the preview database if needed.
 4. Walk §4 on one Android and one iPhone with your own account.
 
 ## 6. Rollback
