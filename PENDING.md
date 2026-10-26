@@ -15,7 +15,7 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 3: Tested module-move codemod~~ — 2026-10-26
 - [x] ~~Task 4: AI provider (`openai/`), checkers (`typesafe/`), `services/` folders~~ — 2026-10-26
 - [x] ~~Task 5: Split system prompts into `lib/ai/system-prompts/`, byte-identical~~ — 2026-10-26
-- [ ] Task 6: Per-agent user-prompt builders in `lib/ai/prompts/`
+- [x] ~~Task 6: Per-agent user-prompt builders in `lib/ai/prompts/`~~ — 2026-10-26
 - [ ] Task 7: `lib/services/` and `lib/shared/`
 - [ ] Task 8: Scripts layout (`scripts/db`, `catalog`, `ops`)
 - [ ] Task 9: Docs under `docs/product/`, CLAUDE.md §10 drift guard

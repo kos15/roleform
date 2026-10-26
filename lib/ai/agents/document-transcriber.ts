@@ -2,6 +2,7 @@ import "server-only";
 import { TranscriptionSchema } from "../schemas/resume-json";
 import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import { defineAgent } from "./define";
+import * as prompt from "../prompts/document-transcriber";
 
 export interface DocumentTranscriberInput {
   data: Uint8Array;
@@ -20,7 +21,7 @@ export const documentTranscriber = defineAgent({
   model: "writer",
   schema: TranscriptionSchema,
   system: SYSTEM.transcribeDocument,
-  dynamicContext: (_: DocumentTranscriberInput) => "Transcribe the attached document.",
+  dynamicContext: prompt.dynamicContext,
   files: (i) => [{ data: i.data, mediaType: i.mediaType, filename: i.filename }],
   reasoningEffort: "medium",
   // A dense two-page CV is ~2,500 words; doubled for reasoning tokens.

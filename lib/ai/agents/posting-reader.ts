@@ -2,6 +2,7 @@ import "server-only";
 import { JdAnalysisSchema } from "../schemas/jd-analysis";
 import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import { defineAgent } from "./define";
+import * as prompt from "../prompts/posting-reader";
 
 export interface PostingReaderInput {
   /** Boilerplate-stripped, already within JD_MAX_CHARS. */
@@ -24,8 +25,8 @@ export const postingReader = defineAgent({
   model: "writer-fast",
   schema: JdAnalysisSchema,
   system: SYSTEM.analyzeJd,
-  staticContext: () => "Extract the requirements from this posting.",
-  dynamicContext: (i: PostingReaderInput) => `<posting>\n${i.text}\n</posting>`,
+  staticContext: prompt.staticContext,
+  dynamicContext: prompt.dynamicContext,
   reasoningEffort: "low",
   maxOutputTokens: 6_000,
   // COST-3: one corrective retry per stage, not two.

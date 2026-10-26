@@ -3,6 +3,7 @@ import { InterviewQuestionsSchema } from "../schemas/interview-questions";
 import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import type { DomainBullet, DomainRequirement } from "@/lib/domain/types";
 import { defineAgent } from "./define";
+import * as prompt from "../prompts/question-writer";
 
 export interface QuestionWriterInput {
   jobTitle: string;
@@ -23,22 +24,8 @@ export const questionWriter = defineAgent({
   model: "writer",
   schema: InterviewQuestionsSchema,
   system: SYSTEM.generateQuestions,
-  staticContext: (i: QuestionWriterInput) =>
-    [
-      `Role: ${i.jobTitle}${i.company ? ` at ${i.company}` : ""}`,
-      ``,
-      `<requirements>`,
-      ...i.requirements.slice(0, 20).map((r) => `- [${r.necessity}, mentioned ${r.mentionCount}×] ${r.text}`),
-      `</requirements>`,
-      ``,
-      `<not_evidenced>`,
-      ...i.absentRequirements.map((r) => `- ${r.text}`),
-      `</not_evidenced>`,
-      ``,
-      `Questions about anything in <not_evidenced> must use type "gap".`,
-      `Every other question must cite at least one id from <candidate_bullets>.`,
-    ].join("\n"),
-  dynamicContext: (i) => [`<candidate_bullets>`, ...i.bullets.map((b) => `- id=${b.id} :: ${b.text}`), `</candidate_bullets>`].join("\n"),
+  staticContext: prompt.staticContext,
+  dynamicContext: prompt.dynamicContext,
   reasoningEffort: "low",
   maxOutputTokens: 9_000,
   retries: 1,

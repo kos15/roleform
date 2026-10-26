@@ -7,7 +7,7 @@ import { revisionWriter } from "../agents/revision-writer";
 import { quizWriter } from "../agents/quiz-writer";
 import { challengeWriter, verifiedTests } from "../agents/challenge-writer";
 import { codeReviewer } from "../agents/code-reviewer";
-import type { DrillRole } from "../agents/drill-prompt";
+import type { DrillRole } from "../prompts/drill";
 
 export type { DrillRole };
 

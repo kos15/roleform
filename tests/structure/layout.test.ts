@@ -3,7 +3,7 @@
  * file to the wrong place, or importing across a boundary, fails here.
  */
 import { describe, expect, it } from "vitest";
-import { APP_SOURCES, entriesOf, filesUnder, importsOf } from "./files";
+import { APP_SOURCES, entriesOf, filesUnder, importsOf, sourceOf } from "./files";
 
 describe("lib/ai", () => {
   it("@ai-sdk/openai is imported only under lib/ai/openai", () => {
@@ -11,6 +11,11 @@ describe("lib/ai", () => {
       (f) => !f.startsWith("lib/ai/openai/") && !f.startsWith("tests/") && importsOf(f).some((s) => s.startsWith("@ai-sdk/openai")),
     );
     expect(offenders).toEqual([]);
+  });
+
+  it("agents hold no prompt text — every context builder is imported from lib/ai/prompts", () => {
+    const inline = filesUnder("lib/ai/agents").filter((f) => !f.endsWith("/define.ts") && /(static|dynamic)Context:\s*(\(|async\b|function\b|[a-z]\w*\s*=>)/.test(sourceOf(f)));
+    expect(inline).toEqual([]);
   });
 
   it("has no loose files — every module sits in its role folder", () => {

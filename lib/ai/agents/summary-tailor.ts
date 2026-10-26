@@ -3,6 +3,7 @@ import { TailorSummarySchema } from "../schemas/tailored-bullets";
 import { PROMPT_VERSIONS, SYSTEM } from "../system-prompts";
 import { checkFabrication } from "@/lib/domain/fabrication";
 import { defineAgent } from "./define";
+import * as prompt from "../prompts/summary-tailor";
 import { checkFabrication as checkWithJev } from "../typesafe/fabrication";
 
 export interface SummaryTailorInput {
@@ -19,8 +20,8 @@ export const summaryTailor = defineAgent({
   model: "writer-fast",
   schema: TailorSummarySchema,
   system: SYSTEM.tailorSummary,
-  staticContext: (i: SummaryTailorInput) => `Role: ${i.jobTitle}`,
-  dynamicContext: (i) => `Bullets already on the résumé:\n${i.bullets.map((b) => `- ${b}`).join("\n")}`,
+  staticContext: prompt.staticContext,
+  dynamicContext: prompt.dynamicContext,
   reasoningEffort: "low",
   maxOutputTokens: 2_400,
   // Falls back to the stock line on timeout, so waiting longer buys nothing.
