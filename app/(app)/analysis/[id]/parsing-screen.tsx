@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button, ErrorRegion } from "@/components/ui";
 import { WaitOverlay } from "@/components/wait-overlay";
 import { TokenWallDialog } from "@/components/token-wall";
-import { STAGES, type StageKey, type StageState, type StageUpdate } from "@/lib/services/pipeline/stages";
+import { STAGES, parsingFinished, type StageKey, type StageState, type StageUpdate } from "@/lib/services/pipeline/stages";
 import type { AppError } from "@/lib/domain/types";
 import type { TokenWall } from "@/lib/domain/tokens";
 
@@ -17,8 +17,9 @@ import type { TokenWall } from "@/lib/domain/tokens";
  * a stage failure stops there and says what failed.
  *
  * One animation — the galaxy card — follows the stage the pipeline says is
- * running, and the screen leaves for the results the moment the résumés exist.
- * Prep and Learning finish behind them (lib/services/pipeline/run-analysis.ts).
+ * running, and the screen leaves for the results the moment the score exists.
+ * Drafts, Prep and Learning finish behind them, each tab showing its own loader
+ * (lib/services/pipeline/run-analysis.ts).
  */
 /** Quiet reconnects after a dropped stream, before the screen says anything. */
 const RECONNECTS = 3;
@@ -133,22 +134,16 @@ export function ParsingScreen({
           stageFailed = true;
           setFailed(update.message ?? "A stage failed.");
         }
-        // The résumés are ready the moment stage ③ ends — the pipeline marks
-        // the run `ready` before saying so, and Prep and Learning carry on
-        // behind it, each tab showing its own loader until its rows land.
-        // A followed or already-finished run reports stage ④ at 100% instead.
-        if (
-          (update.stage === "rewriting" && (update.state === "done" || update.state === "degraded")) ||
-          (update.stage === "preparing" && update.progressPct >= 100 && update.state !== "running")
-        ) {
-          finished = true;
-        }
+        // The run is `ready` before it announces matching done, so the score
+        // and buckets exist the moment this fires. A followed or already-
+        // finished run reports stage ④ at 100% instead (see parsingFinished).
+        if (parsingFinished(update)) finished = true;
       };
 
       try {
-        // Stops reading once the résumés are ready. Cancelling only closes
+        // Stops reading once the results are ready. Cancelling only closes
         // our view of the stream: the run itself is held open by `after()` on
-        // the server and finishes Prep and Learning without an audience.
+        // the server and finishes the drafts, Prep and Learning without an audience.
         while (!finished && !stageFailed) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -284,9 +279,9 @@ export function ParsingScreen({
     STAGES.find((s) => states[s.key] === "running") ??
     [...STAGES].reverse().find((s) => states[s.key] !== "pending") ??
     STAGES[0];
-  // The screen leaves once the résumés exist, so the card counts down to
-  // them: Prep and Learning finish behind the results, under their own tabs.
-  const shown = STAGES.filter((s) => s.key !== "preparing");
+  // The screen leaves once the score exists, so the card counts down to it:
+  // the drafts, Prep and Learning finish behind the results, under their tabs.
+  const shown = STAGES.filter((s) => s.key === "reading" || s.key === "matching");
   const stageIndex = Math.min(STAGES.indexOf(current), shown.length - 1);
 
   // One animation for one task. The galaxy card is the whole screen while the
@@ -310,7 +305,7 @@ export function ParsingScreen({
         sub={stageNote ?? current.description}
         still={stageNote ?? "Still going. This part reads every requirement against your own words."}
         long="Taking longer than usual. You can leave — it keeps running and waits in History."
-        done="Your drafts are ready"
+        done="Your results are ready"
         run={attempt}
       />
     </div>

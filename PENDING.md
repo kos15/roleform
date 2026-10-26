@@ -129,7 +129,7 @@ own files; what is still open is here.
 - [x] ~~Task 7: pipeline skips stage ③ when the member's draft cap is 0~~ — 2026-10-26
 - [x] ~~Task 8: writeDrafts — app-made uuids, pages via mapLimit(4), one batch `$transaction`, `[pipeline] pages` log~~ — 2026-10-26
 - [x] ~~Task 9: tailoring via mapLimit — TAILOR_CONCURRENCY=10, 180s start deadline, per-run `[pipeline] tailor` count log~~ — 2026-10-26
-- [ ] Task 10: parsing screen finishes on `parsingFinished`, two pips, "Your results are ready"; route.ts comment
+- [x] ~~Task 10: parsing screen finishes on `parsingFinished`, two pips, "Your results are ready"; route.ts comment~~ — 2026-10-26
 - [ ] Task 11: Résumés tab count reads "Preparing…" while drafts are generating
 - [ ] Task 12: `DraftsPlaceholder` (pending · missing + "Finish the drafts" · off) and the "Still not evidenced" panel on the Résumés tab; preview pending state
 - [ ] Task 13: runAgent starts the Jev injection check concurrently with the model call (fail open)
