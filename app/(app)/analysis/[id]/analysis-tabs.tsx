@@ -44,7 +44,7 @@ export function AnalysisTabs({
   counts: TabCounts;
   /** F31: tab slugs whose feature is switched off site-wide. */
   hidden?: string[];
-  /** Prep and Learning still generating behind the résumés. */
+  /** Drafts, Prep and Learning still generating. */
   generating?: boolean;
 }) {
   const pathname = usePathname();
@@ -52,7 +52,7 @@ export function AnalysisTabs({
   const PENDING = "Preparing…";
 
   const tabs = [
-    { slug: "resumes", label: "Résumés", count: String(counts.resumes), icon: FileText },
+    { slug: "resumes", label: "Résumés", count: generating && counts.resumes === 0 ? PENDING : String(counts.resumes), icon: FileText },
     {
       slug: "prep",
       label: "Interview prep",
