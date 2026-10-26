@@ -54,7 +54,7 @@ the struck list is the record. New work gets its line *before* its first failing
 
 ## Deploy-time sync — `docs/superpowers/plans/2026-10-26-deploy-time-sync.md` (branch `feat/deploy-time-sync`)
 
-- [ ] Task 1: `scripts/deploy/gate.ts` (`isProductionBuild`, `skipLine`) + tests
+- [x] ~~Task 1: `scripts/deploy/gate.ts` (`isProductionBuild`, `skipLine`) + tests~~ — 2026-10-26
 - [ ] Task 2: pure `lib/catalog/seed-rows.ts` (`catalogSeedRows`, `catalogHash`, `SEED_FORMAT`), `scripts/catalog/catalog-writes.ts`, manual seed writes from rows; `verifiedAt` stamped on update only on a live verdict
 - [ ] Task 3: `CatalogSync` model, migration `20261026000000_catalog_syncs` (hand-added CHECKs), `catalog_syncs` RLS on/no policy
 - [ ] Task 4: `pnpm deploy:catalog` — `syncCatalog` (hash gate, advisory lock, new-URL link check at concurrency 5, bundles, sync row last)

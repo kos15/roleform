@@ -4,7 +4,7 @@
  * and writes the doc columns the DB CHECK `courses_doc_needs_kind` requires.
  */
 import { describe, expect, it } from "vitest";
-import { sourceOf } from "./files";
+import { filesUnder, importsOf, sourceOf } from "./files";
 
 const SEED = "scripts/catalog/seed-catalog.ts";
 const LINK_CHECK = "scripts/catalog/link-check.ts";
@@ -56,5 +56,10 @@ describe("catalog scripts", () => {
     expect(update).not.toMatch(/checked \?\?/);
     expect(update).not.toMatch(/status:\s*"active"/);
     expect(src).toMatch(/seededStatus\(verdict, false\)/);
+  });
+
+  it("nothing under scripts/deploy loads .env.local", () => {
+    const offenders = filesUnder("scripts/deploy").filter((f) => importsOf(f).some((s) => /(^|\/)env(\.ts)?$|^dotenv(\/|$)/.test(s)));
+    expect(offenders).toEqual([]);
   });
 });

@@ -72,6 +72,6 @@ describe("scripts", () => {
   it("the root holds only role folders and the two shared helpers", () => {
     const loose = entriesOf("scripts").filter((e) => !e.isDir).map((e) => e.name).sort();
     expect(loose).toEqual(["env.ts", "server-only-stub.ts"]);
-    expect(entriesOf("scripts").filter((e) => e.isDir).map((e) => e.name).sort()).toEqual(["catalog", "db", "evals", "ops", "tools"]);
+    expect(entriesOf("scripts").filter((e) => e.isDir).map((e) => e.name).sort()).toEqual(["catalog", "db", "deploy", "evals", "ops", "tools"]);
   });
 });

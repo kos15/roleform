@@ -289,6 +289,7 @@ tests/                       Vitest, mirrors lib/ · tests/structure/ holds the 
 scripts/
   db/                        policies, cron schedule (N24), constraint smoke test, admin grants
   catalog/                   seed, bundles, link and corpus checks, drill bank
+  deploy/                    production-build steps: catalog sync, schedule (N25) — gated on VERCEL_ENV
   ops/                       icons, push keys, IndexNow, render samples, DOCX round-trip
   evals/                     agent evals (pnpm eval)
   tools/                     move-modules codemod + its maps
