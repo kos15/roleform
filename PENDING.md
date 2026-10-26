@@ -117,3 +117,22 @@ own files; what is still open is here.
 - [ ] After this branch deploys: `APP_URL=https://roleform.koustubh.org pnpm db:schedule` — installs `roleform-catalog-refresh` (daily 03:17 UTC); without it the catalog re-check never runs (neji, final review)
 - [x] ~~Merge `feat/learning-watch-read` and `chore/layout-tdd` to `main` (this layout branch is cut from the watch-read branch)~~ — 2026-10-26
 - [ ] Local Node is v20.17.0; `package.json` engines asks for >=20.19.0 — upgrade
+
+### Progressive results — `docs/superpowers/plans/2026-10-26-progressive-results.md` (branch `feat/progressive-results`)
+
+- [ ] Task 1: `mapLimit(items, n, fn)` ordered concurrency helper in `lib/shared/utils.ts`
+- [ ] Task 2: pure `blockCause` · `buildChangeList` · `tailorTally` in `lib/domain/diff.ts` (stopped-partway notice moves into draft.changes; ceiling/deadline/transient never counted as "rejected for adding detail")
+- [ ] Task 3: pure `draftsState` in `lib/services/pipeline/background.ts`
+- [ ] Task 4: pure `parsingFinished` in `lib/services/pipeline/stages.ts`
+- [ ] Task 5: pure `stillNotEvidenced` in `lib/domain/coverage.ts`
+- [ ] Task 6: pipeline writes `ready` in the score update on both paths, before `matching done`; later ready update deleted
+- [ ] Task 7: pipeline skips stage ③ when the member's draft cap is 0
+- [ ] Task 8: writeDrafts — app-made uuids, pages via mapLimit(4), one batch `$transaction`, `[pipeline] pages` log
+- [ ] Task 9: tailoring via mapLimit — TAILOR_CONCURRENCY=10, 180s start deadline, per-run `[pipeline] tailor` count log
+- [ ] Task 10: parsing screen finishes on `parsingFinished`, two pips, "Your results are ready"; route.ts comment
+- [ ] Task 11: Résumés tab count reads "Preparing…" while drafts are generating
+- [ ] Task 12: `DraftsPlaceholder` (pending · missing + "Finish the drafts" · off) and the "Still not evidenced" panel on the Résumés tab; preview pending state
+- [ ] Task 13: runAgent starts the Jev injection check concurrently with the model call (fail open)
+- [ ] Task 14: `pnpm eval bullet-tailor --role writer|writer-fast` (script-only model override)
+- [ ] Task 15: docs — specs §8 flow, F3, F5, F14 (stalled-run behaviour change)
+- [ ] Task 16 (T-final): flip `tailor_bullet` to writer-fast + specs §10 — ONLY after the fabrication eval passes on `--role writer-fast`
