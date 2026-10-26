@@ -818,7 +818,7 @@ same deterministic matcher the Learning tab uses (N8).
 
 ### F8 — Tab 3: Learning (the Learning Engine)
 
-Rebuilt against `learning recommendation engine/` — spec, agent, guardrails, rag-strategy and
+Rebuilt against `docs/learning-engine/` — spec, agent, guardrails, rag-strategy and
 prompts. The tab is no longer "gaps with two course cards beside them"; it is a **ranked,
 evidence-anchored, time-budgeted plan**.
 
@@ -1351,7 +1351,7 @@ The résumé templates remain exempt from the brand and render black on white (�
 > `analyses.from_bonus`); unspent token top-ups were converted at the pre-change run estimate,
 > rounded up (`pnpm topups:convert`), and legacy token-pack orders still credit tokens. Rapid prep
 > has its own count, **practice sessions** (`cap_practice`, 3/40/150): a deck, round or challenge the
-> model wrote counts one; retakes, bank problems and reviews are free. `pnpm check:tokencopy` fails
+> model wrote counts one; retakes, bank problems and reviews are free. `pnpm test` (tests/structure/token-copy.test.ts) fails
 > if member-facing copy mentions tokens. Packs are offered — and their headroom lifts the ceiling —
 > only on an analysis wall; the wall the browser receives carries no balance, shortfall or estimate
 > (`fairUseWall`). A new analysis is decided again inside a per-member advisory lock, so two runs
@@ -1657,7 +1657,7 @@ no outbound request and no cap unit.
 
 **Acceptance:** zero `ai_runs` rows from any `/jobs` path; a failed source is named on the page and
 in `source_report`; every rendered listing URL is the provider's own field; no number other than a
-count appears on a listing; `pnpm check:jobs` passes; logs carry `query_hash` and counts only.
+count appears on a listing; `pnpm test` (tests/domain/job-triage.test.ts) passes; logs carry `query_hash` and counts only.
 
 ### F22.2 — Employer boards: Greenhouse, Lever, Ashby
 
@@ -1693,7 +1693,7 @@ Newest first before the 25-per-variant cap, so a large board's old postings can'
 board's new ones. Ashby's unlisted postings (`isListed: false`) are skipped.
 
 **Acceptance:** a cold search reads each board once, and a repeat within 30 minutes reads none;
-every listing links to the vendor's own posting URL; `pnpm check:jobs` passes (27 checks);
+every listing links to the vendor's own posting URL; `pnpm test` (tests/domain/job-triage.test.ts) passes (27 checks);
 `JOBS_DISABLED_SOURCES=greenhouse,lever,ashby` removes all three without a deploy.
 
 ### F23 — Plan changes
@@ -1784,7 +1784,7 @@ N tokens" line derives from the same numbers (PR-6, G11).
 
 **Acceptance:** typecheck fails on any `runStructured` call missing its ceiling; the fabrication
 eval stays at zero on every diet prompt, per stage, or that stage's diet reverts and the milestone
-still closes (PR-7); the pre-strip fixture set (`pnpm check:jdstrip`) never drops a line containing
+still closes (PR-7); the pre-strip fixture set (`tests/domain/jd-segment.test.ts`) never drops a line containing
 a requirement.
 
 ### F25 — Guardrail closure
@@ -2218,7 +2218,7 @@ Icons are rendered from the one mark by `pnpm icons` (`scripts/ops/app-icons.ts`
 opaque with the mark at ~80%, maskable opaque with the mark inside the safe zone at ~70%, "any" at
 ~84% on a rounded tile; `ICON_VERSION` 4.
 
-**Acceptance:** `pnpm check:push` passes (path rules on server and in the worker, malformed pushes
+**Acceptance:** `pnpm test` (tests/domain/push.test.ts) passes (path rules on server and in the worker, malformed pushes
 still shown, retry/backoff/TTL, discreet copy, manifest and icon files); a push service 503 is
 retried and later accepted without a second notification; a 410 deletes the device; pausing a
 device or switching a category off stops queued pushes; signing out of a shared phone and in as
@@ -2333,7 +2333,7 @@ behind a fixed separator, with a per-agent `promptCacheKey`, so large shared pre
 requirement — below the provider's ~1,024-token cache floor, and that scoping outranks caching.
 
 **Evals:** `pnpm eval <agent> [--set] [--arm gpt5|gpt5+jev] [--dry]` (`scripts/evals/`), run by hand at a
-gate. `pnpm check:agents` holds the layer's pure decisions.
+gate. `pnpm test` (tests/ai/agents.test.ts) holds the layer's pure decisions.
 
 - Every call uses `generateObject` with a Zod schema. The schema is the contract; the prompt is documentation for the model. Schema changes bump `prompt_version`.
 - Provider-agnostic — swapping providers is one import change, which is why the SDK was chosen over calling a provider API directly.

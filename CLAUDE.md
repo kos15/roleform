@@ -107,7 +107,7 @@ promise.
 **Never write the count into UI copy.** How many drafts a run returns is `capResumes` per member
 (0–11, eleven by default), so any fixed number in a heading is wrong for somebody. Results surfaces
 count the drafts they were handed; the analyse screen reads `draftsPerRun`; both clamp through
-`lib/domain/entitlements.draftCount`, which the pipeline uses too.
+`draftCount` in `lib/domain/entitlements.ts`, which the pipeline uses too.
 
 Computed in `lib/render/ats-rules.ts` from structural facts, not opinion:
 
@@ -221,60 +221,87 @@ document going to a stranger. Export templates follow §5, not the brand.
 
 ## 10. Repo layout
 
+Every kind of thing has one folder. One name per line; `tests/structure/claude-md.test.ts` fails
+if any entry here is not on disk, and `tests/structure/layout.test.ts` fails if something lands
+outside it.
+
 ```
 app/
-  (marketing)/
+  (marketing)/               public pages
   (app)/
-    onboarding/              resume upload → parse → review → profile   (once)
-    analyze/                 Step 1 of 3: JD input → parsing → results  (per session)
-    analysis/[id]/
-      resumes/  prep/  learning/  roadmap/  rapid/{quiz,code}/  portfolio/  rounds/  preview/[templateId]/
-    history/   profile/
-  api/                       webhooks (Clerk, Razorpay) · cron/reminders (F29, Bearer CRON_SECRET)
+    onboarding/              resume upload → parse → review → profile (once)
+    analyze/                 JD input → parsing → results (per session)
+    analysis/
+      [id]/                  resumes · prep · learning · roadmap · rapid · portfolio · rounds · preview
+    history/
+    profile/
+    jobs/
+    admin/                   operator surfaces (F31)
+  actions/                   Server Actions
+  api/
+    webhooks/                Clerk, Razorpay
+    cron/                    reminders (F29, Bearer CRON_SECRET)
   offline/                   the service worker's offline page (public, static)
+components/
 lib/
-  domain/                    PURE. coverage · scoring · ats-rating · ordering · diff
-                             + the learning engine's pure half:
-                             resolve · severity · selection · plan · binding · guardrails
+  domain/                    PURE. coverage, scoring, ordering, the learning engine's pure half
   ai/
+    openai/                  models.ts · run.ts · usage.ts — the only home of @ai-sdk/openai
+    typesafe/                Jev checkers over fetch: fabrication · answer claims · injection (fail open)
+    system-prompts/          one file per SYSTEM prompt · shared.ts (LAW, STYLE) · versions.ts
+    prompts/                 one user-message builder per agent · assemble.ts
     schemas/                 Zod — the LLM contract lives HERE, not in prompts
-    prompts/                 versioned templates
     agents/                  one definition per task + runAgent, the only door to a writer
-                             (schema, prompt order, reasoning effort, budget, declared guards, checker)
-    checkers/                Jev over fetch: fabrication · answer claims · injection (fail open)
-    extract-profile.ts · transcribe.ts · analyze-jd.ts · tailor.ts · interview.ts   (thin wrappers)
-  catalog/
-    skills.ts · courses.ts · match.ts · taxonomy.ts · quality.ts
-  learning/                  SERVER. the engine's I/O half:
-    bundles.ts               precomputed retrieval — a PK lookup, never a search
-    build-plan.ts            the S3→S7 request path. ONE model call.
-    validate.ts              OUT-1: every resource id resolves to a live row
-  plans/catalog.ts           F31: the live plan catalog (`plan_configs` over `PLANS`) — every price read goes here
-  promo/server.ts            F32: price a code, list banners; the pure half is lib/domain/promo.ts
-  features.ts                F31: site-wide switches — requireFeaturePage (404) / requireFeature (action)
-  account/name.ts            F33: greeting name; fills a blank Clerk name from the profile
-  push/                      F29: send.ts (web-push, SERVER ONLY) · dispatch.ts (claims due reminders)
-                             · client.ts (browser subscribe/unsubscribe; no server imports)
-  drill/                     F26 rapid prep: bank.ts (curated DSA problems, checked by
-                             `pnpm check:drill`) · sandbox.ts (QuickJS — JS tests, no host access)
-  render/
-    ats-rules.ts · pdf/ · docx/ · zip.ts
+    services/                thin task wrappers the app calls: analyze-jd · tailor · interview · …
+  admin/                     operator reads and writes (members, plans, inbox)
+  services/                  SERVER. feature I/O
+    auth.ts                  session, plan settlement, cap walls
+    features.ts              F31 site-wide switches — requireFeaturePage (404) / requireFeature (action)
+    account/                 F33 greeting name
+    extract/                 résumé text extraction (specs F1)
+    jobs/                    F22 job search over documented APIs only
+    learning/                the learning engine's I/O half: bundles (PK lookup) · build-plan (ONE model call) · validate
+    mail/
+    payments/                Razorpay
+    pipeline/                the analysis run
+    plans/                   F31 live plan catalog — every price read goes here
+    promo/                   F32 price a code, list banners
+    push/                    F29 send (SERVER ONLY) · dispatch · outbox · client (browser, no server imports)
+    status/
+  shared/                    utils · email-hash · sample-jd — imported by client and server alike
+  catalog/                   skills · courses · taxonomy · liveness
+  drill/                     F26 curated DSA bank · QuickJS sandbox
+  render/                    ats-rules · pdf · docx · portfolio · zip
   supabase/
     client.ts                anon client bound to the Clerk session
     admin.ts                 service-role client — SERVER ONLY, never imported by a component
     storage.ts               bucket helpers + signed URLs
   db/
-    index.ts · policies.sql · queries/
-  generated/prisma/          Prisma client output — generated, gitignored, never hand-edited
-  seo/                       site facts, metadata, JSON-LD, Markdown mirrors, llms.txt (docs/seo-strategy.md)
-  content/guides.ts          public guides — every claim must match the rules the code enforces
-components/
+    index.ts
+    policies.sql
+    queries/
+  generated/                 Prisma client output — generated, gitignored, never hand-edited
+  seo/                       site facts, metadata, JSON-LD, Markdown mirrors, llms.txt
+  content/                   public copy and guides — every claim must match the rules the code enforces
+tests/                       Vitest, mirrors lib/ · tests/structure/ holds the repo-shape rules
+scripts/
+  db/                        policies, reminders schedule, constraint smoke test, admin grants
+  catalog/                   seed, bundles, link and corpus checks, drill bank
+  ops/                       icons, push keys, IndexNow, render samples, DOCX round-trip
+  evals/                     agent evals (pnpm eval)
+  tools/                     move-modules codemod + its maps
+docs/
+  product/                   PRD · specs · plan · planning · rules · agent
+  learning-engine/           the learning engine's spec, guardrails and prompts
+  superpowers/               design specs and implementation plans
 prisma/
-  schema.prisma              the truth · migrations/
+  schema.prisma              the truth
+  migrations/                generated; never edited after apply
+PENDING.md                   every pending item; struck through when done
 ```
 
-**Rule:** `lib/domain/` imports nothing from `db`, `ai`, `supabase`, or `next`. If it needs I/O it
-belongs a layer up.
+**Rule:** `lib/domain/` imports nothing from `db`, `ai`, `services`, `supabase`, or `next` — except
+types from `lib/ai/schemas`, which are pure Zod. If it needs I/O it belongs a layer up.
 
 **Rule:** `lib/supabase/admin.ts` is server-only. If it ever appears in a client bundle, that is a
 security incident, not a bug.
@@ -331,7 +358,7 @@ through the flow.
 
 ## 14. Working style
 
-- Read `specs.md` before implementing; read `plan.md` before choosing what to work on.
+- Read `docs/product/specs.md` before implementing; read `PENDING.md` (then `docs/product/plan.md`) before choosing what to work on.
 - Build the walking skeleton first (plan M1) and keep it alive. Never leave the repo broken across a task boundary.
 - Test first (§11), then verify at each seam by looking — render the PDF, open the page.
 - All pending work lives in `PENDING.md`. Add a line before the first failing test; strike it

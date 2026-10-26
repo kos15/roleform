@@ -2,7 +2,7 @@
 
 For any coding agent implementing `PRD.md` in the order `planning.md` sets, under `rules.md`.
 `CLAUDE.md` remains the contract for everything not covered here. The learning engine's own
-manual (`learning recommendation engine/agent.md`) is the model this one follows.
+manual (`docs/learning-engine/agent.md`) is the model this one follows.
 
 ---
 
@@ -157,7 +157,7 @@ Light by design (CLAUDE.md §11). Look at the output; run the one-shot checks at
 | Milestone | Run | Look |
 |---|---|---|
 | M8 | `check:constraints` (3 new cases) | Pay on preview, expire by hand, hit the wall; admin row reads "lapsed" |
-| M9 | `check:fabrication` (★), `check:coverage` (pre-strip fixtures), `tokens:calibrate` | Three real runs per prompt version; read the drafts |
+| M9 | `check:fabrication` (★), `tests/domain/coverage.test.ts` (pre-strip fixtures), `tokens:calibrate` | Three real runs per prompt version; read the drafts |
 | M10 | `check:constraints` (roadmap case) | Build, tick, reload, delete a question, see its item go |
 | M11 | `check:constraints` (jobs cases); R4 numbers in the PR | Search on Free (no network), on Pro (attribution shown), save, analyse, roadmap Apply bound |
 | M12 | — | RLS re-check with two users across the four new user tables |

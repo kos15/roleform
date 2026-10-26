@@ -20,7 +20,7 @@
  *      that could have been dropped", never "dropped one that mattered".
  *
  * PURE. No I/O, no model call — this is a string transform, checked by
- * `pnpm check:coverage`'s fixture set (never removes a line the fixtures
+ * `tests/domain/jd-segment.test.ts` (never removes a line the fixtures
  * mark as containing a requirement).
  */
 

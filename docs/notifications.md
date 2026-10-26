@@ -1,7 +1,7 @@
 # Notifications & the installable app — runbook (F29, F29.2)
 
 What it takes to run reminders in an environment, test them on real phones, and roll back.
-Behaviour is specified in `specs.md` §F29, §F29.1 and §F29.2; this is the runbook.
+Behaviour is specified in `docs/product/specs.md` §F29, §F29.1 and §F29.2; this is the runbook.
 
 ## 0. What to expect from Web Push (read first)
 

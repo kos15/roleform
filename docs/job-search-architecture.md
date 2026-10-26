@@ -5,7 +5,7 @@
 > `/scrape` → `/rank` → `/apply` → `/outcome` loop, built from portal CLIs, prompt files and
 > small Python state tools. This document lists everything it does to find jobs, decides
 > what Roleform takes from each item, and records how the rebuilt `/jobs` page does it.
-> The spec of record is `specs.md` §F22 and §F22.1.
+> The spec of record is `docs/product/specs.md` §F22 and §F22.1.
 
 ---
 
@@ -146,7 +146,7 @@ a plain request. Naukri, Indeed, Glassdoor, foundit and Instahyre answer 403, an
 would be bot evasion. To widen coverage without scraping, three documented ATS posting APIs were
 added instead: **Greenhouse, Lever and Ashby**. They have no keyword search, so a curated list of
 employer boards is read (cached 30 min, shared in flight) and filtered on our side by the triage's
-own title rule plus the member's city, country or remote preference. See `specs.md` §F22.2.
+own title rule plus the member's city, country or remote preference. See `docs/product/specs.md` §F22.2.
 
 ```
 planKeywords ─► greenhouse ─┐   boardsFor(ats) ─► cachedJson(board) ×N (30 min, shared)
