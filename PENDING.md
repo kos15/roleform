@@ -36,6 +36,19 @@ own files; what is still open is here.
 - [ ] Task 8: seed stagger + daily catalog refresh cron (`lib/catalog/refresh.ts`, `/api/cron/catalog`, 7-day TTL) — test-first in `tests/catalog/refresh.test.ts`
 - [ ] Task 9: docs — specs F8 lanes and refresh, CLAUDE.md N23 names `/api/cron/catalog`, `courses.ts` header
 
+### Layout review minors (final review of `chore/layout-tdd`, 2026-10-26)
+
+- [ ] Stale `lib/...` paths in `.env.example`, `prisma/schema.prisma` `///` comments and `types/word-extractor.d.ts`; widen the CLAUDE.md drift test to scan them
+- [ ] `lib/shared/email-hash.ts` is `server-only` but `shared/` is labelled client-safe — move it to `lib/services/` or relabel
+- [ ] Tighten the "agents hold no prompt text" test: context values must be `prompt.<name>` imported from `../prompts/`
+- [ ] Drift test: cover root files (`PENDING.md`, `middleware.ts`, `types/`); assert a tree child never sits under a file line
+- [ ] Codemod: map `.js` specifiers to `.ts`/`.tsx`, add a `require("…")` form
+- [ ] `scripts/server-only-stub.ts` header still says "used ONLY by scripts" — Vitest uses it too
+- [ ] `.gitignore` lists `.superpowers/` twice
+- [ ] CLAUDE.md §11: DOCX round-trip needs no DB/network/model — reword the rationale
+- [ ] `tests/domain/push.test.ts`, `tests/domain/quotas.test.ts` read cwd-relative paths — use `ROOT`
+- [ ] `lib/domain/guardrails.ts:5` says "the prompt in lib/ai/prompts" — means `lib/ai/system-prompts`
+
 ### Branch housekeeping
 
 - [ ] Merge `feat/learning-watch-read` and `chore/layout-tdd` to `main` (this layout branch is cut from the watch-read branch)
