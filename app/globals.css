@@ -714,6 +714,19 @@
   }
   a.journey-next:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
   .journey-next[data-last="true"] { background: var(--color-sage-200); }
+  @media (prefers-reduced-motion: reduce) {
+    .section-rail,
+    .journey-dot,
+    .journey-next { transition: none; }
+    a.journey-next:hover { transform: none; }
+  }
+  /* Three or four sections switched off (F31) must not leave an empty fifth
+     column, so the dock sizes to what it holds. */
+  .analysis-dock {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+  }
   .journey-next-icon {
     display: grid;
     flex: none;

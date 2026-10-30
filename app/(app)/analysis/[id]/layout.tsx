@@ -18,6 +18,8 @@ import { AnalysisJourney } from "./analysis-journey";
 import { sectionCountLabels } from "@/lib/domain/analysis-nav";
 import { featureStates } from "@/lib/services/features";
 import { PromoMarquee } from "@/components/promo-marquee";
+import { SheetAccount } from "@/components/sheet-account";
+import { Suspense } from "react";
 
 /**
  * F4 — results header, always adjacent to the three buckets (N4).
@@ -118,6 +120,11 @@ export default async function AnalysisLayout({
         labels={labels}
         hidden={hidden}
         elsewhere={elsewhere}
+        account={
+          <Suspense fallback={null}>
+            <SheetAccount />
+          </Suspense>
+        }
       />
     </div>
   );

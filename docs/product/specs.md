@@ -725,7 +725,7 @@ leave the path entirely.
 
 - **Phone dock (≤860px).** Inside a finished analysis the bottom bar *is* the analysis: four section
   slots plus More, the section you are on always in a slot (it takes the fourth when it is further
-  along). More lists every section with its count, then the way back out (New analysis, Jobs,
+  along). More carries the account row, then every section with its count, then the way back out (New analysis, Jobs,
   History, Profile, Plans). The global bar is hidden while the dock is on the page and returns the
   moment you leave.
 - **Desktop rail.** Once the tab cards scroll off the top, a rail of section chips slides in under the
@@ -734,9 +734,9 @@ leave the path entirely.
   link), and one card for the next section with its count and what it gets you; the last step offers
   a new analysis and History instead. Pitches carry no numbers (§5).
 
-**Acceptance:** from any scroll position in any section, every other section is one tap away.
 
-**Acceptance:** every **Strong match** tag traces to a specific bullet in one click.
+**Acceptance:** every **Strong match** tag traces to a specific bullet in one click; from any
+scroll position in any section, every other section is one tap away.
 
 ### F5 — Tab 1: Resumes ("N drafts, same evidence")
 

@@ -42,9 +42,12 @@ export function AnalysisDock({
   labels,
   hidden = [],
   elsewhere,
+  account,
 }: {
   analysisId: string;
   title: string;
+  /** The account row from the global sheet (name, analyses left), server-rendered. */
+  account?: React.ReactNode;
   /** Each section's count, already phrased (sectionCountLabels). */
   labels: Record<SectionSlug, string>;
   /** F31: section slugs switched off site-wide. */
@@ -64,6 +67,7 @@ export function AnalysisDock({
         hidden={hidden}
         current={current}
         elsewhere={elsewhere}
+        account={account}
         resetKey={pathname}
       />
     </>
@@ -97,11 +101,17 @@ export function SectionRail({
     measure();
     const resize = new ResizeObserver(measure);
     if (header) resize.observe(header);
-    const seen = new IntersectionObserver(([entry]) => {
-      // Only once the cards have gone off the TOP — not while they are still
-      // below the fold on the way down.
-      setShown(!entry.isIntersecting && entry.boundingClientRect.top < 0);
-    });
+    // The cards count as gone once they are behind the sticky header, not
+    // only once they leave the viewport, so there is no gap with neither.
+    const headerHeight = header ? Math.round(header.getBoundingClientRect().height) : 0;
+    const seen = new IntersectionObserver(
+      ([entry]) => {
+        // Only once the cards have gone off the TOP — not while they are still
+        // below the fold on the way down.
+        setShown(!entry.isIntersecting && entry.boundingClientRect.top < headerHeight);
+      },
+      { rootMargin: `-${headerHeight}px 0px 0px 0px` },
+    );
     seen.observe(cards);
     return () => {
       resize.disconnect();
@@ -158,6 +168,7 @@ export function PhoneDock({
   hidden,
   current,
   elsewhere,
+  account,
   resetKey,
 }: {
   analysisId: string;
@@ -166,6 +177,7 @@ export function PhoneDock({
   hidden: string[];
   current: SectionSlug | null;
   elsewhere: ElsewhereLink[];
+  account?: React.ReactNode;
   /** Changes on navigation — the sheet closes when it does. */
   resetKey?: string;
 }) {
@@ -232,6 +244,7 @@ export function PhoneDock({
             onClick={(event) => event.stopPropagation()}
           >
             <div className="sheet-grip" aria-hidden />
+            {account}
             <p className="eyebrow mb-1">This analysis</p>
             <p className="mb-3 truncate text-[17px] font-extrabold">{title}</p>
 
@@ -244,6 +257,9 @@ export function PhoneDock({
                     href={`/analysis/${analysisId}/${s.slug}`}
                     className="sheet-row"
                     aria-current={current === s.slug ? "page" : undefined}
+                    // The section you are already on doesn't change the path,
+                    // so the reset above never fires for it.
+                    onClick={() => setOpen(false)}
                   >
                     <Icon className="lucide h-5 w-5 flex-none" />
                     <span className="min-w-0 flex-1">
