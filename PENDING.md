@@ -68,6 +68,13 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] First production sync: `writeCourseSkills` only upserts — a course whose skill list shrank keeps its old course_skills link (pairs with the 'mark rows absent from COURSES quarantined' item; ~3 prod rows absent from COURSES stay active until the cron finds them)
 - [ ] N24 sentence reads awkwardly to keep the test phrase 'which every production build runs' — reword together with its test
 
+## Analysis journey dock (branch `feat/analysis-journey-dock`, 2026-10-30)
+
+- [ ] `lib/domain/analysis-nav.ts`: one ordered list of analysis sections, path → section, prev/next, phone dock split, count phrasing — and the tab cards, dock and "Up next" card all read it
+- [ ] Phone: inside a finished analysis the bottom bar carries that analysis's sections (current one always in a slot) + a More sheet with the rest and the way back out
+- [ ] Desktop: a sticky compact section rail once the tab cards scroll away
+- [ ] "Up next" step card at the foot of every section (Step n of m, back / next)
+
 ## Carried over
 
 Audited 2026-10-26 against `git log` and disk. Earlier plans' finished tasks are ticked in their

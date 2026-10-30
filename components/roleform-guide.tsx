@@ -72,9 +72,12 @@ function anchor(key: string | undefined): HTMLElement | null {
 
 /** Space the bottom tab bar takes on a phone, so the panda stands above it. */
 function dockOffset() {
-  const bar = document.querySelector<HTMLElement>(".tabbar");
-  if (!bar || getComputedStyle(bar).display === "none") return 0;
-  return bar.getBoundingClientRect().height;
+  // Inside an analysis there are two bars in the DOM — the global one, hidden,
+  // and the analysis dock — so the panda stands on whichever is showing.
+  const bar = [...document.querySelectorAll<HTMLElement>(".tabbar")].find(
+    (el) => getComputedStyle(el).display !== "none",
+  );
+  return bar ? bar.getBoundingClientRect().height : 0;
 }
 
 function readFlag(key: string) {

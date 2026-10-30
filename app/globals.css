@@ -568,6 +568,163 @@
     color: var(--color-text-muted);
   }
 
+  /* Tablet widths, where the analysis dock carries the sections: the cards
+     become a compact two-up grid rather than three rows of 142px slabs. Below
+     640px the phone strip further down takes over. */
+  @media (min-width: 641px) and (max-width: 860px) {
+    .tab-bar {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .tab-bar button {
+      min-height: 0;
+      flex-direction: row;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      border-radius: var(--radius-md);
+    }
+    .tab-bar .tab-dot { width: 32px; height: 32px; flex: none; }
+    .tab-bar .tab-label { font-size: 0.94rem; }
+    .tab-bar .tab-count { margin-top: 0; font-size: 0.8rem; }
+  }
+
+  /* ---------------------------------------------------------------------------
+     Analysis dock, section rail and "Up next" — the journey through one analysis
+     (app/(app)/analysis/[id]/analysis-dock.tsx, analysis-journey.tsx)
+
+     Inside a finished analysis the phone's bottom bar is the analysis's own
+     sections; the global bar steps aside while the dock is on the page. On a
+     wide screen a rail tucks under the sticky header once the tab cards have
+     scrolled away. Both read lib/domain/analysis-nav.ts.
+  --------------------------------------------------------------------------- */
+
+  @media (max-width: 860px) {
+    body:has(.analysis-dock) .tabbar:not(.analysis-dock) { display: none; }
+  }
+
+  .section-rail {
+    position: fixed;
+    left: 0;
+    right: 0;
+    z-index: 29;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-line);
+    transform: translateY(-110%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 260ms var(--ease-out-quint), opacity 200ms ease;
+  }
+  .section-rail[data-shown="true"] {
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .section-rail-inner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 10px clamp(1.1rem, 6vw, 6rem);
+  }
+  .section-rail-title {
+    display: inline-flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 22ch;
+    border: 0;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .section-rail-chips {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 6px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .section-chip {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    min-height: 38px;
+    padding: 0 14px;
+    border: 1.5px solid var(--color-line);
+    border-radius: var(--radius-pill);
+    color: var(--color-text);
+    font-size: 0.875rem;
+    font-weight: 700;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: background-color 180ms ease, border-color 180ms ease;
+  }
+  .section-chip:hover { border-color: var(--color-text); }
+  .section-chip-count { font-weight: 500; color: var(--color-text-muted); }
+  /* Seven chips and the title fit one row only on a wide screen; below that the
+     counts give way before the last chip scrolls out of sight. */
+  @media (max-width: 1440px) {
+    .section-chip-count { display: none; }
+  }
+  .section-chip[aria-current="page"] {
+    background: var(--color-text);
+    border-color: var(--color-text);
+    color: var(--color-accent-500);
+  }
+  .section-chip[aria-current="page"] .section-chip-count { color: var(--color-on-ink-muted); }
+
+  .sheet-row[aria-current="page"] { color: var(--color-accent-700); }
+
+  .journey-dots {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .journey-dot {
+    display: block;
+    width: 10px;
+    height: 10px;
+    border-radius: var(--radius-pill);
+    background: var(--color-line-strong);
+    transition: width 300ms var(--ease-out-quint), background-color 300ms ease;
+  }
+  .journey-dot[data-state="past"] { background: var(--color-text); }
+  .journey-dot[data-state="here"] { width: 28px; background: var(--color-accent-500); }
+
+  .journey-next {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: clamp(1rem, 3vw, 2rem);
+    padding: clamp(1.25rem, 3.5vw, 2.25rem);
+    border-radius: var(--radius-xl);
+    background: var(--color-accent-500);
+    color: var(--color-text);
+    transition: transform 180ms var(--ease-out-quint), box-shadow 180ms ease;
+  }
+  a.journey-next:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+  .journey-next[data-last="true"] { background: var(--color-sage-200); }
+  .journey-next-icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-pill);
+    background: var(--color-text);
+    color: var(--color-accent-500);
+  }
+
   /* ---------------------------------------------------------------------------
      Meter — "where you are" against "what the posting asks"
 

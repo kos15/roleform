@@ -13,6 +13,9 @@ import { backgroundRunning } from "@/lib/services/pipeline/background";
 import { BackgroundRefresh } from "@/components/background-pending";
 import { ResultsHeader } from "./results-header";
 import { AnalysisTabs } from "./analysis-tabs";
+import { AnalysisDock } from "./analysis-dock";
+import { AnalysisJourney } from "./analysis-journey";
+import { sectionCountLabels } from "@/lib/domain/analysis-nav";
 import { featureStates } from "@/lib/services/features";
 import { PromoMarquee } from "@/components/promo-marquee";
 
@@ -66,6 +69,16 @@ export default async function AnalysisLayout({
   // Prep and Learning still landing behind the résumés: one poller for the
   // whole analysis, and the tabs that wait on them say so.
   const generating = backgroundRunning(analysis);
+  const labels = sectionCountLabels(counts, generating);
+  // The phone dock's way back out to the product, in the order the global bar
+  // and header list it.
+  const elsewhere = [
+    { href: "/analyze", label: "New analysis" },
+    ...(features.jobs ? [{ href: "/jobs", label: "Jobs" }] : []),
+    { href: "/history", label: "History" },
+    { href: "/profile", label: "Profile" },
+    { href: "/pricing", label: "Plans" },
+  ];
 
   return (
     <div>
@@ -95,6 +108,17 @@ export default async function AnalysisLayout({
       {generating ? <BackgroundRefresh /> : null}
       <AnalysisTabs analysisId={id} counts={counts} hidden={hidden} generating={generating} />
       <div className="mt-[clamp(2.25rem,4vw,3.5rem)]">{children}</div>
+      {/* The path through the analysis: "Up next" at the foot of every section,
+          and the dock — the phone's bottom bar and the desktop rail — so a
+          section is never a long scroll away. */}
+      <AnalysisJourney analysisId={id} labels={labels} hidden={hidden} />
+      <AnalysisDock
+        analysisId={id}
+        title={analysis.title ?? "This role"}
+        labels={labels}
+        hidden={hidden}
+        elsewhere={elsewhere}
+      />
     </div>
   );
 }
