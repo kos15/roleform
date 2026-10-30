@@ -68,6 +68,18 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] First production sync: `writeCourseSkills` only upserts — a course whose skill list shrank keeps its old course_skills link (pairs with the 'mark rows absent from COURSES quarantined' item; ~3 prod rows absent from COURSES stay active until the cron finds them)
 - [ ] N24 sentence reads awkwardly to keep the test phrase 'which every production build runs' — reword together with its test
 
+## Analysis journey dock (branch `feat/analysis-journey-dock`, 2026-10-30)
+
+- [x] ~~`lib/domain/analysis-nav.ts`: one ordered list of analysis sections, path → section, prev/next, phone dock split, count phrasing — and the tab cards, dock and "Up next" card all read it~~ — 2026-10-30
+- [x] ~~Phone: inside a finished analysis the bottom bar carries that analysis's sections (current one always in a slot) + a More sheet with the rest and the way back out~~ — 2026-10-30
+- [x] ~~Desktop: a sticky compact section rail once the tab cards scroll away~~ — 2026-10-30
+- [x] ~~"Up next" step card at the foot of every section (Step n of m, back / next)~~ — 2026-10-30
+- [ ] Dock sheet lacks the Admin row and Status / How it works / Contact the global sheet carries — neji
+- [ ] Journey dots are 10px links — pad to a 24px hit area (WCAG 2.5.8) or make them non-interactive — neji
+- [ ] Sheets (dock and `MobileTabBar`) don't move/trap/restore focus despite `aria-modal` — share one fix — neji
+- [ ] Test the dock sheet's contents (Elsewhere, Jobs gating, More highlight) and `dockOffset`; split dock tests into `analysis-dock.test.tsx` — neji
+- [ ] Rapid prep's "3 drills" label is hard-coded and now shows on Up next — phrase from the drill bank or drop the number — neji
+
 ## Carried over
 
 Audited 2026-10-26 against `git log` and disk. Earlier plans' finished tasks are ticked in their
