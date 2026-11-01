@@ -132,4 +132,7 @@ own files; what is still open is here.
 
 ### Free-trial promo codes (2026-11-01)
 
-- [ ] F32.1 — promo `kind = trial`: N days of a paid plan, no payment, one trial per member ever; HALLOWEN03 = 3 days of Pro; trial / trial-ended nudge to keep the plan; admin promo form fully editable (create + edit every field; discount locked once used)
+- [x] ~~F32.1 — promo `kind = trial`: N days of a paid plan, no payment, one trial per member ever; HALLOWEN03 = 3 days of Pro; trial / trial-ended nudge to keep the plan; admin promo form fully editable (create + edit every field; discount locked once used)~~ — 2026-11-01
+- [ ] neji minor: `max_redemptions` is checked outside the trial transaction — two redeemers at 99/100 can both get in (same as paid codes); lock the promo row (`FOR UPDATE`) and re-count inside if it matters
+- [ ] neji minor: nothing in the DB links a `trial:` plan_purchases row to its `granted` redemption — held by `startTrial` only; consider a CHECK or FK
+- [ ] neji minor: `RenewalBanner` now runs `settlePlan` twice per page (once in `trialNudgeFor`) — pass the settled row through

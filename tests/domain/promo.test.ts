@@ -123,3 +123,21 @@ describe("the trial migration (F32.1)", () => {
     expect(mig).toMatch(/ON CONFLICT \("code"\) DO NOTHING/);
   });
 });
+
+import { offerChanged } from "@/lib/domain/promo";
+
+describe("offerChanged (the edit lock on a used code)", () => {
+  const cur = { code: "HALLOWEN03", kind: "trial" as const, percentOff: null, amountOffPaise: null, trialDays: 3, plans: ["pro"] };
+  it("is false when only wording, dates or limits change", () => {
+    expect(offerChanged(cur, { ...cur })).toBe(false);
+  });
+  it("catches the code, the kind, every amount and the plans", () => {
+    expect(offerChanged(cur, { ...cur, code: "HALLOWEN30" })).toBe(true);
+    expect(offerChanged(cur, { ...cur, trialDays: 30 })).toBe(true);
+    expect(offerChanged(cur, { ...cur, plans: ["ultra"] })).toBe(true);
+    expect(offerChanged(cur, { ...cur, kind: "percent", percentOff: 10, trialDays: null })).toBe(true);
+    const flat = { ...cur, kind: "flat" as const, amountOffPaise: 10_000, trialDays: null };
+    expect(offerChanged(flat, { ...flat, amountOffPaise: 20_000 })).toBe(true);
+    expect(offerChanged({ ...cur, plans: ["pro", "ultra"] }, { ...cur, plans: ["ultra", "pro"] })).toBe(false);
+  });
+});

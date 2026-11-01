@@ -16,7 +16,7 @@ import type { PlanId } from "@/lib/content/pricing";
  *
  * A free-trial code (F32.1) swaps the pay button for "Start free trial": no
  * checkout, the server raises the plan for the code's days. Signed out, it
- * sends the visitor to sign up and back here with the code still applied.
+ * sends the visitor to sign in (or up) and back here with the code still applied.
  */
 export function PlanCheckout({
   planId,
@@ -76,7 +76,7 @@ export function PlanCheckout({
       const result = await redeemTrial(value);
       if (!result.ok) {
         if (result.error.code === "unauthenticated") {
-          router.push(`/sign-up?redirect_url=${encodeURIComponent(`/pricing?promo=${value}`)}`);
+          router.push(`/sign-in?redirect_url=${encodeURIComponent(`/pricing?promo=${value}`)}`);
           return;
         }
         setError(result.error.message);

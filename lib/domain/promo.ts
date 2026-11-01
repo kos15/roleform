@@ -167,3 +167,25 @@ export function trialNudge(
   if (now.getTime() - latest.createdAt.getTime() > NUDGE_WINDOW_MS) return null;
   return { kind: "ended", planId: latest.plan };
 }
+
+/** The parts of a code that are its offer — locked once anyone has used it. */
+export interface PromoOffer {
+  code: string;
+  kind: "percent" | "flat" | "trial";
+  percentOff: number | null;
+  amountOffPaise: number | null;
+  trialDays: number | null;
+  plans: string[];
+}
+
+/** True when an edit would change what a used code is worth or who it is for. */
+export function offerChanged(current: PromoOffer, next: PromoOffer): boolean {
+  return (
+    current.code !== next.code ||
+    current.kind !== next.kind ||
+    current.percentOff !== next.percentOff ||
+    current.amountOffPaise !== next.amountOffPaise ||
+    current.trialDays !== next.trialDays ||
+    [...current.plans].sort().join() !== [...next.plans].sort().join()
+  );
+}

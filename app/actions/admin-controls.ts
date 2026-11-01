@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/app/actions/admin";
 import { FEATURES } from "@/lib/domain/features";
 import { clampCap, QUOTAS } from "@/lib/domain/quotas";
-import { PROMO_CODE_SHAPE, PromoFormSchema, normaliseCode, parseIstLocal } from "@/lib/domain/promo";
+import { PROMO_CODE_SHAPE, PromoFormSchema, normaliseCode, offerChanged, parseIstLocal } from "@/lib/domain/promo";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 import { capColumns, loadPlan } from "@/lib/services/plans/catalog";
 
@@ -312,25 +312,27 @@ export async function createPromo(input: PromoInput): Promise<Result<{ code: str
 export async function editPromo(input: PromoInput & { id: string }): Promise<Result<{ code: string }>> {
   const admin = await requireAdmin();
   if (!admin.ok) return admin;
-  if (!z.uuid().safeParse(input.id).success) return err(appError("invalid_input", "That isn't a code we hold."));
+  const id = z.object({ id: z.uuid() }).safeParse(input);
+  if (!id.success) return err(appError("invalid_input", "That isn't a code we hold."));
 
-  const current = await db.promoCode.findUnique({ where: { id: input.id } });
+  const current = await db.promoCode.findUnique({ where: { id: id.data.id } });
   if (!current) return err(appError("not_found", "That code is no longer here."));
 
   const cols = promoColumns(input);
   if (!cols.ok) return cols;
   const { code, data } = cols.value;
 
-  const used = await db.promoRedemption.count({ where: { promoId: input.id } });
-  if (used > 0) {
-    const same =
-      code === current.code &&
-      data.kind === current.kind &&
-      data.percentOff === current.percentOff &&
-      data.amountOffPaise === current.amountOffPaise &&
-      data.trialDays === current.trialDays &&
-      [...data.plans].sort().join() === [...current.plans].sort().join();
-    if (!same) {
+  // Count and write in one transaction, so a redemption landing between the
+  // lock check and the update cannot slip an offer change past it.
+  const LOCKED = "locked";
+  try {
+    await db.$transaction(async (tx) => {
+      const used = await tx.promoRedemption.count({ where: { promoId: id.data.id } });
+      if (used > 0 && offerChanged(current, { code, ...data })) throw new Error(LOCKED);
+      await tx.promoCode.update({ where: { id: id.data.id }, data: { code, ...data } });
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === LOCKED) {
       return err(
         appError(
           "invalid_input",
@@ -338,11 +340,6 @@ export async function editPromo(input: PromoInput & { id: string }): Promise<Res
         ),
       );
     }
-  }
-
-  try {
-    await db.promoCode.update({ where: { id: input.id }, data: { code, ...data } });
-  } catch {
     return err(appError("conflict", `“${code}” already exists. Pick another.`));
   }
 

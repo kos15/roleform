@@ -72,7 +72,7 @@ export const promoBanners = cache(async (): Promise<PromoBanner[]> => {
         label: row.label,
         text: row.bannerText ?? `${row.label}: ${off} with code ${row.code}`,
         endsOn: row.endsAt
-          ? row.endsAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+          ? row.endsAt.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" })
           : null,
       });
     }
@@ -191,8 +191,9 @@ export async function startTrial(
   const days = priced.value.trialDays ?? 0;
 
   await settlePlan(clerkUserId);
-  const user = await db.user.findUnique({ where: { clerkUserId }, select: { plan: true } });
-  if (!user) return err(appError("not_found", "Finish setting up your account first."));
+  const user = await db.user.findUnique({ where: { clerkUserId }, select: { plan: true, suspended: true } });
+  if (!user) return err(appError("not_found", "Your account is still being set up — try again in a moment."));
+  if (user.suspended) return err(appError("invalid_input", "This account is suspended, so it can't start a trial."));
   if (user.plan !== "free") {
     return err(appError("invalid_input", "You're already on a paid plan — trials are for members on Free."));
   }
@@ -201,6 +202,7 @@ export async function startTrial(
   const now = new Date();
   const expires = trialEndsAt(now, days);
   const reference = `trial:${randomUUID()}`;
+  const NOT_FREE = "not on free";
 
   try {
     await db.$transaction(async (tx) => {
@@ -222,10 +224,17 @@ export async function startTrial(
         where: { clerkUserId, plan: "free" },
         data: { plan: plan.id, planExpiresAt: expires, ...capColumns(plan.caps) },
       });
-      if (raised.count !== 1) throw new Error("not on free");
+      if (raised.count !== 1) throw new Error(NOT_FREE);
     });
-  } catch {
-    return err(appError("conflict", "You've already had a free trial."));
+  } catch (e) {
+    if (e instanceof Error && e.message === NOT_FREE) {
+      return err(appError("conflict", "Your plan just changed — you're no longer on Free, so there's no trial to start."));
+    }
+    // P2002: the one-trial-per-member index (or the per-code one) refused it.
+    if ((e as { code?: string } | null)?.code === "P2002") {
+      return err(appError("conflict", "You've already had a free trial."));
+    }
+    return err(appError("upstream_failed", "We couldn't start the trial just now. Nothing changed — try again."));
   }
 
   return ok({
