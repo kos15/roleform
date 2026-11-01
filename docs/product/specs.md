@@ -2293,7 +2293,7 @@ methods, email verification, last sign-in/active, banned/locked) and our counts 
 `promo_codes`: code (A–Z 0–9 and dashes, 3–24, unique), label, `kind` percent (1–90) **or** flat
 (≥ ₹1) — CHECKed XOR — the paid plans it applies to (never Free, never empty), start, optional end,
 optional max captured redemptions, `active`, `show_banner`, optional banner text. A code's discount is
-fixed once created; pause and create another instead. Codes apply to plans, never to top-ups.
+locked once anyone has used it (F32.1 makes everything else editable). Codes apply to plans, never to top-ups.
 
 **Pricing is decided once, on the server.** `lib/domain/promo.ts#discountedPaise` (pure) clamps to
 [₹1, list]. Checkout (`startPlanCheckout(planId, code)`) prices the code, creates the Razorpay order
@@ -2314,6 +2314,33 @@ Seamless CSS marquee, a brief colour flash on arrival, pauses on hover/focus, st
 `prefers-reduced-motion`, dismissible for the browser session. It links to `/pricing?promo=CODE`.
 Codes not on the banner are never sent to a browser. Admin → Promo codes shows used/limit, open
 checkouts and revenue taken per code.
+
+### F32.1 — Free-trial codes (Nov 2026)
+
+A third promo `kind`: **`trial`**, carrying `trial_days` (1–30) and exactly one paid plan — CHECKed
+alongside percent/flat in `promo_codes_discount`. It is not a price: there is no checkout. On /pricing
+a trial code turns the card's pay button into **Start N-day free trial** (`redeemTrial` →
+`startTrial`); signed out, it sends the visitor to sign up and back with the code applied. The server
+checks the code is live, the member is on **Free** (settled first) and has never had a trial, then in
+one transaction writes a `granted` `promo_redemptions` row (order id `trial:<uuid>`, amount 0, no
+payment), a `plan_purchases` row with the same `trial:` reference, and raises the plan for the
+trial's days (N21 (c)). A partial UNIQUE index (`promo_redemptions_one_trial_per_member`) allows one
+`granted` row per member across every code, ever. Trials count toward `max_redemptions`. A trial
+code at `startPlanCheckout` is refused. Lapse is settled on read like any plan.
+
+**After the trial.** `trialNudge` (pure) reads the member's latest `plan_purchases` row: if it is a
+`trial:` row, the app header shows "your free Pro trial has N days left — keep it for ₹X" while it
+runs, and once it lapses "your trial has ended … pick up where you left off for ₹X" for up to 30 days
+from the trial's start. Both carry the ordinary checkout button and are dismissible per browser.
+Nothing is ever charged automatically. Buying during a trial adds 30 days on top of what is left.
+
+**Admin → Promo codes is fully editable.** One form creates and edits: code (typed or generated),
+offer name, % off / ₹ off / free-trial days, plans (one for a trial), start and end (India time),
+max uses, banner on/off and banner text. Once a code has any redemption, its code, offer and plans
+lock (server-enforced in `editPromo`); wording, dates, limit and banner stay editable.
+
+**HALLOWEN03** — 3 days of Pro, live from deploy, no end, on the banner — is inserted by migration
+`20261101000100_trial_promos` (`ON CONFLICT DO NOTHING`), so production gets it on the next build.
 
 ### F33 — Names and the session
 

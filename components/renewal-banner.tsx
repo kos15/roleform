@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { loadPlan } from "@/lib/services/plans/catalog";
 import { settlePlan } from "@/lib/db/queries/plan";
 import { RenewalNotice } from "@/components/renewal-notice";
+import { TrialNotice } from "@/components/trial-notice";
+import { trialNudgeFor } from "@/lib/services/promo/server";
 
 /**
  * Decides whether the one-time renewal warning is warranted; the client half
@@ -19,6 +21,22 @@ import { RenewalNotice } from "@/components/renewal-notice";
 export async function RenewalBanner() {
   const { userId } = await auth();
   if (!userId) return null;
+
+  // F32.1: a member whose latest plan came from a free trial gets the trial
+  // note instead — "N days left" while it runs, "keep it" once it lapsed.
+  const nudge = await trialNudgeFor(userId);
+  if (nudge) {
+    const plan = await loadPlan(nudge.planId);
+    return (
+      <TrialNotice
+        kind={nudge.kind}
+        planId={nudge.planId}
+        planName={plan.name}
+        price={plan.price}
+        daysLeft={nudge.kind === "on-trial" ? nudge.daysLeft : undefined}
+      />
+    );
+  }
 
   // Settled first: a plan that already lapsed is Free, and Free has nothing
   // to renew — this banner is not the token wall's fallback message.
