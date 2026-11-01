@@ -129,3 +129,10 @@ own files; what is still open is here.
 - [ ] After this branch deploys: `APP_URL=https://roleform.koustubh.org pnpm db:schedule` — installs `roleform-catalog-refresh` (daily 03:17 UTC); without it the catalog re-check never runs (neji, final review)
 - [x] ~~Merge `feat/learning-watch-read` and `chore/layout-tdd` to `main` (this layout branch is cut from the watch-read branch)~~ — 2026-10-26
 - [ ] Local Node is v20.17.0; `package.json` engines asks for >=20.19.0 — upgrade
+
+### Free-trial promo codes (2026-11-01)
+
+- [x] ~~F32.1 — promo `kind = trial`: N days of a paid plan, no payment, one trial per member ever; HALLOWEN03 = 3 days of Pro; trial / trial-ended nudge to keep the plan; admin promo form fully editable (create + edit every field; discount locked once used)~~ — 2026-11-01
+- [ ] neji minor: `max_redemptions` is checked outside the trial transaction — two redeemers at 99/100 can both get in (same as paid codes); lock the promo row (`FOR UPDATE`) and re-count inside if it matters
+- [ ] neji minor: nothing in the DB links a `trial:` plan_purchases row to its `granted` redemption — held by `startTrial` only; consider a CHECK or FK
+- [ ] neji minor: `RenewalBanner` now runs `settlePlan` twice per page (once in `trialNudgeFor`) — pass the settled row through

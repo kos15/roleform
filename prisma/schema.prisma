@@ -547,11 +547,13 @@ model PlanConfig {
   @@map("plan_configs")
 }
 
-/// Promo codes (F32). Percent OR flat — CHECKed so a row cannot carry both or
-/// neither. Applies to plan purchases only, never to top-ups.
+/// Promo codes (F32). Percent OR flat OR trial — CHECKed so a row carries
+/// exactly one. Percent/flat discount a plan checkout, never a top-up. A trial
+/// (F32.1) grants `trialDays` of its single plan with no payment (N21 (c)).
 enum PromoKind {
   percent
   flat
+  trial
 
   @@map("promo_kind")
 }
@@ -565,7 +567,9 @@ model PromoCode {
   kind           PromoKind
   percentOff     Int?       @map("percent_off")
   amountOffPaise Int?       @map("amount_off_paise")
-  /// Which plans the code discounts. Never empty (CHECK).
+  /// Trial codes only (F32.1): days of the plan granted, 1–30 (CHECK).
+  trialDays      Int?       @map("trial_days")
+  /// Which plans the code discounts. Never empty (CHECK). A trial names exactly one.
   plans          PlanTier[]
   startsAt       DateTime   @default(now()) @map("starts_at") @db.Timestamptz
   endsAt         DateTime?  @map("ends_at") @db.Timestamptz
@@ -586,6 +590,9 @@ model PromoCode {
 enum PromoRedemptionStatus {
   pending
   captured
+  /// A free trial started (F32.1): no order, no payment, amount 0. A partial
+  /// UNIQUE index allows one per member across every code, ever.
+  granted
 
   @@map("promo_redemption_status")
 }

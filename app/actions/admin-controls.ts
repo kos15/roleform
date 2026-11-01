@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/app/actions/admin";
 import { FEATURES } from "@/lib/domain/features";
 import { clampCap, QUOTAS } from "@/lib/domain/quotas";
-import { PROMO_CODE_SHAPE, normaliseCode } from "@/lib/domain/promo";
+import { PROMO_CODE_SHAPE, PromoFormSchema, normaliseCode, offerChanged, parseIstLocal } from "@/lib/domain/promo";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 import { capColumns, loadPlan } from "@/lib/services/plans/catalog";
 
@@ -224,40 +224,35 @@ export async function assignMemberPlan(input: z.infer<typeof AssignSchema>): Pro
 
 /* ---------------------------------------------------------------- promo codes */
 
-const PromoSchema = z
-  .object({
-    code: z.string().max(40),
-    label: z.string().trim().min(1).max(60),
-    kind: z.enum(["percent", "flat"]),
-    percentOff: z.number().int().min(1).max(90).optional(),
-    amountOffPaise: z.number().int().min(100).max(10_000_000).optional(),
-    plans: z.array(z.enum(["pro", "ultra"])).min(1),
-    startsAt: z.string().optional(),
-    endsAt: z.string().optional(),
-    maxRedemptions: z.number().int().min(1).max(1_000_000).optional(),
-    showBanner: z.boolean(),
-    bannerText: z.string().trim().max(160).optional(),
-  })
-  .refine((v) => (v.kind === "percent" ? v.percentOff !== undefined : v.amountOffPaise !== undefined), {
-    message: "discount",
-  });
+export type PromoInput = z.infer<typeof PromoFormSchema>;
 
-export type PromoInput = z.infer<typeof PromoSchema>;
+type PromoColumns = {
+  label: string;
+  kind: "percent" | "flat" | "trial";
+  percentOff: number | null;
+  amountOffPaise: number | null;
+  trialDays: number | null;
+  plans: ("pro" | "ultra")[];
+  startsAt: Date;
+  endsAt: Date | null;
+  maxRedemptions: number | null;
+  showBanner: boolean;
+  bannerText: string | null;
+};
 
-function parseLocal(value: string | undefined): Date | null | "bad" {
-  if (!value) return null;
-  // `datetime-local` gives "YYYY-MM-DDTHH:mm" with no zone; admins are in India.
-  const d = new Date(`${value}${value.length === 16 ? ":00" : ""}+05:30`);
-  return Number.isNaN(d.getTime()) ? "bad" : d;
-}
-
-export async function createPromo(input: PromoInput): Promise<Result<{ code: string }>> {
-  const admin = await requireAdmin();
-  if (!admin.ok) return admin;
-
-  const parsed = PromoSchema.safeParse(input);
+/** Validate the admin form into columns, or say what didn't fit. Shared by create and edit. */
+function promoColumns(input: PromoInput): Result<{ code: string; data: PromoColumns }> {
+  const parsed = PromoFormSchema.safeParse(input);
   if (!parsed.success) {
-    return err(appError("invalid_input", "Check the discount, the plans and the label — something didn't fit."));
+    const issue = parsed.error.issues[0]?.message;
+    return err(
+      appError(
+        "invalid_input",
+        issue === "plans"
+          ? "A free trial gives exactly one plan — tick just one."
+          : "Check the discount, the plans and the label — something didn't fit.",
+      ),
+    );
   }
   const p = parsed.data;
   const code = normaliseCode(p.code);
@@ -265,31 +260,87 @@ export async function createPromo(input: PromoInput): Promise<Result<{ code: str
     return err(appError("invalid_input", "Codes are 3–24 characters: letters, digits and dashes."));
   }
 
-  const startsAt = parseLocal(p.startsAt);
-  const endsAt = parseLocal(p.endsAt);
+  const startsAt = parseIstLocal(p.startsAt);
+  const endsAt = parseIstLocal(p.endsAt);
   if (startsAt === "bad" || endsAt === "bad") return err(appError("invalid_input", "One of the dates didn't parse."));
   const start = startsAt ?? new Date();
   if (endsAt && endsAt <= start) return err(appError("invalid_input", "The offer has to end after it starts."));
 
+  return ok({
+    code,
+    data: {
+      label: p.label,
+      kind: p.kind,
+      percentOff: p.kind === "percent" ? p.percentOff! : null,
+      amountOffPaise: p.kind === "flat" ? p.amountOffPaise! : null,
+      trialDays: p.kind === "trial" ? p.trialDays! : null,
+      plans: p.plans,
+      startsAt: start,
+      endsAt,
+      maxRedemptions: p.maxRedemptions ?? null,
+      showBanner: p.showBanner,
+      bannerText: p.bannerText ? p.bannerText : null,
+    },
+  });
+}
+
+export async function createPromo(input: PromoInput): Promise<Result<{ code: string }>> {
+  const admin = await requireAdmin();
+  if (!admin.ok) return admin;
+
+  const cols = promoColumns(input);
+  if (!cols.ok) return cols;
+  const { code, data } = cols.value;
+
   try {
-    await db.promoCode.create({
-      data: {
-        code,
-        label: p.label,
-        kind: p.kind,
-        percentOff: p.kind === "percent" ? p.percentOff! : null,
-        amountOffPaise: p.kind === "flat" ? p.amountOffPaise! : null,
-        plans: p.plans,
-        startsAt: start,
-        endsAt,
-        maxRedemptions: p.maxRedemptions ?? null,
-        showBanner: p.showBanner,
-        bannerText: p.bannerText ? p.bannerText : null,
-        createdBy: admin.value,
-      },
-    });
+    await db.promoCode.create({ data: { code, ...data, createdBy: admin.value } });
   } catch {
     return err(appError("conflict", `“${code}” already exists. Pick another or generate one.`));
+  }
+
+  revalidatePricing();
+  return ok({ code });
+}
+
+/**
+ * Edit a code (F32.1) — every field. What a code is worth (kind, amount,
+ * trial length, plans) and the code itself are locked once anyone has used or
+ * opened a checkout with it: those rows record what was charged and why, and
+ * changing the offer under people who were told it would be a bait and switch.
+ * Wording, dates, limit and the banner stay editable for the code's whole life.
+ */
+export async function editPromo(input: PromoInput & { id: string }): Promise<Result<{ code: string }>> {
+  const admin = await requireAdmin();
+  if (!admin.ok) return admin;
+  const id = z.object({ id: z.uuid() }).safeParse(input);
+  if (!id.success) return err(appError("invalid_input", "That isn't a code we hold."));
+
+  const current = await db.promoCode.findUnique({ where: { id: id.data.id } });
+  if (!current) return err(appError("not_found", "That code is no longer here."));
+
+  const cols = promoColumns(input);
+  if (!cols.ok) return cols;
+  const { code, data } = cols.value;
+
+  // Count and write in one transaction, so a redemption landing between the
+  // lock check and the update cannot slip an offer change past it.
+  const LOCKED = "locked";
+  try {
+    await db.$transaction(async (tx) => {
+      const used = await tx.promoRedemption.count({ where: { promoId: id.data.id } });
+      if (used > 0 && offerChanged(current, { code, ...data })) throw new Error(LOCKED);
+      await tx.promoCode.update({ where: { id: id.data.id }, data: { code, ...data } });
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === LOCKED) {
+      return err(
+        appError(
+          "invalid_input",
+          "People have already used this code, so its code, offer and plans are locked. Edit the wording, dates or limit — or pause it and make another.",
+        ),
+      );
+    }
+    return err(appError("conflict", `“${code}” already exists. Pick another.`));
   }
 
   revalidatePricing();

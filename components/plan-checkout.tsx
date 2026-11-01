@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { previewPromo } from "@/app/actions/checkout";
+import { useRouter } from "next/navigation";
+import { previewPromo, redeemTrial } from "@/app/actions/checkout";
+import { Button } from "@/components/ui";
 import { CheckoutButton } from "@/components/checkout-button";
 import type { PlanId } from "@/lib/content/pricing";
 
@@ -11,6 +13,10 @@ import type { PlanId } from "@/lib/content/pricing";
  * The preview is a server call: the browser never computes a discount, it
  * only shows the one the server priced. Checkout prices it again from the
  * code, so a tampered preview changes nothing that is charged.
+ *
+ * A free-trial code (F32.1) swaps the pay button for "Start free trial": no
+ * checkout, the server raises the plan for the code's days. Signed out, it
+ * sends the visitor to sign in (or up) and back here with the code still applied.
  */
 export function PlanCheckout({
   planId,
@@ -30,9 +36,15 @@ export function PlanCheckout({
 }) {
   const [open, setOpen] = useState(Boolean(initialCode));
   const [code, setCode] = useState(initialCode ?? "");
-  const [applied, setApplied] = useState<{ code: string; price: string; discount: string; label: string } | null>(
-    null,
-  );
+  const router = useRouter();
+  const [applied, setApplied] = useState<{
+    code: string;
+    price: string;
+    discount: string;
+    label: string;
+    trialDays: number | null;
+  } | null>(null);
+  const [started, setStarted] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const autoTried = useRef(false);
@@ -53,7 +65,25 @@ export function PlanCheckout({
         price: result.value.price,
         discount: result.value.discount,
         label: result.value.label,
+        trialDays: result.value.trialDays,
       });
+    });
+  }
+
+  function startTrial(value: string) {
+    setError(null);
+    startTransition(async () => {
+      const result = await redeemTrial(value);
+      if (!result.ok) {
+        if (result.error.code === "unauthenticated") {
+          router.push(`/sign-in?redirect_url=${encodeURIComponent(`/pricing?promo=${value}`)}`);
+          return;
+        }
+        setError(result.error.message);
+        return;
+      }
+      setStarted(`${result.value.planName} is yours until ${result.value.endsOn}.`);
+      router.refresh();
     });
   }
 
@@ -71,7 +101,7 @@ export function PlanCheckout({
         <div className="rounded-[var(--radius-sm)] bg-[var(--color-bg-raised)] px-3.5 py-2.5 text-sm">
           <div className="flex flex-wrap items-baseline gap-2">
             <span className="font-extrabold">{applied.price}</span>
-            <s className="text-[var(--color-text-muted)]">{listPrice}</s>
+            {applied.trialDays === null ? <s className="text-[var(--color-text-muted)]">{listPrice}</s> : null}
             <span className="text-xs font-semibold">
               {applied.label} · {applied.discount}
             </span>
@@ -118,6 +148,28 @@ export function PlanCheckout({
         </p>
       ) : null}
 
+      {applied?.trialDays ? (
+        started ? (
+          <p role="status" className="rounded-[var(--radius-sm)] bg-[var(--color-bg-raised)] px-3.5 py-2.5 text-sm font-semibold">
+            {started} No card taken — when it ends you drop back to Free unless you choose to buy.
+          </p>
+        ) : (
+          <>
+            <Button
+              variant={variant}
+              className="min-h-[50px] w-full"
+              busy={pending}
+              disabled={pending}
+              onClick={() => startTrial(applied.code)}
+            >
+              Start {applied.trialDays}-day free trial
+            </Button>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              No card needed. Afterwards {planName} is {listPrice} a month if you want to keep it.
+            </p>
+          </>
+        )
+      ) : (
       <CheckoutButton
         purchase={{ kind: "plan", id: planId }}
         promoCode={applied?.code}
@@ -126,6 +178,7 @@ export function PlanCheckout({
         variant={variant}
         className="min-h-[50px] w-full"
       />
+      )}
     </div>
   );
 }

@@ -6,7 +6,8 @@ import { z } from "zod";
 import { createOrder, verifyPaymentSignature, type RazorpayOrder } from "@/lib/services/payments/razorpay";
 import { topupById, canBuyTopup, type PlanId } from "@/lib/content/pricing";
 import { loadPlan } from "@/lib/services/plans/catalog";
-import { pricePromo, type PricedPromo } from "@/lib/services/promo/server";
+import { pricePromo, startTrial, type PricedPromo } from "@/lib/services/promo/server";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
 
@@ -50,6 +51,9 @@ export async function startPlanCheckout(
   if (promoCode && promoCode.trim()) {
     const priced = await pricePromo(promoCode, plan.id, user.value);
     if (!priced.ok) return priced;
+    if (priced.value.trialDays !== null) {
+      return err(appError("invalid_input", "That code starts a free trial — there's nothing to pay for."));
+    }
     promo = priced.value;
   }
 
@@ -95,6 +99,24 @@ export async function previewPromo(
   const { promoId: _omit, ...rest } = priced.value;
   void _omit;
   return ok(rest);
+}
+
+/**
+ * "Start free trial" on /pricing (F32.1). No checkout: the server checks the
+ * code, that the member is on Free and has never trialled, then raises the
+ * plan for the code's days (N21 (c)). Nothing the browser sends but the code.
+ */
+export async function redeemTrial(
+  promoCode: string,
+): Promise<Result<{ planName: string; endsOn: string }>> {
+  const user = await requireUser();
+  if (!user.ok) return user;
+  if (typeof promoCode !== "string" || promoCode.length > 40) {
+    return err(appError("invalid_input", "That isn't a code we recognise."));
+  }
+  const started = await startTrial(promoCode, user.value);
+  if (started.ok) revalidatePath("/", "layout");
+  return started;
 }
 
 /**
