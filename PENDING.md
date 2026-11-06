@@ -132,6 +132,14 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] Profile editor: Remove bullet / Move up-down leave `x_roleform.bulletIds` keyed by the old path, so the next save rewrites a cited bullet's text in place (`saveProfileEdit` matches by path) — re-key the way `applyProposals` does
 - [ ] Profile editor never learns ids `saveProfileEdit` mints for new paths (`updateProfile` returns only `profileId`), so every autosave mints a fresh row for a new bullet and retires the previous one — return `bulletIds` and merge
 - [ ] Eval set for `enhance_profile` (`scripts/evals`): adversarial bullets that tempt a metric/tool/seniority; measure the dropped rate
+- [ ] addsClaim never checks a new tool that is the first word of a sentence ("Kubernetes deployments…") — neji, F34 review 1–4
+- [ ] CLAIM_WORDS lacks managing/oversaw/ownership/management/overseeing/supervised — neji, F34 review 1–4
+- [ ] multiplier claims (doubling, tripled, halved) not caught — neji, F34 review 1–4
+- [ ] only "-" splits compounds; "/", "–", "—" hide claim words ("engineer/manager", "two/three") — split on /[-/–—]/ — neji, F34 review 1–4
+- [ ] "e.g." / "i.e." / "U.S." end a sentence so the next word escapes the capitalised check — neji, F34 review 1–4
+- [ ] numbersPreserved uses includes: swapping two bare numbers or losing one of two repeats passes — neji, F34 review 1–4
+- [ ] "C#" never detected by technicalTokens (pre-existing, affects tailoring) — neji, F34 review 1–4
+- [ ] schema for empty fields emits `items: { not: {} }` (OpenAI strict may reject) — Task 8 must short-circuit with no model call when enhanceableFields is empty — neji, F34 review 1–4
 - [ ] `tokensUsedThisCycle` (lib/db/queries/tokens.ts) has no callers — delete or wire
 
 ## Carried over
