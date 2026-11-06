@@ -80,6 +80,46 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] Test the dock sheet's contents (Elsewhere, Jobs gating, More highlight) and `dockOffset`; split dock tests into `analysis-dock.test.tsx` — neji
 - [ ] Rapid prep's "3 drills" label is hard-coded and now shows on Up next — phrase from the drill bank or drop the number — neji
 
+## Heat-map layout, Part A — `docs/superpowers/plans/2026-11-06-heat-map-layout.md`
+
+- [ ] Task 1: `components/with-rail.tsx` — main column + side rail (right from `lg`, below on phones, an empty rail takes no room)
+- [ ] Task 2: `PageIntro` — `actions` slot and `compact` app title (`APP_TITLE`); marketing markup byte-identical
+- [ ] Task 3: results header — one compact band; the ring card carries all three bucket counts (N4); requirement tags in one closed disclosure; decorative card removed; specs F4
+- [ ] Task 4: analysis layout — tabs right under the header, no divider, promo strip under the section; specs F32
+- [ ] Task 5: tab cards — compact rows from 641px up (one row at 1280)
+- [ ] Task 6: Résumés tab — shelf first; skill offer, then portfolio promo, below it
+- [ ] Task 7: profile editor — Identity collapsed to one line, Experience before Skills, usage meter in the aside; specs F11
+- [ ] Task 8: profile page — header actions slot (Replace résumé; Part B's Enhance lands here), one Account block at the foot; specs F11
+- [ ] Task 9: /analyze — posting box first, parked runs in the aside, smaller hero
+- [ ] Task 10: /jobs — saved jobs in a side rail, shorter standfirst
+- [ ] Task 11: /history — upcoming rounds in a side rail, smaller title; specs F29.1
+- [ ] Task 12: portfolio studio — tighter intro
+- [ ] Task 13: look at every surface at 1280×800 and 390×844 on the branch's preview deploy
+- [ ] History's Match column shows the coverage number with no buckets beside it (N4) — decide: drop the column, or show the three counts — shikamaru, heat-map audit
+- [ ] Portfolio promo copy says "Fourteen looks"; `PORTFOLIO_LOOKS` has 18 — phrase from the list or drop the number — shikamaru, heat-map audit
+- [ ] `AnalysisSkeleton` (components/skeletons.tsx) is unused (analysis/[id]/loading.tsx returns null) and still draws the old header — delete or wire — shikamaru, heat-map audit
+- [ ] Portfolio and preview routes sit under the full results header — consider a slim header off the section path — shikamaru, heat-map audit
+
+## Profile enhance (F34) — `docs/superpowers/plans/2026-11-06-profile-enhance.md`
+
+- [ ] Task 1: pure allowance — `lib/domain/enhance.ts` constants, `enhanceAllowance`, `enhanceView`
+- [ ] Task 2: fields, `numbersPreserved`, `filterProposals`, duplicate-skill proposals; `lib/ai/schemas/profile-enhance.ts`
+- [ ] Task 3: `profileQuestions`, `applyProposals` (re-keys bullet ids on remove), `preselected`
+- [ ] Task 4: `UNMETERED_PURPOSES` — meter, carry rule and admin per-member usage exclude `enhance_profile`
+- [ ] Task 5: ProfileEnhancer agent — system prompt, builder, roster, service
+- [ ] Task 6: `readEnhanceAllowance` / `checkEnhanceAllowance`, `LIMITS.enhance`
+- [ ] Task 7: `profile_enhance` feature switch (migration + Prisma enum + FEATURES)
+- [ ] Task 8: `enhanceProfile()` action in `app/actions/profile.ts`
+- [ ] Task 9: review sheet (`app/(app)/profile/enhance-sheet.tsx`)
+- [ ] Task 10: wire the sheet into ProfileEditor (autosave hold, Undo) and mount the button on /profile
+- [ ] Task 11: docs — F34 spec, §10 agent row, §14, F19 note, N22 amendment (CLAUDE.md + rules.md), §13 vocabulary, quotas tokens description
+- [ ] `extract_profile` runs draw on the fair-use meter but `fairUseCeiling` budgets nothing for them — candidate for `UNMETERED_PURPOSES` (needs hokage: cost model)
+- [ ] Enhance worst case (45 s timeout × 2 attempts) exceeds /profile `maxDuration = 60` — decided 2026-11-06: `maxDuration = 120` on /profile (Task 10); measure p95 from `ai_runs.latency_ms`
+- [ ] Profile editor: Remove bullet / Move up-down leave `x_roleform.bulletIds` keyed by the old path, so the next save rewrites a cited bullet's text in place (`saveProfileEdit` matches by path) — re-key the way `applyProposals` does
+- [ ] Profile editor never learns ids `saveProfileEdit` mints for new paths (`updateProfile` returns only `profileId`), so every autosave mints a fresh row for a new bullet and retires the previous one — return `bulletIds` and merge
+- [ ] Eval set for `enhance_profile` (`scripts/evals`): adversarial bullets that tempt a metric/tool/seniority; measure the dropped rate
+- [ ] `tokensUsedThisCycle` (lib/db/queries/tokens.ts) has no callers — delete or wire
+
 ## Carried over
 
 Audited 2026-10-26 against `git log` and disk. Earlier plans' finished tasks are ticked in their
