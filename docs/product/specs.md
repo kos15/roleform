@@ -704,8 +704,7 @@ retired with the stage list, Oct 2026.)
 
 ### F4 — Coverage + score header
 
-`Analysis complete · {jdSource}` with extracted JdMeta, the score ring, verdict, note, and three
-bucket cards with counts and tags.
+`Analysis complete · {jdSource}` with extracted JdMeta, then one compact band: title, meta, verdict, note and the coverage note on the left; on the right the score ring in one card with the three buckets — Strong match, Partial evidence, Not evidenced — and their counts (N4). Every requirement tag sits in one disclosure under the band, *Every requirement, sorted by evidence*, closed by default.
 
 Below it, the three surfaces as an underline tab bar carrying a count each — `Résumés 11`,
 `Interview prep 12`, `Learning 4 gaps`. The Résumés tab also reads selected on
@@ -735,7 +734,7 @@ leave the path entirely.
   a new analysis and History instead. Pitches carry no numbers (§5).
 
 
-**Acceptance:** every **Strong match** tag traces to a specific bullet in one click; from any
+**Acceptance:** every **Strong match** tag traces to a specific bullet in one click once the requirement list is open; from any
 scroll position in any section, every other section is one tap away.
 
 ### F5 — Tab 1: Resumes ("N drafts, same evidence")
