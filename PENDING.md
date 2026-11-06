@@ -123,7 +123,7 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 5: ProfileEnhancer agent — system prompt, builder, roster, service~~ — 2026-11-06
 - [x] ~~Task 6: `readEnhanceAllowance` / `checkEnhanceAllowance`, `LIMITS.enhance`~~ — 2026-11-06
 - [x] ~~Task 7: `profile_enhance` feature switch (migration + Prisma enum + FEATURES)~~ — 2026-11-06
-- [ ] Task 8: `enhanceProfile()` action in `app/actions/profile.ts`
+- [x] ~~Task 8: `enhanceProfile()` action in `app/actions/profile.ts`~~ — 2026-11-06
 - [ ] Task 9: review sheet (`app/(app)/profile/enhance-sheet.tsx`)
 - [ ] Task 10: wire the sheet into ProfileEditor (autosave hold, Undo) and mount the button on /profile
 - [ ] Task 11: docs — F34 spec, §10 agent row, §14, F19 note, N22 amendment (CLAUDE.md + rules.md), §13 vocabulary, quotas tokens description
@@ -149,7 +149,7 @@ own files; what is still open is here.
 
 ### GPT-5 agents + Jev checkers — `docs/superpowers/plans/2026-10-21-gpt5-agents-jev-checkers.md`
 
-- [ ] Task 8: the gate — run evals on all three arms, set checker thresholds, measure p95 time and cost from `ai_runs`, `pnpm tokens:calibrate`, set `maxOutputTokens` to measured p99 × 1.3, record results in the agent-architecture spec §7 (needs live OpenAI + TypeSafe keys)
+- [x] ~~Task 8: the gate — run evals on all three arms, set checker thresholds, measure p95 time and cost from `ai_runs`, `pnpm tokens:calibrate`, set `maxOutputTokens` to measured p99 × 1.3, record results in the agent-architecture spec §7 (needs live OpenAI + TypeSafe keys)~~ — 2026-11-06
 
 ### Learning Watch | Read lanes — `docs/superpowers/plans/2026-10-25-learning-watch-read.md` (branch `feat/learning-watch-read`)
 
