@@ -92,7 +92,7 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 8: profile page — header actions slot (Replace résumé; Part B's Enhance lands here), one Account block at the foot; specs F11~~ — 2026-11-06
 - [x] ~~Task 9: /analyze — posting box first, parked runs in the aside, smaller hero~~ — 2026-11-06
 - [x] ~~Task 10: /jobs — saved jobs in a side rail, shorter standfirst~~ — 2026-11-06
-- [ ] Task 11: /history — upcoming rounds in a side rail, smaller title; specs F29.1
+- [x] ~~Task 11: /history — upcoming rounds in a side rail, smaller title; specs F29.1~~ — 2026-11-06
 - [ ] Task 12: portfolio studio — tighter intro
 - [ ] Task 13: look at every surface at 1280×800 and 390×844 on the branch's preview deploy
 - [ ] History's Match column shows the coverage number with no buckets beside it (N4) — decide: drop the column, or show the three counts — shikamaru, heat-map audit

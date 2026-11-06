@@ -2177,8 +2177,8 @@ calendar days in the round's zone ("Tomorrow: …", "Today: …", "in 3 hours").
 
 **Where it shows.** The Rounds tab (type chips, date and time, reminder choices, a countdown tag
 per round); a **Preparing for** strip above the Prep tab naming the next round, its countdown and
-the surface that fits it; and an **Upcoming rounds** card at the top of History listing every round
-still ahead across postings.
+the surface that fits it; and an **Upcoming rounds** card beside the History list on wide screens (below it on phones) listing
+every round still ahead across postings.
 
 **Acceptance:** adding an L2 round five days out with the defaults writes five reminder rows in
 time order; a system-design reminder opens Prep on the System design family; the after-round nudge
