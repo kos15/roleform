@@ -8,6 +8,7 @@ import { buildJobQuery } from "@/lib/domain/job-query";
 import { latestSearchId, loadResults } from "@/lib/services/jobs/results";
 import { EmptyState } from "@/components/ui";
 import { PageIntro } from "@/components/page-intro";
+import { WithRail } from "@/components/with-rail";
 import { JobSearchClient } from "./job-search-client";
 import { SavedJobsPanel } from "./saved-jobs-panel";
 import { CapNotice } from "./cap-notice";
@@ -61,19 +62,18 @@ export default async function JobsPage() {
 
   return (
     <div>
-      <PageIntro kicker="Job search" title="Listings sorted against your own profile">
-        Titles, skills and a city — nothing else about your profile leaves this server. Every
-        listing is sorted by facts you can check — your skills it names, the ones it asks for that
-        you lack, its title, where it is — never by a score.
+      <PageIntro compact kicker="Job search" title="Listings sorted against your own profile">
+        Titles, skills and a city — nothing else about your profile leaves this server.
+        Listings are sorted by facts you can check, never by a score.
       </PageIntro>
 
-      {!allowance.ok && allowance.error.capWall ? (
-        <CapNotice wall={allowance.error.capWall} />
-      ) : (
-        <JobSearchClient baseQuery={baseQuery} initial={initial} />
-      )}
-
-      <SavedJobsPanel jobs={saved} />
+      <WithRail railLabel="Saved jobs" rail={<SavedJobsPanel jobs={saved} />}>
+        {!allowance.ok && allowance.error.capWall ? (
+          <CapNotice wall={allowance.error.capWall} />
+        ) : (
+          <JobSearchClient baseQuery={baseQuery} initial={initial} />
+        )}
+      </WithRail>
     </div>
   );
 }
