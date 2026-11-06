@@ -11,6 +11,7 @@ import { revisionWriter } from "./revision-writer";
 import { quizWriter } from "./quiz-writer";
 import { challengeWriter } from "./challenge-writer";
 import { codeReviewer } from "./code-reviewer";
+import { profileEnhancer } from "./profile-enhancer";
 
 /**
  * Every agent, by name (agent design §6.2). The eval harness and the docs read
@@ -29,4 +30,5 @@ export const AGENTS = {
   [quizWriter.name]: quizWriter,
   [challengeWriter.name]: challengeWriter,
   [codeReviewer.name]: codeReviewer,
+  [profileEnhancer.name]: profileEnhancer,
 } as const;

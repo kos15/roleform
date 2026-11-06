@@ -52,6 +52,7 @@ import { revisionCards } from "./revision-cards";
 import { quizRound } from "./quiz-round";
 import { codingChallenge } from "./coding-challenge";
 import { codeReview } from "./code-review";
+import { enhanceProfile } from "./enhance-profile";
 
 export { PROMPT_VERSIONS } from "./versions";
 
@@ -68,4 +69,5 @@ export const SYSTEM = {
   quizRound,
   codingChallenge,
   codeReview,
+  enhanceProfile,
 } as const;

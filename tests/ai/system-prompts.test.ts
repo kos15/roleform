@@ -25,6 +25,7 @@ describe("system prompts", () => {
       revisionCards: "1b765cc63292976ecfda3473d7d04327c17eec98b1167f7ef6ae360dad190a75",
       quizRound: "f6e39990b34acf14a8e8b59b045613f4afb4f9dee2cba20b1b2c17dc9ac4a74d",
       codingChallenge: "498140f90eeacc885e36826152f798fac091b7417adfdac68b23824f9b751c02",
+      enhanceProfile: "aca63c159b686aeab18837872da5de1c743ae0ffa3d7de837e4cb57c0413c285",
       codeReview: "38635a2b7906f1ead734690b4b20ae181dc30fc08bd075d860d8e854ee3df611",
     });
   });
@@ -59,6 +60,7 @@ describe("system prompts", () => {
       quizRound: "quiz-round@3",
       codingChallenge: "coding-challenge@3",
       codeReview: "code-review@3",
+      enhanceProfile: "enhance-profile@1",
     });
   });
 });

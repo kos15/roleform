@@ -120,7 +120,7 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 2: fields, `numbersPreserved`, `filterProposals`, duplicate-skill proposals; `lib/ai/schemas/profile-enhance.ts`~~ — 2026-11-06
 - [x] ~~Task 3: `profileQuestions`, `applyProposals` (re-keys bullet ids on remove), `preselected`~~ — 2026-11-06
 - [x] ~~Task 4: `UNMETERED_PURPOSES` — meter, carry rule and admin per-member usage exclude `enhance_profile`~~ — 2026-11-06
-- [ ] Task 5: ProfileEnhancer agent — system prompt, builder, roster, service
+- [x] ~~Task 5: ProfileEnhancer agent — system prompt, builder, roster, service~~ — 2026-11-06
 - [ ] Task 6: `readEnhanceAllowance` / `checkEnhanceAllowance`, `LIMITS.enhance`
 - [ ] Task 7: `profile_enhance` feature switch (migration + Prisma enum + FEATURES)
 - [ ] Task 8: `enhanceProfile()` action in `app/actions/profile.ts`

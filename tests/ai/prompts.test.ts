@@ -19,6 +19,7 @@ import { revisionWriter } from "@/lib/ai/agents/revision-writer";
 import { quizWriter } from "@/lib/ai/agents/quiz-writer";
 import { challengeWriter } from "@/lib/ai/agents/challenge-writer";
 import { codeReviewer } from "@/lib/ai/agents/code-reviewer";
+import { profileEnhancer } from "@/lib/ai/agents/profile-enhancer";
 import { FIXTURES as F } from "./prompts.fixtures";
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -30,6 +31,7 @@ const assembled: Record<string, string> = {
   document_transcriber: assemblePrompt(documentTranscriber, F.document_transcriber),
   bullet_tailor: assemblePrompt(bulletTailor, F.bullet_tailor),
   summary_tailor: assemblePrompt(summaryTailor, F.summary_tailor),
+  profile_enhancer: assemblePrompt(profileEnhancer, F.profile_enhancer),
   question_writer: assemblePrompt(questionWriter, F.question_writer),
   answer_writer: assemblePrompt(answerWriter, F.answer_writer),
   answer_writer_gap: assemblePrompt(answerWriter, F.answer_writer_gap),
@@ -55,6 +57,7 @@ const PINNED: Record<string, string> = {
   posting_reader: "8006639f4f2db2b095fda4732035b11227807b423c3b10866c8a62742bd180e3",
   profile_reader: "9d6a17ec14cf60146c2cc15c30ad1e5c1598be4ba9522a8c2db20ea32cb84545",
   profile_reader_plain: "727f9648afd4bd7393b3be4a27a01b70f34ace81570dba4fdcbc4205a66a3e90",
+  profile_enhancer: "fbcb960dcf02a28cbc0753b831e809244f5bf3e0cfcab39dae1e0a4653f0c6d7",
   question_writer: "e827ec950557e2e4708d47c4c03b66094ca099e3e1b73a5575aa3acbd9c3eb65",
   quiz_round: "1fc300485df073fe3cf09622155d5ddd4c3a5b4c7b836daa2a0dc0572777429f",
   revision_cards: "9e21e56b6e5a7b82244d14dcc5a44f29e331d58b503d604481a90cac9cfdf732",

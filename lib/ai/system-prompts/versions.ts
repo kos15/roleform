@@ -15,4 +15,5 @@ export const PROMPT_VERSIONS = {
   quizRound: "quiz-round@3",
   codingChallenge: "coding-challenge@3",
   codeReview: "code-review@3",
+  enhanceProfile: "enhance-profile@1",
 } as const;
