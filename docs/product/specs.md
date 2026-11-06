@@ -1017,15 +1017,18 @@ re-billing. Master profile edits never rewrite past analyses (§6.2 invariant 4)
 
 ### F11 — Profile
 
-One screen over the whole corpus, because the corpus is one thing. Two columns: the token meter
-(F19), identity and contact, summary, skills, experience, personal projects, then education / certifications /
-languages / preferences; aside carries profile strength and the checks that explain it. The AI
-layer writes to none of it (N3) — that is what makes the fabrication guard mean anything.
+One screen over the whole corpus, because the corpus is one thing. Two columns: identity and
+contact (one line until opened), summary, experience, skills, personal projects, then education /
+certifications / languages / preferences; the aside carries profile strength, the checks that
+explain it, Save, then the token meter (F19). The AI layer writes to none of it (N3) — that is what
+makes the fabrication guard mean anything.
 
-The meter leads the column, as in the design. It is the one thing on this page that is not the
-corpus, and it is above the corpus because it is what the corpus costs to use. It is a server
-component slotted into the client editor rather than imported by it — the balance is two aggregate
-queries and has no business in a bundle.
+Header actions on the right (Replace résumé). One **Account** block at the foot: name,
+notifications, delete everything.
+
+The meter sits in the aside: it is the one thing on this page that is not the corpus, so the corpus
+leads. It is a server component slotted into the client editor rather than imported by it — the
+balance is two aggregate queries and has no business in a bundle.
 
 **Everything here is editable.** Education and certifications were read-only cards; a page whose
 whole argument is "a draft can only say what exists here" cannot have sections you are unable to

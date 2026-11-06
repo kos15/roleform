@@ -37,7 +37,7 @@ export function AccountName({ firstName, lastName }: { firstName: string; lastNa
   return (
     <section
       id="your-name"
-      className={`mb-8 max-w-3xl scroll-mt-24 rounded-[var(--radius-lg)] p-[clamp(1rem,3vw,1.375rem)] ${
+      className={`scroll-mt-24 rounded-[var(--radius-lg)] p-[clamp(1rem,3vw,1.375rem)] ${
         missing ? "bg-[var(--color-accent-100)]" : "bg-[var(--color-bg-raised)]"
       }`}
     >
@@ -45,7 +45,7 @@ export function AccountName({ firstName, lastName }: { firstName: string; lastNa
       <p className="mb-3.5 text-[0.85rem] leading-relaxed text-[var(--color-text-muted)]">
         {missing
           ? "Your account doesn't have a name yet, so we can't greet you properly. Add one — it stays on your account and isn't printed on any résumé."
-          : "How Roleform addresses you. The name on your résumé is edited in the profile below."}
+          : "How Roleform addresses you. The name on your résumé is edited in the profile above."}
       </p>
       <form
         className="flex flex-wrap items-end gap-2.5"

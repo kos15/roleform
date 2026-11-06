@@ -36,7 +36,7 @@ interface Props {
   bulletCount: number;
   sourceFilename: string | null;
   updatedAt: string;
-  /** The token meter (F19), rendered server-side and slotted in at the top. */
+  /** The token meter (F19), rendered server-side and slotted into the aside. */
   tokenPanel: React.ReactNode;
 }
 
@@ -57,6 +57,9 @@ export function ProfileEditor({
   // Open by default. Collapsed is for someone who has read their skills and is
   // here for something else — it is not the state you should have to leave.
   const [skillsOpen, setSkillsOpen] = useState(true);
+  // Collapsed to one line: the identity is set once, the corpus below is what
+  // this page is for.
+  const [identityOpen, setIdentityOpen] = useState(false);
   const firstRender = useRef(true);
 
   // Autosave. The explicit Save button below forces the same call rather than
@@ -143,14 +146,14 @@ export function ProfileEditor({
   return (
     <div className="flex flex-wrap items-start gap-6">
       <div className="flex min-w-[min(300px,100%)] flex-1 basis-[560px] flex-col gap-4">
-        {tokenPanel}
-
         <IdentitySection
           resume={resume}
           patch={patch}
           sourceFilename={sourceFilename}
           updatedAt={updatedAt}
           bulletCount={bulletCount}
+          open={identityOpen}
+          onToggle={() => setIdentityOpen((o) => !o)}
         />
 
         <Section title="Summary" sub="Rewritten per posting — this is the version we start from.">
@@ -165,155 +168,6 @@ export function ProfileEditor({
           <div className="mt-2 text-xs text-[var(--color-text-muted)]">
             {resume.basics.summary.length} characters · aim for 200–400
           </div>
-        </Section>
-
-        <Section
-          title="Skills"
-          badge={`${resume.skills.length} skill${resume.skills.length === 1 ? "" : "s"}`}
-          collapsed={!skillsOpen}
-          onToggle={() => setSkillsOpen((o) => !o)}
-          aside="Proficiency bounds what a draft is allowed to claim"
-        >
-          {/* Collapsed: the same list as one scannable row. The colour is the
-              evidence, not the level — a skill nothing backs reads muted here
-              for the same reason its row says so when open. */}
-          {!skillsOpen ? (
-            <div className="rise-in flex flex-wrap gap-1.5">
-              {resume.skills.map((skill, si) => {
-                const evidenced = skillEvidence(skill.name, resume, evidenceByPath).evidencing > 0;
-                return (
-                  <span
-                    key={`${skill.name}-${si}`}
-                    className="inline-flex min-h-8 items-center rounded-[var(--radius-pill)] border-[1.5px] border-[var(--color-text)] px-3 text-[13px] font-bold"
-                    style={{
-                      color: evidenced ? "var(--color-text)" : "var(--color-text-muted)",
-                      borderColor: evidenced ? "var(--color-text)" : "var(--color-line-strong)",
-                    }}
-                  >
-                    {skill.name}
-                  </span>
-                );
-              })}
-              {resume.skills.length === 0 ? (
-                <Empty>Nothing here yet.</Empty>
-              ) : null}
-            </div>
-          ) : null}
-
-          {skillsOpen ? (
-          <>
-          <div className="flex flex-col gap-2">
-            {resume.skills.map((skill, si) => (
-              <div
-                key={`${skill.name}-${si}`}
-                className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] bg-[var(--color-bg)] px-3.5 py-2.5"
-              >
-                <div className="min-w-0 flex-1 basis-40">
-                  <div className="text-[0.9rem] font-semibold">{skill.name}</div>
-                  <SkillEvidence name={skill.name} resume={resume} evidence={evidenceByPath} />
-                </div>
-
-                <div className="seg flex-none">
-                  {LEVELS.map((level) => (
-                    <button
-                      key={level}
-                      type="button"
-                      aria-selected={normaliseLevel(skill.level) === level}
-                      onClick={() =>
-                        patch((r) => ({
-                          ...r,
-                          skills: r.skills.map((s, j) =>
-                            j === si ? { ...s, level } : s,
-                          ),
-                        }))
-                      }
-                      className="text-xs"
-                    >
-                      {level}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex flex-none items-center gap-1.5">
-                  <span className="field-inline w-[56px]">
-                    <Input
-                      aria-label={`Years of ${skill.name}`}
-                      inputMode="numeric"
-                      className="input-inline px-2 py-1.5 text-center text-[0.8rem]"
-                      value={skillYears[skill.name] ?? ""}
-                      onChange={(e) => {
-                        const n = Number(e.target.value);
-                        setExtension((ext) => ({
-                          ...ext,
-                          skillYears: {
-                            ...(ext.skillYears ?? {}),
-                            [skill.name]: Number.isFinite(n) ? Math.min(60, Math.max(0, n)) : 0,
-                          },
-                        }));
-                      }}
-                    />
-                  </span>
-                  <span className="text-xs text-[var(--color-text-muted)]">yrs</span>
-                </div>
-
-                <button
-                  type="button"
-                  title={`Remove ${skill.name}`}
-                  aria-label={`Remove ${skill.name}`}
-                  onClick={() =>
-                    patch((r) => ({ ...r, skills: r.skills.filter((_, j) => j !== si) }))
-                  }
-                  className="ml-auto grid h-7 w-7 flex-none place-items-center rounded-[var(--radius-pill)] border border-[var(--color-line)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text)]"
-                >
-                  <X className="lucide h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 border-t border-[var(--color-line)] pt-4">
-            <div className="eyebrow mb-2.5">Suggested from your recent analyses</div>
-            {suggestions.length === 0 ? (
-              <p className="text-[0.8rem] leading-snug text-[var(--color-text)]">
-                Every gap from your recent analyses is already on your profile. Add evidence to a
-                bullet next — a skill on its own is a claim, not proof.
-              </p>
-            ) : null}
-            <div className="flex flex-wrap items-center gap-2">
-              {suggestions
-                .filter((name) => !resume.skills.some((s) => s.name === name))
-                .map((name) => (
-                  <button
-                    key={name}
-                    type="button"
-                    onClick={() => patch((r) => addSkill(r, name))}
-                    className="inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] border-[1.5px] border-dashed border-[rgb(74_13_13/0.4)] px-3.5 py-1.5 text-[13px] font-bold transition-colors hover:bg-[var(--color-hover)]"
-                  >
-                    <Plus className="lucide h-3 w-3" />
-                    {name}
-                  </button>
-                ))}
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const name = newSkill.trim();
-                  if (!name) return;
-                  patch((r) => addSkill(r, name));
-                  setNewSkill("");
-                }}
-              >
-                <Input
-                  aria-label="Add a skill"
-                  placeholder="Add your own…"
-                  className="w-[170px] px-3 py-1.5 text-xs"
-                  value={newSkill}
-                  onChange={(e) => setNewSkill(e.target.value)}
-                />
-              </form>
-            </div>
-          </div>
-          </>
-          ) : null}
         </Section>
 
         <Section
@@ -487,6 +341,155 @@ export function ProfileEditor({
               );
             })}
           </div>
+        </Section>
+
+        <Section
+          title="Skills"
+          badge={`${resume.skills.length} skill${resume.skills.length === 1 ? "" : "s"}`}
+          collapsed={!skillsOpen}
+          onToggle={() => setSkillsOpen((o) => !o)}
+          aside="Proficiency bounds what a draft is allowed to claim"
+        >
+          {/* Collapsed: the same list as one scannable row. The colour is the
+              evidence, not the level — a skill nothing backs reads muted here
+              for the same reason its row says so when open. */}
+          {!skillsOpen ? (
+            <div className="rise-in flex flex-wrap gap-1.5">
+              {resume.skills.map((skill, si) => {
+                const evidenced = skillEvidence(skill.name, resume, evidenceByPath).evidencing > 0;
+                return (
+                  <span
+                    key={`${skill.name}-${si}`}
+                    className="inline-flex min-h-8 items-center rounded-[var(--radius-pill)] border-[1.5px] border-[var(--color-text)] px-3 text-[13px] font-bold"
+                    style={{
+                      color: evidenced ? "var(--color-text)" : "var(--color-text-muted)",
+                      borderColor: evidenced ? "var(--color-text)" : "var(--color-line-strong)",
+                    }}
+                  >
+                    {skill.name}
+                  </span>
+                );
+              })}
+              {resume.skills.length === 0 ? (
+                <Empty>Nothing here yet.</Empty>
+              ) : null}
+            </div>
+          ) : null}
+
+          {skillsOpen ? (
+          <>
+          <div className="flex flex-col gap-2">
+            {resume.skills.map((skill, si) => (
+              <div
+                key={`${skill.name}-${si}`}
+                className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] bg-[var(--color-bg)] px-3.5 py-2.5"
+              >
+                <div className="min-w-0 flex-1 basis-40">
+                  <div className="text-[0.9rem] font-semibold">{skill.name}</div>
+                  <SkillEvidence name={skill.name} resume={resume} evidence={evidenceByPath} />
+                </div>
+
+                <div className="seg flex-none">
+                  {LEVELS.map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      aria-selected={normaliseLevel(skill.level) === level}
+                      onClick={() =>
+                        patch((r) => ({
+                          ...r,
+                          skills: r.skills.map((s, j) =>
+                            j === si ? { ...s, level } : s,
+                          ),
+                        }))
+                      }
+                      className="text-xs"
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex flex-none items-center gap-1.5">
+                  <span className="field-inline w-[56px]">
+                    <Input
+                      aria-label={`Years of ${skill.name}`}
+                      inputMode="numeric"
+                      className="input-inline px-2 py-1.5 text-center text-[0.8rem]"
+                      value={skillYears[skill.name] ?? ""}
+                      onChange={(e) => {
+                        const n = Number(e.target.value);
+                        setExtension((ext) => ({
+                          ...ext,
+                          skillYears: {
+                            ...(ext.skillYears ?? {}),
+                            [skill.name]: Number.isFinite(n) ? Math.min(60, Math.max(0, n)) : 0,
+                          },
+                        }));
+                      }}
+                    />
+                  </span>
+                  <span className="text-xs text-[var(--color-text-muted)]">yrs</span>
+                </div>
+
+                <button
+                  type="button"
+                  title={`Remove ${skill.name}`}
+                  aria-label={`Remove ${skill.name}`}
+                  onClick={() =>
+                    patch((r) => ({ ...r, skills: r.skills.filter((_, j) => j !== si) }))
+                  }
+                  className="ml-auto grid h-7 w-7 flex-none place-items-center rounded-[var(--radius-pill)] border border-[var(--color-line)] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-text)]"
+                >
+                  <X className="lucide h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 border-t border-[var(--color-line)] pt-4">
+            <div className="eyebrow mb-2.5">Suggested from your recent analyses</div>
+            {suggestions.length === 0 ? (
+              <p className="text-[0.8rem] leading-snug text-[var(--color-text)]">
+                Every gap from your recent analyses is already on your profile. Add evidence to a
+                bullet next — a skill on its own is a claim, not proof.
+              </p>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              {suggestions
+                .filter((name) => !resume.skills.some((s) => s.name === name))
+                .map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => patch((r) => addSkill(r, name))}
+                    className="inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] border-[1.5px] border-dashed border-[rgb(74_13_13/0.4)] px-3.5 py-1.5 text-[13px] font-bold transition-colors hover:bg-[var(--color-hover)]"
+                  >
+                    <Plus className="lucide h-3 w-3" />
+                    {name}
+                  </button>
+                ))}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const name = newSkill.trim();
+                  if (!name) return;
+                  patch((r) => addSkill(r, name));
+                  setNewSkill("");
+                }}
+              >
+                <Input
+                  aria-label="Add a skill"
+                  placeholder="Add your own…"
+                  className="w-[170px] px-3 py-1.5 text-xs"
+                  value={newSkill}
+                  onChange={(e) => setNewSkill(e.target.value)}
+                />
+              </form>
+            </div>
+          </div>
+          </>
+          ) : null}
         </Section>
 
         {/* Personal projects: side work, open source, coursework. Their bullets
@@ -918,6 +921,8 @@ export function ProfileEditor({
             )}
           </span>
         </div>
+
+        {tokenPanel}
       </aside>
     </div>
   );
@@ -925,18 +930,22 @@ export function ProfileEditor({
 
 /* ------------------------------------------------------------- sections */
 
-function IdentitySection({
+export function IdentitySection({
   resume,
   patch,
   sourceFilename,
   updatedAt,
   bulletCount,
+  open,
+  onToggle,
 }: {
   resume: StoredResume;
   patch: (fn: (r: StoredResume) => StoredResume) => void;
   sourceFilename: string | null;
   updatedAt: string;
   bulletCount: number;
+  open: boolean;
+  onToggle: () => void;
 }) {
   const basics = resume.basics;
   const github = basics.profiles.find((p) => /github/i.test(p.network));
@@ -970,12 +979,31 @@ function IdentitySection({
             bullets · last saved {relativeTime(updatedAt)}
           </p>
         </div>
-        <Link href="/onboarding" className="btn btn-secondary btn-sm ml-auto no-underline">
-          Replace résumé
-        </Link>
+        <div className="ml-auto flex flex-wrap gap-2">
+          {/* The h3 stays outside this button: a heading inside a <button> is invalid HTML. */}
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls="identity-fields"
+            onClick={onToggle}
+            className="btn btn-secondary btn-sm"
+          >
+            {open ? "Hide details" : "Edit details"}
+            <ChevronDown
+              className="lucide h-4 w-4 transition-transform duration-200"
+              style={{ transform: open ? "rotate(180deg)" : undefined }}
+            />
+          </button>
+        </div>
       </div>
 
-      <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))]">
+      {open ? null : (
+        <p data-identity-summary className="text-sm">
+          {[basics.name, basics.label, basics.location.city, basics.email].filter(Boolean).join(" · ")}
+        </p>
+      )}
+
+      <div id="identity-fields" hidden={!open} className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr))]">
         <Labelled label="Full name">
           <Input value={basics.name} onChange={(e) => setBasics({ name: e.target.value })} />
         </Labelled>

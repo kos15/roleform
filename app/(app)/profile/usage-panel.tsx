@@ -35,7 +35,7 @@ export async function UsagePanel({ clerkUserId }: { clerkUserId: string }) {
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="eyebrow mb-2 text-[var(--color-text)]">This cycle</p>
-          <h3 className="display mb-2 text-[clamp(2.1rem,3.8vw,3.1rem)] font-normal">
+          <h3 className="display mb-2 text-[clamp(1.75rem,2.4vw,2.25rem)] font-normal">
             {uncapped
               ? `${counts.analyses.used} analyses run`
               : `${(counts.analyses.left ?? 0) + counts.analyses.bonusLeft} analyses left`}
