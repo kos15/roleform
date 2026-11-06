@@ -44,7 +44,7 @@ export function SkillConsent({ analysisId, skills }: { analysisId: string; skill
     setPicked((cur) => (on ? [...cur, name] : cur.filter((n) => n !== name)));
 
   return (
-    <Card flat className="mb-9">
+    <Card flat className="mt-[clamp(2rem,4vw,3rem)]">
       <p className="eyebrow mb-2">Missing from your drafts</p>
       <h3 className="mb-2">This posting names {skills.length === 1 ? "a skill" : "skills"} your profile doesn&rsquo;t list</h3>
       <p className="mb-5 max-w-[68ch] text-[15px] leading-relaxed text-[var(--color-text-muted)]">

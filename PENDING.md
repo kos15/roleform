@@ -87,7 +87,7 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 3: results header — one compact band; the ring card carries all three bucket counts (N4); requirement tags in one closed disclosure; decorative card removed; specs F4~~ — 2026-11-06
 - [x] ~~Task 4: analysis layout — tabs right under the header, no divider, promo strip under the section; specs F32~~ — 2026-11-06
 - [x] ~~Task 5: tab cards — compact rows from 641px up (one row at 1280)~~ — 2026-11-06
-- [ ] Task 6: Résumés tab — shelf first; skill offer, then portfolio promo, below it
+- [x] ~~Task 6: Résumés tab — shelf first; skill offer, then portfolio promo, below it~~ — 2026-11-06
 - [ ] Task 7: profile editor — Identity collapsed to one line, Experience before Skills, usage meter in the aside; specs F11
 - [ ] Task 8: profile page — header actions slot (Replace résumé; Part B's Enhance lands here), one Account block at the foot; specs F11
 - [ ] Task 9: /analyze — posting box first, parked runs in the aside, smaller hero
