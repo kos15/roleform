@@ -84,7 +84,6 @@ export default async function AnalysisLayout({
 
   return (
     <div>
-      <PromoMarquee />
       <ResultsHeader
         analysis={{
           jdSource: analysis.jdSource,
@@ -106,10 +105,12 @@ export default async function AnalysisLayout({
         coverage={coverage}
         bulletTexts={Object.fromEntries(bulletTexts)}
       />
-      <div className="mb-[clamp(1.75rem,3vw,2.5rem)] mt-[clamp(2.75rem,5vw,4rem)] h-px bg-[var(--color-line)]" />
       {generating ? <BackgroundRefresh /> : null}
-      <AnalysisTabs analysisId={id} counts={counts} hidden={hidden} generating={generating} />
-      <div className="mt-[clamp(2.25rem,4vw,3.5rem)]">{children}</div>
+      <div className="mt-[clamp(1.25rem,2.5vw,2rem)]">
+        <AnalysisTabs analysisId={id} counts={counts} hidden={hidden} generating={generating} />
+      </div>
+      <div className="mt-[clamp(1.5rem,3vw,2.25rem)]">{children}</div>
+      <PromoMarquee className="mt-[clamp(2rem,4vw,3rem)]" />
       {/* The path through the analysis: "Up next" at the foot of every section,
           and the dock — the phone's bottom bar and the desktop rail — so a
           section is never a long scroll away. */}

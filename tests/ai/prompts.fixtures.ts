@@ -16,6 +16,7 @@ import type { RevisionWriterInput } from "@/lib/ai/agents/revision-writer";
 import type { QuizWriterInput } from "@/lib/ai/agents/quiz-writer";
 import type { ChallengeWriterInput } from "@/lib/ai/agents/challenge-writer";
 import type { CodeReviewerInput } from "@/lib/ai/agents/code-reviewer";
+import type { ProfileEnhancerInput } from "@/lib/ai/agents/profile-enhancer";
 
 const bullet = (id: string, text: string): DomainBullet => ({
   id,
@@ -50,6 +51,7 @@ export const FIXTURES: {
   document_transcriber: DocumentTranscriberInput;
   bullet_tailor: BulletTailorInput;
   summary_tailor: SummaryTailorInput;
+  profile_enhancer: ProfileEnhancerInput;
   question_writer: QuestionWriterInput;
   answer_writer: AnswerWriterInput;
   answer_writer_gap: AnswerWriterInput;
@@ -66,6 +68,12 @@ export const FIXTURES: {
   profile_reader_plain: { text: "Jane Doe\nEngineer at Acme", previousFailure: null },
   document_transcriber: { data: new Uint8Array([1, 2]), mediaType: "image/png", filename: "scan.png" },
   bullet_tailor: { jobTitle: "Frontend Engineer", bullet: b1, requirement: requirement("r1", "React at scale"), profileTerms: ["React"] },
+  profile_enhancer: {
+    fields: [
+      { path: "basics.summary", text: "Frontend engineer who builds fast checkout flows." },
+      { path: "work.0.highlights.0", text: "Cut checkout load time by 40% using React." },
+    ],
+  },
   summary_tailor: { jobTitle: "Frontend Engineer", bullets: [b1.text, b2.text], profileTerms: ["React"] },
   question_writer: {
     jobTitle: "Frontend Engineer",

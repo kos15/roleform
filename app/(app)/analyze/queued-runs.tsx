@@ -61,7 +61,7 @@ export function QueuedRuns({ runs }: { runs: QueuedRunView[] }) {
 
   return (
     <div
-      className="rise-in mb-7 rounded-[var(--radius-lg)] bg-[var(--color-accent-500)] p-6"
+      className="rise-in rounded-[var(--radius-lg)] bg-[var(--color-accent-500)] p-6"
     >
       {wall ? <TokenWallDialog wall={wall} onClose={() => setWall(null)} /> : null}
 

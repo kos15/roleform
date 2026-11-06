@@ -9,6 +9,7 @@ import { Card, EmptyState } from "@/components/ui";
 import { JdInput } from "./jd-input";
 import { QueuedRuns } from "./queued-runs";
 import { PromoMarquee } from "@/components/promo-marquee";
+import { APP_TITLE } from "@/components/page-intro";
 
 export default async function AnalyzePage({
   searchParams,
@@ -54,9 +55,9 @@ export default async function AnalyzePage({
   return (
     <div>
       <PromoMarquee />
-      <div className="rise-in mb-[clamp(2rem,4vw,3rem)] max-w-[760px]">
-        <p className="eyebrow mb-3.5">Step 1 of 3 · The posting</p>
-        <h1 className="mb-5 text-[clamp(3rem,6.4vw,6rem)] leading-[0.92]">
+      <div className="rise-in mb-[clamp(1.25rem,2.5vw,2rem)] max-w-[760px]">
+        <p className="eyebrow mb-2">Step 1 of 3 · The posting</p>
+        <h1 className={`mb-3 leading-[0.92] ${APP_TITLE}`}>
           One résumé in.
           <br />
           {drafts} tailored out.
@@ -66,14 +67,6 @@ export default async function AnalyzePage({
           your gaps. Nothing is invented.
         </p>
       </div>
-
-      <QueuedRuns
-        runs={queued.map((run) => ({
-          id: run.id,
-          label: run.label,
-          queued: run.queuedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
-        }))}
-      />
 
       {/* The aside carries the corpus and the contract; the posting goes in the
           left column. Keeping them side by side is the point — you can see what
@@ -98,6 +91,14 @@ export default async function AnalyzePage({
         </div>
 
         <aside className="flex min-w-0 flex-[0_1_22rem] flex-col gap-[18px] sm:pt-[58px]">
+          <QueuedRuns
+            runs={queued.map((run) => ({
+              id: run.id,
+              label: run.label,
+              queued: run.queuedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+            }))}
+          />
+
           {/* The profile card: filename · Parsed · N yrs · N skills (F1). */}
           <Card flat className="p-6">
             <p className="eyebrow mb-3.5">Your profile</p>

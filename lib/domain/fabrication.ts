@@ -122,10 +122,11 @@ export function isClean(input: GuardInput): boolean {
   return checkFabrication(input).length === 0;
 }
 
-function numbersIn(s: string): string[] {
+export function numbersIn(s: string): string[] {
   // 40%, 3.2x, 12k, 250, $1.4m — normalised so "40 %" and "40%" compare equal.
+  // A sentence-ending "." or "," is punctuation, not part of the number.
   return (s.match(/\$?\d[\d,.]*\s*(%|x|k\b|m\b|bn\b|b\b)?/g) ?? []).map((m) =>
-    m.replace(/[\s,]/g, "").toLowerCase(),
+    m.replace(/[\s,]/g, "").replace(/[.,]+$/, "").toLowerCase(),
   );
 }
 
@@ -168,7 +169,7 @@ function technicalTokens(s: string): string[] {
   const words = s.split(/[\s,;:()[\]]+/).filter(Boolean);
   const out: string[] = [];
   words.forEach((raw, index) => {
-    const w = raw.replace(/^[^A-Za-z0-9+#.]+|[^A-Za-z0-9+#.]+$/g, "");
+    const w = raw.replace(/^[^A-Za-z0-9+#.]+|[^A-Za-z0-9+#.]+$/g, "").replace(/\.+$/, "");
     if (w.length < 2) return;
     const looksTechnical =
       /[A-Z].*[A-Z]/.test(w) || // AWS, GraphQL, PostgreSQL

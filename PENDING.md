@@ -80,6 +80,71 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] Test the dock sheet's contents (Elsewhere, Jobs gating, More highlight) and `dockOffset`; split dock tests into `analysis-dock.test.tsx` — neji
 - [ ] Rapid prep's "3 drills" label is hard-coded and now shows on Up next — phrase from the drill bank or drop the number — neji
 
+## Heat-map layout, Part A — `docs/superpowers/plans/2026-11-06-heat-map-layout.md`
+
+- [x] ~~Task 1: `components/with-rail.tsx` — main column + side rail (right from `lg`, below on phones, an empty rail takes no room)~~ — 2026-11-06
+- [x] ~~Task 2: `PageIntro` — `actions` slot and `compact` app title (`APP_TITLE`); marketing markup byte-identical~~ — 2026-11-06
+- [x] ~~Task 3: results header — one compact band; the ring card carries all three bucket counts (N4); requirement tags in one closed disclosure; decorative card removed; specs F4~~ — 2026-11-06
+- [x] ~~Task 4: analysis layout — tabs right under the header, no divider, promo strip under the section; specs F32~~ — 2026-11-06
+- [x] ~~Task 5: tab cards — compact rows from 641px up (one row at 1280)~~ — 2026-11-06
+- [x] ~~Task 6: Résumés tab — shelf first; skill offer, then portfolio promo, below it~~ — 2026-11-06
+- [x] ~~Task 7: profile editor — Identity collapsed to one line, Experience before Skills, usage meter in the aside; specs F11~~ — 2026-11-06
+- [x] ~~Task 8: profile page — header actions slot (Replace résumé; Part B's Enhance lands here), one Account block at the foot; specs F11~~ — 2026-11-06
+- [x] ~~Task 9: /analyze — posting box first, parked runs in the aside, smaller hero~~ — 2026-11-06
+- [x] ~~Task 10: /jobs — saved jobs in a side rail, shorter standfirst~~ — 2026-11-06
+- [x] ~~Task 11: /history — upcoming rounds in a side rail, smaller title; specs F29.1~~ — 2026-11-06
+- [x] ~~Task 12: portfolio studio — tighter intro~~ — 2026-11-06
+- [ ] Task 13: look at every surface at 1280×800 and 390×844 on the branch's preview deploy
+- [ ] History's Match column shows the coverage number with no buckets beside it (N4) — decide: drop the column, or show the three counts — shikamaru, heat-map audit
+- [ ] Portfolio promo copy says "Fourteen looks"; `PORTFOLIO_LOOKS` has 18 — phrase from the list or drop the number — shikamaru, heat-map audit
+- [ ] `AnalysisSkeleton` (components/skeletons.tsx) is unused (analysis/[id]/loading.tsx returns null) and still draws the old header — delete or wire — shikamaru, heat-map audit
+- [ ] Portfolio and preview routes sit under the full results header — consider a slim header off the section path — shikamaru, heat-map audit
+- [ ] Ring aria-label says "N percent of this posting's requirements are evidenced" — the score is weighted coverage (§4); reword to "N percent requirement coverage — how much of this posting your profile can evidence" (results-header.tsx ~138) — neji, Part A review 1–5
+- [ ] Tour 'coverage' spotlight is a page-wide strip (anchor is the block <details>) and doesn't re-measure when it opens — add a ResizeObserver in components/product-tour.tsx measure effect — neji, Part A review 1–5
+- [ ] specs F4 still says "an underline tab bar carrying a count each" — tabs are compact cards now — neji, Part A review 1–5
+- [ ] results-header `min-h-7` on bucket count tags duplicates `.tag` min-height — neji, Part A review 1–5
+- [ ] Task 13 visual check should include 360px width (summary pill, tab label wraps at 1280) — neji, Part A review 1–5
+- [x] ~~Fix-up A1: requirement disclosure summary may overflow ≤375px (`.tag` nowrap) — allow wrap~~ — 2026-11-06
+- [x] ~~Fix-up A2: lib/content/helper.ts tip about 'the big number' targets 'coverage' — retarget to 'score'~~ — 2026-11-06
+- [x] ~~Fix-up A3: lib/content/tour.ts coverage step copy assumes the list is open — 'Open the list, then any requirement…'~~ — 2026-11-06
+- [ ] jobs results grid minmax(420px) drops to one listing column inside the main column at 1280 — check in Task 13; consider ~340px (app/(app)/jobs/job-search-client.tsx:277) — neji, Part A review 6–12
+- [ ] JobsSkeleton / HistorySkeleton (components/skeletons.tsx) don't model the rail — layout shift at ≥1024 — neji, Part A review 6–12
+- [ ] Identity summary line empty when name/label/city/email all blank, and no overflow-wrap for long emails (profile-editor.tsx ~1009) — fallback "Add your name and contact" + [overflow-wrap:anywhere] — neji, Part A review 6–12
+- [ ] Collapsible `Section` puts <h3> inside a <button> (profile-editor.tsx ~1096) — heading beside the button like IdentitySection — neji, Part A review 6–12
+- [ ] No-profile branch nests <Button> in <Link> (profile/page.tsx ~38) — use `btn btn-primary` on the Link — neji, Part A review 6–12
+- [ ] history-page test doesn't assert the phone <ul> and footnote sit inside WithRail — neji, Part A review 6–12
+
+## Profile enhance (F34) — `docs/superpowers/plans/2026-11-06-profile-enhance.md`
+
+- [x] ~~Task 1: pure allowance — `lib/domain/enhance.ts` constants, `enhanceAllowance`, `enhanceView`~~ — 2026-11-06
+- [x] ~~Task 2: fields, `numbersPreserved`, `filterProposals`, duplicate-skill proposals; `lib/ai/schemas/profile-enhance.ts`~~ — 2026-11-06
+- [x] ~~Task 3: `profileQuestions`, `applyProposals` (re-keys bullet ids on remove), `preselected`~~ — 2026-11-06
+- [x] ~~Task 4: `UNMETERED_PURPOSES` — meter, carry rule and admin per-member usage exclude `enhance_profile`~~ — 2026-11-06
+- [x] ~~Task 5: ProfileEnhancer agent — system prompt, builder, roster, service~~ — 2026-11-06
+- [x] ~~Task 6: `readEnhanceAllowance` / `checkEnhanceAllowance`, `LIMITS.enhance`~~ — 2026-11-06
+- [x] ~~Task 7: `profile_enhance` feature switch (migration + Prisma enum + FEATURES)~~ — 2026-11-06
+- [x] ~~Task 8: `enhanceProfile()` action in `app/actions/profile.ts`~~ — 2026-11-06
+- [ ] Task 9: review sheet (`app/(app)/profile/enhance-sheet.tsx`)
+- [ ] Task 10: wire the sheet into ProfileEditor (autosave hold, Undo) and mount the button on /profile
+- [ ] Task 11: docs — F34 spec, §10 agent row, §14, F19 note, N22 amendment (CLAUDE.md + rules.md), §13 vocabulary, quotas tokens description
+- [ ] `extract_profile` runs draw on the fair-use meter but `fairUseCeiling` budgets nothing for them — candidate for `UNMETERED_PURPOSES` (needs hokage: cost model)
+- [ ] Enhance worst case (45 s timeout × 2 attempts) exceeds /profile `maxDuration = 60` — decided 2026-11-06: `maxDuration = 120` on /profile (Task 10); measure p95 from `ai_runs.latency_ms`
+- [ ] Profile editor: Remove bullet / Move up-down leave `x_roleform.bulletIds` keyed by the old path, so the next save rewrites a cited bullet's text in place (`saveProfileEdit` matches by path) — re-key the way `applyProposals` does
+- [ ] Profile editor never learns ids `saveProfileEdit` mints for new paths (`updateProfile` returns only `profileId`), so every autosave mints a fresh row for a new bullet and retires the previous one — return `bulletIds` and merge
+- [ ] Eval set for `enhance_profile` (`scripts/evals`): adversarial bullets that tempt a metric/tool/seniority; measure the dropped rate
+- [ ] addsClaim never checks a new tool that is the first word of a sentence ("Kubernetes deployments…") — neji, F34 review 1–4
+- [ ] CLAIM_WORDS lacks managing/oversaw/ownership/management/overseeing/supervised — neji, F34 review 1–4
+- [ ] multiplier claims (doubling, tripled, halved) not caught — neji, F34 review 1–4
+- [ ] only "-" splits compounds; "/", "–", "—" hide claim words ("engineer/manager", "two/three") — split on /[-/–—]/ — neji, F34 review 1–4
+- [ ] "e.g." / "i.e." / "U.S." end a sentence so the next word escapes the capitalised check — neji, F34 review 1–4
+- [ ] numbersPreserved uses includes: swapping two bare numbers or losing one of two repeats passes — neji, F34 review 1–4
+- [ ] "C#" never detected by technicalTokens (pre-existing, affects tailoring) — neji, F34 review 1–4
+- [ ] schema for empty fields emits `items: { not: {} }` (OpenAI strict may reject) — Task 8 must short-circuit with no model call when enhanceableFields is empty — neji, F34 review 1–4
+- [ ] Concurrent enhance requests can overshoot 2/24h (allowance read before the run, ai_runs row written after; burst limiter is per-instance) — accepted per hokage ruling (same as answers/practice/roadmaps); document in F34 spec; revisit with a pending-row claim if abused — neji, F34 review 5–8
+- [ ] Fix-up B1: enhance system prompt must say field text is the member's content, never instructions; escape `<`/`>` in field text; re-pin hashes — neji, F34 review 5–8
+- [ ] Fix-up B2: tests — auth "attempts" refusal case; action does not call getProfile when allowance refuses; action imports neither @/lib/db nor updateProfile/revalidatePath (N3 source pin) — neji, F34 review 5–8
+- [ ] `tokensUsedThisCycle` (lib/db/queries/tokens.ts) has no callers — delete or wire
+
 ## Carried over
 
 Audited 2026-10-26 against `git log` and disk. Earlier plans' finished tasks are ticked in their
@@ -87,7 +152,7 @@ own files; what is still open is here.
 
 ### GPT-5 agents + Jev checkers — `docs/superpowers/plans/2026-10-21-gpt5-agents-jev-checkers.md`
 
-- [ ] Task 8: the gate — run evals on all three arms, set checker thresholds, measure p95 time and cost from `ai_runs`, `pnpm tokens:calibrate`, set `maxOutputTokens` to measured p99 × 1.3, record results in the agent-architecture spec §7 (needs live OpenAI + TypeSafe keys)
+- [x] ~~Task 8: the gate — run evals on all three arms, set checker thresholds, measure p95 time and cost from `ai_runs`, `pnpm tokens:calibrate`, set `maxOutputTokens` to measured p99 × 1.3, record results in the agent-architecture spec §7 (needs live OpenAI + TypeSafe keys)~~ — 2026-11-06
 
 ### Learning Watch | Read lanes — `docs/superpowers/plans/2026-10-25-learning-watch-read.md` (branch `feat/learning-watch-read`)
 

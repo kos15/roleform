@@ -78,12 +78,6 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
 
   return (
     <section>
-      {/* The portfolio leads the tab: it is built from the same evidence as the
-          drafts below, and it is the one thing here a member makes once. */}
-      {(await featureEnabled("portfolio")) ? (
-        <PortfolioPromo analysisId={id} used={portfolio?.status === "ready"} />
-      ) : null}
-
       <div className="mb-7 flex flex-wrap items-end justify-between gap-5">
         <div className="max-w-[720px]">
           <h2 className="mb-2.5">
@@ -95,8 +89,6 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
         </div>
         <DownloadAll analysisId={id} />
       </div>
-
-      {unlisted.length > 0 ? <SkillConsent analysisId={id} skills={unlisted} /> : null}
 
       <div
         data-tour="shelf"
@@ -130,6 +122,13 @@ export default async function ResumesTab({ params }: { params: Promise<{ id: str
         })}
       </div>
 
+      {unlisted.length > 0 ? <SkillConsent analysisId={id} skills={unlisted} /> : null}
+
+      {/* The portfolio sits below the drafts it grows out of: it is built from the
+          same evidence, and it is the one thing here a member makes once. */}
+      {(await featureEnabled("portfolio")) ? (
+        <PortfolioPromo analysisId={id} used={portfolio?.status === "ready"} />
+      ) : null}
     </section>
   );
 }

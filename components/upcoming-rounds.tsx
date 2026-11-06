@@ -7,7 +7,7 @@ import { KIND_LABEL, countdownPhrase, prepTarget, whenPhrase } from "@/lib/domai
 /**
  * Every interview round still ahead, across all postings (F29.1). Renders
  * nothing when there are none — an empty "upcoming" card would only be noise
- * above the history table.
+ * in the rail.
  */
 export async function UpcomingRounds({ clerkUserId }: { clerkUserId: string }) {
   const rounds = await getUpcomingRounds(clerkUserId);
@@ -15,7 +15,7 @@ export async function UpcomingRounds({ clerkUserId }: { clerkUserId: string }) {
   const now = new Date();
 
   return (
-    <Card className="mb-[clamp(1.5rem,3vw,2.25rem)] rounded-[26px] p-6">
+    <Card className="rounded-[26px] p-6">
       <p className="eyebrow mb-3">Upcoming rounds</p>
       <ul className="space-y-3">
         {rounds.map((r) => {

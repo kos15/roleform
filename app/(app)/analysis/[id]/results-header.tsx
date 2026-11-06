@@ -2,24 +2,31 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Building2, Clock3, MapPin, Star } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Tag } from "@/components/ui";
 import { InfoNote } from "@/components/info-note";
-import { TemplatePaper } from "@/components/template-thumb";
-import { templateById } from "@/lib/render/templates";
 import { scoreDash } from "@/lib/domain/coverage";
 import type { DomainCoverageItem, DomainRequirement } from "@/lib/domain/types";
 
 /**
- * F4 — the score ring, its verdict, and the three buckets beside it.
+ * F4 — one compact band: the score ring in one card with the three bucket
+ * counts beside it, and every requirement tag behind one disclosure.
  *
  * N4: this number is requirement coverage. It is never labelled "ATS score",
- * and it is never rendered without the buckets — the word "ATS" appears in this
- * product only on a template badge.
+ * and it is never rendered without the three bucket counts in the same card —
+ * the word "ATS" appears in this product only on a template badge.
  *
- * Every Strong-match tag expands to its source bullet in one click (M3.8).
+ * Every Strong-match tag expands to its source bullet in one click once the
+ * disclosure is open (M3.8).
  */
 const CIRCUMFERENCE = 2 * Math.PI * 52;
+
+/** Both the ring card and the disclosure read this, so the titles cannot drift apart. */
+const BUCKETS = [
+  { tone: "evidenced", title: "Strong match" },
+  { tone: "partial", title: "Partial evidence" },
+  { tone: "absent", title: "Not evidenced" },
+] as const;
 
 export function ResultsHeader({
   analysis,
@@ -57,16 +64,16 @@ export function ResultsHeader({
   };
 
   const meta = [
-    { key: "company", value: analysis.company, icon: Building2 },
-    { key: "location", value: analysis.location, icon: MapPin },
-    { key: "seniority", value: analysis.seniority, icon: Star },
-    { key: "type", value: analysis.employmentType, icon: Clock3 },
+    { key: "company", value: analysis.company },
+    { key: "location", value: analysis.location },
+    { key: "seniority", value: analysis.seniority },
+    { key: "type", value: analysis.employmentType },
   ].filter((m): m is typeof m & { value: string } => Boolean(m.value) && m.value !== "unstated");
-  const papers = [templateById("margin-note"), templateById("clean-slate")];
+  const total = requirements.length;
 
   return (
     <div>
-      <p className="mb-[clamp(1.25rem,3vw,2.5rem)] flex flex-wrap items-center gap-2.5 text-[15px] sm:text-[17px]">
+      <p className="mb-3 flex flex-wrap items-center gap-2.5 text-[15px] sm:text-[17px]">
         <Link href="/history" className="font-bold no-underline">
           History
         </Link>
@@ -74,9 +81,9 @@ export function ResultsHeader({
         <span className="text-[var(--color-text-muted)]">{analysis.title ?? "This role"}</span>
       </p>
 
-      <div className="grid items-end gap-[clamp(2rem,4vw,4rem)] [grid-template-columns:repeat(auto-fit,minmax(min(440px,100%),1fr))]">
+      <div className="grid items-start gap-[clamp(1.25rem,3vw,2.5rem)] lg:grid-cols-[minmax(0,1fr)_auto]">
         <div>
-          <p className="eyebrow mb-4 flex flex-wrap items-center gap-2">
+          <p className="eyebrow mb-2 flex flex-wrap items-center gap-2">
             Analysis complete ·{" "}
             {analysis.jdSource === "upload" ? (analysis.jdFilename ?? "uploaded file") : "pasted text"}
             {analysis.fromSavedJob ? (
@@ -90,7 +97,7 @@ export function ResultsHeader({
               plainly rather than left silent. Neutral tone, no accusatory
               colour — the same register PROTECTED_NOTICE already uses. */}
           {analysis.truncated || analysis.protectedNotice ? (
-            <p className="mb-4 max-w-[60ch] text-xs leading-relaxed text-[var(--color-text-muted)]">
+            <p className="mb-2 max-w-[60ch] text-xs leading-relaxed text-[var(--color-text-muted)]">
               {analysis.truncated
                 ? "This posting was long — we read the first part and told you what we used. "
                 : ""}
@@ -98,11 +105,11 @@ export function ResultsHeader({
             </p>
           ) : null}
 
-          <h1 className="mb-[22px] break-words text-[clamp(2.25rem,7.8vw,7.6rem)]">
+          <h1 className="mb-2 break-words text-[clamp(1.75rem,3.6vw,3rem)]">
             {analysis.title ?? "This role"}
           </h1>
           {meta.length ? (
-            <p className="mb-[18px] text-[15px] text-[var(--color-text-muted)] sm:text-[17px]">
+            <p className="mb-3 text-[15px] text-[var(--color-text-muted)] sm:text-[17px]">
               {meta.map((m) => m.value).join(" · ")}
             </p>
           ) : null}
@@ -110,131 +117,93 @@ export function ResultsHeader({
           <p className="max-w-[56ch] text-[15px] leading-relaxed text-[var(--color-text-muted)] sm:text-base">
             {analysis.scoreNote}
           </p>
+          <InfoNote className="mt-3">
+            Requirement coverage: how much of this posting your profile can evidence. Not a
+            prediction, and not an employer&rsquo;s ATS score.
+          </InfoNote>
         </div>
 
-        <div className="flex flex-wrap items-stretch gap-[22px] pt-[52px]">
-          {/* N4: the ring is requirement coverage, and the three buckets are
-              directly below it — never one without the other. */}
-          <div
-            data-tour="score"
-            className="relative flex min-h-[260px] flex-[1_1_220px] flex-col items-center sm:min-h-[320px] rounded-[26px] bg-[var(--color-bg-raised)] px-[22px] pb-11 pt-[30px] text-center"
+        {/* N4: the ring is requirement coverage, and its three bucket counts
+            are in this same card — never one without the other, at any width. */}
+        <div
+          data-tour="score"
+          className="flex flex-wrap items-center gap-5 rounded-[var(--radius-lg)] bg-[var(--color-bg-raised)] px-5 py-4"
+        >
+          <svg
+            width="112"
+            height="112"
+            viewBox="0 0 120 120"
+            className="flex-none"
+            role="img"
+            aria-label={`${analysis.score.toFixed(0)} percent of this posting's requirements are evidenced by your profile`}
           >
-            <span className="tag tag-outline absolute -top-[52px] left-1/2 min-h-10 -translate-x-1/2 bg-[var(--color-bg)] px-4 text-[15px] font-extrabold">
-              № {requirements.length} requirement{requirements.length === 1 ? "" : "s"}
-            </span>
-            <svg
-              width="156"
-              height="156"
-              viewBox="0 0 120 120"
-              className="flex-none"
-              role="img"
-              aria-label={`${analysis.score.toFixed(0)} percent of this posting's requirements are evidenced by your profile`}
+            <circle cx="60" cy="60" r="52" fill="none" stroke="var(--color-bg-tint)" strokeWidth="11" />
+            <circle
+              cx="60"
+              cy="60"
+              r="52"
+              fill="none"
+              stroke="var(--color-accent-500)"
+              strokeWidth="11"
+              strokeLinecap="round"
+              strokeDasharray={scoreDash(analysis.score, CIRCUMFERENCE)}
+              transform="rotate(-90 60 60)"
+            />
+            <text
+              x="60"
+              y="66"
+              textAnchor="middle"
+              fontSize="40"
+              fontFamily="var(--font-heading)"
+              fill="var(--color-text)"
             >
-              <circle cx="60" cy="60" r="52" fill="none" stroke="var(--color-bg-tint)" strokeWidth="11" />
-              <circle
-                cx="60"
-                cy="60"
-                r="52"
-                fill="none"
-                stroke="var(--color-accent-500)"
-                strokeWidth="11"
-                strokeLinecap="round"
-                strokeDasharray={scoreDash(analysis.score, CIRCUMFERENCE)}
-                transform="rotate(-90 60 60)"
-              />
-              <text
-                x="60"
-                y="66"
-                textAnchor="middle"
-                fontSize="40"
-                fontFamily="var(--font-heading)"
-                fill="var(--color-text)"
-              >
-                {analysis.score.toFixed(0)}
-              </text>
-              <text
-                x="60"
-                y="84"
-                textAnchor="middle"
-                fontSize="11"
-                fontWeight="600"
-                fontFamily="var(--font-body)"
-                fill="var(--color-text-muted)"
-              >
-                match
-              </text>
-            </svg>
-            <span className="mt-2.5 text-base font-semibold">Requirement coverage</span>
-            <span className="absolute -bottom-[18px] left-1/2 flex min-h-[38px] -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-pill)] bg-[var(--color-sage-500)] px-[18px] text-sm">
-              Evidenced:
-              <strong>
-                {buckets.evidenced.length} of {requirements.length}
-              </strong>
-            </span>
-          </div>
-
-          <div
-            aria-hidden
-            className="relative hidden min-h-[320px] flex-[1.35_1_280px] rounded-[26px] sm:block bg-[var(--color-accent-500)] px-6 py-7"
-          >
-            <div className="relative z-[2] flex flex-col items-start gap-[13px]">
-              {meta.map(({ key, value, icon: Icon }) => (
-                <span
-                  key={key}
-                  className="tag tag-outline min-h-[38px] max-w-full bg-[var(--color-accent-500)] px-[15px] text-[15px]"
-                >
-                  <Icon className="lucide h-[15px] w-[15px] flex-none" />
-                  <span className="truncate">{value}</span>
-                </span>
+              {analysis.score.toFixed(0)}
+            </text>
+            <text
+              x="60"
+              y="84"
+              textAnchor="middle"
+              fontSize="11"
+              fontWeight="600"
+              fontFamily="var(--font-body)"
+              fill="var(--color-text-muted)"
+            >
+              match
+            </text>
+          </svg>
+          <div className="min-w-[11rem] flex-1">
+            <p className="text-base font-semibold">Requirement coverage</p>
+            <p className="mb-2.5 text-sm text-[var(--color-text-muted)]">{`№ ${total} requirement${total === 1 ? "" : "s"}`}</p>
+            <ul className="flex flex-col gap-1.5 text-sm">
+              {BUCKETS.map(({ tone, title }) => (
+                <li key={tone} data-bucket={tone} className="flex items-center justify-between gap-4">
+                  <span>{title}</span>
+                  <strong className={`tag min-h-7 px-2.5 ${BUCKET_TONE[tone].pill}`}>{buckets[tone].length}</strong>
+                </li>
               ))}
-            </div>
-            {papers[0] ? (
-              <TemplatePaper
-                template={papers[0]}
-                className="absolute bottom-6 right-[22px] h-[186px] w-[140px] rotate-[8deg] rounded-[10px] shadow-[var(--shadow-lg)]"
-              />
-            ) : null}
-            {papers[1] ? (
-              <TemplatePaper
-                template={papers[1]}
-                className="absolute -top-11 right-[62px] z-[1] h-[200px] w-[150px] -rotate-[3deg] rounded-[10px] shadow-[var(--shadow-lg)]"
-              />
-            ) : null}
+            </ul>
           </div>
         </div>
       </div>
 
-      <div
-        data-tour="coverage"
-        className="mt-[clamp(3rem,6vw,5rem)] grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]"
-      >
-        <Bucket
-          title="Strong match"
-          tone="evidenced"
-          requirements={buckets.evidenced}
-          coverage={byId}
-          bulletTexts={bulletTexts}
-        />
-        <Bucket
-          title="Partial evidence"
-          tone="partial"
-          requirements={buckets.partial}
-          coverage={byId}
-          bulletTexts={bulletTexts}
-        />
-        <Bucket
-          title="Not evidenced"
-          tone="absent"
-          requirements={buckets.absent}
-          coverage={byId}
-          bulletTexts={bulletTexts}
-        />
-      </div>
-
-      <InfoNote className="mt-[26px]">
-        Requirement coverage: how much of this posting your profile can evidence. Not a
-        prediction, and not an employer&rsquo;s ATS score.
-      </InfoNote>
+      <details data-tour="coverage" className="group mt-[clamp(1rem,2vw,1.5rem)]">
+        <summary className="tag tag-outline min-h-[38px] max-w-full cursor-pointer list-none whitespace-normal px-4 text-left text-sm font-extrabold [&::-webkit-details-marker]:hidden">
+          Every requirement, sorted by evidence{" "}
+          <ChevronDown className="lucide h-4 w-4 flex-none transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="mt-4 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
+          {BUCKETS.map(({ tone, title }) => (
+            <Bucket
+              key={tone}
+              title={title}
+              tone={tone}
+              requirements={buckets[tone]}
+              coverage={byId}
+              bulletTexts={bulletTexts}
+            />
+          ))}
+        </div>
+      </details>
     </div>
   );
 }

@@ -704,8 +704,7 @@ retired with the stage list, Oct 2026.)
 
 ### F4 — Coverage + score header
 
-`Analysis complete · {jdSource}` with extracted JdMeta, the score ring, verdict, note, and three
-bucket cards with counts and tags.
+`Analysis complete · {jdSource}` with extracted JdMeta, then one compact band: title, meta, verdict, note and the coverage note on the left; on the right the score ring in one card with the three buckets — Strong match, Partial evidence, Not evidenced — and their counts (N4). Every requirement tag sits in one disclosure under the band, *Every requirement, sorted by evidence*, closed by default.
 
 Below it, the three surfaces as an underline tab bar carrying a count each — `Résumés 11`,
 `Interview prep 12`, `Learning 4 gaps`. The Résumés tab also reads selected on
@@ -735,7 +734,7 @@ leave the path entirely.
   a new analysis and History instead. Pitches carry no numbers (§5).
 
 
-**Acceptance:** every **Strong match** tag traces to a specific bullet in one click; from any
+**Acceptance:** every **Strong match** tag traces to a specific bullet in one click once the requirement list is open; from any
 scroll position in any section, every other section is one tap away.
 
 ### F5 — Tab 1: Resumes ("N drafts, same evidence")
@@ -1018,15 +1017,18 @@ re-billing. Master profile edits never rewrite past analyses (§6.2 invariant 4)
 
 ### F11 — Profile
 
-One screen over the whole corpus, because the corpus is one thing. Two columns: the token meter
-(F19), identity and contact, summary, skills, experience, personal projects, then education / certifications /
-languages / preferences; aside carries profile strength and the checks that explain it. The AI
-layer writes to none of it (N3) — that is what makes the fabrication guard mean anything.
+One screen over the whole corpus, because the corpus is one thing. Two columns: identity and
+contact (one line until opened), summary, experience, skills, personal projects, then education /
+certifications / languages / preferences; the aside carries profile strength, the checks that
+explain it, Save, then the token meter (F19). The AI layer writes to none of it (N3) — that is what
+makes the fabrication guard mean anything.
 
-The meter leads the column, as in the design. It is the one thing on this page that is not the
-corpus, and it is above the corpus because it is what the corpus costs to use. It is a server
-component slotted into the client editor rather than imported by it — the balance is two aggregate
-queries and has no business in a bundle.
+Header actions on the right (Replace résumé). One **Account** block at the foot: name,
+notifications, delete everything.
+
+The meter sits in the aside: it is the one thing on this page that is not the corpus, so the corpus
+leads. It is a server component slotted into the client editor rather than imported by it — the
+balance is two aggregate queries and has no business in a bundle.
 
 **Everything here is editable.** Education and certifications were read-only cards; a page whose
 whole argument is "a draft can only say what exists here" cannot have sections you are unable to
@@ -2175,8 +2177,8 @@ calendar days in the round's zone ("Tomorrow: …", "Today: …", "in 3 hours").
 
 **Where it shows.** The Rounds tab (type chips, date and time, reminder choices, a countdown tag
 per round); a **Preparing for** strip above the Prep tab naming the next round, its countdown and
-the surface that fits it; and an **Upcoming rounds** card at the top of History listing every round
-still ahead across postings.
+the surface that fits it; and an **Upcoming rounds** card beside the History list on wide screens (below it on phones) listing
+every round still ahead across postings.
 
 **Acceptance:** adding an L2 round five days out with the defaults writes five reminder rows in
 time order; a system-design reminder opens Prep on the System design family; the after-round nudge
@@ -2308,8 +2310,8 @@ States, derived (`promoState`): live · scheduled · ended · paused · used-up.
 code?" on each paid card; `?promo=CODE` (or `?coupon=CODE`, the name most shared links use) pre-applies it quietly (a code that doesn't fit one card says
 nothing there). `previewPromo` works signed out.
 
-**The banner.** `components/promo-marquee.tsx` — a marigold strip at the top of the landing page,
-/analyze and every analysis page, rendered only while at least one code is live and `show_banner`.
+**The banner.** `components/promo-marquee.tsx` — a marigold strip at the top of the landing page
+and /analyze, and under the section (above *Up next*) on every analysis page, rendered only while at least one code is live and `show_banner`.
 Seamless CSS marquee, a brief colour flash on arrival, pauses on hover/focus, static under
 `prefers-reduced-motion`, dismissible for the browser session. It links to `/pricing?promo=CODE`.
 Codes not on the banner are never sent to a browser. Admin → Promo codes shows used/limit, open

@@ -336,7 +336,7 @@ export function PortfolioStudio({
 
   /* ---------------------------------------------------------------- view */
   return (
-    <section style={{ marginTop: "clamp(36px,4cqi,56px)" }} className="[container-type:inline-size]">
+    <section className="[container-type:inline-size]">
       {/* The looks' own type: loaded once, used only inside the previews. */}
       <link rel="stylesheet" href={SITE_FONTS_HREF} precedence="default" />
       <input
@@ -353,7 +353,7 @@ export function PortfolioStudio({
         }}
       />
 
-      <div style={{ maxWidth: 780, marginBottom: "clamp(28px,3.4cqi,44px)" }}>
+      <div style={{ maxWidth: 780, marginBottom: "clamp(18px,2.2cqi,28px)" }}>
         <Link
           href={`/analysis/${analysisId}/resumes`}
           className="hover-tint"
@@ -363,7 +363,7 @@ export function PortfolioStudio({
           Résumés
         </Link>
         <p style={eyebrow}>Portfolio site</p>
-        <h2 style={{ fontFamily: "var(--font-heading)", fontWeight: 400, textTransform: "uppercase", fontSize: "clamp(40px,4.8cqi,68px)", lineHeight: 0.95, margin: "0 0 12px" }}>
+        <h2 style={{ fontFamily: "var(--font-heading)", fontWeight: 400, textTransform: "uppercase", fontSize: "clamp(28px,3.4cqi,44px)", lineHeight: 0.95, margin: "0 0 12px" }}>
           Turn this profile into a portfolio site
         </h2>
         <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: MUTED, textWrap: "pretty" }}>

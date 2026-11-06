@@ -21,6 +21,14 @@ import {
 import { canBuyTopup, TOPUPS, type PlanId } from "@/lib/content/pricing";
 import { loadPlan, loadPlanAbove } from "@/lib/services/plans/catalog";
 import { appError, err, ok, type Result } from "@/lib/domain/types";
+import {
+  ENHANCE_LIMIT_COPY,
+  ENHANCE_PURPOSE,
+  ENHANCE_WINDOW_MS,
+  enhanceAllowance,
+  type EnhanceAllowance,
+  type EnhanceBlock,
+} from "@/lib/domain/enhance";
 
 // Re-exported: callers have always imported it from here.
 export { hashEmail } from "@/lib/shared/email-hash";
@@ -487,6 +495,77 @@ async function buildCapWall(
     upgrade: up ? { id: up.id, name: up.name, price: up.price, cap: up.caps[key] } : null,
     admins: admins.map((a) => a.name),
   };
+}
+
+/**
+ * The profile-enhance allowance (F34; N22 as amended): two per 24 hours on
+ * every plan, counted from `ai_runs` rows. Not a QuotaKey, so it never reads a
+ * cycle cap, the plan or the meter, and it never settles the plan. Admins skip
+ * the switched-off check, as in `checkTokenAllowance`.
+ */
+export async function readEnhanceAllowance(
+  clerkUserId: string,
+  now: Date = new Date(),
+): Promise<{ allowance: EnhanceAllowance; blocked: EnhanceBlock | null } | null> {
+  const row = await db.user.findUnique({
+    where: { clerkUserId },
+    select: { role: true, suspended: true, capTokens: true },
+  });
+  if (!row) return null;
+  const rows = await db.aiRun.findMany({
+    where: {
+      clerkUserId,
+      purpose: ENHANCE_PURPOSE,
+      createdAt: { gte: new Date(now.getTime() - ENHANCE_WINDOW_MS) },
+    },
+    select: { createdAt: true, schemaValid: true },
+  });
+  const blocked: EnhanceBlock | null = row.suspended
+    ? "suspended"
+    : !isUncapped(row.role) && row.capTokens === 0
+      ? "off"
+      : null;
+  return { allowance: enhanceAllowance({ role: row.role, rows, now }), blocked };
+}
+
+/** Refusal path of the allowance above. The detail is the reopening time, an ISO string only. */
+export async function checkEnhanceAllowance(
+  clerkUserId: string,
+  now: Date = new Date(),
+): Promise<Result<EnhanceAllowance>> {
+  const read = await readEnhanceAllowance(clerkUserId, now);
+  if (!read) return err(appError("not_found", "We couldn't find your account."));
+  if (read.blocked === "suspended") {
+    return err(
+      appError(
+        "quota_exhausted",
+        `Generation is suspended on your account${await askWhom()}. Your profile stays editable.`,
+      ),
+    );
+  }
+  if (read.blocked === "off") {
+    return err(appError("quota_exhausted", `Generation is switched off on your account${await askWhom()}.`));
+  }
+  const a = read.allowance;
+  if (a.reason === "used") {
+    return err(
+      appError(
+        "quota_exhausted",
+        `You've used both profile enhances for now — ${ENHANCE_LIMIT_COPY}.`,
+        a.nextAt?.toISOString(),
+      ),
+    );
+  }
+  if (a.reason === "attempts") {
+    return err(
+      appError(
+        "quota_exhausted",
+        `Too many enhance attempts in the last 24 hours — ${ENHANCE_LIMIT_COPY}.`,
+        a.nextAt?.toISOString(),
+      ),
+    );
+  }
+  return ok(a);
 }
 
 /**

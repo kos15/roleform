@@ -16,6 +16,9 @@ import { learningPlanner } from "@/lib/ai/agents/learning-planner";
 import { quizWriter } from "@/lib/ai/agents/quiz-writer";
 import { revisionWriter } from "@/lib/ai/agents/revision-writer";
 import { AGENTS } from "@/lib/ai/agents/roster";
+import { profileEnhancer } from "@/lib/ai/agents/profile-enhancer";
+import { UNMETERED_PURPOSES } from "@/lib/domain/tokens";
+import { FIXTURES as ENHANCE_FIXTURES } from "./prompts.fixtures";
 import { verdictFrom, correctionFor, CHECK_KINDS } from "@/lib/ai/typesafe/verdict";
 import { fabricationRequest, answerClaimRequest, JevResponseSchema } from "@/lib/ai/typesafe/requests";
 import { decideAfterCheck, budgetsAfterGuardRetry } from "@/lib/ai/typesafe/loop";
@@ -147,11 +150,34 @@ it("RevisionWriter builds its schema from the run's topics and count", () => {
   const schema = factory({ role: { title: "T", seniority: null }, topics: [{ label: "SQL", necessity: "required", status: "absent" }], count: 1, minutes: 10 });
   assert.equal(schema.safeParse({ cards: [] }).success, false);
 });
-it("the roster holds all twelve agents, one per task", () => {
+it("the roster holds all thirteen agents, one per task", () => {
   assert.deepEqual(Object.keys(AGENTS).sort(), [
-    "analyze_jd", "code_review", "coding_challenge", "extract_profile", "interview_questions", "question_answer",
+    "analyze_jd", "code_review", "coding_challenge", "enhance_profile", "extract_profile", "interview_questions", "question_answer",
     "quiz_round", "revision_cards", "synthesise_learning_plan", "tailor_bullet", "tailor_summary", "transcribe_document",
   ]);
+});
+it("ProfileEnhancer is a fast, checker-free agent whose runs are unmetered", () => {
+  assert.equal(profileEnhancer.model, "writer-fast");
+  assert.equal(profileEnhancer.reasoningEffort, "low");
+  assert.equal(profileEnhancer.retries, 1);
+  assert.equal(profileEnhancer.maxOutputTokens, 6000);
+  assert.equal(profileEnhancer.timeoutMs, 45000);
+  assert.deepEqual(profileEnhancer.inputGuards, ["pii", "injection_regex"]);
+  assert.deepEqual(profileEnhancer.outputGuards, ["no_urls", "tone"]);
+  assert.equal(profileEnhancer.checker, undefined);
+  assert.ok((UNMETERED_PURPOSES as readonly string[]).includes(profileEnhancer.name));
+});
+it("ProfileEnhancer builds its schema from the member's own fields", () => {
+  const factory = profileEnhancer.schema as (i: unknown) => { safeParse: (v: unknown) => { success: boolean } };
+  const schema = factory({ fields: [{ path: "basics.summary", text: "x" }] });
+  assert.equal(schema.safeParse({ proposals: [{ kind: "tidy", path: "work.9.highlights.0", text: "x", reason: "r" }] }).success, false);
+});
+it("ProfileEnhancer sends only the fields, tagged by path", () => {
+  assert.equal(
+    assemblePrompt(profileEnhancer, ENHANCE_FIXTURES.profile_enhancer),
+    PROMPT_SEPARATOR +
+      'Profile entries:\n<field path="basics.summary">Frontend engineer who builds fast checkout flows.</field>\n<field path="work.0.highlights.0">Cut checkout load time by 40% using React.</field>',
+  );
 });
 it("verdictFrom flags at or above the threshold only", () => {
   assert.deepEqual(verdictFrom(0.62, "tool", 0.5), { flagged: true, p: 0.62, kind: "tool", skipped: false });

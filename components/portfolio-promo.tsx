@@ -2,14 +2,14 @@ import Link from "next/link";
 import { ArrowRight, Globe } from "lucide-react";
 
 /**
- * F28 — the promotion for the portfolio studio, on the Resumes tab beside the
+ * F28 — the promotion for the portfolio studio, on the Resumes tab under the
  * drafts it grows out of. The glow is the one place the product raises its
  * voice; it is decoration only (`aria-hidden`), built from the marigold and
  * pink ramps, and it stops moving under prefers-reduced-motion.
  */
 export function PortfolioPromo({ analysisId, used }: { analysisId: string; used: boolean }) {
   return (
-    <div className="promo-glow mb-8">
+    <div className="promo-glow mt-[clamp(2rem,4vw,3rem)]">
       <Link
         href={`/analysis/${analysisId}/portfolio`}
         className="card card-link flex flex-wrap items-center gap-5 px-[clamp(1.25rem,3vw,2rem)] py-6 no-underline"

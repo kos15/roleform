@@ -20,7 +20,7 @@ export function SavedJobsPanel({ jobs }: { jobs: SavedJobView[] }) {
       <div>
         <h2 className="mb-4 text-[40px] leading-none">Saved</h2>
         <p className="text-[15px] text-[var(--color-text-muted)]">
-          Nothing saved yet. Save a listing above to track it here.
+          Nothing saved yet. Save a listing to track it here.
         </p>
       </div>
     );

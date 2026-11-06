@@ -33,13 +33,13 @@ export default async function ProfilePage() {
   if (!loaded) {
     return (
       <div className="max-w-2xl space-y-5">
-        {accountName}
         <EmptyState title="No profile yet">
           Import a résumé and Roleform will have something to work from.
         </EmptyState>
         <Link href="/onboarding" className="no-underline">
           <Button>Import résumé</Button>
         </Link>
+        {accountName}
       </div>
     );
   }
@@ -66,18 +66,24 @@ export default async function ProfilePage() {
 
   return (
     <div className="rise-in">
-      <PageIntro kicker="Your profile" title="The corpus we draw on">
+      <PageIntro
+        compact
+        kicker="Your profile"
+        title="The corpus we draw on"
+        actions={
+          <Link href="/onboarding" className="btn btn-secondary btn-sm no-underline">
+            Replace résumé
+          </Link>
+        }
+      >
         Everything a tailored résumé can say has to exist here first. Each entry shows how often it
         has actually been used as evidence — the ones at zero are the ones worth rewriting.
       </PageIntro>
 
-      {accountName}
-
-      {/* The meter goes INTO the editor's left column rather than under it, as
-          in the design: it is the first thing on this screen, above the corpus
-          it pays for. Passed as a prop because it is an async server component
-          and the editor is a client one — the boundary is the reason this is a
-          slot and not an import. */}
+      {/* The meter goes INTO the editor's aside: it is the one thing here that is
+          not the corpus. Passed as a prop because it is an async server
+          component and the editor is a client one — the boundary is the reason
+          this is a slot and not an import. */}
       <ProfileEditor
         initial={resume}
         evidenceByPath={evidenceByPath}
@@ -88,24 +94,25 @@ export default async function ProfilePage() {
         tokenPanel={<UsagePanel clerkUserId={userId} />}
       />
 
-      {/* F29: which devices hear about interview rounds. */}
-      <div className="mt-8 max-w-3xl">
-        <NotificationsPanel
-          devices={(await getDevices(userId)).map((d) => ({
-            id: d.id,
-            key: d.key,
-            deviceLabel: d.deviceLabel,
-            createdAt: d.createdAt.toISOString(),
-            lastSentAt: d.lastSentAt?.toISOString() ?? null,
-            enabled: d.enabled,
-          }))}
-          prefs={await getNotifyPrefs(userId)}
-        />
-      </div>
-
-      <div className="mt-8 max-w-3xl">
-        <DeleteAccount />
-      </div>
+      {/* One Account block at the foot: name, F29 notification devices, delete. */}
+      <section aria-labelledby="account-heading" className="mt-[clamp(2.5rem,5vw,4rem)] max-w-3xl">
+        <h2 id="account-heading" className="mb-5">Account</h2>
+        <div className="space-y-6">
+          {accountName}
+          <NotificationsPanel
+            devices={(await getDevices(userId)).map((d) => ({
+              id: d.id,
+              key: d.key,
+              deviceLabel: d.deviceLabel,
+              createdAt: d.createdAt.toISOString(),
+              lastSentAt: d.lastSentAt?.toISOString() ?? null,
+              enabled: d.enabled,
+            }))}
+            prefs={await getNotifyPrefs(userId)}
+          />
+          <DeleteAccount />
+        </div>
+      </section>
     </div>
   );
 }

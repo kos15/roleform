@@ -21,6 +21,22 @@
  * run's cost.
  */
 
+/**
+ * Model calls that never draw on the fair-use meter: usage, the carry rule and
+ * the admin per-member figure all leave them out. Profile enhance (F34) has its
+ * own flat limit; the workspace total still counts every call's spend.
+ */
+export const UNMETERED_PURPOSES = ["enhance_profile"] as const;
+
+/** The `ai_runs` rows that count against a member's meter since `since`. */
+export function meteredRunsWhere(clerkUserId: string, since: Date) {
+  return {
+    clerkUserId,
+    createdAt: { gte: since },
+    purpose: { notIn: [...UNMETERED_PURPOSES] },
+  };
+}
+
 /** One stage's typical draw, measured across runs. Sums to RUN_ESTIMATE. */
 export interface TokenStage {
   stage: string;

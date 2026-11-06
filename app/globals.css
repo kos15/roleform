@@ -568,12 +568,13 @@
     color: var(--color-text-muted);
   }
 
-  /* Tablet widths, where the analysis dock carries the sections: the cards
-     become a compact two-up grid rather than three rows of 142px slabs. Below
-     640px the phone strip further down takes over. */
-  @media (min-width: 641px) and (max-width: 860px) {
+  /* From 641px up the cards are compact rows, not 142px slabs — on a laptop the
+     slabs took two rows and pushed the section below the first screen. Tablet
+     keeps two-up; wider screens fit one row (all seven at 1280). Below 640px
+     the phone strip further down takes over. */
+  @media (min-width: 641px) {
     .tab-bar {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
       gap: 10px;
     }
     .tab-bar button {
@@ -587,6 +588,9 @@
     .tab-bar .tab-dot { width: 32px; height: 32px; flex: none; }
     .tab-bar .tab-label { font-size: 0.94rem; }
     .tab-bar .tab-count { margin-top: 0; font-size: 0.8rem; }
+  }
+  @media (min-width: 641px) and (max-width: 860px) {
+    .tab-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
   /* ---------------------------------------------------------------------------

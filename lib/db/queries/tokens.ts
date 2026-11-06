@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { db } from "@/lib/db";
 import { CYCLE_DAYS, cycleEnd, cycleStart } from "@/lib/domain/quotas";
-import { WORST_CASE, tokenBalance, type TokenBalance } from "@/lib/domain/tokens";
+import { UNMETERED_PURPOSES, WORST_CASE, meteredRunsWhere, tokenBalance, type TokenBalance } from "@/lib/domain/tokens";
 
 /**
  * What the member has left (F19).
@@ -79,7 +79,7 @@ export async function tokensUsedThisCycle(
   quotaResetsAt: Date | null,
 ): Promise<number> {
   const totals = await db.aiRun.aggregate({
-    where: { clerkUserId, createdAt: { gte: cycleStart(quotaResetsAt) } },
+    where: meteredRunsWhere(clerkUserId, cycleStart(quotaResetsAt)),
     _sum: { inputTokens: true, outputTokens: true },
   });
   return (totals._sum.inputTokens ?? 0) + (totals._sum.outputTokens ?? 0);
@@ -119,6 +119,7 @@ export async function usageByCycle(clerkUserId: string, anchor: Date): Promise<C
       sum(ai."input_tokens" + ai."output_tokens")::bigint as used
     from "ai_runs" ai
     where ai."clerk_user_id" = ${clerkUserId}
+      and ai."purpose" <> all(${[...UNMETERED_PURPOSES]}::text[])
     group by 1
     order by 1 asc
   `;

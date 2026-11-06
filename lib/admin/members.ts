@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { practiceSessionWhere } from "@/lib/domain/entitlements";
 import { initialsOf, roleFromMetadata, type Role } from "@/lib/admin/role";
 import { cycleStart, type QuotaKey } from "@/lib/domain/quotas";
-import { formatTokens } from "@/lib/domain/tokens";
+import { formatTokens, meteredRunsWhere } from "@/lib/domain/tokens";
 import { effectivePlan } from "@/lib/domain/entitlements";
 import { grantedTokens } from "@/lib/db/queries/tokens";
 import { settlePlan } from "@/lib/db/queries/plan";
@@ -385,7 +385,7 @@ async function usageFor(clerkUserId: string, since: Date): Promise<MemberUsage> 
   const practiceWhere = practiceSessionWhere(clerkUserId, since);
   const [tokens, analyses, answers, resumes, courses, roadmaps, jobSearches, decks, rounds, challenges] = await Promise.all([
     db.aiRun.aggregate({
-      where: { clerkUserId, createdAt: { gte: since } },
+      where: meteredRunsWhere(clerkUserId, since),
       _sum: { inputTokens: true, outputTokens: true },
     }),
     db.analysis.count({ where: { clerkUserId, createdAt: { gte: since } } }),
@@ -526,6 +526,7 @@ export async function workspaceStats(): Promise<WorkspaceStat[]> {
   const since = cycleStart(null);
 
   const [tokens, analyses, resumes, answers, caps] = await Promise.all([
+    // The workspace total counts all spend, enhance_profile included.
     db.aiRun.aggregate({
       where: { createdAt: { gte: since } },
       _sum: { inputTokens: true, outputTokens: true },
