@@ -107,6 +107,12 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Fix-up A1: requirement disclosure summary may overflow ≤375px (`.tag` nowrap) — allow wrap~~ — 2026-11-06
 - [x] ~~Fix-up A2: lib/content/helper.ts tip about 'the big number' targets 'coverage' — retarget to 'score'~~ — 2026-11-06
 - [x] ~~Fix-up A3: lib/content/tour.ts coverage step copy assumes the list is open — 'Open the list, then any requirement…'~~ — 2026-11-06
+- [ ] jobs results grid minmax(420px) drops to one listing column inside the main column at 1280 — check in Task 13; consider ~340px (app/(app)/jobs/job-search-client.tsx:277) — neji, Part A review 6–12
+- [ ] JobsSkeleton / HistorySkeleton (components/skeletons.tsx) don't model the rail — layout shift at ≥1024 — neji, Part A review 6–12
+- [ ] Identity summary line empty when name/label/city/email all blank, and no overflow-wrap for long emails (profile-editor.tsx ~1009) — fallback "Add your name and contact" + [overflow-wrap:anywhere] — neji, Part A review 6–12
+- [ ] Collapsible `Section` puts <h3> inside a <button> (profile-editor.tsx ~1096) — heading beside the button like IdentitySection — neji, Part A review 6–12
+- [ ] No-profile branch nests <Button> in <Link> (profile/page.tsx ~38) — use `btn btn-primary` on the Link — neji, Part A review 6–12
+- [ ] history-page test doesn't assert the phone <ul> and footnote sit inside WithRail — neji, Part A review 6–12
 
 ## Profile enhance (F34) — `docs/superpowers/plans/2026-11-06-profile-enhance.md`
 
