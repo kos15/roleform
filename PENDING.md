@@ -104,9 +104,9 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] specs F4 still says "an underline tab bar carrying a count each" — tabs are compact cards now — neji, Part A review 1–5
 - [ ] results-header `min-h-7` on bucket count tags duplicates `.tag` min-height — neji, Part A review 1–5
 - [ ] Task 13 visual check should include 360px width (summary pill, tab label wraps at 1280) — neji, Part A review 1–5
-- [ ] Fix-up A1: requirement disclosure summary may overflow ≤375px (`.tag` nowrap) — allow wrap
-- [ ] Fix-up A2: lib/content/helper.ts tip about 'the big number' targets 'coverage' — retarget to 'score'
-- [ ] Fix-up A3: lib/content/tour.ts coverage step copy assumes the list is open — 'Open the list, then any requirement…'
+- [x] ~~Fix-up A1: requirement disclosure summary may overflow ≤375px (`.tag` nowrap) — allow wrap~~ — 2026-11-06
+- [x] ~~Fix-up A2: lib/content/helper.ts tip about 'the big number' targets 'coverage' — retarget to 'score'~~ — 2026-11-06
+- [x] ~~Fix-up A3: lib/content/tour.ts coverage step copy assumes the list is open — 'Open the list, then any requirement…'~~ — 2026-11-06
 
 ## Profile enhance (F34) — `docs/superpowers/plans/2026-11-06-profile-enhance.md`
 

@@ -49,4 +49,8 @@ describe("ResultsHeader", () => {
     const n = html.indexOf("Not a prediction");
     assert.ok(n > 0 && n < iCov);
   });
+  it("the disclosure summary may wrap on a narrow phone", () => {
+    const summary = html.match(/<summary[^>]*class="([^"]*)"/);
+    assert.ok(summary && summary[1].includes("whitespace-normal"), "summary must override .tag's nowrap");
+  });
 });

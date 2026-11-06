@@ -93,7 +93,7 @@ export const HELP: Record<HelpKey, HelpScreen> = {
     title: "Your drafts",
     intro: "Here are your drafts. They share the same evidence — only the layout changes.",
     tips: [
-      { text: "The big number is requirement coverage: how much of the posting your profile can evidence. It isn’t an ATS score.", target: "coverage" },
+      { text: "The big number is requirement coverage: how much of the posting your profile can evidence. It isn’t an ATS score.", target: "score" },
       { text: "Templates rated High are the safest for company job portals. Creative ones rate Low, honestly.", target: "shelf" },
       { text: "Open any draft to see exactly which lines were reworded." },
     ],

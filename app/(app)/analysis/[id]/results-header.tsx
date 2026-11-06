@@ -187,9 +187,9 @@ export function ResultsHeader({
       </div>
 
       <details data-tour="coverage" className="group mt-[clamp(1rem,2vw,1.5rem)]">
-        <summary className="tag tag-outline min-h-[38px] cursor-pointer list-none px-4 text-sm font-extrabold [&::-webkit-details-marker]:hidden">
+        <summary className="tag tag-outline min-h-[38px] max-w-full cursor-pointer list-none whitespace-normal px-4 text-left text-sm font-extrabold [&::-webkit-details-marker]:hidden">
           Every requirement, sorted by evidence{" "}
-          <ChevronDown className="lucide h-4 w-4 transition-transform group-open:rotate-180" />
+          <ChevronDown className="lucide h-4 w-4 flex-none transition-transform group-open:rotate-180" />
         </summary>
         <div className="mt-4 grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr))]">
           {BUCKETS.map(({ tone, title }) => (

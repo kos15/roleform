@@ -32,7 +32,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
   {
     key: "coverage",
     title: "Every requirement, sorted by evidence",
-    body: "Evidenced, partial, absent. Open any requirement to see the bullet it matched and the line in the posting that asked for it.",
+    body: "Evidenced, partial, absent. Open the list, then any requirement to see the bullet it matched and the line in the posting that asked for it.",
   },
   {
     key: "tabs",
