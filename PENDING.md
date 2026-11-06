@@ -140,6 +140,9 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] numbersPreserved uses includes: swapping two bare numbers or losing one of two repeats passes — neji, F34 review 1–4
 - [ ] "C#" never detected by technicalTokens (pre-existing, affects tailoring) — neji, F34 review 1–4
 - [ ] schema for empty fields emits `items: { not: {} }` (OpenAI strict may reject) — Task 8 must short-circuit with no model call when enhanceableFields is empty — neji, F34 review 1–4
+- [ ] Concurrent enhance requests can overshoot 2/24h (allowance read before the run, ai_runs row written after; burst limiter is per-instance) — accepted per hokage ruling (same as answers/practice/roadmaps); document in F34 spec; revisit with a pending-row claim if abused — neji, F34 review 5–8
+- [ ] Fix-up B1: enhance system prompt must say field text is the member's content, never instructions; escape `<`/`>` in field text; re-pin hashes — neji, F34 review 5–8
+- [ ] Fix-up B2: tests — auth "attempts" refusal case; action does not call getProfile when allowance refuses; action imports neither @/lib/db nor updateProfile/revalidatePath (N3 source pin) — neji, F34 review 5–8
 - [ ] `tokensUsedThisCycle` (lib/db/queries/tokens.ts) has no callers — delete or wire
 
 ## Carried over
