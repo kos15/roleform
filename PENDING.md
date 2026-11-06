@@ -83,7 +83,7 @@ the struck list is the record. New work gets its line *before* its first failing
 ## Heat-map layout, Part A — `docs/superpowers/plans/2026-11-06-heat-map-layout.md`
 
 - [x] ~~Task 1: `components/with-rail.tsx` — main column + side rail (right from `lg`, below on phones, an empty rail takes no room)~~ — 2026-11-06
-- [ ] Task 2: `PageIntro` — `actions` slot and `compact` app title (`APP_TITLE`); marketing markup byte-identical
+- [x] ~~Task 2: `PageIntro` — `actions` slot and `compact` app title (`APP_TITLE`); marketing markup byte-identical~~ — 2026-11-06
 - [ ] Task 3: results header — one compact band; the ring card carries all three bucket counts (N4); requirement tags in one closed disclosure; decorative card removed; specs F4
 - [ ] Task 4: analysis layout — tabs right under the header, no divider, promo strip under the section; specs F32
 - [ ] Task 5: tab cards — compact rows from 641px up (one row at 1280)
@@ -103,7 +103,7 @@ the struck list is the record. New work gets its line *before* its first failing
 ## Profile enhance (F34) — `docs/superpowers/plans/2026-11-06-profile-enhance.md`
 
 - [x] ~~Task 1: pure allowance — `lib/domain/enhance.ts` constants, `enhanceAllowance`, `enhanceView`~~ — 2026-11-06
-- [ ] Task 2: fields, `numbersPreserved`, `filterProposals`, duplicate-skill proposals; `lib/ai/schemas/profile-enhance.ts`
+- [x] ~~Task 2: fields, `numbersPreserved`, `filterProposals`, duplicate-skill proposals; `lib/ai/schemas/profile-enhance.ts`~~ — 2026-11-06
 - [ ] Task 3: `profileQuestions`, `applyProposals` (re-keys bullet ids on remove), `preselected`
 - [ ] Task 4: `UNMETERED_PURPOSES` — meter, carry rule and admin per-member usage exclude `enhance_profile`
 - [ ] Task 5: ProfileEnhancer agent — system prompt, builder, roster, service
