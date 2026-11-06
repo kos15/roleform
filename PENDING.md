@@ -86,7 +86,7 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 2: `PageIntro` — `actions` slot and `compact` app title (`APP_TITLE`); marketing markup byte-identical~~ — 2026-11-06
 - [x] ~~Task 3: results header — one compact band; the ring card carries all three bucket counts (N4); requirement tags in one closed disclosure; decorative card removed; specs F4~~ — 2026-11-06
 - [x] ~~Task 4: analysis layout — tabs right under the header, no divider, promo strip under the section; specs F32~~ — 2026-11-06
-- [ ] Task 5: tab cards — compact rows from 641px up (one row at 1280)
+- [x] ~~Task 5: tab cards — compact rows from 641px up (one row at 1280)~~ — 2026-11-06
 - [ ] Task 6: Résumés tab — shelf first; skill offer, then portfolio promo, below it
 - [ ] Task 7: profile editor — Identity collapsed to one line, Experience before Skills, usage meter in the aside; specs F11
 - [ ] Task 8: profile page — header actions slot (Replace résumé; Part B's Enhance lands here), one Account block at the foot; specs F11
@@ -99,6 +99,14 @@ the struck list is the record. New work gets its line *before* its first failing
 - [ ] Portfolio promo copy says "Fourteen looks"; `PORTFOLIO_LOOKS` has 18 — phrase from the list or drop the number — shikamaru, heat-map audit
 - [ ] `AnalysisSkeleton` (components/skeletons.tsx) is unused (analysis/[id]/loading.tsx returns null) and still draws the old header — delete or wire — shikamaru, heat-map audit
 - [ ] Portfolio and preview routes sit under the full results header — consider a slim header off the section path — shikamaru, heat-map audit
+- [ ] Ring aria-label says "N percent of this posting's requirements are evidenced" — the score is weighted coverage (§4); reword to "N percent requirement coverage — how much of this posting your profile can evidence" (results-header.tsx ~138) — neji, Part A review 1–5
+- [ ] Tour 'coverage' spotlight is a page-wide strip (anchor is the block <details>) and doesn't re-measure when it opens — add a ResizeObserver in components/product-tour.tsx measure effect — neji, Part A review 1–5
+- [ ] specs F4 still says "an underline tab bar carrying a count each" — tabs are compact cards now — neji, Part A review 1–5
+- [ ] results-header `min-h-7` on bucket count tags duplicates `.tag` min-height — neji, Part A review 1–5
+- [ ] Task 13 visual check should include 360px width (summary pill, tab label wraps at 1280) — neji, Part A review 1–5
+- [ ] Fix-up A1: requirement disclosure summary may overflow ≤375px (`.tag` nowrap) — allow wrap
+- [ ] Fix-up A2: lib/content/helper.ts tip about 'the big number' targets 'coverage' — retarget to 'score'
+- [ ] Fix-up A3: lib/content/tour.ts coverage step copy assumes the list is open — 'Open the list, then any requirement…'
 
 ## Profile enhance (F34) — `docs/superpowers/plans/2026-11-06-profile-enhance.md`
 
@@ -106,7 +114,7 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 2: fields, `numbersPreserved`, `filterProposals`, duplicate-skill proposals; `lib/ai/schemas/profile-enhance.ts`~~ — 2026-11-06
 - [x] ~~Task 3: `profileQuestions`, `applyProposals` (re-keys bullet ids on remove), `preselected`~~ — 2026-11-06
 - [x] ~~Task 4: `UNMETERED_PURPOSES` — meter, carry rule and admin per-member usage exclude `enhance_profile`~~ — 2026-11-06
-- [ ] Task 5: ProfileEnhancer agent — system prompt, builder, roster, service
+- [x] ~~Task 5: ProfileEnhancer agent — system prompt, builder, roster, service~~ — 2026-11-06
 - [ ] Task 6: `readEnhanceAllowance` / `checkEnhanceAllowance`, `LIMITS.enhance`
 - [ ] Task 7: `profile_enhance` feature switch (migration + Prisma enum + FEATURES)
 - [ ] Task 8: `enhanceProfile()` action in `app/actions/profile.ts`
