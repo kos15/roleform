@@ -64,6 +64,8 @@ export const LIMITS = {
   export: { limit: 40, windowSeconds: 3600 },
   /** F28: one build per account anyway; this only stops a click storm on it. */
   portfolio: { limit: 3, windowSeconds: 3600 },
+  /** F34: a burst guard; the 24 h count from ai_runs is the real limit. */
+  enhance: { limit: 2, windowSeconds: 60 },
   /** The burst guard beside the durable cap (JS-7/G10) — a click storm against
    *  two third-party APIs is a different failure than running out of a cycle
    *  allowance, and needs its own ceiling. */
