@@ -2,7 +2,7 @@
 
 # Profile enhance (F34) plan
 
-**Goal.** A member presses **Enhance profile** at the top of /profile and a review sheet opens. Step 1 asks fixed questions generated from gaps in the profile; answers go in exactly as typed. Step 2 shows each suggested change as before → after. Rephrase and tidy are ticked by default; remove starts unticked. Step 3 applies the ticked changes to the editor without saving them, and the member presses the existing Save. The limit is 2 every 24 hours on every plan; admins have no limit. Enhance runs never count towards the fair-use meter, and suggestions are never stored.
+**Goal.** A member presses **Enhance profile** at the top of /profile and a review sheet opens. Step 1 asks fixed questions generated from gaps in the profile; answers go in exactly as typed. Step 2 shows each suggested change as before → after. Only tidy is ticked by default; rephrase and remove start unticked. Step 3 applies the ticked changes to the editor without saving them, and the member presses the existing Save. The limit is 2 every 24 hours on every plan; admins have no limit. Enhance runs never count towards the fair-use meter, and suggestions are never stored.
 
 **Architecture.** The logic is pure functions in `lib/domain/enhance.ts`:
 - the allowance (counting `ai_runs` rows in the last 24 h)
@@ -122,6 +122,7 @@ Add as a new section `## Profile enhance (F34) — docs/superpowers/plans/2026-1
   - `numbersPreserved(source: string, text: string): boolean`
   - `filterProposals(fields: readonly EnhanceField[], proposals: readonly EnhanceProposalOut[], profileTerms: readonly string[]): { kept: ProfileProposal[]; dropped: number }`
   - `duplicateSkillProposals(resume: StoredResume): ProfileProposal[]`
+  - `addsClaim(source: string, after: string, profileTerms: readonly string[]): boolean` — Enhance-only guard called by `filterProposals`: true when `after` adds a capitalised word, number word, ownership/seniority/title word or scale word the source (or profile terms) does not state; whole-word and hyphen-compound comparison; a URL in `after` is also dropped. `checkFabrication` is untouched.
   - `isHighlightPath(path: string): boolean` — `/^(work|projects|volunteer)\.\d+\.highlights\.\d+$/`
 - `lib/ai/schemas/profile-enhance.ts` (imports the constants from domain at runtime; domain imports only *types* from here, so there is no runtime cycle):
   - `EnhanceProposalOutSchema` — a static `z.union` with `path: z.string()`. It exists only for the type.
@@ -207,7 +208,7 @@ Skip empty or whitespace-only text and any text where `findUrls(text).length > 0
   - `interface AnsweredQuestion { question: ProfileQuestion; answer: string }`
 - Functions:
   - `profileQuestions(resume: StoredResume): ProfileQuestion[]`
-  - `preselected(proposals: readonly ProfileProposal[]): string[]` — paths whose kind is not `remove`
+  - `preselected(proposals: readonly ProfileProposal[]): string[]` — paths whose kind is `tidy` (rephrase and remove start unticked)
   - `applyProposals(resume: StoredResume, accepted: readonly ProfileProposal[], answers: readonly AnsweredQuestion[]): { resume: StoredResume; applied: number; skipped: number }`
 
 **Question order and copy.** Truncate to 8.
@@ -243,7 +244,7 @@ Row 2 runs once per role, in role order, and produces either the `first` or the 
 - [ ] **Step 1: failing tests**, using `base()` from Task 2:
   - `profileQuestions(base()).map(q => q.id)` equals `["summary","work.0.number","work.1.first","projects.0.first","education.0.endDate","projects.0.startDate","certificates.0.date"]`. The `work.1.first` target equals `{ kind: "append", path: "work.1.highlights", owner: "Developer · Beta" }`.
   - Ten roles with no highlights give `length` 8.
-  - `preselected([tidy H1, remove H2])` equals `["work.0.highlights.1"]`.
+  - `preselected([tidy H1, rephrase H0, remove H2])` equals `["work.0.highlights.1"]` — only tidy is pre-ticked.
   - "two removals in one array, ids follow their text": remove `.1` ("B two") and `.3` ("D four") → `work[0].highlights` equals `["A one","C three"]`, bulletIds equal `{ "work.0.highlights.0":"id-a", "work.0.highlights.1":"id-c" }`, `{ applied: 2, skipped: 0 }`.
   - "rephrase and remove together": rephrase `.2` "C three"→"C, three" and remove `.0` "A one" → `["B two","C, three","D four"]`, bulletIds `{ .0:"id-b", .1:"id-c", .2:"id-d" }` (full `work.0.highlights.N` keys).
   - "stale before is skipped": rephrase `.0` with before "A ONE" → `skipped: 1`, highlights unchanged.

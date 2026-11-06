@@ -13,7 +13,7 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 1: Vitest harness, PENDING.md, test-first policy~~ — 2026-10-26
 - [x] ~~Task 2: Port the offline fixture scripts to Vitest~~ — 2026-10-26
 - [x] ~~Task 3: Tested module-move codemod~~ — 2026-10-26
-- [x] ~~Task 4: AI provider (`openai/`), checkers (`typesafe/`), `services/` folders~~ — 2026-10-26
+- [ ] Task 4: `UNMETERED_PURPOSES` — meter, carry rule and admin per-member usage exclude `enhance_profile`
 - [x] ~~Task 5: Split system prompts into `lib/ai/system-prompts/`, byte-identical~~ — 2026-10-26
 - [x] ~~Task 6: Per-agent user-prompt builders in `lib/ai/prompts/`~~ — 2026-10-26
 - [x] ~~Task 7: `lib/services/` and `lib/shared/`~~ — 2026-10-26
@@ -116,10 +116,10 @@ the struck list is the record. New work gets its line *before* its first failing
 
 ## Profile enhance (F34) — `docs/superpowers/plans/2026-11-06-profile-enhance.md`
 
-- [ ] Task 1: pure allowance — `lib/domain/enhance.ts` constants, `enhanceAllowance`, `enhanceView`
-- [ ] Task 2: fields, `numbersPreserved`, `filterProposals`, duplicate-skill proposals; `lib/ai/schemas/profile-enhance.ts`
-- [ ] Task 3: `profileQuestions`, `applyProposals` (re-keys bullet ids on remove), `preselected`
-- [ ] Task 4: `UNMETERED_PURPOSES` — meter, carry rule and admin per-member usage exclude `enhance_profile`
+- [x] ~~Task 1: pure allowance — `lib/domain/enhance.ts` constants, `enhanceAllowance`, `enhanceView`~~ — 2026-11-06
+- [x] ~~Task 2: fields, `numbersPreserved`, `filterProposals`, duplicate-skill proposals; `lib/ai/schemas/profile-enhance.ts`~~ — 2026-11-06
+- [x] ~~Task 3: `profileQuestions`, `applyProposals` (re-keys bullet ids on remove), `preselected`~~ — 2026-11-06
+- [x] ~~Task 4: `UNMETERED_PURPOSES` — meter, carry rule and admin per-member usage exclude `enhance_profile`~~ — 2026-11-06
 - [ ] Task 5: ProfileEnhancer agent — system prompt, builder, roster, service
 - [ ] Task 6: `readEnhanceAllowance` / `checkEnhanceAllowance`, `LIMITS.enhance`
 - [ ] Task 7: `profile_enhance` feature switch (migration + Prisma enum + FEATURES)
