@@ -503,6 +503,8 @@ enum FeatureKey {
   /// The Jev checkers on tailoring and answers (agent design §6.5). Off = the
   /// deterministic guards alone, exactly as before the checkers existed.
   ai_checkers
+  /// The Enhance button on the profile (F34).
+  profile_enhance
 
   @@map("feature_key")
 }

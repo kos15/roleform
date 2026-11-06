@@ -122,7 +122,7 @@ the struck list is the record. New work gets its line *before* its first failing
 - [x] ~~Task 4: `UNMETERED_PURPOSES` — meter, carry rule and admin per-member usage exclude `enhance_profile`~~ — 2026-11-06
 - [x] ~~Task 5: ProfileEnhancer agent — system prompt, builder, roster, service~~ — 2026-11-06
 - [x] ~~Task 6: `readEnhanceAllowance` / `checkEnhanceAllowance`, `LIMITS.enhance`~~ — 2026-11-06
-- [ ] Task 7: `profile_enhance` feature switch (migration + Prisma enum + FEATURES)
+- [x] ~~Task 7: `profile_enhance` feature switch (migration + Prisma enum + FEATURES)~~ — 2026-11-06
 - [ ] Task 8: `enhanceProfile()` action in `app/actions/profile.ts`
 - [ ] Task 9: review sheet (`app/(app)/profile/enhance-sheet.tsx`)
 - [ ] Task 10: wire the sheet into ProfileEditor (autosave hold, Undo) and mount the button on /profile

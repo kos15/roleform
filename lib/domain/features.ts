@@ -3,7 +3,7 @@
  * `lib/services/features.ts` reads against. Mirrors the `feature_key` enum; adding a
  * surface is a migration, a row here, and a `requireFeature` at its seams.
  */
-export type FeatureKey = "jobs" | "portfolio" | "rapid" | "roadmap" | "study" | "rounds" | "ai_checkers";
+export type FeatureKey = "jobs" | "portfolio" | "rapid" | "roadmap" | "study" | "rounds" | "ai_checkers" | "profile_enhance";
 
 export interface FeatureDef {
   key: FeatureKey;
@@ -48,5 +48,10 @@ export const FEATURES: FeatureDef[] = [
     key: "rounds",
     label: "Interview rounds",
     description: "Logging rounds and their reminders. Already-queued reminders still send.",
+  },
+  {
+    key: "profile_enhance",
+    label: "Profile enhance",
+    description: "The Enhance button on the profile. Saved profiles are untouched.",
   },
 ];
