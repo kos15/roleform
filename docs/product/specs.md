@@ -2307,8 +2307,8 @@ States, derived (`promoState`): live · scheduled · ended · paused · used-up.
 code?" on each paid card; `?promo=CODE` (or `?coupon=CODE`, the name most shared links use) pre-applies it quietly (a code that doesn't fit one card says
 nothing there). `previewPromo` works signed out.
 
-**The banner.** `components/promo-marquee.tsx` — a marigold strip at the top of the landing page,
-/analyze and every analysis page, rendered only while at least one code is live and `show_banner`.
+**The banner.** `components/promo-marquee.tsx` — a marigold strip at the top of the landing page
+and /analyze, and under the section (above *Up next*) on every analysis page, rendered only while at least one code is live and `show_banner`.
 Seamless CSS marquee, a brief colour flash on arrival, pauses on hover/focus, static under
 `prefers-reduced-motion`, dismissible for the browser session. It links to `/pricing?promo=CODE`.
 Codes not on the banner are never sent to a browser. Admin → Promo codes shows used/limit, open
